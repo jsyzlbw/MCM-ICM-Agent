@@ -102,18 +102,18 @@ review/source_audit_report.md
 
 **Implementation steps:**
 
-- [ ] Write failing tests in `tests/test_data_lineage.py` proving a `DataLineageRecord` requires `source_id`, `source_url`, and `accessed_at`.
-- [ ] Add `DataLineageRecord` and `CitationCandidate` Pydantic models to `src/mcm_agent/core/models.py`.
-- [ ] Initialize `data/data_lineage.json` and `data/citation_candidates.json` in `create_workspace`.
-- [ ] Add helper functions in `src/mcm_agent/core/lineage.py`:
+- [x] Write failing tests in `tests/test_data_lineage.py` proving a `DataLineageRecord` requires `source_id`, `source_url`, and `accessed_at`.
+- [x] Add `DataLineageRecord` and `CitationCandidate` Pydantic models to `src/mcm_agent/core/models.py`.
+- [x] Initialize `data/data_lineage.json` and `data/citation_candidates.json` in `create_workspace`.
+- [x] Add helper functions in `src/mcm_agent/core/lineage.py`:
   - `append_lineage_record(path, record)`
   - `append_citation_candidate(path, candidate)`
   - `find_unbound_external_data(workspace_root)`
-- [ ] Update `SearchDataAgent` so every accepted extracted source also creates a citation candidate.
-- [ ] Update `DataEDAAgent` so processed outputs carry lineage metadata when source-bound external data is used.
-- [ ] Update `SolverCoderAgent` so evidence records can reference lineage IDs.
-- [ ] Update `ReviewerAgent` so any external data without lineage becomes a blocking finding.
-- [ ] Add `review/source_audit_report.md` describing source-bound and unbound data.
+- [x] Update `SearchDataAgent` so every accepted extracted source also creates a citation candidate.
+- [x] Update `DataEDAAgent` so processed outputs carry lineage metadata when source-bound external data is used.
+- [x] Update `SolverCoderAgent` so evidence records can reference lineage IDs.
+- [x] Update `ReviewerAgent` so any external data without lineage becomes a blocking finding.
+- [x] Add `review/source_audit_report.md` describing source-bound and unbound data.
 
 **Acceptance criteria:**
 

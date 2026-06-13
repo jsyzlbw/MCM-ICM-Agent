@@ -24,6 +24,7 @@ def test_reviewer_writes_reports_and_passes_clean_workspace(tmp_path: Path) -> N
 
     events = EventLog(workspace.root / "event_log.jsonl").read_all()
     assert (workspace.root / "review" / "reviewer_report.md").exists()
+    assert (workspace.root / "review" / "source_audit_report.md").exists()
     assert events[-1].event_type == "paper.review.passed"
 
 
@@ -35,6 +36,38 @@ def test_reviewer_fails_with_unresolved_placeholder(tmp_path: Path) -> None:
 
     events = EventLog(workspace.root / "event_log.jsonl").read_all()
     assert events[-1].event_type == "paper.review.failed"
+
+
+def test_reviewer_blocks_unbound_external_data_source(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "data" / "source_registry.json",
+        [
+            {
+                "source_id": "web_001",
+                "title": "Official source",
+                "url": "https://data.gov/example",
+                "accessed_at": "2026-06-13T12:00:00Z",
+                "license": "unknown",
+                "provider": "FakeSearch",
+                "source_rank": "official",
+                "used_for": "external data discovery",
+                "citation": "Official source",
+                "local_path": "data/external/source_001.md",
+            }
+        ],
+    )
+    write_json(workspace.root / "data" / "data_lineage.json", [])
+
+    ReviewerAgent().run(workspace.root)
+
+    events = EventLog(workspace.root / "event_log.jsonl").read_all()
+    report = (workspace.root / "review" / "source_audit_report.md").read_text(
+        encoding="utf-8"
+    )
+    assert events[-1].event_type == "paper.review.failed"
+    assert "web_001" in report
+    assert "Unbound external data sources" in report
 
 
 def test_revision_marks_artifacts_stale_for_result_request(tmp_path: Path) -> None:

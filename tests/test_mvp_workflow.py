@@ -59,6 +59,8 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "reports/model_decision.md",
         "reports/experiment_plan.md",
         "data/source_registry.json",
+        "data/data_lineage.json",
+        "data/citation_candidates.json",
         "data/retrieval_log.jsonl",
         "rag/methodology_hits.json",
         "reports/data_profile.md",
@@ -72,6 +74,7 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "review/humanization_diff.md",
         "review/fact_regression_report.md",
         "review/reviewer_report.md",
+        "review/source_audit_report.md",
         "review/methodology_checklist_report.md",
         "final_submission/AI_use_report.md",
     ]

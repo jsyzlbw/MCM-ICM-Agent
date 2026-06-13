@@ -44,6 +44,7 @@ class SolverCoderAgent:
             metrics["numeric_mean"] = float(numeric.mean().mean())
         write_json(results_dir / "model_metrics.json", metrics)
 
+        lineage_ids = self._lineage_ids_for_processed_file(workspace_root, processed_files[0])
         evidence = read_json(results_dir / "evidence_registry.json", [])
         for key, value in metrics.items():
             evidence.append(
@@ -56,6 +57,7 @@ class SolverCoderAgent:
                     generated_by="code/problem1.py",
                     used_in=[],
                     verified=True,
+                    lineage_ids=lineage_ids,
                 ).model_dump(mode="json")
             )
         write_json(results_dir / "evidence_registry.json", evidence)
@@ -65,3 +67,11 @@ class SolverCoderAgent:
             encoding="utf-8",
         )
         Coordinator(workspace_root).emit("code.completed", source="SolverCoderAgent")
+
+    def _lineage_ids_for_processed_file(self, workspace_root: Path, processed_file: Path) -> list[str]:
+        summaries = read_json(workspace_root / "results" / "eda_summary.json", [])
+        relative_path = str(processed_file.relative_to(workspace_root))
+        for summary in summaries:
+            if summary.get("file") == relative_path:
+                return [str(item) for item in summary.get("lineage_ids", [])]
+        return []

@@ -4,7 +4,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
-from mcm_agent.core.models import RetrievalLogEntry, SourceRecord
+from mcm_agent.core.lineage import append_citation_candidate, append_lineage_record
+from mcm_agent.core.models import CitationCandidate, DataLineageRecord, RetrievalLogEntry, SourceRecord
 from mcm_agent.providers.search import ExtractProvider, SearchProvider
 from mcm_agent.utils.json_io import append_jsonl, read_json, write_json
 
@@ -45,11 +46,12 @@ class SearchDataAgent:
                 extracted_path.parent.mkdir(parents=True, exist_ok=True)
                 extracted_path.write_text(page.markdown, encoding="utf-8")
                 source_rank = self._rank_source(result.url)
+                accessed_at = datetime.now(UTC)
                 record = SourceRecord(
                     source_id=f"web_{len(source_records)+1:03d}",
                     title=result.title,
                     url=result.url,
-                    accessed_at=datetime.now(UTC),
+                    accessed_at=accessed_at,
                     license="unknown",
                     provider=self.search_provider.__class__.__name__,
                     source_rank=source_rank,
@@ -68,6 +70,12 @@ class SearchDataAgent:
                         decision="accepted" if source_rank == "official" else "accepted_background_only",
                     ).model_dump(mode="json"),
                 )
+                self._record_provenance(
+                    workspace_root,
+                    record,
+                    accessed_at,
+                    query=query,
+                )
 
         existing = read_json(registry_path, [])
         existing.extend(record.model_dump(mode="json") for record in source_records)
@@ -81,6 +89,47 @@ class SearchDataAgent:
             encoding="utf-8",
         )
         Coordinator(workspace_root).emit("data.ready", source="SearchDataAgent")
+
+    def _record_provenance(
+        self,
+        workspace_root: Path,
+        record: SourceRecord,
+        accessed_at: datetime,
+        *,
+        query: str,
+    ) -> None:
+        append_citation_candidate(
+            workspace_root / "data" / "citation_candidates.json",
+            CitationCandidate(
+                citation_id=f"cite_{record.source_id}",
+                source_id=record.source_id,
+                title=record.title,
+                url=record.url,
+                accessed_at=accessed_at,
+                citation_note=f"Retrieved for query: {query}",
+            ),
+        )
+        if record.source_rank not in {"official", "academic", "reputable"}:
+            return
+        append_lineage_record(
+            workspace_root / "data" / "data_lineage.json",
+            DataLineageRecord(
+                datum_id=f"datum_{record.source_id}",
+                name=record.title,
+                value="source-level dataset",
+                unit="source",
+                entity="external_source",
+                time_period="unknown",
+                source_id=record.source_id,
+                source_url=record.url,
+                source_title=record.title,
+                accessed_at=accessed_at,
+                local_path=record.local_path or "",
+                extraction_method=self.extract_provider.__class__.__name__,
+                confidence=0.7,
+                used_in=["data/source_registry.json"],
+            ),
+        )
 
     def _queries_from_plan(self, plan: str) -> list[str]:
         for line in plan.splitlines():

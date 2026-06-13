@@ -117,6 +117,63 @@ class EvidenceItem(BaseModel):
     generated_by: str
     used_in: list[str] = Field(default_factory=list)
     verified: bool = False
+    lineage_ids: list[str] = Field(default_factory=list)
+
+
+class DataLineageRecord(BaseModel):
+    datum_id: str
+    name: str
+    value: Any
+    unit: str
+    entity: str
+    time_period: str
+    source_id: str
+    source_url: str
+    source_title: str
+    accessed_at: datetime
+    local_path: str
+    extraction_method: str
+    confidence: float = Field(ge=0, le=1)
+    used_in: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def require_source_binding(self) -> DataLineageRecord:
+        if not self.source_id.strip():
+            raise ValueError("data lineage requires source_id")
+        if not self.source_url.strip():
+            raise ValueError("data lineage requires source_url")
+        if not self.source_title.strip():
+            raise ValueError("data lineage requires source_title")
+        return self
+
+
+class CitationCandidate(BaseModel):
+    citation_id: str
+    source_id: str
+    title: str
+    url: str
+    accessed_at: datetime
+    bibtex_key: str | None = None
+    bibtex: str | None = None
+    citation_note: str = ""
+
+    @model_validator(mode="after")
+    def fill_bibtex_fields(self) -> CitationCandidate:
+        key = self.bibtex_key or self.source_id.replace("-", "_")
+        year = str(self.accessed_at.year)
+        bibtex = self.bibtex or "\n".join(
+            [
+                f"@misc{{{key},",
+                f"  title = {{{self.title}}},",
+                f"  url = {{{self.url}}},",
+                f"  note = {{Accessed {self.accessed_at.date().isoformat()}}},",
+                f"  year = {{{year}}}",
+                "}",
+            ]
+        )
+        self.bibtex_key = key
+        self.bibtex = bibtex
+        return self
 
 
 class FigurePlanItem(BaseModel):

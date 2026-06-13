@@ -17,17 +17,26 @@ class DataEDAAgent:
 
         summaries: list[dict[str, object]] = []
         evidence = read_json(workspace_root / "results" / "evidence_registry.json", [])
+        lineage_records = read_json(workspace_root / "data" / "data_lineage.json", [])
 
         for input_file in input_files:
             frame = pd.read_csv(input_file)
             output = processed_dir / input_file.name
             frame.to_csv(output, index=False)
+            source_type = (
+                "external_data"
+                if input_file.is_relative_to(workspace_root / "data" / "external")
+                else "attachment"
+            )
+            lineage_ids = self._lineage_ids_for_input(workspace_root, input_file, lineage_records)
             missing = int(frame.isna().sum().sum())
             summary = {
                 "file": str(output.relative_to(workspace_root)),
                 "rows": int(len(frame)),
                 "columns": int(len(frame.columns)),
                 "missing_values": missing,
+                "source_type": source_type,
+                "lineage_ids": lineage_ids,
             }
             summaries.append(summary)
             evidence.append(
@@ -35,11 +44,12 @@ class DataEDAAgent:
                     evidence_id=f"eda_{input_file.stem}_row_count",
                     claim=f"{input_file.name} contains {len(frame)} rows after loading.",
                     value=int(len(frame)),
-                    source_type="attachment",
+                    source_type=source_type,
                     source_path=str(input_file.relative_to(workspace_root)),
                     generated_by="DataEDAAgent",
                     used_in=[],
                     verified=True,
+                    lineage_ids=lineage_ids,
                 ).model_dump(mode="json")
             )
 
@@ -56,3 +66,16 @@ class DataEDAAgent:
             "\n".join(lines) + "\n",
             encoding="utf-8",
         )
+
+    def _lineage_ids_for_input(
+        self,
+        workspace_root: Path,
+        input_file: Path,
+        lineage_records: list[dict[str, object]],
+    ) -> list[str]:
+        relative_path = str(input_file.relative_to(workspace_root))
+        return [
+            str(record["datum_id"])
+            for record in lineage_records
+            if record.get("local_path") == relative_path
+        ]

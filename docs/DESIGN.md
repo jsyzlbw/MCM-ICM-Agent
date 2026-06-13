@@ -559,14 +559,19 @@ MCP 定位：
 
 - 优先使用官方机构、政府、国际组织、学术数据库和公开数据平台
 - 所有外部数据必须记录来源 URL、访问时间、许可、引用建议
+- 每条进入模型、图表或论文论证链的数据必须绑定 `source_id` 和 `datum_id`
 - 不确定来源的数据只能作为背景参考，不能进入模型计算
 - 所有下载或整理的数据进入 `data/`
 - 每次搜索、抽取、筛选都写入 `data/retrieval_log.jsonl`
+- 每条外部数据的来源链路写入 `data/data_lineage.json`
+- 每个可引用来源的 BibTeX 候选写入 `data/citation_candidates.json`
 - 所有可进入论文证据链的数据必须通过 Source Verifier 和 Data/EDA Agent 双重检查
 
 关键产物：
 
 - `data/source_registry.json`
+- `data/data_lineage.json`
+- `data/citation_candidates.json`
 - `data/retrieval_log.jsonl`
 - `data/external_data_notes.md`
 
@@ -583,8 +588,10 @@ MCP 定位：
 
 - Search & Data Agent 不能直接把网页内容交给 Writer Agent 写论文。
 - 外部数据先进入 `source_registry.json` 和 `data/external/`。
+- 外部数据被抽取为变量、指标、表格或模型输入时，必须进入 `data_lineage.json`。
+- Writer Agent 和 Reference Manager 只能引用 `citation_candidates.json` 或人工确认过的来源。
 - Data/EDA Agent 必须对外部数据做清洗和字段解释。
-- Evidence Registry 只接受通过 Data/EDA Agent 或 Validation Agent 检查的数据。
+- Evidence Registry 只接受通过 Data/EDA Agent 或 Validation Agent 检查的数据，并保留 `lineage_ids`。
 - 如果只有网页描述而无可下载数据，该来源只能用于背景说明，不能作为核心模型输入。
 
 `source_registry.json` 示例：
@@ -608,6 +615,27 @@ MCP 定位：
 ```json
 {"time":"2026-06-12T20:30:00+08:00","provider":"tavily","query":"county level drought data United States 2023 csv","top_urls":["https://..."],"decision":"send_top_3_to_firecrawl"}
 {"time":"2026-06-12T20:31:00+08:00","provider":"firecrawl","url":"https://...","output":"data/external/source_003.md","decision":"accepted_background_only"}
+```
+
+`data_lineage.json` 示例：
+
+```json
+{
+  "datum_id": "datum_worldbank_population_001",
+  "name": "population",
+  "value": 331900000,
+  "unit": "people",
+  "entity": "United States",
+  "time_period": "2023",
+  "source_id": "worldbank_population_001",
+  "source_url": "https://...",
+  "source_title": "World Bank Population Data",
+  "accessed_at": "2026-06-12T20:30:00+08:00",
+  "local_path": "data/external/worldbank_population.csv",
+  "extraction_method": "world_bank_api",
+  "confidence": 0.95,
+  "used_in": ["results/model_metrics.json", "figures/figure_001.pdf"]
+}
 ```
 
 ### 4.9 RAG Agent
@@ -1244,6 +1272,8 @@ workspace/
 │   ├── external/
 │   ├── processed/
 │   ├── source_registry.json
+│   ├── data_lineage.json
+│   ├── citation_candidates.json
 │   ├── retrieval_log.jsonl
 │   └── external_data_notes.md
 ├── code/

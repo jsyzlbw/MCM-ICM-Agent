@@ -221,3 +221,10 @@ def test_search_data_agent_logs_and_registers_sources(tmp_path: Path) -> None:
     assert sources[0]["source_rank"] == "official"
     assert sources[1]["source_rank"] == "background_only"
     assert "population data" in retrieval_log
+    citations = read_json(workspace.root / "data" / "citation_candidates.json", [])
+    lineage = read_json(workspace.root / "data" / "data_lineage.json", [])
+    assert citations[0]["source_id"] == "web_001"
+    assert citations[0]["url"] == "https://data.gov/example"
+    assert citations[1]["source_id"] == "web_002"
+    assert lineage[0]["source_id"] == "web_001"
+    assert lineage[0]["source_url"] == "https://data.gov/example"
