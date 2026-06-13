@@ -22,6 +22,7 @@ def test_create_workspace_initializes_required_files(tmp_path: Path) -> None:
         "workflow_topology.json",
         "event_log.jsonl",
         "unresolved_issues.md",
+        "discussion/data_questions.json",
         "data/source_registry.json",
         "data/data_lineage.json",
         "data/citation_candidates.json",

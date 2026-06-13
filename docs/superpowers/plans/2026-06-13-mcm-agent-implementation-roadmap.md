@@ -146,12 +146,13 @@ discussion/direction_lock.json
 
 **Implementation steps:**
 
-- [ ] Add a `DiscussionDecision` model with fields `status`, `new_data_needs`, `selected_route`, and `requires_data_scout`.
-- [ ] Make `UserDiscussionAgent` write `discussion/direction_lock.json`.
-- [ ] If `new_data_needs` is non-empty, emit an event such as `discussion.new_data_requested`.
+- [x] Add a `DiscussionDecision` model with fields `status`, `new_data_needs`, `selected_route`, and `requires_data_scout`.
+- [x] Make `UserDiscussionAgent` write `discussion/direction_lock.json`.
+- [x] If `new_data_needs` is non-empty, emit an event such as `discussion.new_data_requested`.
 - [ ] Update workflow execution so `discussion.new_data_requested` routes back to `DataFeasibilityScoutAgent`.
-- [ ] Make `DataFeasibilityScoutAgent` accept explicit target datasets from `discussion/data_questions.json`, not only inferred problem text.
-- [ ] Add tests for a user idea like "use real salary bonuses" routing back to Data Scout.
+  - Current status: event and data-question artifacts exist; automatic graph execution belongs to Phase 3 `StageExecutor`.
+- [x] Make `DataFeasibilityScoutAgent` accept explicit target datasets from `discussion/data_questions.json`, not only inferred problem text.
+- [x] Add tests for a user idea like "use real salary bonuses" routing back to Data Scout.
 
 **Acceptance criteria:**
 

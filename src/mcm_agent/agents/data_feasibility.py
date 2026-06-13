@@ -7,7 +7,7 @@ from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import RetrievalLogEntry
 from mcm_agent.core.stage_policy import DataAvailabilityDecision, route_data_availability
 from mcm_agent.providers.search import SearchProvider, SearchResult
-from mcm_agent.utils.json_io import append_jsonl, write_json
+from mcm_agent.utils.json_io import append_jsonl, read_json, write_json
 
 
 PRIVATE_DATA_MARKERS = [
@@ -33,7 +33,9 @@ class DataFeasibilityScoutAgent:
             raise FileNotFoundError("missing reports/problem_understanding.md")
 
         problem_text = problem_report.read_text(encoding="utf-8")
-        target_dataset = self._infer_target_dataset(problem_text)
+        target_dataset = self._target_dataset_from_discussion(workspace_root) or self._infer_target_dataset(
+            problem_text
+        )
         query = f"{target_dataset} public dataset official"
         results = self.search_provider.search(query, max_results=5)
         append_jsonl(
@@ -47,7 +49,7 @@ class DataFeasibilityScoutAgent:
             ).model_dump(mode="json"),
         )
 
-        availability = self._classify_availability(problem_text, results)
+        availability = self._classify_availability(problem_text, results, target_dataset)
         route = route_data_availability(availability)
 
         report_path = workspace_root / "reports" / "data_feasibility_report.md"
@@ -85,13 +87,20 @@ class DataFeasibilityScoutAgent:
             return "public population data"
         return "problem-specific modeling data"
 
+    def _target_dataset_from_discussion(self, workspace_root: Path) -> str | None:
+        questions = read_json(workspace_root / "discussion" / "data_questions.json", [])
+        if not questions:
+            return None
+        return str(questions[0])
+
     def _classify_availability(
         self,
         problem_text: str,
         results: list[SearchResult],
+        target_dataset: str | None = None,
     ) -> DataAvailabilityDecision:
-        target_dataset = self._infer_target_dataset(problem_text)
-        lowered = problem_text.lower()
+        target_dataset = target_dataset or self._infer_target_dataset(problem_text)
+        lowered = f"{problem_text} {target_dataset}".lower()
         private_signal = any(marker in lowered for marker in PRIVATE_DATA_MARKERS)
         official_result = any(
             marker in result.url for result in results for marker in [".gov", "data.gov", ".edu"]

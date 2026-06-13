@@ -4,8 +4,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.discussion_state import DiscussionDecision
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
+from mcm_agent.utils.json_io import write_json
 
 
 class UserDiscussionAgent:
@@ -17,9 +19,11 @@ class UserDiscussionAgent:
         selected_route: str,
         paper_outline: str,
         decisions_to_preserve: list[str],
+        new_data_needs: list[str] | None = None,
     ) -> None:
         discussion_dir = workspace_root / "discussion"
         discussion_dir.mkdir(parents=True, exist_ok=True)
+        new_data_needs = new_data_needs or []
 
         user_brief = "\n".join(
             [
@@ -32,6 +36,20 @@ class UserDiscussionAgent:
             ]
         )
         (discussion_dir / "user_brief.md").write_text(user_brief, encoding="utf-8")
+        decision = DiscussionDecision(
+            status="needs_data_scout" if new_data_needs else "locked",
+            selected_route=selected_route,
+            new_data_needs=new_data_needs,
+        )
+        write_json(discussion_dir / "direction_lock.json", decision.model_dump(mode="json"))
+        write_json(discussion_dir / "data_questions.json", new_data_needs)
+        if decision.requires_data_scout:
+            Coordinator(workspace_root).emit(
+                "discussion.new_data_requested",
+                payload={"new_data_needs": new_data_needs},
+                source="UserDiscussionAgent",
+            )
+            return
 
         decisions = "\n".join(f"- {decision}" for decision in decisions_to_preserve)
         confirmed = "\n".join(

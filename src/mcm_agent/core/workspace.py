@@ -35,6 +35,7 @@ DIRECTORIES = [
 
 EMPTY_JSON_LIST_FILES = [
     "artifact_registry.json",
+    "discussion/data_questions.json",
     "data/source_registry.json",
     "data/data_lineage.json",
     "data/citation_candidates.json",

@@ -55,6 +55,7 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "reports/problem_understanding.md",
         "reports/data_feasibility_report.md",
         "reports/data_feasibility_decision.json",
+        "discussion/direction_lock.json",
         "reports/model_candidates.md",
         "reports/model_decision.md",
         "reports/experiment_plan.md",

@@ -432,12 +432,15 @@ Extraction QA Agent 检查解析质量
 - 提出可选建模路线
 - 询问关键偏好
 - 整理用户反馈
+- 识别用户新提出的数据需求，并在锁定方向前交给 Data Feasibility Scout 复查
 - 形成最终论文路线草案
 - 将用户确认的取舍写入 `confirmed_direction.md`
 
 关键产物：
 
 - `discussion/user_brief.md`
+- `discussion/data_questions.json`
+- `discussion/direction_lock.json`
 - `discussion/confirmed_direction.md`
 
 协作规则：
@@ -445,6 +448,8 @@ Extraction QA Agent 检查解析质量
 - 不直接把用户口头 idea 当成论文结论。
 - 用户 idea 先进入 `user_brief.md`，再由 Modeling Council 转换成可检验模型。
 - 如果用户 idea 与题目目标冲突，必须向用户解释冲突并给替代路线。
+- 如果用户 idea 引入新的关键数据集，写入 `data_questions.json`，生成 `direction_lock.json(status=needs_data_scout)`，并触发 `discussion.new_data_requested`。
+- 只有当新数据需求通过 Data Feasibility Scout 或被用户接受为代理/重构方案后，才允许写入 `confirmed_direction.md`。
 
 ### 4.6 Modeling Council
 
