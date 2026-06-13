@@ -11,10 +11,10 @@ def build_demo_report(workspace: Path) -> str:
     figure_gate = read_json(workspace / "review" / "figure_gate.json", {})
     final_gate = read_json(workspace / "review" / "final_gate.json", {})
     metrics = read_json(workspace / "results" / "model_metrics.json", {})
+    route_summary = read_json(workspace / "results" / "model_route_summary.json", {})
+    figures = read_json(workspace / "figures" / "figure_registry.json", [])
     key_artifacts = [
         "paper/main.tex",
-        "figures/fig_q1_prediction.pdf",
-        "figures/fig_q1_prediction.svg",
         "review/figure_quality_report.md",
         "review/reviewer_report.md",
         "final_submission/AI_use_report.md",
@@ -27,8 +27,33 @@ def build_demo_report(workspace: Path) -> str:
         f"Figure gate: {figure_gate.get('status', 'missing')}",
         f"Final gate: {final_gate.get('status', 'missing')}",
         "",
-        "## Metrics",
+        "## Model Routes",
     ]
+    selected_routes = route_summary.get("selected_routes", []) if isinstance(route_summary, dict) else []
+    if selected_routes:
+        lines.extend(f"- {route}" for route in selected_routes)
+    else:
+        lines.append("- Missing `results/model_route_summary.json`.")
+    lines.extend(
+        [
+            "",
+            "## Figures",
+        ]
+    )
+    if figures:
+        for figure in figures:
+            if not isinstance(figure, dict):
+                continue
+            outputs = ", ".join(str(output) for output in figure.get("outputs", []))
+            lines.append(f"- {figure.get('figure_id')}: {outputs}")
+    else:
+        lines.append("- Missing `figures/figure_registry.json`.")
+    lines.extend(
+        [
+            "",
+        "## Metrics",
+        ]
+    )
     if metrics:
         lines.extend(f"- {key}: {value}" for key, value in sorted(metrics.items()))
     else:

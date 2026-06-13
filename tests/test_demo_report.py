@@ -26,7 +26,15 @@ def test_build_demo_report_summarizes_workspace_outputs(tmp_path: Path) -> None:
         '{"row_count":8}',
         encoding="utf-8",
     )
-    (workspace / "figures" / "fig_q1_prediction.pdf").write_text("pdf", encoding="utf-8")
+    (workspace / "results" / "model_route_summary.json").write_text(
+        '{"selected_routes":["multi_criteria_evaluation"],"route_metrics":{}}',
+        encoding="utf-8",
+    )
+    (workspace / "figures" / "figure_registry.json").write_text(
+        '[{"figure_id":"fig_priority_ranking","outputs":["figures/fig_priority_ranking.pdf"]}]',
+        encoding="utf-8",
+    )
+    (workspace / "figures" / "fig_priority_ranking.pdf").write_text("pdf", encoding="utf-8")
     (workspace / "paper" / "main.tex").write_text("\\documentclass{article}", encoding="utf-8")
 
     report = build_demo_report(workspace)
@@ -36,3 +44,5 @@ def test_build_demo_report_summarizes_workspace_outputs(tmp_path: Path) -> None:
     assert "Figure gate: pass" in report
     assert "Final gate: pass" in report
     assert "row_count: 8" in report
+    assert "multi_criteria_evaluation" in report
+    assert "fig_priority_ranking" in report
