@@ -18,54 +18,84 @@ performance, market value, transfer fee, team revenue, injury history, or rankin
 
 ```mermaid
 flowchart TD
-    U["User\nProblem PDF / template / attachments / initial idea"] --> I["Intake Agent\nInput manifest"]
-    I --> M["MinerU Extraction Agent\nPDF/template/document parsing"]
-    M --> EQ["Extraction QA Agent\nCompleteness check"]
+    U["User"] --> I["Intake"]
+    I --> M["MinerU Parse"]
+    M --> EQ["Extract QA"]
 
-    EQ -->|missing statement, formula, table, or format rules| M
-    EQ -->|pass| PU["Problem Understanding Agent\nSubtasks, constraints, metrics, ambiguities"]
+    EQ -->|retry| M
+    EQ -->|ok| PU["Understand"]
 
-    PU --> DFS["Data Feasibility Scout\nEarly data availability search"]
-    DFS -->|data available or proxy feasible| UD["User Discussion Agent\nConfirm feasible research route"]
-    DFS -->|private or unavailable data with high confidence| RR["Research Reframing Agent\nProxy variables or alternate question"]
+    PU --> DFS["Data Scout"]
+    DFS -->|ok| UD["User Discuss"]
+    DFS -->|reframe| RR["Reframe"]
     RR --> UD
 
-    UD --> MR["Methodology RAG Agent\nMethods, examples, checklists"]
-    MR --> SD["Search & Data Agent\nOfficial APIs, Tavily, Firecrawl, Brave, Exa"]
-    SD --> SV["Source Verifier Agent\nReliability, license, source rank"]
+    UD --> MR["Method RAG"]
+    MR --> SD["Search Data"]
+    SD --> SV["Source Check"]
 
-    SV -->|source unreliable or insufficient| SD
-    SV -->|pass| EDA["Data / EDA Agent\nCleaning, profiling, variable design"]
+    SV -->|retry| SD
+    SV -->|ok| EDA["Data EDA"]
 
-    EDA --> MC["Modeling Council\nMultiple model candidates"]
-    MC --> MJ["Model Judge Agent\nSelect route and experiment plan"]
-    MJ -->|not implementable| MC
-    MJ -->|pass| SC["Solver / Coding Agent\nCode, experiments, metrics"]
+    EDA --> MC["Model Council"]
+    MC --> MJ["Model Judge"]
+    MJ -->|retry| MC
+    MJ -->|ok| SC["Solver Code"]
 
-    SC --> VG["Validation Agent\nEvidence, robustness, sensitivity"]
-    VG -->|code error| SC
-    VG -->|bad data| SD
-    VG -->|weak model| MC
-    VG -->|pass| FP["Figure Planning Agent\nfigure_plan.json"]
+    SC --> VG["Validate"]
+    VG -->|code| SC
+    VG -->|data| SD
+    VG -->|model| MC
+    VG -->|ok| FP["Figure Plan"]
 
-    FP --> VIZ["Visualization Agent\nVector-first figures"]
-    VIZ --> FQ["Figure QA Agent\nVector, style, readability, placement"]
-    FQ -->|visual or vector issue| FP
-    FQ -->|pass| PW["Paper Writer Agent\nEvidence-backed sections"]
+    FP --> VIZ["Visualize"]
+    VIZ --> FQ["Figure QA"]
+    FQ -->|retry| FP
+    FQ -->|ok| PW["Write Paper"]
 
-    PW --> TS["Typesetting Agent\nLaTeX, template, citations, figure placement"]
-    TS --> PR["Pre-submission Reviewer\nRequirement, evidence, format, visual, originality panels"]
-    PR --> FG["Final Gatekeeper\nBlocking finding router"]
+    PW --> TS["Typeset"]
+    TS --> PR["Review"]
+    PR --> FG["Gatekeeper"]
 
-    FG -->|missing requirement| PU
-    FG -->|weak model| MC
-    FG -->|bad data| SD
-    FG -->|bad results| SC
-    FG -->|bad figures| FP
-    FG -->|bad writing| PW
-    FG -->|format issue| TS
-    FG -->|all pass| SP["Submission Packager\nPaper, source zip, AI use report"]
+    FG -->|req| PU
+    FG -->|model| MC
+    FG -->|data| SD
+    FG -->|result| SC
+    FG -->|figure| FP
+    FG -->|text| PW
+    FG -->|format| TS
+    FG -->|ok| SP["Package"]
 ```
+
+Short labels are intentional so the diagram renders cleanly in GitHub and Mermaid
+previewers. The full responsibilities are:
+
+| Short label | Full agent | Main responsibility |
+|---|---|---|
+| User | User | Provides problem PDF, template, attachments, and initial ideas. |
+| Intake | Intake Agent | Copies inputs and writes the input manifest. |
+| MinerU Parse | MinerU Extraction Agent | Parses PDFs, templates, tables, formulas, and images. |
+| Extract QA | Extraction QA Agent | Checks whether the parsed problem is complete enough to reason about. |
+| Understand | Problem Understanding Agent | Extracts subtasks, constraints, metrics, ambiguities, and implicit assumptions. |
+| Data Scout | Data Feasibility Scout | Checks whether critical data is public, proxy-needed, private, or unknown before user discussion. |
+| Reframe | Research Reframing Agent | Converts unavailable-data plans into proxy-data or alternate-question routes. |
+| User Discuss | User Discussion Agent | Confirms a feasible research direction with the user. |
+| Method RAG | Methodology RAG Agent | Retrieves modeling methods, excellent-paper patterns, and review checklists. |
+| Search Data | Search & Data Agent | Uses official APIs, Tavily, Firecrawl, Brave, and Exa to collect data and sources. |
+| Source Check | Source Verifier Agent | Checks source reliability, license, rank, and whether data can support claims. |
+| Data EDA | Data / EDA Agent | Cleans data, profiles fields, designs variables, and documents limitations. |
+| Model Council | Modeling Council | Generates multiple candidate modeling routes. |
+| Model Judge | Model Judge Agent | Selects the model route and experiment plan. |
+| Solver Code | Solver / Coding Agent | Writes code, runs experiments, and registers evidence. |
+| Validate | Validation Agent | Checks robustness, sensitivity, metrics, and evidence coverage. |
+| Figure Plan | Figure Planning Agent | Plans every figure's purpose, data source, and target section. |
+| Visualize | Visualization Agent | Generates vector-first plots and diagrams. |
+| Figure QA | Figure QA Agent | Checks vector output, visual style, readability, captions, and placement. |
+| Write Paper | Paper Writer Agent | Writes evidence-backed paper sections. |
+| Typeset | Typesetting Agent | Assembles LaTeX, citations, template rules, page limits, and figure placement. |
+| Review | Pre-submission Reviewer | Runs requirement, evidence, format, visual, and originality review panels. |
+| Gatekeeper | Final Gatekeeper | Routes blocking findings back to the responsible repair stage. |
+| Package | Submission Packager | Produces final paper, source zip, AI use report, and submission checklist. |
 
 ## Data Feasibility Before User Discussion
 
