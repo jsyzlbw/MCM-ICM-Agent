@@ -64,6 +64,9 @@ The implementation uses a workspace per contest task. Each workspace stores inpu
 documents, reports, data, evidence, figures, paper files, review outputs, and final submission
 artifacts. Agents communicate through typed artifact records, event logs, and handoff packets.
 
+For the full operational guide, including workspace folders, agent stages, gate repair
+flow, and common failure modes, see [Workflow guide](docs/WORKFLOW.md).
+
 ## API Configuration
 
 Copy `.env.example` to `.env` and fill in only the providers you want to use.
@@ -168,4 +171,5 @@ pytest -v
 - [System design](docs/DESIGN.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Agent topology](docs/AGENT_TOPOLOGY.md)
+- [Workflow guide](docs/WORKFLOW.md)
 - [Implementation roadmap](docs/superpowers/plans/2026-06-13-mcm-agent-implementation-roadmap.md)
