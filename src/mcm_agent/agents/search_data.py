@@ -89,7 +89,7 @@ class SearchDataAgent:
             "\n".join(notes) + "\n",
             encoding="utf-8",
         )
-        source_issues = self._source_gate_issues(source_records)
+        source_issues = self._source_gate_issues(workspace_root, source_records)
         record_gate_decision(
             workspace_root,
             "source_gate.json",
@@ -160,8 +160,14 @@ class SearchDataAgent:
             return "official"
         return "background_only"
 
-    def _source_gate_issues(self, source_records: list[SourceRecord]) -> list[str]:
+    def _source_gate_issues(
+        self,
+        workspace_root: Path,
+        source_records: list[SourceRecord],
+    ) -> list[str]:
         if not source_records:
+            if any((workspace_root / "input" / "attachments").glob("*")):
+                return []
             return ["No external sources were retrieved."]
         trusted = [
             record

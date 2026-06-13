@@ -186,12 +186,12 @@ review/gate_decisions.json
 - [x] Add `GateDecision` with `gate_id`, `status`, `failure_reason`, `repair_stage`, and `blocking_findings`.
 - [x] Implement `StageExecutor.run_stage(stage_id)` with injectable stage handlers and persistent run records.
 - [x] Implement route lookup using `workflow_topology.json`.
-- [ ] Keep the existing `run_mvp_workflow` as a compatibility wrapper calling the executor.
+- [x] Keep the existing `run_mvp_workflow` as a compatibility wrapper calling the executor.
 - [x] Add tests proving topology failure routes and explicit gate repair stages are honored.
 
 **Acceptance criteria:**
 
-- The executor can resume from `task_state.json`. *(Pending: full runner integration.)*
+- The executor persists `current_phase` in `task_state.json`. *(Pending: explicit CLI resume command.)*
 - Every stage run is appended to `stage_runs.jsonl`.
 - Failure routes are not hard-coded in the executor; they come from `workflow_topology.json`.
 

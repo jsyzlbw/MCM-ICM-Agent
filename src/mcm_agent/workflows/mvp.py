@@ -20,6 +20,7 @@ from mcm_agent.agents.visualization import FigurePlanningAgent, VisualizationAge
 from mcm_agent.agents.writer import PaperWriterAgent
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import TaskInput
+from mcm_agent.core.stage_executor import StageExecutor, StageHandler, StageResult
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.base import ProviderBundle
 from mcm_agent.providers.humanizer import FakeHumanizerProvider
@@ -67,41 +68,16 @@ def run_mvp_workflow(
 ) -> None:
     workspace = create_workspace(workspace_root)
     provider_bundle = providers or _default_demo_providers()
-    IntakeAgent().run(
+    executor = StageExecutor(
         workspace.root,
-        inputs.problem_file,
-        inputs.attachments,
-        inputs.user_idea_file,
-        inputs.template_dir,
+        handlers=_mvp_stage_handlers(
+            inputs,
+            provider_bundle,
+            supervisor_skills_dir=supervisor_skills_dir,
+            auto_approve=auto_approve,
+        ),
     )
-    DocumentExtractionAgent(provider_bundle.mineru).run(workspace.root)
-    ProblemUnderstandingAgent(provider_bundle.llm).run(workspace.root)
-    DataFeasibilityScoutAgent(provider_bundle.search).run(workspace.root)
-    UserDiscussionAgent().confirm_direction(
-        workspace.root,
-        mode="ai_led" if auto_approve else "checkpoint_required",
-        user_idea_summary="Prefer interpretable and reproducible modeling.",
-        selected_route="Balanced contest-paper route.",
-        paper_outline="Abstract, assumptions, model, results, sensitivity, conclusion.",
-        decisions_to_preserve=["Use vector-first figures.", "Use registered evidence only."],
-    )
-    ModelingCouncil().run(
-        workspace.root,
-        workspace.root / "reports" / "problem_understanding.md",
-        workspace.root / "discussion" / "confirmed_direction.md",
-    )
-    ModelJudge().run(workspace.root, workspace.root / "reports" / "model_candidates.md")
-    SearchDataAgent(provider_bundle.search, provider_bundle.extractor).run(workspace.root)
-    MethodologyRAGAgent().run(workspace.root, supervisor_skills_dir)
-    DataEDAAgent().run(workspace.root)
-    SolverCoderAgent().run(workspace.root)
-    ValidationAgent().run(workspace.root)
-    FigurePlanningAgent().run(workspace.root)
-    VisualizationAgent().run(workspace.root)
-    PaperWriterAgent().run(workspace.root)
-    ComplianceOriginalityAgent(provider_bundle.humanizer).run(workspace.root)
-    ReferenceManager().run(workspace.root)
-    ReviewerAgent().run(workspace.root)
+    executor.run_until_complete("intake", terminal_stage="final_gatekeeper")
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
     _write_ai_use_report(workspace.root)
@@ -127,6 +103,174 @@ def _default_demo_providers() -> ProviderBundle:
         humanizer=FakeHumanizerProvider({}),
         latex=LatexProvider(),
     )
+
+
+def _mvp_stage_handlers(
+    inputs: TaskInput,
+    provider_bundle: ProviderBundle,
+    *,
+    supervisor_skills_dir: Path | None,
+    auto_approve: bool,
+) -> dict[str, StageHandler]:
+    def intake(workspace_root: Path) -> list[str]:
+        IntakeAgent().run(
+            workspace_root,
+            inputs.problem_file,
+            inputs.attachments,
+            inputs.user_idea_file,
+            inputs.template_dir,
+        )
+        return ["input_manifest.json"]
+
+    def mineru_extraction(workspace_root: Path) -> list[str]:
+        DocumentExtractionAgent(provider_bundle.mineru).run(workspace_root)
+        return ["parsed/problem.md", "reports/extraction_quality_report.md"]
+
+    def extraction_quality_gate(workspace_root: Path) -> list[str]:
+        return ["review/extraction_gate.json"]
+
+    def problem_understanding(workspace_root: Path) -> list[str]:
+        ProblemUnderstandingAgent(provider_bundle.llm).run(workspace_root)
+        return ["reports/problem_understanding.md"]
+
+    def data_feasibility_scout(workspace_root: Path) -> StageResult:
+        DataFeasibilityScoutAgent(provider_bundle.search).run(workspace_root)
+        decision = read_json(workspace_root / "reports" / "data_feasibility_decision.json", {})
+        route = decision.get("route", {}) if isinstance(decision, dict) else {}
+        condition = "data_unavailable" if route.get("next_stage") == "research_reframing" else "pass"
+        return StageResult(
+            outputs=["reports/data_feasibility_report.md", "reports/data_feasibility_decision.json"],
+            condition=condition,
+        )
+
+    def research_reframing(workspace_root: Path) -> list[str]:
+        output = workspace_root / "discussion" / "reframing_options.md"
+        output.write_text(
+            "\n".join(
+                [
+                    "# Reframing Options",
+                    "",
+                    "- Use proxy variables when direct private data is unavailable.",
+                    "- Ask the user to provide explicit assumptions only if they can justify them.",
+                    "- Narrow or change the research question before locking the paper route.",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        return ["discussion/reframing_options.md"]
+
+    def user_discussion(workspace_root: Path) -> StageResult:
+        UserDiscussionAgent().confirm_direction(
+            workspace_root,
+            mode="ai_led" if auto_approve else "checkpoint_required",
+            user_idea_summary="Prefer interpretable and reproducible modeling.",
+            selected_route="Balanced contest-paper route.",
+            paper_outline="Abstract, assumptions, model, results, sensitivity, conclusion.",
+            decisions_to_preserve=["Use vector-first figures.", "Use registered evidence only."],
+        )
+        lock = read_json(workspace_root / "discussion" / "direction_lock.json", {})
+        condition = "new_data_need" if lock.get("status") == "needs_data_scout" else "direction_locked"
+        return StageResult(outputs=["discussion/confirmed_direction.md"], condition=condition)
+
+    def methodology_rag(workspace_root: Path) -> list[str]:
+        MethodologyRAGAgent().run(workspace_root, supervisor_skills_dir)
+        return ["rag/methodology_hits.json", "review/methodology_checklist_report.md"]
+
+    def modeling_council(workspace_root: Path) -> list[str]:
+        ModelingCouncil(provider_bundle.llm).run(
+            workspace_root,
+            workspace_root / "reports" / "problem_understanding.md",
+            workspace_root / "discussion" / "confirmed_direction.md",
+        )
+        return ["reports/model_candidates.md"]
+
+    def model_judge(workspace_root: Path) -> list[str]:
+        ModelJudge(provider_bundle.llm).run(
+            workspace_root,
+            workspace_root / "reports" / "model_candidates.md",
+        )
+        return ["reports/model_decision.md", "reports/experiment_plan.md"]
+
+    def search_data(workspace_root: Path) -> list[str]:
+        SearchDataAgent(provider_bundle.search, provider_bundle.extractor).run(workspace_root)
+        return ["data/source_registry.json", "data/retrieval_log.jsonl", "review/source_gate.json"]
+
+    def source_verifier(workspace_root: Path) -> list[str]:
+        return ["review/source_gate.json"]
+
+    def data_eda(workspace_root: Path) -> list[str]:
+        DataEDAAgent().run(workspace_root)
+        return ["reports/data_profile.md", "data/processed"]
+
+    def solver_coder(workspace_root: Path) -> list[str]:
+        SolverCoderAgent().run(workspace_root)
+        return ["code", "results/model_metrics.json", "results/evidence_registry.json"]
+
+    def validation_gate(workspace_root: Path) -> list[str]:
+        ValidationAgent().run(workspace_root)
+        return ["reports/validation_report.md", "review/validation_gate.json"]
+
+    def figure_planning(workspace_root: Path) -> list[str]:
+        FigurePlanningAgent().run(workspace_root)
+        return ["figures/figure_plan.json"]
+
+    def visualization(workspace_root: Path) -> list[str]:
+        VisualizationAgent().run(workspace_root)
+        return ["figures/figure_registry.json", "review/figure_gate.json"]
+
+    def figure_quality_gate(workspace_root: Path) -> list[str]:
+        from mcm_agent.agents.figure_quality import FigureQualityAgent
+
+        FigureQualityAgent().run(workspace_root)
+        return ["review/figure_quality_report.md", "review/figure_gate.json"]
+
+    def paper_writer(workspace_root: Path) -> list[str]:
+        PaperWriterAgent(provider_bundle.llm).run(workspace_root)
+        return ["paper/main.tex", "paper/sections"]
+
+    def typesetting(workspace_root: Path) -> list[str]:
+        ComplianceOriginalityAgent(provider_bundle.humanizer).run(workspace_root)
+        ReferenceManager().run(workspace_root)
+        return [
+            "paper/main.tex",
+            "paper/references.bib",
+            "review/originality_report.md",
+            "review/reference_audit_report.md",
+        ]
+
+    def pre_submission_review(workspace_root: Path) -> list[str]:
+        ReviewerAgent(provider_bundle.llm).run(workspace_root)
+        return ["review/reviewer_report.md", "review/final_gate.json"]
+
+    def final_gatekeeper(workspace_root: Path) -> list[str]:
+        return ["review/final_gate.json"]
+
+    handlers: dict[str, StageHandler] = {
+        "intake": intake,
+        "mineru_extraction": mineru_extraction,
+        "extraction_quality_gate": extraction_quality_gate,
+        "problem_understanding": problem_understanding,
+        "data_feasibility_scout": data_feasibility_scout,
+        "research_reframing": research_reframing,
+        "user_discussion": user_discussion,
+        "methodology_rag": methodology_rag,
+        "modeling_council": modeling_council,
+        "model_judge": model_judge,
+        "search_data": search_data,
+        "source_verifier": source_verifier,
+        "data_eda": data_eda,
+        "solver_coder": solver_coder,
+        "validation_gate": validation_gate,
+        "figure_planning": figure_planning,
+        "visualization": visualization,
+        "figure_quality_gate": figure_quality_gate,
+        "paper_writer": paper_writer,
+        "typesetting": typesetting,
+        "pre_submission_review": pre_submission_review,
+        "final_gatekeeper": final_gatekeeper,
+    }
+    return handlers
 
 
 def _write_ai_use_report(workspace_root: Path) -> None:

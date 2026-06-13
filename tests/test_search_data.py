@@ -228,3 +228,29 @@ def test_search_data_agent_logs_and_registers_sources(tmp_path: Path) -> None:
     assert citations[1]["source_id"] == "web_002"
     assert lineage[0]["source_id"] == "web_001"
     assert lineage[0]["source_url"] == "https://data.gov/example"
+
+
+def test_search_data_agent_allows_attachment_only_workflow_without_search_results(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- cleaned attachment tables\n",
+        encoding="utf-8",
+    )
+    attachment = workspace.root / "input" / "attachments" / "data.csv"
+    attachment.parent.mkdir(parents=True, exist_ok=True)
+    attachment.write_text("x,y\n1,2\n", encoding="utf-8")
+
+    class EmptySearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            return []
+
+    class UnusedExtractor:
+        def extract(self, url: str):
+            raise AssertionError("extractor should not be called")
+
+    SearchDataAgent(EmptySearch(), UnusedExtractor()).run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "source_gate.json", {})
+    assert gate["status"] == "pass"

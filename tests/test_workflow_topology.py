@@ -31,6 +31,14 @@ def test_default_workflow_contains_review_feedback_loops() -> None:
     assert graph.failure_route("figure_quality_gate", "visual_or_vector_issue") == "figure_planning"
 
 
+def test_default_workflow_creates_experiment_plan_before_deep_search() -> None:
+    graph = build_default_workflow_graph()
+
+    assert graph.has_edge("methodology_rag", "modeling_council")
+    assert graph.has_edge("modeling_council", "model_judge")
+    assert graph.has_edge("model_judge", "search_data")
+
+
 def test_data_availability_policy_reframes_private_or_missing_data() -> None:
     decision = route_data_availability(
         DataAvailabilityDecision(

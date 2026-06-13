@@ -8,10 +8,24 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from mcm_agent.core.gate_decision import GateDecision
-from mcm_agent.utils.json_io import append_jsonl, read_json
+from mcm_agent.utils.json_io import append_jsonl, read_json, write_json
 
 
-StageHandler = Callable[[Path], list[str] | None]
+class StageResult(BaseModel):
+    outputs: list[str] = Field(default_factory=list)
+    condition: str = "pass"
+
+
+StageHandler = Callable[[Path], StageResult | list[str] | None]
+
+
+GATE_DECISION_FILES = {
+    "extraction_quality_gate": "review/extraction_gate.json",
+    "source_verifier": "review/source_gate.json",
+    "validation_gate": "review/validation_gate.json",
+    "figure_quality_gate": "review/figure_gate.json",
+    "final_gatekeeper": "review/final_gate.json",
+}
 
 
 class StageRunRecord(BaseModel):
@@ -42,7 +56,7 @@ class StageExecutor:
     def run_stage(self, stage_id: str) -> StageRunRecord:
         started_at = datetime.now(UTC)
         try:
-            outputs = self._handler_for(stage_id)(self.workspace_root) or []
+            result = self._coerce_result(self._handler_for(stage_id)(self.workspace_root))
         except Exception as exc:
             record = StageRunRecord(
                 stage_id=stage_id,
@@ -54,16 +68,43 @@ class StageExecutor:
             append_jsonl(self.stage_log_path, record.model_dump(mode="json"))
             raise
 
+        next_stage = self.next_stage(stage_id, condition=result.condition)
+        gate_decision = self._gate_decision_for_stage(stage_id)
+        if gate_decision is not None:
+            next_stage = self.next_stage_from_gate(gate_decision)
+
         record = StageRunRecord(
             stage_id=stage_id,
             status="passed",
             started_at=started_at,
             finished_at=datetime.now(UTC),
-            outputs=outputs,
-            next_stage=self.next_stage(stage_id),
+            outputs=result.outputs,
+            next_stage=next_stage,
         )
         append_jsonl(self.stage_log_path, record.model_dump(mode="json"))
+        self._update_task_state(stage_id)
         return record
+
+    def run_until_complete(
+        self,
+        start_stage: str,
+        *,
+        terminal_stage: str | None = None,
+        max_steps: int = 100,
+    ) -> list[StageRunRecord]:
+        records: list[StageRunRecord] = []
+        current_stage: str | None = start_stage
+        for _ in range(max_steps):
+            if current_stage is None:
+                break
+            record = self.run_stage(current_stage)
+            records.append(record)
+            if terminal_stage is not None and current_stage == terminal_stage:
+                break
+            current_stage = record.next_stage
+        else:
+            raise RuntimeError(f"stage execution exceeded max_steps={max_steps}")
+        return records
 
     def next_stage(self, stage_id: str, *, condition: str = "pass") -> str | None:
         topology = read_json(self.workspace_root / "workflow_topology.json", {})
@@ -96,3 +137,28 @@ class StageExecutor:
             return self.handlers[stage_id]
         except KeyError as exc:
             raise KeyError(f"missing stage handler: {stage_id}") from exc
+
+    def _coerce_result(self, value: StageResult | list[str] | None) -> StageResult:
+        if value is None:
+            return StageResult()
+        if isinstance(value, StageResult):
+            return value
+        return StageResult(outputs=value)
+
+    def _gate_decision_for_stage(self, stage_id: str) -> GateDecision | None:
+        relative_path = GATE_DECISION_FILES.get(stage_id)
+        if relative_path is None:
+            return None
+        payload = read_json(self.workspace_root / relative_path, None)
+        if not payload:
+            return None
+        return GateDecision.model_validate(payload)
+
+    def _update_task_state(self, stage_id: str) -> None:
+        path = self.workspace_root / "task_state.json"
+        state = read_json(path, {})
+        if not isinstance(state, dict):
+            return
+        state["current_phase"] = stage_id
+        state["updated_at"] = datetime.now(UTC).isoformat()
+        write_json(path, state)

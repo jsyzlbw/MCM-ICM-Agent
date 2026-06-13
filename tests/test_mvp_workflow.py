@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from mcm_agent.core.models import TaskInput
@@ -92,6 +93,20 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
 
     state = read_json(workspace / "task_state.json", {})
     assert [item for item in state["checkpoints"] if item["status"] == "pending"] == []
+    stage_runs = [
+        json.loads(line)
+        for line in (workspace / "stage_runs.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    stage_ids = [record["stage_id"] for record in stage_runs]
+    assert stage_ids[:4] == [
+        "intake",
+        "mineru_extraction",
+        "extraction_quality_gate",
+        "problem_understanding",
+    ]
+    assert "validation_gate" in stage_ids
+    assert "figure_quality_gate" in stage_ids
+    assert "final_gatekeeper" in stage_ids
 
 
 def test_run_mvp_workflow_uses_injected_provider_bundle(tmp_path: Path) -> None:
