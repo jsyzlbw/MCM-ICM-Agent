@@ -1,7 +1,11 @@
 from pathlib import Path
 
+import pytest
+import respx
+from httpx import Response
+
 from mcm_agent.agents.compliance import ComplianceOriginalityAgent
-from mcm_agent.providers.humanizer import FakeHumanizerProvider
+from mcm_agent.providers.humanizer import FakeHumanizerProvider, UShallPassHumanizerProvider
 from mcm_agent.utils.text_locks import extract_fact_locks
 
 
@@ -54,3 +58,50 @@ def test_compliance_agent_accepts_safe_humanized_paragraph(tmp_path: Path) -> No
 
     content = (section_dir / "results.tex").read_text(encoding="utf-8")
     assert "shows a stable" in content
+
+
+@respx.mock
+def test_ushallpass_provider_polls_nested_data_status() -> None:
+    respx.post("https://leahloveswriting.xyz/api_v2/rewrite/english/jobs").mock(
+        return_value=Response(200, json={"success": True, "data": {"task_id": "job_1"}})
+    )
+    respx.get("https://leahloveswriting.xyz/api_v2/rewrite/english/jobs/job_1").mock(
+        return_value=Response(
+            200,
+            json={"success": True, "data": {"status": "completed", "result": "Human text."}},
+        )
+    )
+
+    result = UShallPassHumanizerProvider(
+        "key",
+        poll_interval_seconds=0,
+        max_poll_attempts=2,
+    ).humanize("AI text.", language="en")
+
+    assert result == "Human text."
+
+
+@respx.mock
+def test_ushallpass_provider_surfaces_failed_error_message() -> None:
+    respx.post("https://leahloveswriting.xyz/api_v2/rewrite/chinese/jobs").mock(
+        return_value=Response(200, json={"success": True, "data": {"task_id": "job_2"}})
+    )
+    respx.get("https://leahloveswriting.xyz/api_v2/rewrite/chinese/jobs/job_2").mock(
+        return_value=Response(
+            200,
+            json={
+                "success": True,
+                "data": {
+                    "status": "failed",
+                    "error": {"code": "INVALID_PARAMETER", "message": "empty text"},
+                },
+            },
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="INVALID_PARAMETER: empty text"):
+        UShallPassHumanizerProvider(
+            "key",
+            poll_interval_seconds=0,
+            max_poll_attempts=2,
+        ).humanize("文本", language="zh")
