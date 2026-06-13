@@ -36,6 +36,53 @@ The recommended MVP stack is:
 MCP adapters can be added later, but the core runtime is designed to work through API
 provider adapters so it remains testable, deployable, and auditable.
 
+### Required For The Next Development Phase
+
+Start with these keys:
+
+```env
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+OPENAI_MODEL=gpt-4.1
+
+TAVILY_API_KEY=
+FIRECRAWL_API_KEY=
+```
+
+`OPENAI_BASE_URL` can stay empty when using the default OpenAI endpoint. Set it only when
+using an OpenAI-compatible provider.
+
+Then check the active provider selection:
+
+```bash
+mcm-agent provider-status --env-file .env
+```
+
+Expected once the first three providers are configured:
+
+```text
+LLM: openai-compatible (<your model>)
+Search: Tavily API
+Extract: Firecrawl API
+MinerU: fake
+Humanizer: fake
+```
+
+Later optional keys:
+
+```env
+HUMANIZER_API_KEY=
+HUMANIZER_API_BASE_URL=https://leahloveswriting.xyz
+
+MINERU_MODE=local
+MINERU_CLI=mineru
+MINERU_API_BASE_URL=
+MINERU_API_KEY=
+
+BRAVE_SEARCH_API_KEY=
+EXA_API_KEY=
+```
+
 ## Verification
 
 ```bash

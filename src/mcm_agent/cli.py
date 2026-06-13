@@ -4,6 +4,7 @@ from pathlib import Path
 
 import typer
 
+from mcm_agent.config import load_settings
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.workflows.mvp import run_demo_workflow
@@ -59,3 +60,24 @@ def run_demo(workspace: str, auto_approve: bool = True) -> None:
     """Run the deterministic demo workflow."""
     run_demo_workflow(Path(workspace), auto_approve=auto_approve)
     typer.echo(f"Demo workflow completed: {Path(workspace).resolve()}")
+
+
+@app.command("provider-status")
+def provider_status(env_file: str | None = None) -> None:
+    """Print which providers will be used for the current configuration."""
+    settings = load_settings(env_file)
+    llm_status = (
+        f"openai-compatible ({settings.openai_model})"
+        if settings.openai_api_key
+        else "fake"
+    )
+    search_status = "Tavily API" if settings.tavily_api_key else "disabled/fake"
+    extract_status = "Firecrawl API" if settings.firecrawl_api_key else "disabled/fake"
+    mineru_status = settings.mineru_mode
+    humanizer_status = "UShallPass API" if settings.humanizer_api_key else "fake"
+
+    typer.echo(f"LLM: {llm_status}")
+    typer.echo(f"Search: {search_status}")
+    typer.echo(f"Extract: {extract_status}")
+    typer.echo(f"MinerU: {mineru_status}")
+    typer.echo(f"Humanizer: {humanizer_status}")
