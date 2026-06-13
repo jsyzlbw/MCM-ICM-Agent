@@ -175,9 +175,12 @@ HUMANIZER_API_KEY=
 HUMANIZER_API_BASE_URL=https://leahloveswriting.xyz
 
 # MinerU provider
+# fake = deterministic local placeholder parser for tests/demo; no real OCR/PDF parsing.
+# local = call local MinerU CLI/service.
+# rest = call MinerU official precision API.
 MINERU_MODE=fake
 MINERU_CLI=mineru
-MINERU_API_BASE_URL=
+MINERU_API_BASE_URL=https://mineru.net
 MINERU_API_KEY=
 
 # Runtime
@@ -1124,10 +1127,13 @@ Capture stdout and stderr into `parsed/mineru_cli.log`. If the command exits non
 
 `RestMinerUProvider` must:
 
-- POST the file to `$MINERU_API_BASE_URL/parse`.
+- POST batch metadata to `$MINERU_API_BASE_URL/api/v4/file-urls/batch`.
 - Send `Authorization: Bearer $MINERU_API_KEY` only when the key is non-empty.
-- Save returned Markdown and JSON into `parsed/`.
-- Raise `RuntimeError("MinerU REST parse failed: <status_code>")` for non-2xx responses.
+- Upload the file bytes to the returned `file_urls[0]`.
+- Poll `$MINERU_API_BASE_URL/api/v4/extract-results/batch/<batch_id>`.
+- Download `full_zip_url` after the result reaches `state=done`.
+- Extract the zip safely and save `full.md`, content JSON, layout JSON, and formula output into `parsed/`.
+- Raise a clear `RuntimeError` for failed MinerU states and a `TimeoutError` for polling timeout.
 
 - [ ] **Step 5: Implement Intake Agent**
 

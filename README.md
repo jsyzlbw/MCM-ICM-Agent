@@ -30,7 +30,7 @@ The recommended MVP stack is:
 - LLM provider through an OpenAI-compatible API.
 - Tavily API for search.
 - Firecrawl API for web extraction.
-- MinerU local or REST mode for PDF parsing.
+- MinerU local mode or official REST precision API for PDF parsing.
 - UShallPass for academic humanization, guarded by fact regression checks.
 
 MCP adapters can be added later, but the core runtime is designed to work through API
@@ -74,14 +74,19 @@ Later optional keys:
 HUMANIZER_API_KEY=
 HUMANIZER_API_BASE_URL=https://leahloveswriting.xyz
 
-MINERU_MODE=local
+MINERU_MODE=rest
 MINERU_CLI=mineru
-MINERU_API_BASE_URL=
+MINERU_API_BASE_URL=https://mineru.net
 MINERU_API_KEY=
 
 BRAVE_SEARCH_API_KEY=
 EXA_API_KEY=
 ```
+
+`MINERU_MODE=rest` uses MinerU's precision API flow: create an upload batch,
+upload the local PDF to the returned URL, poll the batch result, download the
+result zip, and persist `problem.md`, `problem.json`, `problem_layout.json`, and
+`formulas.json` into the task workspace.
 
 ## Verification
 

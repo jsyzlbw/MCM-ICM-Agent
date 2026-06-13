@@ -48,6 +48,7 @@ def test_settings_load_from_env_file(tmp_path: Path) -> None:
 
     assert settings.openai_model == "test-model"
     assert settings.mineru_mode == "fake"
+    assert settings.mineru_api_base_url == "https://mineru.net"
     assert settings.humanizer_api_base_url == "https://example.test"
 
 

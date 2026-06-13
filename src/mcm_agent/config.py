@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     mineru_mode: str = "fake"
     mineru_cli: str = "mineru"
-    mineru_api_base_url: str = ""
+    mineru_api_base_url: str = "https://mineru.net"
     mineru_api_key: str = ""
 
     mcm_agent_default_language: str = "en"
