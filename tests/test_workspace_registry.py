@@ -7,6 +7,7 @@ from mcm_agent.core.events import EventLog
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus, EventRecord
 from mcm_agent.core.registry import ArtifactRegistry
 from mcm_agent.core.workspace import create_workspace
+from mcm_agent.utils.json_io import read_json
 
 
 NOW = datetime(2026, 6, 13, 12, 0, tzinfo=UTC)
@@ -18,6 +19,7 @@ def test_create_workspace_initializes_required_files(tmp_path: Path) -> None:
     required = [
         "task_state.json",
         "artifact_registry.json",
+        "workflow_topology.json",
         "event_log.jsonl",
         "unresolved_issues.md",
         "data/source_registry.json",
@@ -32,6 +34,14 @@ def test_create_workspace_initializes_required_files(tmp_path: Path) -> None:
 
     for relative_path in required:
         assert (workspace.root / relative_path).exists(), relative_path
+
+    topology = read_json(workspace.root / "workflow_topology.json", {})
+    assert "data_feasibility_scout" in topology["nodes"]
+    assert {
+        "from_node": "problem_understanding",
+        "to_node": "data_feasibility_scout",
+        "condition": "pass",
+    } in topology["edges"]
 
 
 def test_artifact_registry_add_get_and_update(tmp_path: Path) -> None:

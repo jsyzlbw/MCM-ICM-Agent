@@ -16,6 +16,8 @@ EVENT_PHASES = {
     "input.received": "input_received",
     "document.parsed": "document_parsed",
     "problem.understanding.ready": "awaiting_problem_understanding_approval",
+    "data.feasibility.ready": "data_feasibility_ready",
+    "data.feasibility.reframe_required": "research_reframing_required",
     "user.direction.confirmed": "direction_confirmed",
     "model.candidates.ready": "model_candidates_ready",
     "model.decision.ready": "awaiting_model_decision_approval",

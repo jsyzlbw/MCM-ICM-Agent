@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from mcm_agent.core.models import TaskState
+from mcm_agent.core.workflow_graph import build_default_workflow_graph
 from mcm_agent.utils.json_io import write_json
 
 
@@ -65,6 +66,18 @@ def create_workspace(root: Path) -> Workspace:
         updated_at=now,
     )
     write_json(root / "task_state.json", state.model_dump(mode="json"))
+    graph = build_default_workflow_graph()
+    write_json(
+        root / "workflow_topology.json",
+        {
+            "nodes": {key: node.__dict__ for key, node in graph.nodes.items()},
+            "edges": [edge.__dict__ for edge in graph.edges],
+            "failure_routes": [
+                {"from_node": key[0], "failure_reason": key[1], "to_node": value}
+                for key, value in graph.failure_routes.items()
+            ],
+        },
+    )
 
     for relative_path in EMPTY_JSON_LIST_FILES:
         path = root / relative_path

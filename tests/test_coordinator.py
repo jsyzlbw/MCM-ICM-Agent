@@ -35,6 +35,19 @@ def test_emit_event_updates_phase(tmp_path: Path) -> None:
     assert state["current_phase"] == "document_parsed"
 
 
+def test_data_feasibility_events_update_phase(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    coordinator = Coordinator(workspace.root)
+
+    coordinator.emit("data.feasibility.ready", source="test")
+    state = read_json(workspace.root / "task_state.json", {})
+    assert state["current_phase"] == "data_feasibility_ready"
+
+    coordinator.emit("data.feasibility.reframe_required", source="test")
+    state = read_json(workspace.root / "task_state.json", {})
+    assert state["current_phase"] == "research_reframing_required"
+
+
 def test_problem_understanding_event_creates_pending_checkpoint(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     _add_artifact(workspace.root, "problem_understanding_v1")

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcm_agent.agents.compliance import ComplianceOriginalityAgent
+from mcm_agent.agents.data_feasibility import DataFeasibilityScoutAgent
 from mcm_agent.agents.discussion import UserDiscussionAgent
 from mcm_agent.agents.eda import DataEDAAgent
 from mcm_agent.agents.extraction import DocumentExtractionAgent
@@ -74,6 +75,7 @@ def run_mvp_workflow(
     )
     DocumentExtractionAgent(provider_bundle.mineru).run(workspace.root)
     ProblemUnderstandingAgent(provider_bundle.llm).run(workspace.root)
+    DataFeasibilityScoutAgent(provider_bundle.search).run(workspace.root)
     UserDiscussionAgent().confirm_direction(
         workspace.root,
         mode="ai_led" if auto_approve else "checkpoint_required",

@@ -41,6 +41,29 @@ The MVP does not include:
 
 ---
 
+## 0.1 Next Stage: Graph-Based Workflow and Data Feasibility
+
+After the initial linear MVP, the next implementation stage should convert the workflow
+into a graph-aware, review-routable system.
+
+Build order:
+
+1. Persist the default agent topology into every workspace as `workflow_topology.json`.
+2. Run `DataFeasibilityScoutAgent` after problem understanding and before user discussion.
+3. If critical data appears private or unavailable, route to research reframing before the
+   user locks the final paper direction.
+4. Add machine-readable gate decisions for extraction quality, source verification,
+   validation, figure QA, and final review.
+5. Replace the current linear workflow runner with a stage executor that follows
+   `failure_routes` from `workflow_topology.json`.
+
+The key policy is: the agent must not let the user approve an elegant research plan until
+the system has checked whether the plan's critical data is realistically obtainable. When
+direct data is unavailable, the system should propose proxy variables, request explicit
+user-provided assumptions, or change the research question.
+
+---
+
 ## 1. Target Repository Layout
 
 All implementation files for this new agent live under:
