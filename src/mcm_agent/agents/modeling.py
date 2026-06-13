@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.modeling_intelligence import ModelingIntelligence, ProblemDiagnosis
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
 from mcm_agent.providers.base import TextGenerationProvider
@@ -66,14 +67,54 @@ class ModelingCouncil:
         )
 
     def _fallback_candidates(self, problem_excerpt: str, direction_excerpt: str) -> list[str]:
+        diagnosis = ModelingIntelligence().diagnose(f"{problem_excerpt}\n{direction_excerpt}")
         lines = [
             "# Model Candidates",
             "",
+            "## Problem Type Diagnosis",
+            "",
+            "- Primary problem types: " + ", ".join(diagnosis.primary_problem_types),
+            "",
+            "## Recommended Model Routes",
+            "",
+            "| Route ID | Candidate | Problem Type | Main Strength | Risk |",
+            "|---|---|---|---|---|",
+        ]
+        for route in diagnosis.routes:
+            lines.append(
+                f"| {route.route_id} | {route.candidate} | {route.problem_type} | "
+                f"{route.main_strength} | {route.implementation_risk} |"
+            )
+        lines.extend(
+            [
+                "",
+                "## Route Details",
+                "",
+            ]
+        )
+        for route in diagnosis.routes:
+            lines.extend(
+                [
+                    f"### {route.route_id}",
+                    "",
+                    f"Candidate: {route.candidate}",
+                    "",
+                    f"Methods: {', '.join(route.methods)}",
+                    "",
+                    f"Metrics: {', '.join(route.metrics)}",
+                    "",
+                    f"Data needs: {', '.join(route.data_needs)}.",
+                    "",
+                ]
+            )
+        lines.extend(
+            [
             "## Candidate Summary Table",
             "",
             "| Role | Candidate | Main Strength |",
             "|---|---|---|",
-        ]
+            ]
+        )
         for role in COUNCIL_ROLES:
             lines.append(f"| {role} | {self._candidate_name(role)} | {self._strength(role)} |")
 
@@ -97,8 +138,8 @@ class ModelingCouncil:
             [
                 "## Data Limitations",
                 "",
+                *(f"- {limitation}" for limitation in diagnosis.data_limitations),
                 "- source_id: registered external data may be incomplete or unavailable.",
-                "- Prefer proxy variables when direct private data cannot be obtained.",
                 "",
                 "## Cross-Candidate Risks",
                 "",
@@ -172,9 +213,13 @@ class ModelJudge:
         if not candidates_path.exists():
             raise FileNotFoundError(candidates_path)
 
-        candidates_excerpt = candidates_path.read_text(encoding="utf-8")[:1200]
-        decision = self._generate_decision(candidates_excerpt) or self._fallback_decision()
-        experiment_plan = self._fallback_experiment_plan()
+        candidates_text = candidates_path.read_text(encoding="utf-8")
+        candidates_excerpt = candidates_text[:1200]
+        diagnosis = self._diagnosis_from_candidates(candidates_text)
+        decision = self._generate_decision(candidates_excerpt) or self._fallback_decision(
+            diagnosis if diagnosis.routes else None
+        )
+        experiment_plan = self._fallback_experiment_plan(diagnosis)
 
         (workspace_root / "reports" / "model_decision.md").write_text(decision, encoding="utf-8")
         (workspace_root / "reports" / "experiment_plan.md").write_text(
@@ -217,9 +262,11 @@ class ModelJudge:
             source="ModelJudge",
         )
 
-    def _fallback_decision(self) -> str:
+    def _fallback_decision(self, diagnosis: ProblemDiagnosis | None = None) -> str:
+        route_ids = [route.route_id for route in diagnosis.routes[:2]] if diagnosis else []
+        selected_route = " + ".join(route_ids) if route_ids else "Balanced contest-paper route"
         scores = {
-            "Balanced contest-paper route": {
+            selected_route: {
                 "problem_fit": 9,
                 "data_feasibility": 8,
                 "explainability": 9,
@@ -227,24 +274,24 @@ class ModelJudge:
                 "paper_quality_potential": 9,
             }
         }
-        total = sum(scores["Balanced contest-paper route"][key] * weight for key, weight in WEIGHTS.items())
+        total = sum(scores[selected_route][key] * weight for key, weight in WEIGHTS.items())
 
         return "\n".join(
             [
                 "# Model Decision",
                 "",
                 "## Selected Route",
-                f"Balanced contest-paper route. Weighted score: {total:.2f}.",
+                f"{selected_route}. Weighted score: {total:.2f}.",
                 "",
                 "## Rejected Alternatives",
                 "- Pure high-accuracy route: higher implementation and explanation risk.",
                 "- Pure optimization route: may under-serve predictive subtasks.",
                 "",
                 "## Mathematical Formulation",
-                "Define task-specific objective functions after data profiling.",
+                self._formulation_summary(diagnosis) if diagnosis else "Use a readable baseline model with sensitivity analysis.",
                 "",
                 "## Objective Functions",
-                "Minimize prediction error and optimize the final decision metric.",
+                self._objective_summary(diagnosis) if diagnosis else "Minimize prediction error and optimize the final decision metric.",
                 "",
                 "## Constraints",
                 "Respect data availability, contest format, and model interpretability constraints.",
@@ -264,7 +311,8 @@ class ModelJudge:
             ]
         )
 
-    def _fallback_experiment_plan(self) -> str:
+    def _fallback_experiment_plan(self, diagnosis: ProblemDiagnosis | None = None) -> str:
+        metrics = sorted({metric for route in diagnosis.routes for metric in route.metrics}) if diagnosis else []
         return "\n".join(
             [
                 "# Experiment Plan",
@@ -285,7 +333,8 @@ class ModelJudge:
                 "- Sensitivity and robustness experiment.",
                 "",
                 "## Metrics",
-                "- RMSE, MAE, normalized score, or objective value as applicable.",
+                *(f"- {metric}" for metric in metrics),
+                "" if metrics else "- RMSE, MAE, normalized score, or objective value as applicable.",
                 "",
                 "## Expected Code Outputs",
                 "- `results/problem1_results.csv`",
@@ -320,3 +369,45 @@ class ModelJudge:
         if all(heading in content for heading in required):
             return content + "\n"
         return None
+
+    def _diagnosis_from_candidates(self, candidates_text: str) -> ProblemDiagnosis:
+        route_order = [
+            ("multi_criteria_evaluation", "evaluation"),
+            ("constrained_optimization", "optimization"),
+            ("forecasting_model", "prediction"),
+            ("monte_carlo_simulation", "simulation"),
+            ("network_flow_graph", "graph_network"),
+            ("multi_objective_decision", "multi_objective"),
+        ]
+        found_problem_types = [
+            problem_type for route_id, problem_type in route_order if route_id in candidates_text
+        ]
+        if found_problem_types:
+            return ModelingIntelligence().diagnose_problem_types(found_problem_types)
+        return ProblemDiagnosis()
+
+    def _formulation_summary(self, diagnosis: ProblemDiagnosis) -> str:
+        route_ids = {route.route_id for route in diagnosis.routes}
+        if "multi_criteria_evaluation" in route_ids and "constrained_optimization" in route_ids:
+            return (
+                "Normalize indicators into a priority score, then allocate scarce resources "
+                "under capacity and budget constraints."
+            )
+        if "forecasting_model" in route_ids:
+            return "Estimate future target values from historical observations and explanatory features."
+        if "network_flow_graph" in route_ids:
+            return "Represent locations as nodes and connections as weighted edges or capacities."
+        return "Define task-specific objective functions after data profiling."
+
+    def _objective_summary(self, diagnosis: ProblemDiagnosis) -> str:
+        route_ids = {route.route_id for route in diagnosis.routes}
+        objectives = []
+        if "multi_criteria_evaluation" in route_ids:
+            objectives.append("maximize transparent priority score separation")
+        if "constrained_optimization" in route_ids:
+            objectives.append("maximize benefit under resource constraints")
+        if "forecasting_model" in route_ids:
+            objectives.append("minimize forecast error")
+        if "network_flow_graph" in route_ids:
+            objectives.append("minimize travel cost or maximize feasible flow")
+        return "; ".join(objectives) + "." if objectives else "Minimize prediction error and optimize the final decision metric."
