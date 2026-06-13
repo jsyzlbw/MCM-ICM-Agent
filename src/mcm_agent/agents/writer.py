@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
 
 
@@ -18,12 +19,17 @@ SECTION_CONTENT = {
 
 
 class PaperWriterAgent:
+    def __init__(self, llm_provider: TextGenerationProvider | None = None) -> None:
+        self.llm_provider = llm_provider
+
     def run(self, workspace_root: Path) -> None:
         paper_dir = workspace_root / "paper"
         section_dir = paper_dir / "sections"
         section_dir.mkdir(parents=True, exist_ok=True)
 
         evidence = read_json(workspace_root / "results" / "evidence_registry.json", [])
+        figures = read_json(workspace_root / "figures" / "figure_registry.json", [])
+        sources = read_json(workspace_root / "data" / "source_registry.json", [])
         unresolved_path = workspace_root / "unresolved_issues.md"
         if not evidence:
             unresolved_path.write_text(
@@ -36,7 +42,14 @@ class PaperWriterAgent:
                 encoding="utf-8",
             )
 
-        for filename, content in SECTION_CONTENT.items():
+        section_content = dict(SECTION_CONTENT)
+        generated_results = self._generate_results_section(evidence, figures, sources)
+        if generated_results is not None:
+            section_content["results.tex"] = generated_results
+        else:
+            section_content["results.tex"] = self._fallback_results_section(evidence, figures, sources)
+
+        for filename, content in section_content.items():
             (section_dir / filename).write_text(content, encoding="utf-8")
 
         (paper_dir / "references.bib").write_text(
@@ -71,3 +84,58 @@ class PaperWriterAgent:
             payload={"artifact_ids": ["paper_draft_v1"]},
             source="PaperWriterAgent",
         )
+
+    def _fallback_results_section(
+        self,
+        evidence: list[dict[str, object]],
+        figures: list[dict[str, object]],
+        sources: list[dict[str, object]],
+    ) -> str:
+        evidence_id = self._first_id(evidence, "evidence_id")
+        figure_id = self._first_id(figures, "figure_id")
+        source_id = self._first_id(sources, "source_id")
+        return (
+            "\\section{Results}\n"
+            "Validated evidence items support the numerical claims in this section. "
+            f"The primary trace links are evidence_id={evidence_id}, "
+            f"figure_id={figure_id}, and source_id={source_id}.\n"
+        )
+
+    def _generate_results_section(
+        self,
+        evidence: list[dict[str, object]],
+        figures: list[dict[str, object]],
+        sources: list[dict[str, object]],
+    ) -> str | None:
+        if self.llm_provider is None:
+            return None
+        evidence_id = self._first_id(evidence, "evidence_id")
+        figure_id = self._first_id(figures, "figure_id")
+        source_id = self._first_id(sources, "source_id")
+        prompt = "\n".join(
+            [
+                "# Paper Writer",
+                "",
+                "Draft only the LaTeX Results section for an MCM/ICM paper.",
+                "Required: include \\section{Results}, evidence_id, figure_id, and source_id.",
+                f"evidence_id={evidence_id}",
+                f"figure_id={figure_id}",
+                f"source_id={source_id}",
+            ]
+        )
+        result = self.llm_provider.generate("You write concise, source-traceable contest papers.", prompt)
+        content = result.content.strip()
+        if (
+            "\\section{Results}" in content
+            and f"evidence_id={evidence_id}" in content
+            and f"figure_id={figure_id}" in content
+            and f"source_id={source_id}" in content
+        ):
+            return content + "\n"
+        return None
+
+    def _first_id(self, rows: list[dict[str, object]], key: str) -> str:
+        if not rows:
+            return "missing"
+        value = rows[0].get(key)
+        return str(value) if value else "missing"

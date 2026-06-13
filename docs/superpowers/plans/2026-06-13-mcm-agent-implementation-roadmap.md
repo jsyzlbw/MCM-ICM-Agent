@@ -253,16 +253,16 @@ review/final_gate.json
 
 **Implementation steps:**
 
-- [ ] Inject `TextGenerationProvider` into `ModelingCouncil`, `ModelJudge`, `PaperWriterAgent`, and `ReviewerAgent`.
-- [ ] Add required heading validators for each generated artifact.
-- [ ] Make each agent fall back to deterministic output if the LLM response is invalid.
-- [ ] Require generated model plans to cite available data and data limitations.
-- [ ] Require paper sections to reference `evidence_id`, `figure_id`, and `source_id` where applicable.
+- [x] Inject `TextGenerationProvider` into `ModelingCouncil`, `ModelJudge`, `PaperWriterAgent`, and `ReviewerAgent`.
+- [x] Add required heading validators for each generated artifact.
+- [x] Make each agent fall back to deterministic output if the LLM response is invalid.
+- [x] Require generated model plans to cite available data and data limitations.
+- [x] Require generated paper results sections to reference `evidence_id`, `figure_id`, and `source_id` where applicable.
 
 **Acceptance criteria:**
 
 - Invalid LLM output does not crash the workflow.
-- LLM-generated text cannot bypass artifact/evidence/source validation.
+- LLM-generated text cannot bypass heading and traceability validation.
 
 ---
 

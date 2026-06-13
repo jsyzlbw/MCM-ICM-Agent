@@ -5,10 +5,14 @@ from pathlib import Path
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.lineage import find_unbound_external_data
+from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
 
 
 class ReviewerAgent:
+    def __init__(self, llm_provider: TextGenerationProvider | None = None) -> None:
+        self.llm_provider = llm_provider
+
     def run(self, workspace_root: Path) -> None:
         unresolved = (workspace_root / "unresolved_issues.md").read_text(encoding="utf-8")
         fact_report = workspace_root / "review" / "fact_regression_report.md"
@@ -23,31 +27,7 @@ class ReviewerAgent:
             blocking.append("External data sources are missing data lineage.")
         self._write_source_audit_report(workspace_root, unbound_sources)
 
-        reviewer_report = "\n".join(
-            [
-                "# 自动评审报告",
-                "",
-                "## 总体评分",
-                "Pass with comments." if not blocking else "Blocked.",
-                "",
-                "## 主要优点",
-                "- The workflow records evidence, figures, and review artifacts.",
-                "",
-                "## 高风险问题",
-                *(f"- {issue}" for issue in blocking),
-                "" if blocking else "- None.",
-                "",
-                "## 需要修改的问题",
-                "- Review all generated sections before submission.",
-                "",
-                "## 可能影响奖项的问题",
-                "- Missing deep domain-specific modeling may affect competitiveness.",
-                "",
-                "## 修改建议",
-                "- Improve model-specific explanation and figure captions.",
-                "",
-            ]
-        )
+        reviewer_report = self._generate_review(blocking) or self._fallback_review(blocking)
         (workspace_root / "review" / "reviewer_report.md").write_text(
             reviewer_report,
             encoding="utf-8",
@@ -126,3 +106,51 @@ class ReviewerAgent:
             "\n".join(lines),
             encoding="utf-8",
         )
+
+    def _fallback_review(self, blocking: list[str]) -> str:
+        return "\n".join(
+            [
+                "# 自动评审报告",
+                "",
+                "## 总体评分",
+                "Pass with comments." if not blocking else "Blocked.",
+                "",
+                "## 主要优点",
+                "- The workflow records evidence, figures, and review artifacts.",
+                "",
+                "## 高风险问题",
+                *(f"- {issue}" for issue in blocking),
+                "" if blocking else "- None.",
+                "",
+                "## 需要修改的问题",
+                "- Review all generated sections before submission.",
+                "",
+                "## 可能影响奖项的问题",
+                "- Missing deep domain-specific modeling may affect competitiveness.",
+                "",
+                "## 修改建议",
+                "- Improve model-specific explanation and figure captions.",
+                "",
+            ]
+        )
+
+    def _generate_review(self, blocking: list[str]) -> str | None:
+        if self.llm_provider is None:
+            return None
+        prompt = "\n".join(
+            [
+                "# Reviewer",
+                "",
+                "Write a concise pre-submission review.",
+                "Required headings: # 自动评审报告, ## 总体评分, ## 高风险问题, ## 修改建议.",
+                "",
+                "Blocking findings:",
+                *(f"- {issue}" for issue in blocking),
+            ]
+        )
+        result = self.llm_provider.generate("You are a strict MCM/ICM pre-submission reviewer.", prompt)
+        content = result.content.strip()
+        required = ["# 自动评审报告", "## 总体评分", "## 高风险问题", "## 修改建议"]
+        if all(heading in content for heading in required):
+            return content + "\n"
+        return None
