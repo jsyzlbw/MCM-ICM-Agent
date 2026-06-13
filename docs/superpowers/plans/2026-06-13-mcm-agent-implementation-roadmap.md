@@ -350,10 +350,10 @@ final_submission/submission_checklist.md
 
 **Implementation steps:**
 
-- [ ] Generate BibTeX candidates from `data/citation_candidates.json`.
-- [ ] Insert citations into paper sections only for registered sources.
-- [ ] Final reviewer fails when a source is used in data/model/figures but absent from references.
-- [ ] Submission packager includes source registry, data lineage, evidence registry, and AI use report.
+- [x] Generate BibTeX candidates from `data/citation_candidates.json`.
+- [x] Insert citations into paper sections only for registered sources.
+- [x] Final reviewer fails when a source is used in data/model/figures but absent from references.
+- [x] Submission packager includes source registry, data lineage, evidence registry, reference audit, and AI use report.
 
 **Acceptance criteria:**
 

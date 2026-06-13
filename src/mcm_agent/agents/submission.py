@@ -19,6 +19,7 @@ class SubmissionPackager:
             return False
 
         self._write_ai_use_report(final_dir)
+        self._write_submission_checklist(workspace_root, final_dir)
         source_zip = final_dir / "source_code.zip"
         with ZipFile(source_zip, "w", ZIP_DEFLATED) as archive:
             for relative_root in [
@@ -26,7 +27,11 @@ class SubmissionPackager:
                 "results",
                 "figures/source",
                 "data/source_registry.json",
+                "data/data_lineage.json",
                 "data/retrieval_log.jsonl",
+                "review/reference_audit_report.md",
+                "review/source_audit_report.md",
+                "review/figure_quality_report.md",
             ]:
                 path = workspace_root / relative_root
                 if path.is_dir():
@@ -39,6 +44,7 @@ class SubmissionPackager:
         with ZipFile(final_dir / "submission_package.zip", "w", ZIP_DEFLATED) as archive:
             archive.write(workspace_root / "paper" / "main.pdf", "final_paper.pdf")
             archive.write(final_dir / "AI_use_report.md", "AI_use_report.md")
+            archive.write(final_dir / "submission_checklist.md", "submission_checklist.md")
             archive.write(source_zip, "source_code.zip")
         return True
 
@@ -53,6 +59,11 @@ class SubmissionPackager:
         reviewer_report = workspace_root / "review" / "reviewer_report.md"
         if reviewer_report.exists() and "Blocked." in reviewer_report.read_text(encoding="utf-8"):
             blockers.append("Reviewer blocked submission.")
+        reference_audit = workspace_root / "review" / "reference_audit_report.md"
+        if reference_audit.exists() and "Missing references: 0" not in reference_audit.read_text(
+            encoding="utf-8"
+        ):
+            blockers.append("Reference audit has missing references.")
         if not (workspace_root / "paper" / "main.pdf").exists():
             blockers.append("paper/main.pdf is missing.")
         for figure in read_json(workspace_root / "figures" / "figure_registry.json", []):
@@ -83,5 +94,22 @@ class SubmissionPackager:
                     "",
                 ]
             ),
+            encoding="utf-8",
+        )
+
+    def _write_submission_checklist(self, workspace_root: Path, final_dir: Path) -> None:
+        checklist = [
+            "# Submission Checklist",
+            "",
+            f"- Paper PDF: `{(workspace_root / 'paper' / 'main.pdf').exists()}`",
+            f"- Source registry: `{(workspace_root / 'data' / 'source_registry.json').exists()}`",
+            f"- Data lineage: `{(workspace_root / 'data' / 'data_lineage.json').exists()}`",
+            f"- Evidence registry: `{(workspace_root / 'results' / 'evidence_registry.json').exists()}`",
+            f"- Reference audit: `{(workspace_root / 'review' / 'reference_audit_report.md').exists()}`",
+            f"- Figure registry: `{(workspace_root / 'figures' / 'figure_registry.json').exists()}`",
+            "",
+        ]
+        (final_dir / "submission_checklist.md").write_text(
+            "\n".join(checklist),
             encoding="utf-8",
         )

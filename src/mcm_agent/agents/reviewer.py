@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.lineage import find_unbound_external_data
 from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
+
+
+SOURCE_ID_PATTERN = re.compile(r"source_id=([A-Za-z0-9_-]+)")
 
 
 class ReviewerAgent:
@@ -25,6 +29,13 @@ class ReviewerAgent:
         unbound_sources = find_unbound_external_data(workspace_root)
         if unbound_sources:
             blocking.append("External data sources are missing data lineage.")
+        missing_references = self._missing_references(workspace_root)
+        if missing_references:
+            blocking.append(
+                "External data sources are missing from references: "
+                + ", ".join(f"`{source_id}`" for source_id in missing_references)
+                + "."
+            )
         self._write_source_audit_report(workspace_root, unbound_sources)
 
         reviewer_report = self._generate_review(blocking) or self._fallback_review(blocking)
@@ -61,6 +72,9 @@ class ReviewerAgent:
         if unbound_sources:
             failure_reason = "bad_data"
             repair_stage = "search_data"
+        elif missing_references:
+            failure_reason = "bad_data"
+            repair_stage = "paper_writer"
         elif blocking:
             failure_reason = "bad_writing"
             repair_stage = "paper_writer"
@@ -106,6 +120,32 @@ class ReviewerAgent:
             "\n".join(lines),
             encoding="utf-8",
         )
+
+    def _missing_references(self, workspace_root: Path) -> list[str]:
+        reference_audit = workspace_root / "review" / "reference_audit_report.md"
+        if reference_audit.exists():
+            text = reference_audit.read_text(encoding="utf-8")
+            if "Missing references: 0" in text:
+                return []
+
+        references = workspace_root / "paper" / "references.bib"
+        references_text = references.read_text(encoding="utf-8") if references.exists() else ""
+        used_source_ids = self._used_source_ids(workspace_root)
+        return sorted(source_id for source_id in used_source_ids if source_id not in references_text)
+
+    def _used_source_ids(self, workspace_root: Path) -> set[str]:
+        used: set[str] = set()
+        for item in read_json(workspace_root / "data" / "data_lineage.json", []):
+            if isinstance(item, dict) and item.get("source_id"):
+                used.add(str(item["source_id"]))
+        for item in read_json(workspace_root / "figures" / "figure_registry.json", []):
+            if isinstance(item, dict):
+                used.update(str(source_id) for source_id in item.get("source_ids", []) if source_id)
+        section_dir = workspace_root / "paper" / "sections"
+        if section_dir.exists():
+            for section in section_dir.glob("*.tex"):
+                used.update(SOURCE_ID_PATTERN.findall(section.read_text(encoding="utf-8")))
+        return used
 
     def _fallback_review(self, blocking: list[str]) -> str:
         return "\n".join(

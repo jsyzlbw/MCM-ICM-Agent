@@ -11,6 +11,7 @@ from mcm_agent.agents.intake import IntakeAgent
 from mcm_agent.agents.modeling import ModelJudge, ModelingCouncil
 from mcm_agent.agents.problem_understanding import ProblemUnderstandingAgent
 from mcm_agent.agents.rag import MethodologyRAGAgent
+from mcm_agent.agents.reference_manager import ReferenceManager
 from mcm_agent.agents.reviewer import ReviewerAgent
 from mcm_agent.agents.search_data import SearchDataAgent
 from mcm_agent.agents.solver import SolverCoderAgent
@@ -99,6 +100,7 @@ def run_mvp_workflow(
     VisualizationAgent().run(workspace.root)
     PaperWriterAgent().run(workspace.root)
     ComplianceOriginalityAgent(provider_bundle.humanizer).run(workspace.root)
+    ReferenceManager().run(workspace.root)
     ReviewerAgent().run(workspace.root)
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
