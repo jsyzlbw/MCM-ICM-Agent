@@ -80,6 +80,14 @@ def test_inspect_command_reports_stage_and_failed_gate(tmp_path: Path) -> None:
         workspace.root / "stage_runs.jsonl",
         {"stage_id": "validation_gate", "status": "passed", "next_stage": "solver_coder"},
     )
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {"selected_routes": ["multi_criteria_evaluation"], "route_metrics": {}},
+    )
+    write_json(
+        workspace.root / "final_submission" / "submission_manifest.json",
+        {"model_routes": ["multi_criteria_evaluation"], "audit_files": []},
+    )
     runner = CliRunner()
 
     result = runner.invoke(app, ["inspect", str(workspace.root)])
@@ -88,6 +96,8 @@ def test_inspect_command_reports_stage_and_failed_gate(tmp_path: Path) -> None:
     assert "Current phase: validation_gate" in result.output
     assert "Failed gate: validation_gate" in result.output
     assert "Repair stage: solver_coder" in result.output
+    assert "Model routes: multi_criteria_evaluation" in result.output
+    assert "Submission manifest: present" in result.output
     assert "Recent stages:" in result.output
 
 

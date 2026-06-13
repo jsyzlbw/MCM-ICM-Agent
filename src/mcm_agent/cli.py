@@ -73,6 +73,14 @@ def inspect_workspace(workspace: str) -> None:
     else:
         typer.echo("Unresolved issues: none")
 
+    route_summary = read_json(workspace_path / "results" / "model_route_summary.json", {})
+    if isinstance(route_summary, dict) and route_summary.get("selected_routes"):
+        typer.echo("Model routes: " + ", ".join(str(route) for route in route_summary["selected_routes"]))
+    else:
+        typer.echo("Model routes: missing")
+    manifest_path = workspace_path / "final_submission" / "submission_manifest.json"
+    typer.echo(f"Submission manifest: {'present' if manifest_path.exists() else 'missing'}")
+
     recent = _recent_stage_runs(workspace_path, limit=5)
     typer.echo("Recent stages:")
     for record in recent:
