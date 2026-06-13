@@ -7,7 +7,14 @@ from mcm_agent.agents.search_data import SearchDataAgent
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.academic import OpenAlexProvider
 from mcm_agent.providers.data_apis import WorldBankProvider
-from mcm_agent.providers.search import FirecrawlProvider, SearchResult, TavilyProvider
+from mcm_agent.providers.search import (
+    BraveSearchProvider,
+    ExaSearchProvider,
+    FallbackSearchProvider,
+    FirecrawlProvider,
+    SearchResult,
+    TavilyProvider,
+)
 from mcm_agent.utils.json_io import read_json
 
 
@@ -39,6 +46,88 @@ def test_tavily_provider_maps_results() -> None:
             score=0.9,
         )
     ]
+
+
+@respx.mock
+def test_brave_search_provider_maps_web_results() -> None:
+    respx.get("https://api.search.brave.com/res/v1/web/search").mock(
+        return_value=Response(
+            200,
+            json={
+                "web": {
+                    "results": [
+                        {
+                            "title": "Brave official data",
+                            "url": "https://example.gov/data",
+                            "description": "Government dataset.",
+                        }
+                    ]
+                }
+            },
+        )
+    )
+
+    results = BraveSearchProvider("key").search("official data", max_results=3)
+
+    request = respx.calls.last.request
+    assert request.headers["X-Subscription-Token"] == "key"
+    assert request.url.params["q"] == "official data"
+    assert request.url.params["count"] == "3"
+    assert results == [
+        SearchResult(
+            title="Brave official data",
+            url="https://example.gov/data",
+            snippet="Government dataset.",
+            score=None,
+        )
+    ]
+
+
+@respx.mock
+def test_exa_search_provider_maps_results() -> None:
+    respx.post("https://api.exa.ai/search").mock(
+        return_value=Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "title": "Exa method paper",
+                        "url": "https://arxiv.org/abs/1234.5678",
+                        "text": "A useful modeling method.",
+                        "score": 0.8,
+                    }
+                ]
+            },
+        )
+    )
+
+    results = ExaSearchProvider("key").search("modeling method", max_results=2)
+
+    request = respx.calls.last.request
+    assert request.headers["x-api-key"] == "key"
+    assert b'"numResults":2' in request.content
+    assert results == [
+        SearchResult(
+            title="Exa method paper",
+            url="https://arxiv.org/abs/1234.5678",
+            snippet="A useful modeling method.",
+            score=0.8,
+        )
+    ]
+
+
+def test_fallback_search_provider_uses_next_provider_after_failure() -> None:
+    class BrokenSearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            raise RuntimeError("upstream failed")
+
+    class BackupSearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            return [SearchResult(title="Backup", url="https://example.org", snippet="ok")]
+
+    results = FallbackSearchProvider([BrokenSearch(), BackupSearch()]).search("data")
+
+    assert results[0].title == "Backup"
 
 
 @respx.mock

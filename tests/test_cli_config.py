@@ -14,6 +14,8 @@ def test_provider_status_reports_fake_and_real_providers(tmp_path: Path) -> None
                 "OPENAI_MODEL=test-model",
                 "TAVILY_API_KEY=test-tavily",
                 "FIRECRAWL_API_KEY=test-firecrawl",
+                "BRAVE_SEARCH_API_KEY=test-brave",
+                "EXA_API_KEY=test-exa",
             ]
         ),
         encoding="utf-8",
@@ -24,7 +26,7 @@ def test_provider_status_reports_fake_and_real_providers(tmp_path: Path) -> None
 
     assert result.exit_code == 0
     assert "LLM: openai-compatible (test-model)" in result.output
-    assert "Search: Tavily API" in result.output
+    assert "Search: Tavily API + Brave API + Exa API" in result.output
     assert "Extract: Firecrawl API" in result.output
 
 

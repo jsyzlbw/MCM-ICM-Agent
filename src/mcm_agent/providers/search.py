@@ -60,6 +60,94 @@ class TavilyProvider:
         ]
 
 
+class BraveSearchProvider:
+    def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
+
+    def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+        response = httpx.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            headers={
+                "Accept": "application/json",
+                "X-Subscription-Token": self.api_key,
+            },
+            params={
+                "q": query,
+                "count": min(max_results, 20),
+                "result_filter": "web",
+                "safesearch": "moderate",
+            },
+            timeout=60,
+        )
+        if response.status_code < 200 or response.status_code >= 300:
+            raise RuntimeError(f"Brave search failed: {response.status_code}")
+        payload = response.json()
+        web = payload.get("web") or {}
+        return [
+            SearchResult(
+                title=item.get("title", ""),
+                url=item.get("url", ""),
+                snippet=item.get("description") or item.get("snippet", ""),
+                score=None,
+            )
+            for item in web.get("results", [])
+        ]
+
+
+class ExaSearchProvider:
+    def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
+
+    def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+        response = httpx.post(
+            "https://api.exa.ai/search",
+            headers={"x-api-key": self.api_key, "Content-Type": "application/json"},
+            json={
+                "query": query,
+                "numResults": max_results,
+                "contents": {"highlights": True, "text": True},
+            },
+            timeout=60,
+        )
+        if response.status_code < 200 or response.status_code >= 300:
+            raise RuntimeError(f"Exa search failed: {response.status_code}")
+        payload = response.json()
+        return [
+            SearchResult(
+                title=item.get("title", ""),
+                url=item.get("url", ""),
+                snippet=self._snippet(item),
+                score=item.get("score"),
+            )
+            for item in payload.get("results", [])
+        ]
+
+    def _snippet(self, item: dict[str, object]) -> str:
+        highlights = item.get("highlights")
+        if isinstance(highlights, list) and highlights:
+            return str(highlights[0])
+        return str(item.get("text") or item.get("summary") or "")
+
+
+class FallbackSearchProvider:
+    def __init__(self, providers: list[SearchProvider]) -> None:
+        self.providers = providers
+
+    def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+        errors: list[str] = []
+        for provider in self.providers:
+            try:
+                results = provider.search(query, max_results=max_results)
+            except Exception as exc:
+                errors.append(f"{provider.__class__.__name__}: {exc}")
+                continue
+            if results:
+                return results
+        if errors:
+            raise RuntimeError("All search providers failed: " + "; ".join(errors))
+        return []
+
+
 class FirecrawlProvider:
     def __init__(self, api_key: str, output_dir: Path) -> None:
         self.api_key = api_key

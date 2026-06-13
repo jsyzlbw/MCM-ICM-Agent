@@ -8,7 +8,13 @@ from mcm_agent.providers.humanizer import FakeHumanizerProvider, UShallPassHuman
 from mcm_agent.providers.latex import LatexProvider
 from mcm_agent.providers.llm import FakeLLMProvider, OpenAICompatibleLLMProvider
 from mcm_agent.providers.mineru import FakeMinerUProvider, LocalMinerUProvider, RestMinerUProvider
-from mcm_agent.providers.search import FirecrawlProvider, TavilyProvider
+from mcm_agent.providers.search import (
+    BraveSearchProvider,
+    ExaSearchProvider,
+    FallbackSearchProvider,
+    FirecrawlProvider,
+    TavilyProvider,
+)
 
 
 class NullSearchProvider:
@@ -44,7 +50,19 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
     else:
         mineru = FakeMinerUProvider()
 
-    search = TavilyProvider(settings.tavily_api_key) if settings.tavily_api_key else NullSearchProvider()
+    search_providers = []
+    if settings.tavily_api_key:
+        search_providers.append(TavilyProvider(settings.tavily_api_key))
+    if settings.brave_search_api_key:
+        search_providers.append(BraveSearchProvider(settings.brave_search_api_key))
+    if settings.exa_api_key:
+        search_providers.append(ExaSearchProvider(settings.exa_api_key))
+    if len(search_providers) > 1:
+        search = FallbackSearchProvider(search_providers)
+    elif search_providers:
+        search = search_providers[0]
+    else:
+        search = NullSearchProvider()
     extractor = (
         FirecrawlProvider(settings.firecrawl_api_key, workspace_root / "data" / "external")
         if settings.firecrawl_api_key

@@ -103,7 +103,14 @@ def provider_status(env_file: str | None = None) -> None:
         if settings.openai_api_key
         else "fake"
     )
-    search_status = "Tavily API" if settings.tavily_api_key else "disabled/fake"
+    search_stack = []
+    if settings.tavily_api_key:
+        search_stack.append("Tavily API")
+    if settings.brave_search_api_key:
+        search_stack.append("Brave API")
+    if settings.exa_api_key:
+        search_stack.append("Exa API")
+    search_status = " + ".join(search_stack) if search_stack else "disabled/fake"
     extract_status = "Firecrawl API" if settings.firecrawl_api_key else "disabled/fake"
     mineru_status = settings.mineru_mode
     humanizer_status = "UShallPass API" if settings.humanizer_api_key else "fake"

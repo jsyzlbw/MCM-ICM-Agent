@@ -41,7 +41,7 @@ Copy `.env.example` to `.env` and fill in only the providers you want to use.
 The recommended MVP stack is:
 
 - LLM provider through an OpenAI-compatible API.
-- Tavily API for search.
+- Tavily API as the primary search provider, with Brave and Exa as fallback search providers.
 - Firecrawl API for web extraction.
 - MinerU local mode or official REST precision API for PDF parsing.
 - UShallPass for academic humanization, guarded by fact regression checks.
@@ -95,6 +95,9 @@ MINERU_API_KEY=
 BRAVE_SEARCH_API_KEY=
 EXA_API_KEY=
 ```
+
+When multiple search keys are configured, the runtime tries Tavily first, then Brave,
+then Exa. `mcm-agent provider-status --env-file .env` prints the active search stack.
 
 `MINERU_MODE=rest` uses MinerU's precision API flow: create an upload batch,
 upload the local PDF to the returned URL, poll the batch result, download the
