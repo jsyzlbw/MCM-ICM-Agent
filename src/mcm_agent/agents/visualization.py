@@ -8,8 +8,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from mcm_agent.agents.figure_quality import FigureQualityAgent
 from mcm_agent.core.coordinator import Coordinator
-from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.models import ArtifactStatus, FigurePlanItem, FigureRecord
 from mcm_agent.utils.json_io import read_json, write_json
 
@@ -32,6 +32,9 @@ class FigurePlanningAgent:
                 output_formats=["pdf", "svg", "png"],
                 target_section="paper/sections/results.tex",
                 caption_intent="Baseline result trend for Problem 1.",
+                claim_supported="Baseline result trend for Problem 1.",
+                evidence_ids=self._evidence_ids(workspace_root),
+                source_ids=self._source_ids(workspace_root),
             ),
             FigurePlanItem(
                 figure_id="fig_framework",
@@ -42,12 +45,29 @@ class FigurePlanningAgent:
                 output_formats=["svg", "pdf"],
                 target_section="paper/sections/model.tex",
                 caption_intent="Overview of the modeling workflow.",
+                claim_supported="The paper follows a reproducible modeling workflow.",
             ),
         ]
         write_json(
             workspace_root / "figures" / "figure_plan.json",
             [item.model_dump(mode="json") for item in plan],
         )
+
+    def _evidence_ids(self, workspace_root: Path) -> list[str]:
+        evidence = read_json(workspace_root / "results" / "evidence_registry.json", [])
+        return [
+            str(item.get("evidence_id"))
+            for item in evidence
+            if isinstance(item, dict) and item.get("evidence_id")
+        ]
+
+    def _source_ids(self, workspace_root: Path) -> list[str]:
+        sources = read_json(workspace_root / "data" / "source_registry.json", [])
+        return [
+            str(item.get("source_id"))
+            for item in sources
+            if isinstance(item, dict) and item.get("source_id")
+        ]
 
 
 class VisualizationAgent:
@@ -67,30 +87,8 @@ class VisualizationAgent:
             workspace_root / "figures" / "figure_registry.json",
             [record.model_dump(mode="json") for record in registry],
         )
-        figure_issues = self._figure_gate_issues(registry)
-        record_gate_decision(
-            workspace_root,
-            "figure_gate.json",
-            GateDecision(
-                gate_id="figure_quality_gate",
-                status="fail" if figure_issues else "pass",
-                failure_reason="visual_or_vector_issue" if figure_issues else None,
-                repair_stage="figure_planning" if figure_issues else None,
-                blocking_findings=figure_issues,
-            ),
-        )
+        FigureQualityAgent().run(workspace_root)
         Coordinator(workspace_root).emit("figures.ready", source="VisualizationAgent")
-
-    def _figure_gate_issues(self, registry: list[FigureRecord]) -> list[str]:
-        issues: list[str] = []
-        for record in registry:
-            if record.type == "data_plot":
-                has_vector = any(output.endswith((".pdf", ".svg")) for output in record.outputs)
-                if not has_vector:
-                    issues.append(f"Data figure `{record.figure_id}` has no PDF/SVG output.")
-            if record.status == ArtifactStatus.REJECTED:
-                issues.append(f"Figure `{record.figure_id}` is rejected.")
-        return issues
 
     def _render_data_plot(self, workspace_root: Path, item: FigurePlanItem) -> FigureRecord:
         source = workspace_root / item.source_data[0]
@@ -135,6 +133,11 @@ class VisualizationAgent:
             outputs=outputs,
             used_in=[item.target_section],
             status=ArtifactStatus.APPROVED,
+            source_data=item.source_data,
+            source_ids=item.source_ids,
+            evidence_ids=item.evidence_ids,
+            caption_intent=item.caption_intent,
+            claim_supported=item.claim_supported,
         )
 
     def _write_mermaid(self, workspace_root: Path, item: FigurePlanItem) -> FigureRecord:
@@ -161,4 +164,9 @@ class VisualizationAgent:
             outputs=[str(source_path.relative_to(workspace_root))],
             used_in=[item.target_section],
             status=ArtifactStatus.REVIEW_REQUIRED,
+            source_data=item.source_data,
+            source_ids=item.source_ids,
+            evidence_ids=item.evidence_ids,
+            caption_intent=item.caption_intent,
+            claim_supported=item.claim_supported,
         )

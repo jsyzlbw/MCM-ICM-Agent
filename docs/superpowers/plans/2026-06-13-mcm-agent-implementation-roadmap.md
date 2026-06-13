@@ -314,11 +314,11 @@ results/evidence_registry.json
 
 **Implementation steps:**
 
-- [ ] Extend `FigurePlanItem` with `claim_supported`, `source_ids`, and `evidence_ids`.
-- [ ] Require data plots to output PDF or SVG.
-- [ ] Generate a `review/figure_quality_report.md`.
-- [ ] Generate `review/figure_gate.json`.
-- [ ] Fail figure QA when a data figure has no source data, no vector output, missing caption intent, or no target section.
+- [x] Extend `FigurePlanItem` with `claim_supported`, `source_ids`, and `evidence_ids`.
+- [x] Require data plots to output PDF or SVG.
+- [x] Generate a `review/figure_quality_report.md`.
+- [x] Generate `review/figure_gate.json`.
+- [x] Fail figure QA when a data figure has no source data, no vector output, missing caption intent, or no target section.
 
 **Acceptance criteria:**
 

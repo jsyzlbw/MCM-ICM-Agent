@@ -181,10 +181,13 @@ class FigurePlanItem(BaseModel):
     purpose: str
     figure_type: Literal["data_plot", "concept_diagram", "ai_visual_draft"]
     source_data: list[str] = Field(default_factory=list)
+    source_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
     generation_script: str | None = None
     output_formats: list[Literal["pdf", "svg", "png"]]
     target_section: str
     caption_intent: str
+    claim_supported: str = ""
 
     @model_validator(mode="after")
     def require_vector_output_for_data_plot(self) -> FigurePlanItem:
@@ -203,6 +206,11 @@ class FigureRecord(BaseModel):
     outputs: list[str]
     used_in: list[str]
     status: ArtifactStatus
+    source_data: list[str] = Field(default_factory=list)
+    source_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    caption_intent: str = ""
+    claim_supported: str = ""
 
 
 class HumanizerJob(BaseModel):

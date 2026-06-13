@@ -62,6 +62,10 @@ def test_visualization_agent_writes_figure_gate(tmp_path: Path) -> None:
     results = workspace.root / "results" / "problem1_results.csv"
     results.write_text("x,y\n1,2\n2,4\n", encoding="utf-8")
     write_json(
+        workspace.root / "results" / "evidence_registry.json",
+        [{"evidence_id": "metric_row_count"}],
+    )
+    write_json(
         workspace.root / "figures" / "figure_plan.json",
         [
             {
@@ -73,6 +77,7 @@ def test_visualization_agent_writes_figure_gate(tmp_path: Path) -> None:
                 "output_formats": ["pdf", "svg"],
                 "target_section": "paper/sections/results.tex",
                 "caption_intent": "Result trend.",
+                "evidence_ids": ["metric_row_count"],
             }
         ],
     )
