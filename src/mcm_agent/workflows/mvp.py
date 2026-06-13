@@ -83,6 +83,34 @@ def run_mvp_workflow(
     _write_ai_use_report(workspace.root)
 
 
+def resume_mvp_workflow(
+    workspace_root: Path,
+    inputs: TaskInput,
+    *,
+    providers: ProviderBundle | None = None,
+    supervisor_skills_dir: Path | None = None,
+    auto_approve: bool = False,
+    from_stage: str | None = None,
+    until_stage: str | None = None,
+) -> None:
+    workspace = create_workspace(workspace_root)
+    provider_bundle = providers or _default_demo_providers()
+    start_stage = from_stage or _resume_stage_from_state(workspace.root)
+    executor = StageExecutor(
+        workspace.root,
+        handlers=_mvp_stage_handlers(
+            inputs,
+            provider_bundle,
+            supervisor_skills_dir=supervisor_skills_dir,
+            auto_approve=auto_approve,
+        ),
+    )
+    executor.run_until_complete(start_stage, terminal_stage=until_stage or "final_gatekeeper")
+    if auto_approve:
+        _approve_pending_checkpoints(workspace.root)
+    _write_ai_use_report(workspace.root)
+
+
 def run_demo_workflow(workspace_root: Path, *, auto_approve: bool = True) -> None:
     demo_dir = workspace_root.parent / f"{workspace_root.name}_demo_inputs"
     problem, attachments, idea, skills = create_demo_inputs(demo_dir)
@@ -103,6 +131,18 @@ def _default_demo_providers() -> ProviderBundle:
         humanizer=FakeHumanizerProvider({}),
         latex=LatexProvider(),
     )
+
+
+def _resume_stage_from_state(workspace_root: Path) -> str:
+    state = read_json(workspace_root / "task_state.json", {})
+    if isinstance(state, dict):
+        repair_stage = state.get("blocked_repair_stage")
+        if repair_stage:
+            return str(repair_stage)
+        current_phase = state.get("current_phase")
+        if current_phase and current_phase != "initialized":
+            return str(current_phase)
+    return "intake"
 
 
 def _mvp_stage_handlers(

@@ -16,6 +16,14 @@ class StageResult(BaseModel):
     condition: str = "pass"
 
 
+class RepeatedGateFailureError(RuntimeError):
+    def __init__(self, gate_id: str, failure_reason: str, repair_stage: str | None) -> None:
+        self.gate_id = gate_id
+        self.failure_reason = failure_reason
+        self.repair_stage = repair_stage
+        super().__init__(f"repeated gate failure: {gate_id}/{failure_reason}")
+
+
 StageHandler = Callable[[Path], StageResult | list[str] | None]
 
 
@@ -91,14 +99,28 @@ class StageExecutor:
         *,
         terminal_stage: str | None = None,
         max_steps: int = 100,
+        repeated_gate_limit: int = 3,
     ) -> list[StageRunRecord]:
         records: list[StageRunRecord] = []
+        gate_failures: dict[tuple[str, str], int] = {}
         current_stage: str | None = start_stage
         for _ in range(max_steps):
             if current_stage is None:
                 break
             record = self.run_stage(current_stage)
             records.append(record)
+            gate_decision = self._gate_decision_for_stage(record.stage_id)
+            if gate_decision is not None and not gate_decision.passed:
+                failure_reason = gate_decision.failure_reason or "unknown"
+                key = (gate_decision.gate_id, failure_reason)
+                gate_failures[key] = gate_failures.get(key, 0) + 1
+                if gate_failures[key] >= repeated_gate_limit:
+                    self._mark_blocked(gate_decision)
+                    raise RepeatedGateFailureError(
+                        gate_decision.gate_id,
+                        failure_reason,
+                        gate_decision.repair_stage,
+                    )
             if terminal_stage is not None and current_stage == terminal_stage:
                 break
             current_stage = record.next_stage
@@ -160,5 +182,17 @@ class StageExecutor:
         if not isinstance(state, dict):
             return
         state["current_phase"] = stage_id
+        state["updated_at"] = datetime.now(UTC).isoformat()
+        write_json(path, state)
+
+    def _mark_blocked(self, decision: GateDecision) -> None:
+        path = self.workspace_root / "task_state.json"
+        state = read_json(path, {})
+        if not isinstance(state, dict):
+            return
+        failure_reason = decision.failure_reason or "unknown"
+        state["current_phase"] = decision.gate_id
+        state["blocked_reason"] = f"{decision.gate_id}/{failure_reason}"
+        state["blocked_repair_stage"] = decision.repair_stage
         state["updated_at"] = datetime.now(UTC).isoformat()
         write_json(path, state)

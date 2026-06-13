@@ -28,6 +28,25 @@ mcm-agent run /tmp/mcm_agent_task \
 Use repeated `--attachment` flags for multiple files. Omit `--auto-approve` when you
 want the generated checkpoints to stay pending for human review.
 
+Inspect or resume an existing workspace:
+
+```bash
+mcm-agent inspect /tmp/mcm_agent_task
+
+mcm-agent resume /tmp/mcm_agent_task \
+  --env-file .env \
+  --problem-file /path/to/problem.pdf \
+  --attachment /path/to/data.csv \
+  --from-stage validation_gate \
+  --until-stage final_gatekeeper \
+  --auto-approve
+```
+
+`inspect` reports the current phase, recent stage runs, failed gate, repair stage, and
+unresolved issue status. `resume` uses the same graph-aware executor as `run`; if
+`--from-stage` is omitted, it starts from the blocked repair stage or current phase in
+`task_state.json`.
+
 ## Runtime Shape
 
 The implementation uses a workspace per contest task. Each workspace stores inputs, parsed

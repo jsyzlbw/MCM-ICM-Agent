@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
-from mcm_agent.core.stage_executor import StageExecutor, StageResult
+from mcm_agent.core.stage_executor import RepeatedGateFailureError, StageExecutor, StageResult
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.utils.json_io import read_json
 
@@ -129,3 +129,36 @@ def test_stage_executor_run_until_complete_stops_at_terminal_stage(tmp_path: Pat
 
     assert [record.stage_id for record in records] == ["user_discussion", "methodology_rag"]
     assert visited == ["user_discussion", "methodology_rag"]
+
+
+def test_stage_executor_stops_repeated_gate_failure_loop(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+
+    def search_data(root: Path) -> list[str]:
+        return ["data/source_registry.json"]
+
+    def source_verifier(root: Path) -> list[str]:
+        record_gate_decision(
+            root,
+            "source_gate.json",
+            GateDecision(
+                gate_id="source_verifier",
+                status="fail",
+                failure_reason="source_unreliable",
+                repair_stage="search_data",
+                blocking_findings=["No trusted source found."],
+            ),
+        )
+        return ["review/source_gate.json"]
+
+    executor = StageExecutor(
+        workspace.root,
+        handlers={"search_data": search_data, "source_verifier": source_verifier},
+    )
+
+    with pytest.raises(RepeatedGateFailureError, match="source_verifier/source_unreliable"):
+        executor.run_until_complete("search_data", repeated_gate_limit=2)
+
+    state = read_json(workspace.root / "task_state.json", {})
+    assert state["current_phase"] == "source_verifier"
+    assert state["blocked_reason"] == "source_verifier/source_unreliable"
