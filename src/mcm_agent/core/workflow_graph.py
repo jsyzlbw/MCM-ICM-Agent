@@ -238,9 +238,14 @@ def build_default_workflow_graph() -> WorkflowGraph:
         "submission_packager": AgentNode(
             node_id="submission_packager",
             label="Submission Packager",
-            responsibility="Package final paper, source zip, AI use report, and submission checklist.",
+            responsibility="Package final paper, source zip, AI use report, manifest, and submission checklist.",
             input_artifacts=["paper/main.pdf", "code", "final_submission/AI_use_report.md"],
-            output_artifacts=["final_submission"],
+            output_artifacts=[
+                "final_submission/submission_package.zip",
+                "final_submission/source_code.zip",
+                "final_submission/submission_manifest.json",
+                "final_submission/submission_checklist.md",
+            ],
             pass_criteria=["All required submission artifacts exist."],
         ),
         "research_reframing": AgentNode(

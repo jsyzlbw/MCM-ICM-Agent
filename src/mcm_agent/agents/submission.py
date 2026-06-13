@@ -4,6 +4,7 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from mcm_agent.utils.json_io import read_json
+from mcm_agent.utils.json_io import write_json
 
 
 class SubmissionPackager:
@@ -20,6 +21,7 @@ class SubmissionPackager:
 
         self._write_ai_use_report(final_dir)
         self._write_submission_checklist(workspace_root, final_dir)
+        manifest = self._write_submission_manifest(workspace_root, final_dir)
         source_zip = final_dir / "source_code.zip"
         with ZipFile(source_zip, "w", ZIP_DEFLATED) as archive:
             for relative_root in [
@@ -32,6 +34,7 @@ class SubmissionPackager:
                 "review/reference_audit_report.md",
                 "review/source_audit_report.md",
                 "review/figure_quality_report.md",
+                "final_submission/submission_manifest.json",
             ]:
                 path = workspace_root / relative_root
                 if path.is_dir():
@@ -45,6 +48,7 @@ class SubmissionPackager:
             archive.write(workspace_root / "paper" / "main.pdf", "final_paper.pdf")
             archive.write(final_dir / "AI_use_report.md", "AI_use_report.md")
             archive.write(final_dir / "submission_checklist.md", "submission_checklist.md")
+            archive.write(manifest, "submission_manifest.json")
             archive.write(source_zip, "source_code.zip")
         return True
 
@@ -113,3 +117,41 @@ class SubmissionPackager:
             "\n".join(checklist),
             encoding="utf-8",
         )
+
+    def _write_submission_manifest(self, workspace_root: Path, final_dir: Path) -> Path:
+        route_summary = read_json(workspace_root / "results" / "model_route_summary.json", {})
+        figures = read_json(workspace_root / "figures" / "figure_registry.json", [])
+        model_routes = route_summary.get("selected_routes", []) if isinstance(route_summary, dict) else []
+        manifest_path = final_dir / "submission_manifest.json"
+        write_json(
+            manifest_path,
+            {
+                "paper": "paper/main.pdf",
+                "package": "final_submission/submission_package.zip",
+                "source_archive": "final_submission/source_code.zip",
+                "model_routes": model_routes if isinstance(model_routes, list) else [],
+                "figure_ids": [
+                    str(item.get("figure_id"))
+                    for item in figures
+                    if isinstance(item, dict) and item.get("figure_id")
+                ],
+                "audit_files": [
+                    relative_path
+                    for relative_path in [
+                        "data/source_registry.json",
+                        "data/data_lineage.json",
+                        "data/retrieval_log.jsonl",
+                        "results/model_metrics.json",
+                        "results/model_route_summary.json",
+                        "results/evidence_registry.json",
+                        "review/reference_audit_report.md",
+                        "review/source_audit_report.md",
+                        "review/figure_quality_report.md",
+                        "review/fact_regression_report.md",
+                        "review/reviewer_report.md",
+                    ]
+                    if (workspace_root / relative_path).exists()
+                ],
+            },
+        )
+        return manifest_path

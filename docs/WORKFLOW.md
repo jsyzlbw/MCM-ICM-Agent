@@ -69,7 +69,7 @@ Each run writes to a workspace directory. Important files and folders:
 | `figures/` | Figure plan, figure registry, generated PDF/SVG/PNG, source scripts. |
 | `paper/` | LaTeX sections, `main.tex`, `references.bib`, optional PDF. |
 | `review/` | Gate JSON, reviewer report, source audit, figure audit, fact regression report. |
-| `final_submission/` | AI use report, submission checklist, packages when packaging is run. |
+| `final_submission/` | AI use report, submission checklist, machine-readable manifest, packages when packaging is run. |
 | `workflow_topology.json` | Snapshot of graph nodes, edges, and failure routes. |
 | `stage_runs.jsonl` | Append-only stage execution log. |
 | `task_state.json` | Current phase, checkpoints, and blocked repair metadata. |
@@ -201,3 +201,15 @@ review at least:
 
 For a real contest run, the user should confirm the research direction before the paper
 is considered final.
+
+## Submission Package
+
+When `SubmissionPackager` runs successfully, it creates:
+
+- `final_submission/submission_package.zip`
+- `final_submission/source_code.zip`
+- `final_submission/submission_manifest.json`
+- `final_submission/submission_checklist.md`
+
+The manifest records selected model routes, figure IDs, and audit files such as source
+registry, data lineage, route summary, evidence registry, reference audit, and figure QA.
