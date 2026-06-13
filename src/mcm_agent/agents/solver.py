@@ -3,9 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-import pandas as pd
-
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.experiment import run_experiment
 from mcm_agent.core.models import EvidenceItem
 from mcm_agent.utils.json_io import read_json, write_json
 
@@ -16,33 +15,63 @@ class SolverCoderAgent:
         if not processed_files:
             raise FileNotFoundError("missing processed CSV data")
 
-        code_dir = workspace_root / "code"
+        code_dir = workspace_root / "code" / "experiments"
         results_dir = workspace_root / "results"
         code_dir.mkdir(parents=True, exist_ok=True)
         results_dir.mkdir(parents=True, exist_ok=True)
 
+        processed_relative = str(processed_files[0].relative_to(workspace_root))
         script = "\n".join(
             [
+                "import json",
+                "from pathlib import Path",
                 "import pandas as pd",
-                "df = pd.read_csv('../data/processed/sample.csv')",
-                "df.to_csv('../results/problem1_results.csv', index=False)",
+                "",
+                "workspace = Path.cwd()",
+                f"df = pd.read_csv(workspace / {processed_relative!r})",
+                "df.to_csv(workspace / 'results/problem1_results.csv', index=False)",
+                "numeric = df.select_dtypes(include='number')",
+                "metrics = {",
+                "    'row_count': int(len(df)),",
+                "    'column_count': int(len(df.columns)),",
+                "    'numeric_column_count': int(len(numeric.columns)),",
+                "}",
+                "if not numeric.empty:",
+                "    metrics['numeric_mean'] = float(numeric.mean().mean())",
+                "(workspace / 'results/model_metrics.json').write_text(",
+                "    json.dumps(metrics, indent=2),",
+                "    encoding='utf-8',",
+                ")",
                 "",
             ]
         )
-        (code_dir / "problem1.py").write_text(script, encoding="utf-8")
+        script_path = code_dir / "problem1.py"
+        script_path.write_text(script, encoding="utf-8")
 
-        frame = pd.read_csv(processed_files[0])
+        run_record = run_experiment(
+            workspace_root,
+            ["python", str(script_path.relative_to(workspace_root))],
+            produced_files=["results/problem1_results.csv", "results/model_metrics.json"],
+            timeout_seconds=120,
+        )
+        if run_record.exit_code != 0 or run_record.missing_outputs:
+            (results_dir / "run_log.md").write_text(
+                "\n".join(
+                    [
+                        "# Run Log",
+                        "",
+                        f"Generated at {datetime.now(UTC).isoformat()}.",
+                        f"Exit code: {run_record.exit_code}",
+                        f"Missing outputs: {run_record.missing_outputs}",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            raise RuntimeError(f"experiment failed: {run_record.run_id}")
+
         result_path = results_dir / "problem1_results.csv"
-        frame.to_csv(result_path, index=False)
-        numeric = frame.select_dtypes(include="number")
-        metrics = {
-            "row_count": int(len(frame)),
-            "column_count": int(len(frame.columns)),
-            "numeric_column_count": int(len(numeric.columns)),
-        }
-        if not numeric.empty:
-            metrics["numeric_mean"] = float(numeric.mean().mean())
-        write_json(results_dir / "model_metrics.json", metrics)
+        metrics = read_json(results_dir / "model_metrics.json", {})
 
         lineage_ids = self._lineage_ids_for_processed_file(workspace_root, processed_files[0])
         evidence = read_json(results_dir / "evidence_registry.json", [])
@@ -54,7 +83,7 @@ class SolverCoderAgent:
                     value=value,
                     source_type="code_output",
                     source_path="results/model_metrics.json",
-                    generated_by="code/problem1.py",
+                    generated_by=str(script_path.relative_to(workspace_root)),
                     used_in=[],
                     verified=True,
                     lineage_ids=lineage_ids,
@@ -63,7 +92,16 @@ class SolverCoderAgent:
         write_json(results_dir / "evidence_registry.json", evidence)
 
         (results_dir / "run_log.md").write_text(
-            f"# Run Log\n\nGenerated at {datetime.now(UTC).isoformat()}.\n",
+            "\n".join(
+                [
+                    "# Run Log",
+                    "",
+                    f"Generated at {datetime.now(UTC).isoformat()}.",
+                    f"Experiment run: `{run_record.run_id}`",
+                    f"Result file: `{result_path.relative_to(workspace_root)}`",
+                    "",
+                ]
+            ),
             encoding="utf-8",
         )
         Coordinator(workspace_root).emit("code.completed", source="SolverCoderAgent")

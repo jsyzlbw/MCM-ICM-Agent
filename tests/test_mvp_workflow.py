@@ -69,6 +69,7 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "reports/data_profile.md",
         "results/model_metrics.json",
         "results/evidence_registry.json",
+        "results/experiment_runs.jsonl",
         "reports/validation_report.md",
         "review/validation_gate.json",
         "figures/figure_plan.json",

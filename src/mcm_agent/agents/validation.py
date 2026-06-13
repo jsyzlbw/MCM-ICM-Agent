@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
@@ -28,6 +29,15 @@ class ValidationAgent:
             source_path = item.get("source_path")
             if source_path and not (workspace_root / source_path).exists():
                 blocking_issues.append(f"Evidence source does not exist: `{source_path}`.")
+
+        for run in self._read_experiment_runs(workspace_root / "results" / "experiment_runs.jsonl"):
+            run_id = run.get("run_id", "unknown")
+            exit_code = run.get("exit_code", 0)
+            missing_outputs = run.get("missing_outputs", [])
+            if exit_code != 0 or missing_outputs:
+                blocking_issues.append(
+                    f"Experiment run `{run_id}` failed or missed outputs: {missing_outputs}."
+                )
 
         write_json(
             workspace_root / "results" / "robustness_checks.json",
@@ -83,3 +93,25 @@ class ValidationAgent:
             "validation.failed" if blocking_issues else "validation.passed",
             source="ValidationAgent",
         )
+
+    def _read_experiment_runs(self, path: Path) -> list[dict[str, object]]:
+        if not path.exists():
+            return []
+        runs: list[dict[str, object]] = []
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                runs.append(
+                    {
+                        "run_id": f"invalid_json_line_{line_number}",
+                        "exit_code": 1,
+                        "missing_outputs": ["invalid experiment run record"],
+                    }
+                )
+                continue
+            if isinstance(payload, dict):
+                runs.append(payload)
+        return runs

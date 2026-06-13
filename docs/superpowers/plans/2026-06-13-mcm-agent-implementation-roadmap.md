@@ -289,15 +289,15 @@ results/evidence_registry.json
 
 **Implementation steps:**
 
-- [ ] Define `ExperimentRunRecord` with command, exit code, stdout path, stderr path, produced files, and runtime.
-- [ ] Execute generated scripts through a constrained runner with timeout.
-- [ ] Register every produced CSV/JSON/figure as evidence or artifact.
-- [ ] Validation fails if claimed metrics do not appear in registered evidence.
+- [x] Define `ExperimentRunRecord` with command, exit code, stdout path, stderr path, produced files, and runtime.
+- [x] Execute generated scripts through a constrained runner with timeout.
+- [x] Register produced metrics as evidence and record produced CSV/JSON outputs in `experiment_runs.jsonl`.
+- [x] Validation fails if claimed metrics do not appear in registered evidence or experiment runs fail.
 
 **Acceptance criteria:**
 
 - A reviewer can trace every reported metric to a command run and output file.
-- Failed code runs become repairable findings, not silent placeholders.
+- Failed code runs become repairable validation findings, not silent placeholders.
 
 ---
 

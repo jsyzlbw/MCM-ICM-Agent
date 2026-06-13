@@ -76,7 +76,7 @@ def test_solver_writes_results_metrics_and_evidence(tmp_path: Path) -> None:
 
     metrics = json.loads((workspace.root / "results" / "model_metrics.json").read_text())
     evidence = read_json(workspace.root / "results" / "evidence_registry.json", [])
-    assert (workspace.root / "code" / "problem1.py").exists()
+    assert (workspace.root / "code" / "experiments" / "problem1.py").exists()
     assert (workspace.root / "results" / "problem1_results.csv").exists()
     assert "row_count" in metrics
     assert any(item["source_path"] == "results/model_metrics.json" for item in evidence)

@@ -49,6 +49,7 @@ EMPTY_TEXT_FILES = {
     "event_log.jsonl": "",
     "stage_runs.jsonl": "",
     "data/retrieval_log.jsonl": "",
+    "results/experiment_runs.jsonl": "",
     "unresolved_issues.md": "# Unresolved Issues\n\n",
     "review/methodology_checklist_report.md": "# Methodology Checklist Report\n\n",
     "review/humanization_diff.md": "# Humanization Diff\n\n",
