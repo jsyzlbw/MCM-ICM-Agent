@@ -1,0 +1,9 @@
+district,rainfall_mm,drainage_capacity_index,population_exposed,emergency_calls,critical_facilities,road_closures,historical_loss_musd
+Northbank,82,0.42,18200,96,5,12,14.2
+Riverside,91,0.35,24100,122,7,16,19.8
+OldTown,74,0.51,15800,74,9,9,11.5
+EastMarket,66,0.58,13200,58,4,7,8.1
+Hillcrest,48,0.71,9100,31,2,3,3.7
+SouthGate,88,0.39,20300,111,6,15,17.6
+Lakeside,79,0.44,17600,87,4,10,12.9
+WestPark,55,0.63,11800,45,3,5,5.4

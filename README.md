@@ -47,6 +47,17 @@ unresolved issue status. `resume` uses the same graph-aware executor as `run`; i
 `--from-stage` is omitted, it starts from the blocked repair stage or current phase in
 `task_state.json`.
 
+Run the bundled MCM-style example task:
+
+```bash
+python scripts/run_demo_task.py --workspace .demo_workspace --clean
+```
+
+The example lives in `examples/demo_mcm_task/` and includes a problem statement, a small
+district-level flood response dataset, a user idea file, methodology excerpts, and an
+expected outputs checklist. The script writes `.demo_workspace/demo_run_report.md` after
+the run.
+
 ## Runtime Shape
 
 The implementation uses a workspace per contest task. Each workspace stores inputs, parsed

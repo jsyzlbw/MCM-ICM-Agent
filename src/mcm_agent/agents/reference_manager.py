@@ -10,6 +10,7 @@ from mcm_agent.utils.json_io import read_json
 
 
 SOURCE_ID_PATTERN = re.compile(r"source_id=([A-Za-z0-9_-]+)")
+PLACEHOLDER_SOURCE_IDS = {"missing", "none", "unknown"}
 
 
 class ReferenceManager:
@@ -51,14 +52,24 @@ class ReferenceManager:
         used: set[str] = set()
         for item in read_json(workspace_root / "data" / "data_lineage.json", []):
             if isinstance(item, dict) and item.get("source_id"):
-                used.add(str(item["source_id"]))
+                source_id = str(item["source_id"])
+                if source_id not in PLACEHOLDER_SOURCE_IDS:
+                    used.add(source_id)
         for item in read_json(workspace_root / "figures" / "figure_registry.json", []):
             if isinstance(item, dict):
-                used.update(self._string_list(item.get("source_ids")))
+                used.update(
+                    source_id
+                    for source_id in self._string_list(item.get("source_ids"))
+                    if source_id not in PLACEHOLDER_SOURCE_IDS
+                )
         section_dir = workspace_root / "paper" / "sections"
         if section_dir.exists():
             for section in section_dir.glob("*.tex"):
-                used.update(SOURCE_ID_PATTERN.findall(section.read_text(encoding="utf-8")))
+                used.update(
+                    source_id
+                    for source_id in SOURCE_ID_PATTERN.findall(section.read_text(encoding="utf-8"))
+                    if source_id not in PLACEHOLDER_SOURCE_IDS
+                )
         return used
 
     def _write_bibtex(self, workspace_root: Path, candidates: list[CitationCandidate]) -> None:

@@ -65,6 +65,20 @@ def test_reviewer_blocks_used_source_missing_from_references(tmp_path: Path) -> 
     assert any("missing from references" in item for item in gate["blocking_findings"])
 
 
+def test_reference_manager_ignores_missing_source_placeholder(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    section = workspace.root / "paper" / "sections" / "results.tex"
+    section.parent.mkdir(parents=True, exist_ok=True)
+    section.write_text("\\section{Results}\nUses source_id=missing.\n", encoding="utf-8")
+
+    ReferenceManager().run(workspace.root)
+
+    report = (workspace.root / "review" / "reference_audit_report.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Missing references: 0" in report
+
+
 def test_submission_packager_blocks_reference_audit_failures(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     _write_submission_ready_workspace(workspace.root)
