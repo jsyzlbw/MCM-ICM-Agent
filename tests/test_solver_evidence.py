@@ -80,3 +80,38 @@ def test_solver_writes_results_metrics_and_evidence(tmp_path: Path) -> None:
     assert (workspace.root / "results" / "problem1_results.csv").exists()
     assert "row_count" in metrics
     assert any(item["source_path"] == "results/model_metrics.json" for item in evidence)
+
+
+def test_solver_binds_outputs_to_selected_model_routes(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text("district,priority,budget\nA,0.8,10\nB,0.4,6\n", encoding="utf-8")
+    (workspace.root / "reports" / "model_decision.md").write_text(
+        "\n".join(
+            [
+                "# Model Decision",
+                "",
+                "## Selected Route",
+                "multi_criteria_evaluation + constrained_optimization. Weighted score: 8.60.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    route_summary = read_json(workspace.root / "results" / "model_route_summary.json", {})
+    evidence = read_json(workspace.root / "results" / "evidence_registry.json", [])
+    assert route_summary["selected_routes"] == [
+        "multi_criteria_evaluation",
+        "constrained_optimization",
+    ]
+    assert "priority_score_mean" in route_summary["route_metrics"]
+    assert "allocation_capacity_total" in route_summary["route_metrics"]
+    assert any(
+        item["evidence_id"] == "metric_priority_score_mean"
+        and item["used_in"] == ["multi_criteria_evaluation"]
+        for item in evidence
+    )

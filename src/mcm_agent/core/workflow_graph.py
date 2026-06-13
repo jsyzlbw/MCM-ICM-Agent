@@ -163,7 +163,12 @@ def build_default_workflow_graph() -> WorkflowGraph:
             label="Solver / Coding Agent",
             responsibility="Write and run code, produce metrics, tables, and evidence.",
             input_artifacts=["reports/experiment_plan.md", "data/processed"],
-            output_artifacts=["code", "results/model_metrics.json", "results/evidence_registry.json"],
+            output_artifacts=[
+                "code",
+                "results/model_metrics.json",
+                "results/model_route_summary.json",
+                "results/evidence_registry.json",
+            ],
             pass_criteria=["Code executes and outputs registered evidence."],
         ),
         "validation_gate": AgentNode(

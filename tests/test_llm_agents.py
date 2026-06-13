@@ -90,6 +90,38 @@ def test_paper_writer_uses_valid_llm_results_section_with_trace_ids(tmp_path: Pa
     assert "source_id=web_001" in results
 
 
+def test_paper_writer_includes_selected_model_route_summary(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {
+            "selected_routes": ["multi_criteria_evaluation", "constrained_optimization"],
+            "route_metrics": {
+                "priority_score_mean": {
+                    "route_id": "multi_criteria_evaluation",
+                    "value": 0.6,
+                },
+                "allocation_capacity_total": {
+                    "route_id": "constrained_optimization",
+                    "value": 16.0,
+                },
+            },
+        },
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [])
+    write_json(workspace.root / "figures" / "figure_registry.json", [])
+    write_json(workspace.root / "data" / "source_registry.json", [])
+
+    PaperWriterAgent().run(workspace.root)
+
+    model_section = (workspace.root / "paper" / "sections" / "model.tex").read_text(
+        encoding="utf-8"
+    )
+    assert "multi\\_criteria\\_evaluation + constrained\\_optimization" in model_section
+    assert "priority\\_score\\_mean=0.6" in model_section
+    assert "allocation\\_capacity\\_total=16.0" in model_section
+
+
 def test_reviewer_falls_back_on_invalid_llm_output(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
 

@@ -245,7 +245,12 @@ def _mvp_stage_handlers(
 
     def solver_coder(workspace_root: Path) -> list[str]:
         SolverCoderAgent().run(workspace_root)
-        return ["code", "results/model_metrics.json", "results/evidence_registry.json"]
+        return [
+            "code",
+            "results/model_metrics.json",
+            "results/model_route_summary.json",
+            "results/evidence_registry.json",
+        ]
 
     def validation_gate(workspace_root: Path) -> list[str]:
         ValidationAgent().run(workspace_root)

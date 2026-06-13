@@ -22,20 +22,24 @@ class FigurePlanningAgent:
             if result_candidates
             else ["results/problem1_results.csv"]
         )
-        plan = [
-            FigurePlanItem(
-                figure_id="fig_q1_prediction",
-                purpose="show baseline result trend for Problem 1",
-                figure_type="data_plot",
-                source_data=source_data,
-                generation_script="figures/source/fig_q1_prediction_plot.py",
-                output_formats=["pdf", "svg", "png"],
-                target_section="paper/sections/results.tex",
-                caption_intent="Baseline result trend for Problem 1.",
-                claim_supported="Baseline result trend for Problem 1.",
-                evidence_ids=self._evidence_ids(workspace_root),
-                source_ids=self._source_ids(workspace_root),
-            ),
+        plan = self._route_data_figures(workspace_root, source_data)
+        if not plan:
+            plan = [
+                FigurePlanItem(
+                    figure_id="fig_q1_prediction",
+                    purpose="show baseline result trend for Problem 1",
+                    figure_type="data_plot",
+                    source_data=source_data,
+                    generation_script="figures/source/fig_q1_prediction_plot.py",
+                    output_formats=["pdf", "svg", "png"],
+                    target_section="paper/sections/results.tex",
+                    caption_intent="Baseline result trend for Problem 1.",
+                    claim_supported="Baseline result trend for Problem 1.",
+                    evidence_ids=self._evidence_ids(workspace_root),
+                    source_ids=self._source_ids(workspace_root),
+                )
+            ]
+        plan.append(
             FigurePlanItem(
                 figure_id="fig_framework",
                 purpose="show the modeling workflow",
@@ -46,12 +50,80 @@ class FigurePlanningAgent:
                 target_section="paper/sections/model.tex",
                 caption_intent="Overview of the modeling workflow.",
                 claim_supported="The paper follows a reproducible modeling workflow.",
-            ),
-        ]
+            )
+        )
         write_json(
             workspace_root / "figures" / "figure_plan.json",
             [item.model_dump(mode="json") for item in plan],
         )
+
+    def _route_data_figures(self, workspace_root: Path, source_data: list[str]) -> list[FigurePlanItem]:
+        route_summary = read_json(workspace_root / "results" / "model_route_summary.json", {})
+        selected_routes = route_summary.get("selected_routes", []) if isinstance(route_summary, dict) else []
+        if not isinstance(selected_routes, list):
+            return []
+        evidence_ids = self._evidence_ids(workspace_root)
+        source_ids = self._source_ids(workspace_root)
+        route_specs = {
+            "multi_criteria_evaluation": (
+                "fig_priority_ranking",
+                "show priority ranking scores across alternatives",
+                "Priority ranking scores for evaluated alternatives.",
+                "The evaluation route produces traceable priority rankings.",
+            ),
+            "constrained_optimization": (
+                "fig_allocation_policy",
+                "show resource allocation inputs and policy trade-offs",
+                "Resource allocation policy comparison.",
+                "The optimization route converts model evidence into allocation decisions.",
+            ),
+            "forecasting_model": (
+                "fig_forecast_baseline",
+                "show forecasting baseline over observations",
+                "Forecasting baseline over available observations.",
+                "The prediction route is supported by reproducible forecast evidence.",
+            ),
+            "monte_carlo_simulation": (
+                "fig_scenario_robustness",
+                "show scenario variability or robustness",
+                "Scenario robustness under uncertain assumptions.",
+                "The simulation route checks robustness against uncertain inputs.",
+            ),
+            "network_flow_graph": (
+                "fig_network_flow",
+                "show network or flow attributes",
+                "Network structure or flow result summary.",
+                "The graph route represents connectivity and bottlenecks.",
+            ),
+            "multi_objective_decision": (
+                "fig_tradeoff_frontier",
+                "show multi-objective trade-off structure",
+                "Multi-objective trade-off summary.",
+                "The decision route exposes trade-offs among competing goals.",
+            ),
+        }
+        items = []
+        for route_id in selected_routes:
+            spec = route_specs.get(str(route_id))
+            if spec is None:
+                continue
+            figure_id, purpose, caption, claim = spec
+            items.append(
+                FigurePlanItem(
+                    figure_id=figure_id,
+                    purpose=purpose,
+                    figure_type="data_plot",
+                    source_data=source_data,
+                    generation_script=f"figures/source/{figure_id}_plot.py",
+                    output_formats=["pdf", "svg", "png"],
+                    target_section="paper/sections/results.tex",
+                    caption_intent=caption,
+                    claim_supported=claim,
+                    evidence_ids=evidence_ids,
+                    source_ids=source_ids,
+                )
+            )
+        return items
 
     def _evidence_ids(self, workspace_root: Path) -> list[str]:
         evidence = read_json(workspace_root / "results" / "evidence_registry.json", [])

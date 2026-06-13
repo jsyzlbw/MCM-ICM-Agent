@@ -164,7 +164,11 @@ Every reported metric should be traceable through:
 
 - `results/experiment_runs.jsonl`
 - `results/model_metrics.json`
+- `results/model_route_summary.json`
 - `results/evidence_registry.json`
+
+`model_route_summary.json` binds the selected model route to route-specific metrics,
+figure planning, and the paper model section.
 
 `ReferenceManager` creates `paper/references.bib` from registered citation candidates
 and writes `review/reference_audit_report.md`. Placeholder IDs such as `source_id=missing`

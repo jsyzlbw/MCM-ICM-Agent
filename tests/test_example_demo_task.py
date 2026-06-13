@@ -42,7 +42,6 @@ def test_example_demo_task_runs_end_to_end(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert (workspace / "paper/main.tex").exists()
-    assert (workspace / "figures/fig_q1_prediction.pdf").exists()
     assert (workspace / "review/reviewer_report.md").exists()
     assert (workspace / "review/figure_quality_report.md").exists()
     assert (workspace / "final_submission/AI_use_report.md").exists()
@@ -50,6 +49,14 @@ def test_example_demo_task_runs_end_to_end(tmp_path: Path) -> None:
     assert metrics["row_count"] == 8
     figure_gate = read_json(workspace / "review" / "figure_gate.json", {})
     assert figure_gate["status"] == "pass"
+    figure_registry = read_json(workspace / "figures" / "figure_registry.json", [])
+    data_figures = [item for item in figure_registry if item["type"] == "data_plot"]
+    assert data_figures
+    assert any(
+        (workspace / output).exists() and output.endswith((".pdf", ".svg"))
+        for item in data_figures
+        for output in item["outputs"]
+    )
     stage_ids = [
         json.loads(line)["stage_id"]
         for line in (workspace / "stage_runs.jsonl").read_text(encoding="utf-8").splitlines()

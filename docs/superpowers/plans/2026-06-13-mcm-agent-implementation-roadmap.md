@@ -284,6 +284,7 @@ review/final_gate.json
 code/experiments/
 results/experiment_runs.jsonl
 results/model_metrics.json
+results/model_route_summary.json
 results/evidence_registry.json
 ```
 
@@ -292,6 +293,7 @@ results/evidence_registry.json
 - [x] Define `ExperimentRunRecord` with command, exit code, stdout path, stderr path, produced files, and runtime.
 - [x] Execute generated scripts through a constrained runner with timeout.
 - [x] Register produced metrics as evidence and record produced CSV/JSON outputs in `experiment_runs.jsonl`.
+- [x] Bind selected model routes to route-specific metrics in `results/model_route_summary.json`.
 - [x] Validation fails if claimed metrics do not appear in registered evidence or experiment runs fail.
 
 **Acceptance criteria:**
@@ -318,6 +320,7 @@ results/evidence_registry.json
 - [x] Require data plots to output PDF or SVG.
 - [x] Generate a `review/figure_quality_report.md`.
 - [x] Generate `review/figure_gate.json`.
+- [x] Generate route-aware figure plans from `results/model_route_summary.json`.
 - [x] Fail figure QA when a data figure has no source data, no vector output, missing caption intent, or no target section.
 
 **Acceptance criteria:**
@@ -352,6 +355,7 @@ final_submission/submission_checklist.md
 
 - [x] Generate BibTeX candidates from `data/citation_candidates.json`.
 - [x] Insert citations into paper sections only for registered sources.
+- [x] Insert the selected model route and route-specific metrics into the paper model section.
 - [x] Final reviewer fails when a source is used in data/model/figures but absent from references.
 - [x] Submission packager includes source registry, data lineage, evidence registry, reference audit, and AI use report.
 

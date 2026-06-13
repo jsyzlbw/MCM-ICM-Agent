@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pandas as pd
+
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.experiment import run_experiment
 from mcm_agent.core.models import EvidenceItem
@@ -72,6 +74,16 @@ class SolverCoderAgent:
 
         result_path = results_dir / "problem1_results.csv"
         metrics = read_json(results_dir / "model_metrics.json", {})
+        selected_routes = self._selected_routes(workspace_root)
+        route_metrics = self._route_metrics(result_path, selected_routes)
+        write_json(
+            results_dir / "model_route_summary.json",
+            {
+                "selected_routes": selected_routes,
+                "route_metrics": route_metrics,
+                "source_result": str(result_path.relative_to(workspace_root)),
+            },
+        )
 
         lineage_ids = self._lineage_ids_for_processed_file(workspace_root, processed_files[0])
         evidence = read_json(results_dir / "evidence_registry.json", [])
@@ -85,6 +97,20 @@ class SolverCoderAgent:
                     source_path="results/model_metrics.json",
                     generated_by=str(script_path.relative_to(workspace_root)),
                     used_in=[],
+                    verified=True,
+                    lineage_ids=lineage_ids,
+                ).model_dump(mode="json")
+            )
+        for key, payload in route_metrics.items():
+            evidence.append(
+                EvidenceItem(
+                    evidence_id=f"metric_{key}",
+                    claim=f"Route metric {key} equals {payload['value']}.",
+                    value=payload["value"],
+                    source_type="code_output",
+                    source_path="results/model_route_summary.json",
+                    generated_by=str(script_path.relative_to(workspace_root)),
+                    used_in=[str(payload["route_id"])],
                     verified=True,
                     lineage_ids=lineage_ids,
                 ).model_dump(mode="json")
@@ -113,3 +139,54 @@ class SolverCoderAgent:
             if summary.get("file") == relative_path:
                 return [str(item) for item in summary.get("lineage_ids", [])]
         return []
+
+    def _selected_routes(self, workspace_root: Path) -> list[str]:
+        decision_path = workspace_root / "reports" / "model_decision.md"
+        if not decision_path.exists():
+            return ["balanced_contest_route"]
+        text = decision_path.read_text(encoding="utf-8")
+        route_ids = [
+            "multi_criteria_evaluation",
+            "constrained_optimization",
+            "forecasting_model",
+            "monte_carlo_simulation",
+            "network_flow_graph",
+            "multi_objective_decision",
+        ]
+        selected = [route_id for route_id in route_ids if route_id in text]
+        return selected or ["balanced_contest_route"]
+
+    def _route_metrics(self, result_path: Path, selected_routes: list[str]) -> dict[str, dict[str, object]]:
+        frame = pd.read_csv(result_path)
+        numeric = frame.select_dtypes(include="number")
+        route_metrics: dict[str, dict[str, object]] = {}
+        for route_id in selected_routes:
+            if route_id == "multi_criteria_evaluation":
+                value = self._mean_for_column(numeric, "priority")
+                route_metrics["priority_score_mean"] = {"route_id": route_id, "value": value}
+            elif route_id == "constrained_optimization":
+                value = self._sum_for_column(numeric, "budget")
+                route_metrics["allocation_capacity_total"] = {"route_id": route_id, "value": value}
+            elif route_id == "forecasting_model":
+                value = float(len(frame))
+                route_metrics["forecast_observation_count"] = {"route_id": route_id, "value": value}
+            elif route_id == "monte_carlo_simulation":
+                value = float(numeric.std().mean()) if not numeric.empty else 0.0
+                route_metrics["scenario_variability_index"] = {"route_id": route_id, "value": value}
+            elif route_id == "network_flow_graph":
+                value = float(len(frame.columns))
+                route_metrics["network_attribute_count"] = {"route_id": route_id, "value": value}
+            elif route_id == "multi_objective_decision":
+                value = float(len(numeric.columns))
+                route_metrics["objective_proxy_count"] = {"route_id": route_id, "value": value}
+        return route_metrics
+
+    def _mean_for_column(self, numeric: pd.DataFrame, preferred_column: str) -> float:
+        if preferred_column in numeric.columns:
+            return float(numeric[preferred_column].mean())
+        return float(numeric.mean().mean()) if not numeric.empty else 0.0
+
+    def _sum_for_column(self, numeric: pd.DataFrame, preferred_column: str) -> float:
+        if preferred_column in numeric.columns:
+            return float(numeric[preferred_column].sum())
+        return float(numeric.sum().sum()) if not numeric.empty else 0.0

@@ -30,6 +30,7 @@ class PaperWriterAgent:
         evidence = read_json(workspace_root / "results" / "evidence_registry.json", [])
         figures = read_json(workspace_root / "figures" / "figure_registry.json", [])
         sources = read_json(workspace_root / "data" / "source_registry.json", [])
+        route_summary = read_json(workspace_root / "results" / "model_route_summary.json", {})
         unresolved_path = workspace_root / "unresolved_issues.md"
         if not evidence:
             unresolved_path.write_text(
@@ -43,6 +44,7 @@ class PaperWriterAgent:
             )
 
         section_content = dict(SECTION_CONTENT)
+        section_content["model.tex"] = self._fallback_model_section(route_summary)
         generated_results = self._generate_results_section(evidence, figures, sources)
         if generated_results is not None:
             section_content["results.tex"] = generated_results
@@ -101,6 +103,35 @@ class PaperWriterAgent:
             f"figure_id={figure_id}, and source_id={source_id}.\n"
         )
 
+    def _fallback_model_section(self, route_summary: object) -> str:
+        if not isinstance(route_summary, dict):
+            return SECTION_CONTENT["model.tex"]
+        routes = route_summary.get("selected_routes", [])
+        metrics = route_summary.get("route_metrics", {})
+        if not isinstance(routes, list) or not routes:
+            return SECTION_CONTENT["model.tex"]
+        route_text = " + ".join(self._latex_escape(str(route)) for route in routes)
+        metric_parts = []
+        if isinstance(metrics, dict):
+            for metric_name, payload in metrics.items():
+                if isinstance(payload, dict) and "value" in payload:
+                    metric_parts.append(
+                        f"{self._latex_escape(str(metric_name))}={self._latex_escape(str(payload['value']))}"
+                    )
+        metric_sentence = (
+            " The route-specific implementation metrics are "
+            + ", ".join(metric_parts)
+            + "."
+            if metric_parts
+            else ""
+        )
+        return (
+            "\\section{Model}\n"
+            f"The selected route is {route_text}. "
+            "This route is chosen because it binds the problem diagnosis to reproducible "
+            f"code outputs and later figure planning.{metric_sentence}\n"
+        )
+
     def _generate_results_section(
         self,
         evidence: list[dict[str, object]],
@@ -139,3 +170,6 @@ class PaperWriterAgent:
             return "missing"
         value = rows[0].get(key)
         return str(value) if value else "missing"
+
+    def _latex_escape(self, value: str) -> str:
+        return value.replace("_", "\\_")
