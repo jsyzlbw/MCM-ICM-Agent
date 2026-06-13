@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Runtime workspaces and generated contest artifacts
+workspace/
+workspaces/
+runs/
+final_submission/
+*.aux
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.log
+*.out
+*.synctex.gz
+
+# macOS / editors
+.DS_Store
+.idea/
+.vscode/
