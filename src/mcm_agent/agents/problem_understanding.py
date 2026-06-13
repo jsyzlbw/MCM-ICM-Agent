@@ -6,6 +6,7 @@ from pathlib import Path
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
+from mcm_agent.providers.base import TextGenerationProvider
 
 
 REQUIRED_HEADINGS = [
@@ -29,13 +30,16 @@ def validate_required_headings(report: str) -> None:
 
 
 class ProblemUnderstandingAgent:
+    def __init__(self, llm_provider: TextGenerationProvider | None = None) -> None:
+        self.llm_provider = llm_provider
+
     def run(self, workspace_root: Path) -> None:
         parsed_problem = workspace_root / "parsed" / "problem.md"
         if not parsed_problem.exists():
             raise FileNotFoundError("missing parsed/problem.md")
 
         problem_text = parsed_problem.read_text(encoding="utf-8").strip()
-        report = self._build_report(problem_text)
+        report = self._build_report_with_llm(problem_text)
         validate_required_headings(report)
 
         output_path = workspace_root / "reports" / "problem_understanding.md"
@@ -62,6 +66,34 @@ class ProblemUnderstandingAgent:
             payload={"artifact_ids": ["problem_understanding_v1"]},
             source="ProblemUnderstandingAgent",
         )
+
+    def _build_report_with_llm(self, problem_text: str) -> str:
+        if self.llm_provider is None:
+            return self._build_report(problem_text)
+
+        prompt = "\n".join(
+            [
+                "problem_understanding",
+                "",
+                "Write a structured MCM/ICM problem understanding report in Chinese headings.",
+                "Keep the following headings exactly and fill every section with concrete content:",
+                *REQUIRED_HEADINGS,
+                "",
+                "Problem statement:",
+                problem_text,
+            ]
+        )
+        try:
+            report = self.llm_provider.generate(
+                "You are a senior mathematical modeling competition advisor.",
+                prompt,
+                temperature=0.2,
+            ).content.strip()
+            validate_required_headings(report)
+            return report
+        except Exception as exc:
+            fallback = self._build_report(problem_text)
+            return fallback + f"\n<!-- LLM fallback reason: {type(exc).__name__} -->\n"
 
     def _build_report(self, problem_text: str) -> str:
         excerpt = problem_text[:800] if problem_text else "No parsed problem text available."

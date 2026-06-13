@@ -73,7 +73,7 @@ def run_mvp_workflow(
         inputs.template_dir,
     )
     DocumentExtractionAgent(provider_bundle.mineru).run(workspace.root)
-    ProblemUnderstandingAgent().run(workspace.root)
+    ProblemUnderstandingAgent(provider_bundle.llm).run(workspace.root)
     UserDiscussionAgent().confirm_direction(
         workspace.root,
         mode="ai_led" if auto_approve else "checkpoint_required",
