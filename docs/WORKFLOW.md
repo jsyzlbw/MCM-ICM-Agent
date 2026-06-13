@@ -48,6 +48,12 @@ mcm-agent resume /tmp/mcm_agent_task \
   --auto-approve
 ```
 
+Package a reviewed workspace after `paper/main.pdf` exists:
+
+```bash
+mcm-agent package /tmp/mcm_agent_task
+```
+
 Check configured provider connectivity manually:
 
 ```bash

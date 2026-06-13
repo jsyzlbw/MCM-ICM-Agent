@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 
 from mcm_agent.config import load_settings
+from mcm_agent.agents.submission import SubmissionPackager
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import TaskInput
 from mcm_agent.core.workspace import create_workspace
@@ -165,6 +166,21 @@ def resume_workflow(
         until_stage=until_stage,
     )
     typer.echo(f"Resumed workflow: {workspace_path.resolve()}")
+
+
+@app.command("package")
+def package_submission(workspace: str) -> None:
+    """Create final submission zip files for a reviewed workspace."""
+    workspace_path = Path(workspace)
+    success = SubmissionPackager().package(workspace_path)
+    if not success:
+        blocked_path = workspace_path / "final_submission" / "submission_blocked.md"
+        typer.echo(f"Submission package blocked: {blocked_path.resolve()}")
+        raise typer.Exit(code=1)
+    typer.echo(
+        "Submission package created: "
+        f"{(workspace_path / 'final_submission' / 'submission_package.zip').resolve()}"
+    )
 
 
 @app.command("provider-status")

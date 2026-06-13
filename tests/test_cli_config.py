@@ -137,3 +137,24 @@ def test_resume_command_runs_from_requested_stage(tmp_path: Path) -> None:
         if '"stage_id": "validation_gate"' in line
     ]
     assert len(stage_ids) >= 2
+
+
+def test_package_command_creates_submission_manifest(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    (workspace.root / "paper" / "main.pdf").write_bytes(b"%PDF")
+    (workspace.root / "review" / "reference_audit_report.md").write_text(
+        "# Reference Audit Report\n\nMissing references: 0\n",
+        encoding="utf-8",
+    )
+    write_json(workspace.root / "figures" / "figure_registry.json", [])
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {"selected_routes": ["balanced_contest_route"], "route_metrics": {}},
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["package", str(workspace.root)])
+
+    assert result.exit_code == 0
+    assert "Submission package created" in result.output
+    assert (workspace.root / "final_submission" / "submission_manifest.json").exists()
