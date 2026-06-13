@@ -123,6 +123,28 @@ upload the local PDF to the returned URL, poll the batch result, download the
 result zip, and persist `problem.md`, `problem.json`, `problem_layout.json`, and
 `formulas.json` into the task workspace.
 
+### Provider Smoke Tests
+
+Smoke tests are manual checks for real API connectivity. They are intentionally not part
+of the normal pytest suite.
+
+```bash
+python scripts/smoke_providers.py --env-file .env --workspace .smoke
+```
+
+To include a real MinerU parse check, provide a small local PDF:
+
+```bash
+python scripts/smoke_providers.py \
+  --env-file .env \
+  --workspace .smoke \
+  --mineru-file /path/to/sample.pdf
+```
+
+The script reports `PASSED`, `SKIPPED`, or `FAILED` for LLM, Tavily, Firecrawl,
+UShallPass, and MinerU. Missing optional keys are reported as `SKIPPED`; actual API
+or response failures return a non-zero exit code.
+
 ## Verification
 
 ```bash
