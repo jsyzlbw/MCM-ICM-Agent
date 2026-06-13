@@ -99,10 +99,16 @@ def build_default_workflow_graph() -> WorkflowGraph:
         "user_discussion": AgentNode(
             node_id="user_discussion",
             label="User Discussion Agent",
-            responsibility="Discuss feasible routes with the user and confirm final research direction.",
+            responsibility=(
+                "Discuss feasible routes with the user, send new data-dependent ideas back "
+                "to data feasibility checking, and confirm the final research direction."
+            ),
             input_artifacts=["reports/problem_understanding.md", "reports/data_feasibility_report.md"],
             output_artifacts=["discussion/confirmed_direction.md"],
-            pass_criteria=["The selected direction names data assumptions and fallback choices."],
+            pass_criteria=[
+                "The selected direction names data assumptions and fallback choices.",
+                "Any newly introduced dataset has passed Data Feasibility Scout.",
+            ],
         ),
         "methodology_rag": AgentNode(
             node_id="methodology_rag",
@@ -249,7 +255,8 @@ def build_default_workflow_graph() -> WorkflowGraph:
         WorkflowEdge("data_feasibility_scout", "user_discussion"),
         WorkflowEdge("data_feasibility_scout", "research_reframing", "data_unavailable"),
         WorkflowEdge("research_reframing", "user_discussion"),
-        WorkflowEdge("user_discussion", "methodology_rag"),
+        WorkflowEdge("user_discussion", "data_feasibility_scout", "new_data_need"),
+        WorkflowEdge("user_discussion", "methodology_rag", "direction_locked"),
         WorkflowEdge("methodology_rag", "search_data"),
         WorkflowEdge("search_data", "source_verifier"),
         WorkflowEdge("source_verifier", "data_eda"),

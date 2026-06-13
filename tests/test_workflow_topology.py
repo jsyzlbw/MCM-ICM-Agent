@@ -12,6 +12,12 @@ def test_default_workflow_runs_data_feasibility_before_user_direction() -> None:
 
     assert graph.has_edge("problem_understanding", "data_feasibility_scout")
     assert graph.has_edge("data_feasibility_scout", "user_discussion")
+    assert graph.has_edge(
+        "user_discussion",
+        "data_feasibility_scout",
+        condition="new_data_need",
+    )
+    assert graph.has_edge("user_discussion", "methodology_rag", condition="direction_locked")
     assert not graph.has_edge("problem_understanding", "user_discussion")
 
 

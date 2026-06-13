@@ -42,6 +42,11 @@ def test_create_workspace_initializes_required_files(tmp_path: Path) -> None:
         "to_node": "data_feasibility_scout",
         "condition": "pass",
     } in topology["edges"]
+    assert {
+        "from_node": "user_discussion",
+        "to_node": "data_feasibility_scout",
+        "condition": "new_data_need",
+    } in topology["edges"]
 
 
 def test_artifact_registry_add_get_and_update(tmp_path: Path) -> None:

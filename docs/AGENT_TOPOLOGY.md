@@ -30,7 +30,8 @@ flowchart TD
     DFS -->|reframe| RR["Reframe"]
     RR --> UD
 
-    UD --> MR["Method RAG"]
+    UD -->|new data| DFS
+    UD -->|lock| MR["Method RAG"]
     MR --> SD["Search Data"]
     SD --> SV["Source Check"]
 
@@ -79,7 +80,7 @@ previewers. The full responsibilities are:
 | Understand | Problem Understanding Agent | Extracts subtasks, constraints, metrics, ambiguities, and implicit assumptions. |
 | Data Scout | Data Feasibility Scout | Checks whether critical data is public, proxy-needed, private, or unknown before user discussion. |
 | Reframe | Research Reframing Agent | Converts unavailable-data plans into proxy-data or alternate-question routes. |
-| User Discuss | User Discussion Agent | Confirms a feasible research direction with the user. |
+| User Discuss | User Discussion Agent | Confirms a feasible research direction; sends new data-dependent ideas back to Data Scout. |
 | Method RAG | Methodology RAG Agent | Retrieves modeling methods, excellent-paper patterns, and review checklists. |
 | Search Data | Search & Data Agent | Uses official APIs, Tavily, Firecrawl, Brave, and Exa to collect data and sources. |
 | Source Check | Source Verifier Agent | Checks source reliability, license, rank, and whether data can support claims. |
@@ -103,6 +104,17 @@ The user discussion stage should receive a data feasibility report, not just a p
 understanding report. This prevents the agent and user from agreeing on an elegant plan
 that later collapses because the required data is private, expensive, unavailable, or too
 sparse.
+
+The loop is intentional:
+
+```text
+Data Scout -> User Discuss -> Data Scout
+```
+
+If the user introduces a new idea during discussion, and that idea depends on a new dataset,
+the workflow must return to `Data Scout` before the direction is locked. Only when both the
+research idea and its data assumptions are feasible does `User Discuss` move forward to
+`Method RAG`.
 
 `Data Feasibility Scout` classifies each critical dataset as:
 
