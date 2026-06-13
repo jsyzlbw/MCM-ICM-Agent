@@ -116,3 +116,4 @@ pytest -v
 - [System design](docs/DESIGN.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Agent topology](docs/AGENT_TOPOLOGY.md)
+- [Implementation roadmap](docs/superpowers/plans/2026-06-13-mcm-agent-implementation-roadmap.md)
