@@ -1,7 +1,49 @@
 from pathlib import Path
 
-from mcm_agent.workflows.mvp import run_demo_workflow
+from mcm_agent.core.models import TaskInput
+from mcm_agent.providers.base import ProviderBundle
+from mcm_agent.providers.humanizer import FakeHumanizerProvider
+from mcm_agent.providers.llm import FakeLLMProvider
+from mcm_agent.providers.mineru import ParsedDocument
+from mcm_agent.providers.search import SearchResult
 from mcm_agent.utils.json_io import read_json
+from mcm_agent.workflows.mvp import run_demo_workflow, run_mvp_workflow
+
+
+class InjectedMinerUProvider:
+    def parse_document(self, input_path: Path, output_dir: Path) -> ParsedDocument:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        markdown_path = output_dir / "problem.md"
+        json_path = output_dir / "problem.json"
+        markdown_path.write_text(f"# Injected Parse\n\n{input_path.name}", encoding="utf-8")
+        json_path.write_text("{}", encoding="utf-8")
+        return ParsedDocument(markdown_path=str(markdown_path), json_path=str(json_path))
+
+
+class InjectedSearchProvider:
+    def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+        return [
+            SearchResult(
+                title="Injected official source",
+                url="https://data.gov/injected",
+                snippet="Injected search result.",
+                score=1,
+            )
+        ]
+
+
+class InjectedExtractProvider:
+    def extract(self, url: str):
+        return type(
+            "ExtractedPage",
+            (),
+            {
+                "url": url,
+                "title": "Injected official source",
+                "markdown": "# Injected external data",
+                "metadata": {},
+            },
+        )()
 
 
 def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
@@ -36,3 +78,30 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
 
     state = read_json(workspace / "task_state.json", {})
     assert [item for item in state["checkpoints"] if item["status"] == "pending"] == []
+
+
+def test_run_mvp_workflow_uses_injected_provider_bundle(tmp_path: Path) -> None:
+    workspace = tmp_path / "task"
+    problem = tmp_path / "problem.md"
+    attachment = tmp_path / "data.csv"
+    problem.write_text("# Problem\n\nUse the injected provider.", encoding="utf-8")
+    attachment.write_text("x,y\n1,2\n2,3\n", encoding="utf-8")
+    providers = ProviderBundle(
+        llm=FakeLLMProvider({"default": ""}),
+        mineru=InjectedMinerUProvider(),
+        search=InjectedSearchProvider(),
+        extractor=InjectedExtractProvider(),
+        humanizer=FakeHumanizerProvider({}),
+        latex=object(),
+    )
+
+    run_mvp_workflow(
+        workspace,
+        TaskInput(problem_file=problem, attachments=[attachment]),
+        providers=providers,
+        auto_approve=True,
+    )
+
+    assert "Injected Parse" in (workspace / "parsed/problem.md").read_text(encoding="utf-8")
+    source_registry = read_json(workspace / "data/source_registry.json", [])
+    assert source_registry[0]["title"] == "Injected official source"

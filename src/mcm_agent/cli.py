@@ -6,8 +6,10 @@ import typer
 
 from mcm_agent.config import load_settings
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.models import TaskInput
 from mcm_agent.core.workspace import create_workspace
-from mcm_agent.workflows.mvp import run_demo_workflow
+from mcm_agent.providers.factory import build_provider_bundle
+from mcm_agent.workflows.mvp import run_demo_workflow, run_mvp_workflow
 
 app = typer.Typer(help="MCM/ICM math modeling agent CLI.")
 
@@ -60,6 +62,36 @@ def run_demo(workspace: str, auto_approve: bool = True) -> None:
     """Run the deterministic demo workflow."""
     run_demo_workflow(Path(workspace), auto_approve=auto_approve)
     typer.echo(f"Demo workflow completed: {Path(workspace).resolve()}")
+
+
+@app.command("run")
+def run_workflow(
+    workspace: str,
+    problem_file: Path = typer.Option(..., "--problem-file", "-p"),
+    attachment: list[Path] = typer.Option([], "--attachment", "-a"),
+    user_idea_file: Path | None = typer.Option(None, "--user-idea-file"),
+    template_dir: Path | None = typer.Option(None, "--template-dir"),
+    supervisor_skills_dir: Path | None = typer.Option(None, "--supervisor-skills-dir"),
+    env_file: str | None = typer.Option(None, "--env-file"),
+    auto_approve: bool = typer.Option(False, "--auto-approve/--no-auto-approve"),
+) -> None:
+    """Run the MVP workflow on real task inputs using configured providers."""
+    workspace_path = Path(workspace)
+    settings = load_settings(env_file)
+    providers = build_provider_bundle(settings, workspace_root=workspace_path)
+    run_mvp_workflow(
+        workspace_path,
+        TaskInput(
+            problem_file=problem_file,
+            attachments=attachment,
+            user_idea_file=user_idea_file,
+            template_dir=template_dir,
+        ),
+        providers=providers,
+        supervisor_skills_dir=supervisor_skills_dir,
+        auto_approve=auto_approve,
+    )
+    typer.echo(f"Workflow completed: {workspace_path.resolve()}")
 
 
 @app.command("provider-status")

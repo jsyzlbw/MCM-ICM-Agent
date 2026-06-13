@@ -19,7 +19,10 @@ from mcm_agent.agents.writer import PaperWriterAgent
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import TaskInput
 from mcm_agent.core.workspace import create_workspace
+from mcm_agent.providers.base import ProviderBundle
 from mcm_agent.providers.humanizer import FakeHumanizerProvider
+from mcm_agent.providers.latex import LatexProvider
+from mcm_agent.providers.llm import FakeLLMProvider
 from mcm_agent.providers.mineru import FakeMinerUProvider
 from mcm_agent.providers.search import SearchResult
 from mcm_agent.utils.json_io import read_json
@@ -56,10 +59,12 @@ def run_mvp_workflow(
     workspace_root: Path,
     inputs: TaskInput,
     *,
+    providers: ProviderBundle | None = None,
     supervisor_skills_dir: Path | None = None,
     auto_approve: bool = False,
 ) -> None:
     workspace = create_workspace(workspace_root)
+    provider_bundle = providers or _default_demo_providers()
     IntakeAgent().run(
         workspace.root,
         inputs.problem_file,
@@ -67,7 +72,7 @@ def run_mvp_workflow(
         inputs.user_idea_file,
         inputs.template_dir,
     )
-    DocumentExtractionAgent(FakeMinerUProvider()).run(workspace.root)
+    DocumentExtractionAgent(provider_bundle.mineru).run(workspace.root)
     ProblemUnderstandingAgent().run(workspace.root)
     UserDiscussionAgent().confirm_direction(
         workspace.root,
@@ -83,7 +88,7 @@ def run_mvp_workflow(
         workspace.root / "discussion" / "confirmed_direction.md",
     )
     ModelJudge().run(workspace.root, workspace.root / "reports" / "model_candidates.md")
-    SearchDataAgent(DemoSearchProvider(), DemoExtractProvider()).run(workspace.root)
+    SearchDataAgent(provider_bundle.search, provider_bundle.extractor).run(workspace.root)
     MethodologyRAGAgent().run(workspace.root, supervisor_skills_dir)
     DataEDAAgent().run(workspace.root)
     SolverCoderAgent().run(workspace.root)
@@ -91,7 +96,7 @@ def run_mvp_workflow(
     FigurePlanningAgent().run(workspace.root)
     VisualizationAgent().run(workspace.root)
     PaperWriterAgent().run(workspace.root)
-    ComplianceOriginalityAgent(FakeHumanizerProvider({})).run(workspace.root)
+    ComplianceOriginalityAgent(provider_bundle.humanizer).run(workspace.root)
     ReviewerAgent().run(workspace.root)
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
@@ -106,6 +111,17 @@ def run_demo_workflow(workspace_root: Path, *, auto_approve: bool = True) -> Non
         TaskInput(problem_file=problem, attachments=attachments, user_idea_file=idea),
         supervisor_skills_dir=skills,
         auto_approve=auto_approve,
+    )
+
+
+def _default_demo_providers() -> ProviderBundle:
+    return ProviderBundle(
+        llm=FakeLLMProvider({"default": ""}),
+        mineru=FakeMinerUProvider(),
+        search=DemoSearchProvider(),
+        extractor=DemoExtractProvider(),
+        humanizer=FakeHumanizerProvider({}),
+        latex=LatexProvider(),
     )
 
 

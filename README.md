@@ -15,6 +15,19 @@ mcm-agent run-demo /tmp/mcm_agent_demo --auto-approve
 mcm-agent status /tmp/mcm_agent_demo
 ```
 
+Run a real task input with the configured providers:
+
+```bash
+mcm-agent run /tmp/mcm_agent_task \
+  --env-file .env \
+  --problem-file /path/to/problem.pdf \
+  --attachment /path/to/data.csv \
+  --auto-approve
+```
+
+Use repeated `--attachment` flags for multiple files. Omit `--auto-approve` when you
+want the generated checkpoints to stay pending for human review.
+
 ## Runtime Shape
 
 The implementation uses a workspace per contest task. Each workspace stores inputs, parsed

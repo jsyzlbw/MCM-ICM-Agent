@@ -26,3 +26,30 @@ def test_provider_status_reports_fake_and_real_providers(tmp_path: Path) -> None
     assert "LLM: openai-compatible (test-model)" in result.output
     assert "Search: Tavily API" in result.output
     assert "Extract: Firecrawl API" in result.output
+
+
+def test_run_command_creates_workspace_from_problem_and_attachment(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    problem = tmp_path / "problem.md"
+    attachment = tmp_path / "data.csv"
+    problem.write_text("# Problem\n\nBuild a model.", encoding="utf-8")
+    attachment.write_text("x,y\n1,2\n2,3\n", encoding="utf-8")
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            str(workspace),
+            "--problem-file",
+            str(problem),
+            "--attachment",
+            str(attachment),
+            "--auto-approve",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Workflow completed" in result.output
+    assert (workspace / "paper/main.tex").exists()
+    assert (workspace / "final_submission/AI_use_report.md").exists()
