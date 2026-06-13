@@ -42,10 +42,12 @@ EMPTY_JSON_LIST_FILES = [
     "results/evidence_registry.json",
     "figures/figure_plan.json",
     "figures/figure_registry.json",
+    "review/gate_decisions.json",
 ]
 
 EMPTY_TEXT_FILES = {
     "event_log.jsonl": "",
+    "stage_runs.jsonl": "",
     "data/retrieval_log.jsonl": "",
     "unresolved_issues.md": "# Unresolved Issues\n\n",
     "review/methodology_checklist_report.md": "# Methodology Checklist Report\n\n",

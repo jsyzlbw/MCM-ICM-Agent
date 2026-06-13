@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
 from mcm_agent.providers.mineru import FakeMinerUProvider
@@ -19,6 +20,10 @@ class DocumentExtractionAgent:
             raise FileNotFoundError("missing input/problem.*")
 
         parsed = self.mineru_provider.parse_document(problem_candidates[0], workspace_root / "parsed")
+        parsed_text = Path(parsed.markdown_path).read_text(encoding="utf-8").strip()
+        extraction_issues = []
+        if not parsed_text:
+            extraction_issues.append("Parsed problem text is empty.")
 
         report = "\n".join(
             [
@@ -30,6 +35,10 @@ class DocumentExtractionAgent:
                 f"- Tables: `{len(parsed.table_paths)}`",
                 f"- Images: `{len(parsed.image_paths)}`",
                 f"- Formula file: `{parsed.formula_path}`",
+                "",
+                "## Blocking Issues",
+                *(f"- {issue}" for issue in extraction_issues),
+                "" if extraction_issues else "- None.",
                 "",
             ]
         )
@@ -46,16 +55,31 @@ class DocumentExtractionAgent:
                     type="parsed_problem",
                     path="parsed/problem.md",
                     producer="DocumentExtractionAgent",
-                    status=ArtifactStatus.APPROVED,
+                    status=ArtifactStatus.REJECTED if extraction_issues else ArtifactStatus.APPROVED,
                     created_at=datetime.now(UTC),
-                    quality_checks=["fake_parse_available"],
+                    quality_checks=["problem_text_nonempty"],
                 )
             )
         except ValueError:
-            registry.update_status("parsed_problem_v1", ArtifactStatus.APPROVED)
+            registry.update_status(
+                "parsed_problem_v1",
+                ArtifactStatus.REJECTED if extraction_issues else ArtifactStatus.APPROVED,
+            )
+
+        record_gate_decision(
+            workspace_root,
+            "extraction_gate.json",
+            GateDecision(
+                gate_id="extraction_quality_gate",
+                status="fail" if extraction_issues else "pass",
+                failure_reason="missing_problem_text" if extraction_issues else None,
+                repair_stage="mineru_extraction" if extraction_issues else None,
+                blocking_findings=extraction_issues,
+            ),
+        )
 
         Coordinator(workspace_root).emit(
-            "document.parsed",
+            "document.parse.failed" if extraction_issues else "document.parsed",
             payload={"artifact_ids": ["parsed_problem_v1"]},
             source="DocumentExtractionAgent",
         )

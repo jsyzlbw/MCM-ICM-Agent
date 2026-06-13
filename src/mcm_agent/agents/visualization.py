@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.models import ArtifactStatus, FigurePlanItem, FigureRecord
 from mcm_agent.utils.json_io import read_json, write_json
 
@@ -66,7 +67,30 @@ class VisualizationAgent:
             workspace_root / "figures" / "figure_registry.json",
             [record.model_dump(mode="json") for record in registry],
         )
+        figure_issues = self._figure_gate_issues(registry)
+        record_gate_decision(
+            workspace_root,
+            "figure_gate.json",
+            GateDecision(
+                gate_id="figure_quality_gate",
+                status="fail" if figure_issues else "pass",
+                failure_reason="visual_or_vector_issue" if figure_issues else None,
+                repair_stage="figure_planning" if figure_issues else None,
+                blocking_findings=figure_issues,
+            ),
+        )
         Coordinator(workspace_root).emit("figures.ready", source="VisualizationAgent")
+
+    def _figure_gate_issues(self, registry: list[FigureRecord]) -> list[str]:
+        issues: list[str] = []
+        for record in registry:
+            if record.type == "data_plot":
+                has_vector = any(output.endswith((".pdf", ".svg")) for output in record.outputs)
+                if not has_vector:
+                    issues.append(f"Data figure `{record.figure_id}` has no PDF/SVG output.")
+            if record.status == ArtifactStatus.REJECTED:
+                issues.append(f"Figure `{record.figure_id}` is rejected.")
+        return issues
 
     def _render_data_plot(self, workspace_root: Path, item: FigurePlanItem) -> FigureRecord:
         source = workspace_root / item.source_data[0]

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.utils.json_io import read_json, write_json
 
 
@@ -65,6 +66,17 @@ class ValidationAgent:
         (workspace_root / "reports" / "validation_report.md").write_text(
             report,
             encoding="utf-8",
+        )
+        record_gate_decision(
+            workspace_root,
+            "validation_gate.json",
+            GateDecision(
+                gate_id="validation_gate",
+                status="fail" if blocking_issues else "pass",
+                failure_reason="bad_results" if blocking_issues else None,
+                repair_stage="solver_coder" if blocking_issues else None,
+                blocking_findings=blocking_issues,
+            ),
         )
 
         Coordinator(workspace_root).emit(

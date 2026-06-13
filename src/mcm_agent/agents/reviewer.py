@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.lineage import find_unbound_external_data
 from mcm_agent.utils.json_io import read_json
 
@@ -74,6 +75,25 @@ class ReviewerAgent:
                 ]
             ),
             encoding="utf-8",
+        )
+        failure_reason = None
+        repair_stage = None
+        if unbound_sources:
+            failure_reason = "bad_data"
+            repair_stage = "search_data"
+        elif blocking:
+            failure_reason = "bad_writing"
+            repair_stage = "paper_writer"
+        record_gate_decision(
+            workspace_root,
+            "final_gate.json",
+            GateDecision(
+                gate_id="final_gatekeeper",
+                status="fail" if blocking else "pass",
+                failure_reason=failure_reason,
+                repair_stage=repair_stage,
+                blocking_findings=blocking,
+            ),
         )
         Coordinator(workspace_root).emit(
             "paper.review.failed" if blocking else "paper.review.passed",

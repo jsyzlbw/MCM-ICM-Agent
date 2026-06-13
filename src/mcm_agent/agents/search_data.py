@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.lineage import append_citation_candidate, append_lineage_record
 from mcm_agent.core.models import CitationCandidate, DataLineageRecord, RetrievalLogEntry, SourceRecord
 from mcm_agent.providers.search import ExtractProvider, SearchProvider
@@ -88,7 +89,22 @@ class SearchDataAgent:
             "\n".join(notes) + "\n",
             encoding="utf-8",
         )
-        Coordinator(workspace_root).emit("data.ready", source="SearchDataAgent")
+        source_issues = self._source_gate_issues(source_records)
+        record_gate_decision(
+            workspace_root,
+            "source_gate.json",
+            GateDecision(
+                gate_id="source_verifier",
+                status="fail" if source_issues else "pass",
+                failure_reason="source_unreliable" if source_issues else None,
+                repair_stage="search_data" if source_issues else None,
+                blocking_findings=source_issues,
+            ),
+        )
+        Coordinator(workspace_root).emit(
+            "data.failed" if source_issues else "data.ready",
+            source="SearchDataAgent",
+        )
 
     def _record_provenance(
         self,
@@ -143,3 +159,15 @@ class SearchDataAgent:
         if any(marker in url for marker in official_markers):
             return "official"
         return "background_only"
+
+    def _source_gate_issues(self, source_records: list[SourceRecord]) -> list[str]:
+        if not source_records:
+            return ["No external sources were retrieved."]
+        trusted = [
+            record
+            for record in source_records
+            if record.source_rank in {"official", "academic", "reputable"}
+        ]
+        if not trusted:
+            return ["No official, academic, or reputable source was retrieved."]
+        return []

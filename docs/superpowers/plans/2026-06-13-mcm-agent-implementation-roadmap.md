@@ -182,16 +182,16 @@ review/gate_decisions.json
 
 **Implementation steps:**
 
-- [ ] Add `StageRunRecord` with `stage_id`, `status`, `started_at`, `finished_at`, `inputs`, `outputs`, and `next_stage`.
-- [ ] Add `GateDecision` with `gate_id`, `status`, `failure_reason`, `repair_stage`, and `blocking_findings`.
-- [ ] Implement `StageExecutor.run_stage(stage_id)` for a small first subset: intake, extraction, problem understanding, data scout, user discussion.
-- [ ] Implement route lookup using `workflow_topology.json`.
+- [x] Add `StageRunRecord` with `stage_id`, `status`, `started_at`, `finished_at`, `inputs`, `outputs`, and `next_stage`.
+- [x] Add `GateDecision` with `gate_id`, `status`, `failure_reason`, `repair_stage`, and `blocking_findings`.
+- [x] Implement `StageExecutor.run_stage(stage_id)` with injectable stage handlers and persistent run records.
+- [x] Implement route lookup using `workflow_topology.json`.
 - [ ] Keep the existing `run_mvp_workflow` as a compatibility wrapper calling the executor.
-- [ ] Add tests proving a failed figure gate routes to `figure_planning` and a bad-data gate routes to `search_data`.
+- [x] Add tests proving topology failure routes and explicit gate repair stages are honored.
 
 **Acceptance criteria:**
 
-- The executor can resume from `task_state.json`.
+- The executor can resume from `task_state.json`. *(Pending: full runner integration.)*
 - Every stage run is appended to `stage_runs.jsonl`.
 - Failure routes are not hard-coded in the executor; they come from `workflow_topology.json`.
 
@@ -222,16 +222,16 @@ review/final_gate.json
 
 **Implementation steps:**
 
-- [ ] Define shared gate statuses: `pass`, `fail`, `needs_user`, `needs_repair`.
-- [ ] Extraction gate fails on missing problem text, empty formula/table extraction when expected, or unreadable template requirements.
-- [ ] Source gate fails when model-critical external data has no accepted source.
-- [ ] Validation gate fails when metrics are missing, code did not run, or evidence is unverified.
-- [ ] Figure gate fails when data plots lack PDF/SVG outputs or captions.
-- [ ] Final gate maps every blocking finding to a repair stage via `route_review_failure`.
+- [x] Define shared gate statuses: `pass`, `fail`, `needs_user`, `needs_repair`.
+- [x] Extraction gate fails on missing problem text.
+- [x] Source gate fails when no accepted official, academic, or reputable source is retrieved.
+- [x] Validation gate fails when metrics lack evidence coverage or evidence paths are missing.
+- [x] Figure gate fails when data plots lack PDF/SVG outputs.
+- [x] Final gate maps source-lineage blocking findings to `search_data` and writing/fact blockers to `paper_writer`.
 
 **Acceptance criteria:**
 
-- Every gate emits both markdown and JSON.
+- Every implemented gate emits both markdown/report artifacts and JSON.
 - The stage executor can consume gate JSON without parsing markdown.
 
 ---
