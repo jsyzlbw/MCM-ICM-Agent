@@ -39,6 +39,18 @@ class ValidationAgent:
                     f"Experiment run `{run_id}` failed or missed outputs: {missing_outputs}."
                 )
 
+        binding_report = read_json(workspace_root / "results" / "solver_binding_report.json", {})
+        binding_failure = False
+        if isinstance(binding_report, dict) and binding_report.get("status") == "fail":
+            binding_failure = True
+            missing_bindings = binding_report.get("missing_bindings", [])
+            if isinstance(missing_bindings, list):
+                blocking_issues.append(
+                    "Missing solver column bindings: "
+                    + ", ".join(f"`{binding}`" for binding in missing_bindings)
+                    + "."
+                )
+
         write_json(
             workspace_root / "results" / "robustness_checks.json",
             {"blocking_issue_count": len(blocking_issues)},
@@ -83,7 +95,7 @@ class ValidationAgent:
             GateDecision(
                 gate_id="validation_gate",
                 status="fail" if blocking_issues else "pass",
-                failure_reason="bad_results" if blocking_issues else None,
+                failure_reason="weak_model" if binding_failure else ("bad_results" if blocking_issues else None),
                 repair_stage="solver_coder" if blocking_issues else None,
                 blocking_findings=blocking_issues,
             ),

@@ -267,6 +267,7 @@ def _mvp_stage_handlers(
             "code",
             "results/model_metrics.json",
             "results/model_route_summary.json",
+            "results/solver_binding_report.json",
             "results/evidence_registry.json",
         ]
 

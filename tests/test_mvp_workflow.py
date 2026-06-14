@@ -83,6 +83,7 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "reports/data_profile.md",
         "results/model_metrics.json",
         "results/model_route_summary.json",
+        "results/solver_binding_report.json",
         "results/evidence_registry.json",
         "results/experiment_runs.jsonl",
         "reports/validation_report.md",

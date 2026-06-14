@@ -38,6 +38,33 @@ def test_model_judge_writes_machine_readable_experiment_spec(tmp_path: Path) -> 
     assert "results/problem1_results.csv" in spec["experiments"][0]["expected_outputs"]
 
 
+def test_model_judge_experiment_spec_matches_selected_fallback_routes(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    candidates = workspace.root / "reports" / "model_candidates.md"
+    candidates.write_text(
+        "\n".join(
+            [
+                "# Model Candidates",
+                "",
+                "| Route ID | Candidate | Main Strength |",
+                "|---|---|---|",
+                "| multi_criteria_evaluation | Entropy-TOPSIS priority scoring | transparent ranking |",
+                "| constrained_optimization | Resource allocation model | budget-aware policy |",
+                "| network_flow_graph | Network route model | graph analysis |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    ModelJudge().run(workspace.root, candidates)
+
+    decision = (workspace.root / "reports" / "model_decision.md").read_text(encoding="utf-8")
+    spec = read_json(workspace.root / "reports" / "experiment_spec.json", {})
+    route_ids = [item["route_id"] for item in spec["experiments"]]
+    assert "multi_criteria_evaluation + constrained_optimization" in decision
+    assert route_ids == ["multi_criteria_evaluation", "constrained_optimization"]
+
+
 def test_solver_prefers_experiment_spec_over_markdown_route_detection(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     processed = workspace.root / "data" / "processed" / "sample.csv"
@@ -207,3 +234,37 @@ def test_solver_uses_schema_profile_semantic_tags_for_column_bindings(tmp_path: 
     assert summary["column_bindings"]["network_flow_graph"]["source_column"] == "a"
     assert summary["column_bindings"]["network_flow_graph"]["target_column"] == "b"
     assert summary["column_bindings"]["network_flow_graph"]["cost_column"] == "c"
+
+
+def test_solver_writes_binding_report_when_required_columns_are_missing(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text("x,y\n1,2\n2,3\n", encoding="utf-8")
+    (workspace.root / "reports" / "experiment_spec.json").write_text(
+        """
+{
+  "version": 1,
+  "experiments": [
+    {
+      "route_id": "network_flow_graph",
+      "solver_module": "mcm_agent.solver_modules.network",
+      "method": "shortest_path_table",
+      "input_requirements": ["source column", "target column", "cost column"],
+      "expected_outputs": ["results/network_paths.csv"],
+      "metrics": ["shortest_path_cost"],
+      "column_bindings": {"source_column": "", "target_column": "", "cost_column": ""}
+    }
+  ]
+}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    binding_report = read_json(workspace.root / "results" / "solver_binding_report.json", {})
+    assert binding_report["status"] == "fail"
+    assert "network_flow_graph.source_column" in binding_report["missing_bindings"]
+    assert "network_flow_graph.target_column" in binding_report["missing_bindings"]
+    assert "network_flow_graph.cost_column" in binding_report["missing_bindings"]

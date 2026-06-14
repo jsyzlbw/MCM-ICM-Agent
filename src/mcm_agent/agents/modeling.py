@@ -221,7 +221,9 @@ class ModelJudge:
             diagnosis if diagnosis.routes else None
         )
         experiment_plan = self._fallback_experiment_plan(diagnosis)
-        experiment_spec = build_experiment_spec([route.route_id for route in diagnosis.routes])
+        experiment_spec = build_experiment_spec(
+            self._selected_route_ids_for_spec(decision, diagnosis)
+        )
 
         (workspace_root / "reports" / "model_decision.md").write_text(decision, encoding="utf-8")
         (workspace_root / "reports" / "experiment_plan.md").write_text(
@@ -325,6 +327,24 @@ class ModelJudge:
                 "",
             ]
         )
+
+    def _selected_route_ids_for_spec(
+        self,
+        decision: str,
+        diagnosis: ProblemDiagnosis,
+    ) -> list[str]:
+        route_order = [
+            "multi_criteria_evaluation",
+            "constrained_optimization",
+            "forecasting_model",
+            "monte_carlo_simulation",
+            "network_flow_graph",
+            "multi_objective_decision",
+        ]
+        selected = [route_id for route_id in route_order if route_id in decision]
+        if selected:
+            return selected
+        return [route.route_id for route in diagnosis.routes[:2]]
 
     def _fallback_experiment_plan(self, diagnosis: ProblemDiagnosis | None = None) -> str:
         metrics = sorted({metric for route in diagnosis.routes for metric in route.metrics}) if diagnosis else []

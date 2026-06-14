@@ -3,6 +3,7 @@ from pathlib import Path
 from mcm_agent.agents.validation import ValidationAgent
 from mcm_agent.core.events import EventLog
 from mcm_agent.core.workspace import create_workspace
+from mcm_agent.utils.json_io import read_json
 from mcm_agent.utils.json_io import write_json
 
 
@@ -42,3 +43,24 @@ def test_validation_fails_when_metric_evidence_missing(tmp_path: Path) -> None:
 
     events = EventLog(workspace.root / "event_log.jsonl").read_all()
     assert events[-1].event_type == "validation.failed"
+
+
+def test_validation_fails_on_solver_binding_report_failure(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(workspace.root / "results" / "model_metrics.json", {})
+    write_json(workspace.root / "results" / "evidence_registry.json", [])
+    write_json(
+        workspace.root / "results" / "solver_binding_report.json",
+        {
+            "status": "fail",
+            "missing_bindings": ["network_flow_graph.source_column"],
+            "details": [],
+        },
+    )
+
+    ValidationAgent().run(workspace.root)
+
+    decision = read_json(workspace.root / "review" / "validation_gate.json", {})
+    assert decision["status"] == "fail"
+    assert decision["failure_reason"] == "weak_model"
+    assert "network_flow_graph.source_column" in decision["blocking_findings"][0]

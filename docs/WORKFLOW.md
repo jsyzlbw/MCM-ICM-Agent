@@ -190,6 +190,11 @@ unique count, and semantic tags such as `time`, `target`, `source_node`, `target
 `cost`, `capacity`, and `numeric_indicator`. Solver column binding uses these tags before
 falling back to column-name heuristics.
 
+`solver_binding_report.json` records whether required solver columns were successfully
+bound. Missing required bindings, such as a network route without source/target/cost
+columns, fail validation with `failure_reason=weak_model` and route repair to
+`solver_coder`.
+
 `model_route_summary.json` binds the selected model route to route-specific metrics,
 figure planning, and the paper model section.
 

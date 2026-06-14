@@ -33,6 +33,8 @@ class SolverCoderAgent:
             experiment_spec,
             selected_routes,
         )
+        binding_report = self._binding_report(column_bindings, selected_routes)
+        self._write_binding_report(workspace_root, binding_report)
         package_src = str(Path(__file__).resolve().parents[2])
         script = "\n".join(
             [
@@ -160,6 +162,7 @@ class SolverCoderAgent:
                 "solver_modules": self._solver_modules(selected_routes),
                 "experiment_spec_used": bool(experiment_spec.experiments),
                 "column_bindings": column_bindings,
+                "binding_status": binding_report["status"],
                 "route_metrics": route_metrics,
                 "source_result": str(result_path.relative_to(workspace_root)),
             },
@@ -286,6 +289,58 @@ class SolverCoderAgent:
                 current.setdefault("cost_column", semantic.get("cost", self._first_existing(frame, ["cost", "distance", "weight"])))
             bindings[route_id] = current
         return bindings
+
+    def _binding_report(
+        self,
+        column_bindings: dict[str, dict[str, object]],
+        selected_routes: list[str],
+    ) -> dict[str, object]:
+        required = {
+            "forecasting_model": ["time_column", "target_column"],
+            "network_flow_graph": ["source_column", "target_column", "cost_column"],
+        }
+        missing = []
+        details = []
+        for route_id in selected_routes:
+            bindings = column_bindings.get(route_id, {})
+            route_missing = [
+                f"{route_id}.{field}"
+                for field in required.get(route_id, [])
+                if not bindings.get(field)
+            ]
+            missing.extend(route_missing)
+            details.append(
+                {
+                    "route_id": route_id,
+                    "bindings": bindings,
+                    "missing": route_missing,
+                }
+            )
+        return {
+            "status": "fail" if missing else "pass",
+            "missing_bindings": missing,
+            "details": details,
+        }
+
+    def _write_binding_report(self, workspace_root: Path, report: dict[str, object]) -> None:
+        write_json(workspace_root / "results" / "solver_binding_report.json", report)
+        lines = [
+            "# Solver Binding Report",
+            "",
+            f"Status: {report['status']}",
+            "",
+            "## Missing Bindings",
+        ]
+        missing = report.get("missing_bindings", [])
+        if isinstance(missing, list) and missing:
+            lines.extend(f"- `{item}`" for item in missing)
+        else:
+            lines.append("- None.")
+        lines.append("")
+        (workspace_root / "reports" / "solver_binding_report.md").write_text(
+            "\n".join(lines),
+            encoding="utf-8",
+        )
 
     def _semantic_columns(self, workspace_root: Path, processed_relative: str) -> dict[str, object]:
         profile = read_json(workspace_root / "results" / "schema_profile.json", {})

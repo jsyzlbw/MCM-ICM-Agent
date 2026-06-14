@@ -171,6 +171,7 @@ def build_default_workflow_graph() -> WorkflowGraph:
                 "code",
                 "results/model_metrics.json",
                 "results/model_route_summary.json",
+                "results/solver_binding_report.json",
                 "results/evidence_registry.json",
             ],
             pass_criteria=["Code executes and outputs registered evidence."],
