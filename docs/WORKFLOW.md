@@ -185,6 +185,9 @@ The first reusable solver modules are:
 
 - `mcm_agent.solver_modules.evaluation`: entropy weighting and TOPSIS ranking.
 - `mcm_agent.solver_modules.optimization`: capacity-constrained priority allocation.
+- `mcm_agent.solver_modules.forecasting`: linear trend forecast baseline.
+- `mcm_agent.solver_modules.simulation`: reproducible Monte Carlo scenario summaries.
+- `mcm_agent.solver_modules.network`: shortest-path table generation.
 
 `ReferenceManager` creates `paper/references.bib` from registered citation candidates
 and writes `review/reference_audit_report.md`. Placeholder IDs such as `source_id=missing`

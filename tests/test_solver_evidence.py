@@ -166,3 +166,37 @@ def test_solver_generated_script_uses_reusable_solver_modules(tmp_path: Path) ->
     )
     assert "mcm_agent.solver_modules.evaluation" in script
     assert "mcm_agent.solver_modules.optimization" in script
+
+
+def test_solver_runs_forecasting_simulation_and_network_modules(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text(
+        "source,target,cost,period,demand\nA,B,1,1,10\nB,C,2,2,12\nA,C,5,3,14\n",
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "model_decision.md").write_text(
+        "\n".join(
+            [
+                "# Model Decision",
+                "",
+                "## Selected Route",
+                "forecasting_model + monte_carlo_simulation + network_flow_graph.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    summary = read_json(workspace.root / "results" / "model_route_summary.json", {})
+    evidence = read_json(workspace.root / "results" / "evidence_registry.json", [])
+    assert (workspace.root / "results" / "forecast_results.csv").exists()
+    assert (workspace.root / "results" / "simulation_summary.json").exists()
+    assert (workspace.root / "results" / "network_paths.csv").exists()
+    assert "forecast_training_mae" in summary["route_metrics"]
+    assert "simulation_p95" in summary["route_metrics"]
+    assert "shortest_path_cost" in summary["route_metrics"]
+    assert any(item["evidence_id"] == "metric_shortest_path_cost" for item in evidence)

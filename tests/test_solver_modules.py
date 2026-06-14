@@ -1,7 +1,10 @@
 import pandas as pd
 
 from mcm_agent.solver_modules.evaluation import entropy_weights, topsis_rank
+from mcm_agent.solver_modules.forecasting import linear_trend_forecast
+from mcm_agent.solver_modules.network import shortest_path_table
 from mcm_agent.solver_modules.optimization import allocate_by_priority
+from mcm_agent.solver_modules.simulation import monte_carlo_scenarios
 
 
 def test_entropy_weights_are_normalized_and_prefer_informative_indicator() -> None:
@@ -54,3 +57,47 @@ def test_allocate_by_priority_respects_capacity_and_bounds() -> None:
     assert round(float(allocated["recommended_allocation"].sum()), 6) == 10.0
     assert all(allocated["recommended_allocation"] <= allocated["capacity"] + 1e-9)
     assert allocated.iloc[0]["recommended_allocation"] == 5
+
+
+def test_linear_trend_forecast_adds_future_rows_and_error_metrics() -> None:
+    frame = pd.DataFrame({"period": [1, 2, 3, 4], "demand": [10, 12, 14, 16]})
+
+    forecast, metrics = linear_trend_forecast(
+        frame,
+        time_column="period",
+        target_column="demand",
+        periods=2,
+    )
+
+    assert list(forecast["forecast_period"].tail(2)) == [5.0, 6.0]
+    assert list(forecast["forecast_value"].tail(2)) == [18.0, 20.0]
+    assert metrics["forecast_horizon"] == 2
+    assert metrics["training_mae"] < 1e-9
+
+
+def test_monte_carlo_scenarios_returns_reproducible_percentiles() -> None:
+    summary = monte_carlo_scenarios(
+        base_value=100,
+        relative_std=0.1,
+        iterations=1000,
+        seed=7,
+    )
+
+    assert summary["iterations"] == 1000
+    assert 95 < summary["mean"] < 105
+    assert summary["p95"] > summary["p50"] > summary["p05"]
+
+
+def test_shortest_path_table_returns_path_and_cost() -> None:
+    edges = pd.DataFrame(
+        {
+            "source": ["A", "A", "B"],
+            "target": ["B", "C", "C"],
+            "cost": [1, 5, 2],
+        }
+    )
+
+    table = shortest_path_table(edges, source="A", target="C")
+
+    assert table.iloc[0]["path"] == "A -> B -> C"
+    assert table.iloc[0]["path_cost"] == 3
