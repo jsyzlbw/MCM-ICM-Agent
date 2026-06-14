@@ -16,6 +16,7 @@ from mcm_agent.providers.search import (
     TavilyProvider,
 )
 from mcm_agent.utils.json_io import read_json
+from mcm_agent.utils.json_io import write_json
 
 
 @respx.mock
@@ -306,3 +307,110 @@ def test_search_data_agent_builds_route_aware_search_plan(tmp_path: Path) -> Non
     assert any("priority indicator" in query for query in search.queries)
     assert any("resource allocation constraint" in query for query in search.queries)
     assert any(need["route_id"] == "constrained_optimization" for need in plan["data_needs"])
+
+
+def test_search_data_agent_includes_feasibility_matrix_needs(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- cleaned attachment tables\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "public population data",
+                "query": "public population data public dataset official",
+                "availability": "available",
+                "confidence": 0.75,
+                "top_urls": ["https://data.gov/population"],
+                "proxy_variables": [],
+                "recommended_action": "Use public population data.",
+            },
+            {
+                "need_id": "need_002",
+                "target_dataset": "football player salary and bonus contracts",
+                "query": "football player salary and bonus contracts public dataset official",
+                "availability": "private_or_unavailable",
+                "confidence": 0.9,
+                "top_urls": [],
+                "proxy_variables": ["Market value or transfer fee"],
+                "recommended_action": "Reframe with proxy variables.",
+            },
+        ],
+    )
+
+    class RecordingSearch:
+        def __init__(self) -> None:
+            self.queries: list[str] = []
+
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            self.queries.append(query)
+            return []
+
+    class UnusedExtractor:
+        def extract(self, url: str):
+            raise AssertionError("extractor should not be called")
+
+    search = RecordingSearch()
+    SearchDataAgent(search, UnusedExtractor()).run(workspace.root)
+
+    plan = read_json(workspace.root / "data" / "search_plan.json", {})
+    assert "public population data public dataset official" in search.queries
+    assert "football player salary and bonus contracts public dataset official" not in search.queries
+    assert any(need["source"] == "data_feasibility_matrix" for need in plan["data_needs"])
+    assert any(need["status"] == "skipped_private_or_unavailable" for need in plan["data_needs"])
+
+
+def test_search_data_sources_keep_data_need_trace(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- cleaned attachment tables\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "public population data",
+                "query": "public population data public dataset official",
+                "availability": "available",
+                "confidence": 0.75,
+                "top_urls": ["https://data.gov/population"],
+                "proxy_variables": [],
+                "recommended_action": "Use public population data.",
+            }
+        ],
+    )
+
+    class FakeSearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            if "population" not in query:
+                return []
+            return [
+                SearchResult(
+                    title="Official population data",
+                    url="https://data.gov/population",
+                    snippet="official source",
+                    score=0.99,
+                )
+            ]
+
+    class FakeExtractor:
+        def extract(self, url: str):
+            return type(
+                "Extracted",
+                (),
+                {"url": url, "title": "Extracted page", "markdown": "# Page", "metadata": {}},
+            )()
+
+    SearchDataAgent(FakeSearch(), FakeExtractor()).run(workspace.root)
+
+    sources = read_json(workspace.root / "data" / "source_registry.json", [])
+    lineage = read_json(workspace.root / "data" / "data_lineage.json", [])
+    assert sources[0]["data_need_id"] == "need_001"
+    assert sources[0]["target_dataset"] == "public population data"
+    assert sources[0]["source_query"] == "public population data public dataset official"
+    assert lineage[0]["used_in"] == ["data/source_registry.json", "data/data_feasibility_matrix.json"]

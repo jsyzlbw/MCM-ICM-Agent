@@ -7,6 +7,7 @@ from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.discussion_state import DiscussionDecision
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
+from mcm_agent.utils.json_io import read_json
 from mcm_agent.utils.json_io import write_json
 
 
@@ -24,6 +25,7 @@ class UserDiscussionAgent:
         discussion_dir = workspace_root / "discussion"
         discussion_dir.mkdir(parents=True, exist_ok=True)
         new_data_needs = new_data_needs or []
+        feasibility_snapshot = self._data_feasibility_snapshot(workspace_root)
 
         user_brief = "\n".join(
             [
@@ -33,6 +35,7 @@ class UserDiscussionAgent:
                 "",
                 user_idea_summary,
                 "",
+                feasibility_snapshot,
             ]
         )
         (discussion_dir / "user_brief.md").write_text(user_brief, encoding="utf-8")
@@ -68,6 +71,8 @@ class UserDiscussionAgent:
                 "## Paper Outline",
                 paper_outline,
                 "",
+                feasibility_snapshot,
+                "",
                 "## Decisions To Preserve",
                 decisions or "- No explicit decisions yet.",
                 "",
@@ -95,3 +100,22 @@ class UserDiscussionAgent:
             payload={"artifact_ids": ["confirmed_direction_v1"]},
             source="UserDiscussionAgent",
         )
+
+    def _data_feasibility_snapshot(self, workspace_root: Path) -> str:
+        matrix = read_json(workspace_root / "data" / "data_feasibility_matrix.json", [])
+        if not isinstance(matrix, list) or not matrix:
+            return ""
+        lines = ["## Data Feasibility Snapshot", ""]
+        for row in matrix:
+            if not isinstance(row, dict):
+                continue
+            target = row.get("target_dataset", "unknown data need")
+            availability = row.get("availability", "unknown")
+            confidence = row.get("confidence", "unknown")
+            action = row.get("recommended_action", "Review before modeling.")
+            lines.append(f"- {target}: {availability} (confidence: {confidence}). {action}")
+            proxy_variables = row.get("proxy_variables", [])
+            if isinstance(proxy_variables, list) and proxy_variables:
+                lines.append("  Proxy variables: " + ", ".join(str(item) for item in proxy_variables))
+        lines.append("")
+        return "\n".join(lines)

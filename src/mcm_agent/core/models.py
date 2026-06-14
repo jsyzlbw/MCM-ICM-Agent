@@ -84,6 +84,9 @@ class SourceRecord(BaseModel):
     used_for: str
     citation: str
     local_path: str | None = None
+    data_need_id: str | None = None
+    target_dataset: str | None = None
+    source_query: str | None = None
 
 
 class RetrievalLogEntry(BaseModel):

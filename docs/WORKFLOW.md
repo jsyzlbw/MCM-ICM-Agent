@@ -177,6 +177,16 @@ each proposed data need, the early official-data query, top URLs, availability j
 proxy variables, and the recommended next action. If the user adds new data needs during
 discussion, the workflow can loop back to `data_feasibility_scout` before modeling.
 
+`discussion/user_brief.md` and `discussion/confirmed_direction.md` include a data
+feasibility snapshot when the matrix exists, so the human and AI discuss the modeling
+plan with data availability visible. `search_data` also imports searchable matrix rows
+into `data/search_plan.json`; rows marked `private_or_unavailable` are kept in the plan
+but skipped for deeper retrieval unless the user reframes them.
+
+Each accepted source in `data/source_registry.json` records optional `data_need_id`,
+`target_dataset`, and `source_query` fields. This creates a reviewable chain from data
+need -> search query -> website URL -> extracted local page -> citation candidate.
+
 Every reported metric should be traceable through:
 
 - `reports/experiment_spec.json`

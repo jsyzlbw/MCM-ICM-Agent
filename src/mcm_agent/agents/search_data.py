@@ -24,7 +24,15 @@ class SearchDataAgent:
         selected_routes = self._selected_routes(workspace_root)
         plan_queries = self._queries_from_plan(experiment_plan.read_text(encoding="utf-8"))
         data_needs = self._route_data_needs(selected_routes)
-        queries = self._dedupe(plan_queries + [item["query"] for item in data_needs])
+        feasibility_needs = self._feasibility_data_needs(workspace_root)
+        data_needs.extend(feasibility_needs)
+        searchable_needs = [
+            item
+            for item in data_needs
+            if item.get("status") != "skipped_private_or_unavailable"
+        ]
+        queries = self._dedupe(plan_queries + [item["query"] for item in searchable_needs])
+        query_context = self._query_context(searchable_needs)
         write_json(
             workspace_root / "data" / "search_plan.json",
             {
@@ -38,6 +46,7 @@ class SearchDataAgent:
         log_path = workspace_root / "data" / "retrieval_log.jsonl"
 
         for query in queries:
+            context = query_context.get(query, {})
             results = self.search_provider.search(query, max_results=5)
             append_jsonl(
                 log_path,
@@ -70,6 +79,9 @@ class SearchDataAgent:
                     used_for="external data discovery" if source_rank == "official" else "background",
                     citation=result.title,
                     local_path=str(extracted_path.relative_to(workspace_root)),
+                    data_need_id=context.get("need_id"),
+                    target_dataset=context.get("target_dataset"),
+                    source_query=query,
                 )
                 source_records.append(record)
                 append_jsonl(
@@ -154,7 +166,7 @@ class SearchDataAgent:
                 local_path=record.local_path or "",
                 extraction_method=self.extract_provider.__class__.__name__,
                 confidence=0.7,
-                used_in=["data/source_registry.json"],
+                used_in=self._lineage_used_in(record),
             ),
         )
 
@@ -221,6 +233,35 @@ class SearchDataAgent:
                 needs.append({"route_id": route_id, "need_id": need_id, "query": query})
         return needs
 
+    def _feasibility_data_needs(self, workspace_root: Path) -> list[dict[str, str]]:
+        matrix = read_json(workspace_root / "data" / "data_feasibility_matrix.json", [])
+        if not isinstance(matrix, list):
+            return []
+        needs = []
+        for row in matrix:
+            if not isinstance(row, dict):
+                continue
+            target = str(row.get("target_dataset", "")).strip()
+            query = str(row.get("query", "")).strip()
+            availability = str(row.get("availability", "unknown"))
+            if not target:
+                continue
+            status = "searchable"
+            if availability == "private_or_unavailable":
+                status = "skipped_private_or_unavailable"
+            needs.append(
+                {
+                    "route_id": "data_feasibility",
+                    "need_id": str(row.get("need_id", target)),
+                    "query": query or f"{target} public dataset official",
+                    "target_dataset": target,
+                    "availability": availability,
+                    "status": status,
+                    "source": "data_feasibility_matrix",
+                }
+            )
+        return needs
+
     def _dedupe(self, values: list[str]) -> list[str]:
         seen = set()
         deduped = []
@@ -230,6 +271,24 @@ class SearchDataAgent:
                 seen.add(normalized)
                 deduped.append(normalized)
         return deduped
+
+    def _query_context(self, data_needs: list[dict[str, str]]) -> dict[str, dict[str, str]]:
+        context = {}
+        for need in data_needs:
+            query = need.get("query", "").strip()
+            if not query or query in context:
+                continue
+            context[query] = {
+                "need_id": need.get("need_id", ""),
+                "target_dataset": need.get("target_dataset", ""),
+            }
+        return context
+
+    def _lineage_used_in(self, record: SourceRecord) -> list[str]:
+        used_in = ["data/source_registry.json"]
+        if record.data_need_id or record.target_dataset:
+            used_in.append("data/data_feasibility_matrix.json")
+        return used_in
 
     def _rank_source(self, url: str) -> str:
         official_markers = ["data.gov", ".gov", "worldbank.org", "oecd.org", "un.org"]

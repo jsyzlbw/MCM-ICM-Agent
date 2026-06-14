@@ -7,6 +7,7 @@ from mcm_agent.core.events import EventLog
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.search import SearchResult
 from mcm_agent.utils.json_io import read_json
+from mcm_agent.utils.json_io import write_json
 
 
 class EmptySearchProvider:
@@ -57,6 +58,49 @@ def test_discussion_without_new_data_need_locks_direction(tmp_path: Path) -> Non
     assert decision["requires_data_scout"] is False
     assert (workspace.root / "discussion" / "confirmed_direction.md").exists()
     assert events[-1].event_type == "user.direction.confirmed"
+
+
+def test_discussion_brief_includes_data_feasibility_matrix(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "public population data",
+                "availability": "available",
+                "confidence": 0.75,
+                "recommended_action": "Use the public source.",
+                "proxy_variables": [],
+            },
+            {
+                "need_id": "need_002",
+                "target_dataset": "football player salary and bonus contracts",
+                "availability": "private_or_unavailable",
+                "confidence": 0.9,
+                "recommended_action": "Reframe with proxy variables.",
+                "proxy_variables": ["Market value or transfer fee"],
+            },
+        ],
+    )
+
+    UserDiscussionAgent().confirm_direction(
+        workspace.root,
+        mode="hybrid",
+        user_idea_summary="Compare compensation strategies.",
+        selected_route="Proxy compensation model.",
+        paper_outline="Abstract, model, results.",
+        decisions_to_preserve=["Do not invent private salary data."],
+    )
+
+    brief = (workspace.root / "discussion" / "user_brief.md").read_text(encoding="utf-8")
+    confirmed = (workspace.root / "discussion" / "confirmed_direction.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Data Feasibility Snapshot" in brief
+    assert "football player salary and bonus contracts" in brief
+    assert "Market value or transfer fee" in brief
+    assert "## Data Feasibility Snapshot" in confirmed
 
 
 def test_data_scout_uses_discussion_data_questions(tmp_path: Path) -> None:
