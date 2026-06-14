@@ -414,3 +414,106 @@ def test_search_data_sources_keep_data_need_trace(tmp_path: Path) -> None:
     assert sources[0]["target_dataset"] == "public population data"
     assert sources[0]["source_query"] == "public population data public dataset official"
     assert lineage[0]["used_in"] == ["data/source_registry.json", "data/data_feasibility_matrix.json"]
+
+
+def test_source_gate_fails_when_searchable_data_need_has_no_trusted_source(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- cleaned attachment tables\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "public population data",
+                "query": "public population data public dataset official",
+                "availability": "available",
+                "confidence": 0.75,
+                "top_urls": [],
+                "proxy_variables": [],
+                "recommended_action": "Use public population data.",
+            }
+        ],
+    )
+
+    class BlogOnlySearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            if "population" not in query:
+                return []
+            return [
+                SearchResult(
+                    title="Population blog",
+                    url="https://blog.example/population",
+                    snippet="unofficial commentary",
+                    score=0.4,
+                )
+            ]
+
+    class FakeExtractor:
+        def extract(self, url: str):
+            return type(
+                "Extracted",
+                (),
+                {"url": url, "title": "Extracted page", "markdown": "# Page", "metadata": {}},
+            )()
+
+    SearchDataAgent(BlogOnlySearch(), FakeExtractor()).run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "source_gate.json", {})
+    assert gate["status"] == "fail"
+    assert gate["failure_reason"] == "source_unreliable"
+    assert "need_001" in gate["blocking_findings"][0]
+    assert "public population data" in gate["blocking_findings"][0]
+
+
+def test_source_gate_allows_generic_feasibility_need_when_attachment_exists(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- cleaned attachment tables\n",
+        encoding="utf-8",
+    )
+    attachment = workspace.root / "input" / "attachments" / "data.csv"
+    attachment.parent.mkdir(parents=True, exist_ok=True)
+    attachment.write_text("x,y\n1,2\n", encoding="utf-8")
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "problem-specific modeling data",
+                "query": "problem-specific modeling data public dataset official",
+                "availability": "unknown",
+                "confidence": 0.55,
+                "top_urls": [],
+                "proxy_variables": [],
+                "recommended_action": "Run deeper search.",
+            }
+        ],
+    )
+
+    class EmptySearch:
+        def __init__(self) -> None:
+            self.queries: list[str] = []
+
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            self.queries.append(query)
+            return []
+
+    class UnusedExtractor:
+        def extract(self, url: str):
+            raise AssertionError("extractor should not be called")
+
+    search = EmptySearch()
+    SearchDataAgent(search, UnusedExtractor()).run(workspace.root)
+
+    plan = read_json(workspace.root / "data" / "search_plan.json", {})
+    gate = read_json(workspace.root / "review" / "source_gate.json", {})
+    assert gate["status"] == "pass"
+    assert any(need["status"] == "covered_by_attachment" for need in plan["data_needs"])
+    assert "problem-specific modeling data public dataset official" not in search.queries

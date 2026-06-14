@@ -29,7 +29,7 @@ class SearchDataAgent:
         searchable_needs = [
             item
             for item in data_needs
-            if item.get("status") != "skipped_private_or_unavailable"
+            if item.get("status") not in {"skipped_private_or_unavailable", "covered_by_attachment"}
         ]
         queries = self._dedupe(plan_queries + [item["query"] for item in searchable_needs])
         query_context = self._query_context(searchable_needs)
@@ -249,6 +249,8 @@ class SearchDataAgent:
             status = "searchable"
             if availability == "private_or_unavailable":
                 status = "skipped_private_or_unavailable"
+            elif availability == "unknown" and self._has_attachments(workspace_root):
+                status = "covered_by_attachment"
             needs.append(
                 {
                     "route_id": "data_feasibility",
@@ -271,6 +273,9 @@ class SearchDataAgent:
                 seen.add(normalized)
                 deduped.append(normalized)
         return deduped
+
+    def _has_attachments(self, workspace_root: Path) -> bool:
+        return any((workspace_root / "input" / "attachments").glob("*"))
 
     def _query_context(self, data_needs: list[dict[str, str]]) -> dict[str, dict[str, str]]:
         context = {}
@@ -301,6 +306,9 @@ class SearchDataAgent:
         workspace_root: Path,
         source_records: list[SourceRecord],
     ) -> list[str]:
+        coverage_issues = self._data_need_coverage_issues(workspace_root, source_records)
+        if coverage_issues:
+            return coverage_issues
         if not source_records:
             if any((workspace_root / "input" / "attachments").glob("*")):
                 return []
@@ -313,3 +321,37 @@ class SearchDataAgent:
         if not trusted:
             return ["No official, academic, or reputable source was retrieved."]
         return []
+
+    def _data_need_coverage_issues(
+        self,
+        workspace_root: Path,
+        source_records: list[SourceRecord],
+    ) -> list[str]:
+        search_plan = read_json(workspace_root / "data" / "search_plan.json", {})
+        data_needs = search_plan.get("data_needs", []) if isinstance(search_plan, dict) else []
+        if not isinstance(data_needs, list):
+            return []
+        trusted_need_ids = {
+            record.data_need_id
+            for record in source_records
+            if record.data_need_id
+            and record.source_rank in {"official", "academic", "reputable"}
+        }
+        issues = []
+        for need in data_needs:
+            if not isinstance(need, dict):
+                continue
+            if need.get("source") != "data_feasibility_matrix":
+                continue
+            if need.get("status") == "skipped_private_or_unavailable":
+                continue
+            if need.get("status") == "covered_by_attachment":
+                continue
+            need_id = str(need.get("need_id", "")).strip()
+            if not need_id or need_id in trusted_need_ids:
+                continue
+            target = str(need.get("target_dataset", "unknown dataset"))
+            issues.append(
+                f"Searchable data need `{need_id}` for `{target}` has no trusted source coverage."
+            )
+        return issues

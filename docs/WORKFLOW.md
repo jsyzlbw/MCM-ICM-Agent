@@ -186,6 +186,9 @@ but skipped for deeper retrieval unless the user reframes them.
 Each accepted source in `data/source_registry.json` records optional `data_need_id`,
 `target_dataset`, and `source_query` fields. This creates a reviewable chain from data
 need -> search query -> website URL -> extracted local page -> citation candidate.
+The source gate also checks coverage for searchable feasibility-matrix needs: every
+available or unknown matrix need must have at least one official, academic, or reputable
+source bound to its `data_need_id`; otherwise the workflow routes back to `search_data`.
 
 Every reported metric should be traceable through:
 
