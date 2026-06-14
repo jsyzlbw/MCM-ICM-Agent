@@ -209,12 +209,16 @@ def provider_status(env_file: str | None = None) -> None:
         search_stack.append("Exa API")
     search_status = " + ".join(search_stack) if search_stack else "disabled/fake"
     extract_status = "Firecrawl API" if settings.firecrawl_api_key else "disabled/fake"
+    official_data_status = "World Bank/Open-Meteo"
+    if settings.fred_api_key:
+        official_data_status += " + FRED"
     mineru_status = settings.mineru_mode
     humanizer_status = "UShallPass API" if settings.humanizer_api_key else "fake"
 
     typer.echo(f"LLM: {llm_status}")
     typer.echo(f"Search: {search_status}")
     typer.echo(f"Extract: {extract_status}")
+    typer.echo(f"Official Data APIs: {official_data_status}")
     typer.echo(f"MinerU: {mineru_status}")
     typer.echo(f"Humanizer: {humanizer_status}")
 

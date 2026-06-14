@@ -193,6 +193,9 @@ When coverage fails, `reports/search_repair_report.md` and
 `data/search_repair_actions.json` summarize uncovered needs, attempted queries,
 untrusted sources, candidate official APIs, and whether the next move is another query,
 an official API call, user-provided data, or reframing.
+The first official API repair adapter can automatically register World Bank population
+data without a key. Open-Meteo is configured through `OPEN_METEO_BASE_URL`; FRED repair is
+only enabled when the user supplies `FRED_API_KEY`.
 
 Every reported metric should be traceable through:
 

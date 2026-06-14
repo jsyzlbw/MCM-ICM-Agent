@@ -142,6 +142,7 @@ def _default_demo_providers() -> ProviderBundle:
         mineru=FakeMinerUProvider(),
         search=DemoSearchProvider(),
         extractor=DemoExtractProvider(),
+        official_data=None,
         humanizer=FakeHumanizerProvider({}),
         latex=DemoLatexProvider(),
     )
@@ -251,7 +252,11 @@ def _mvp_stage_handlers(
         ]
 
     def search_data(workspace_root: Path) -> list[str]:
-        SearchDataAgent(provider_bundle.search, provider_bundle.extractor).run(workspace_root)
+        SearchDataAgent(
+            provider_bundle.search,
+            provider_bundle.extractor,
+            provider_bundle.official_data,
+        ).run(workspace_root)
         return [
             "data/source_registry.json",
             "data/retrieval_log.jsonl",

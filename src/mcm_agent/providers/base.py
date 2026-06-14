@@ -21,5 +21,6 @@ class ProviderBundle:
     mineru: object
     search: object
     extractor: object
+    official_data: object
     humanizer: object
     latex: object

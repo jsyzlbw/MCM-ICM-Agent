@@ -6,7 +6,7 @@ from httpx import Response
 from mcm_agent.agents.search_data import SearchDataAgent
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.academic import OpenAlexProvider
-from mcm_agent.providers.data_apis import WorldBankProvider
+from mcm_agent.providers.data_apis import OfficialDataApiRepairProvider, WorldBankProvider
 from mcm_agent.providers.search import (
     BraveSearchProvider,
     ExaSearchProvider,
@@ -156,6 +156,28 @@ def test_worldbank_provider_saves_raw_json(tmp_path: Path) -> None:
 
     assert source.source_rank == "official"
     assert (tmp_path / "raw" / "worldbank_US_SP.POP.TOTL.json").exists()
+
+
+@respx.mock
+def test_official_data_api_repair_provider_fetches_population_from_worldbank(
+    tmp_path: Path,
+) -> None:
+    respx.get("https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL").mock(
+        return_value=Response(200, json=[{"page": 1}, [{"date": "2023", "value": 1}]])
+    )
+
+    records = OfficialDataApiRepairProvider().repair(
+        tmp_path,
+        {
+            "need_id": "need_001",
+            "target_dataset": "public population data",
+            "query": "public population data public dataset official",
+        },
+    )
+
+    assert records[0]["source_id"] == "worldbank_all_SP.POP.TOTL"
+    assert records[0]["provider"] == "world_bank_api"
+    assert records[0]["local_path"] == "data/raw/worldbank_all_SP.POP.TOTL.json"
 
 
 @respx.mock
@@ -525,6 +547,78 @@ def test_search_repair_report_explains_uncovered_data_need(tmp_path: Path) -> No
     assert actions[0]["data_need_id"] == "need_001"
     assert actions[0]["recommended_action"] == "try_official_api_or_reframe"
     assert "World Bank" in actions[0]["official_api_candidates"]
+
+
+def test_search_data_repairs_uncovered_need_with_official_api_provider(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- cleaned attachment tables\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "public population data",
+                "query": "public population data public dataset official",
+                "availability": "available",
+                "confidence": 0.75,
+                "top_urls": [],
+                "proxy_variables": [],
+                "recommended_action": "Use public population data.",
+            }
+        ],
+    )
+
+    class BlogOnlySearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            if "population" not in query:
+                return []
+            return [
+                SearchResult(
+                    title="Population blog",
+                    url="https://blog.example/population",
+                    snippet="unofficial commentary",
+                    score=0.4,
+                )
+            ]
+
+    class FakeExtractor:
+        def extract(self, url: str):
+            return type(
+                "Extracted",
+                (),
+                {"url": url, "title": "Extracted page", "markdown": "# Page", "metadata": {}},
+            )()
+
+    class FakeOfficialApiRepair:
+        def repair(self, workspace_root: Path, need: dict[str, str]):
+            return [
+                {
+                    "source_id": "worldbank_population",
+                    "title": "World Bank population data",
+                    "url": "https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL",
+                    "license": "World Bank open data",
+                    "provider": "world_bank_api",
+                    "local_path": "data/raw/worldbank_population.json",
+                }
+            ]
+
+    SearchDataAgent(BlogOnlySearch(), FakeExtractor(), FakeOfficialApiRepair()).run(
+        workspace.root
+    )
+
+    gate = read_json(workspace.root / "review" / "source_gate.json", {})
+    sources = read_json(workspace.root / "data" / "source_registry.json", [])
+    lineage = read_json(workspace.root / "data" / "data_lineage.json", [])
+    assert gate["status"] == "pass"
+    assert any(source["provider"] == "world_bank_api" for source in sources)
+    official_source = next(source for source in sources if source["provider"] == "world_bank_api")
+    assert official_source["data_need_id"] == "need_001"
+    assert official_source["target_dataset"] == "public population data"
+    assert any(item["source_id"] == "worldbank_population" for item in lineage)
+    assert not (workspace.root / "reports" / "search_repair_report.md").exists()
 
 
 def test_source_gate_allows_generic_feasibility_need_when_attachment_exists(

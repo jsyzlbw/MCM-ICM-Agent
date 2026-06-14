@@ -59,6 +59,7 @@ def test_provider_bundle_accepts_fake_components() -> None:
         mineru=object(),
         search=object(),
         extractor=object(),
+        official_data=object(),
         humanizer=object(),
         latex=object(),
     )

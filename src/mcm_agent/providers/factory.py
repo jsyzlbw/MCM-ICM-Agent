@@ -4,6 +4,7 @@ from pathlib import Path
 
 from mcm_agent.config import Settings
 from mcm_agent.providers.base import ProviderBundle
+from mcm_agent.providers.data_apis import OfficialDataApiRepairProvider
 from mcm_agent.providers.humanizer import FakeHumanizerProvider, UShallPassHumanizerProvider
 from mcm_agent.providers.latex import LatexProvider
 from mcm_agent.providers.llm import FakeLLMProvider, OpenAICompatibleLLMProvider
@@ -68,6 +69,10 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
         if settings.firecrawl_api_key
         else NullExtractProvider()
     )
+    official_data = OfficialDataApiRepairProvider(
+        fred_api_key=settings.fred_api_key,
+        open_meteo_base_url=settings.open_meteo_base_url,
+    )
 
     humanizer = (
         UShallPassHumanizerProvider(
@@ -83,6 +88,7 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
         mineru=mineru,
         search=search,
         extractor=extractor,
+        official_data=official_data,
         humanizer=humanizer,
         latex=LatexProvider(),
     )

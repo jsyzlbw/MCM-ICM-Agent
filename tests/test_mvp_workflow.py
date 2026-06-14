@@ -139,6 +139,7 @@ def test_run_mvp_workflow_uses_injected_provider_bundle(tmp_path: Path) -> None:
         mineru=InjectedMinerUProvider(),
         search=InjectedSearchProvider(),
         extractor=InjectedExtractProvider(),
+        official_data=None,
         humanizer=FakeHumanizerProvider({}),
         latex=InjectedLatexProvider(),
     )

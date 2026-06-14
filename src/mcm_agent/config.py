@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     brave_search_api_key: str = ""
     exa_api_key: str = ""
 
+    fred_api_key: str = ""
+    open_meteo_base_url: str = "https://archive-api.open-meteo.com/v1/archive"
+
     humanizer_api_key: str = ""
     humanizer_api_base_url: str = "https://leahloveswriting.xyz"
 

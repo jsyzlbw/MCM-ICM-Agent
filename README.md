@@ -127,10 +127,17 @@ MINERU_API_KEY=
 
 BRAVE_SEARCH_API_KEY=
 EXA_API_KEY=
+
+OPEN_METEO_BASE_URL=https://archive-api.open-meteo.com/v1/archive
+FRED_API_KEY=
 ```
 
 When multiple search keys are configured, the runtime tries Tavily first, then Brave,
 then Exa. `mcm-agent provider-status --env-file .env` prints the active search stack.
+
+World Bank and Open-Meteo are used as no-key official data repair sources when search
+coverage fails. FRED requires registration; leave `FRED_API_KEY` empty to disable FRED
+repair.
 
 `MINERU_MODE=rest` uses MinerU's precision API flow: create an upload batch,
 upload the local PDF to the returned URL, poll the batch result, download the

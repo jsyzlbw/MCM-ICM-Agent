@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Protocol
 
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
@@ -11,10 +12,21 @@ from mcm_agent.providers.search import ExtractProvider, SearchProvider
 from mcm_agent.utils.json_io import append_jsonl, read_json, write_json
 
 
+class OfficialDataRepairProvider(Protocol):
+    def repair(self, workspace_root: Path, need: dict[str, str]) -> list[dict[str, str]]:
+        raise NotImplementedError
+
+
 class SearchDataAgent:
-    def __init__(self, search_provider: SearchProvider, extract_provider: ExtractProvider) -> None:
+    def __init__(
+        self,
+        search_provider: SearchProvider,
+        extract_provider: ExtractProvider,
+        official_data_provider: OfficialDataRepairProvider | None = None,
+    ) -> None:
         self.search_provider = search_provider
         self.extract_provider = extract_provider
+        self.official_data_provider = official_data_provider
 
     def run(self, workspace_root: Path) -> None:
         experiment_plan = workspace_root / "reports" / "experiment_plan.md"
@@ -113,6 +125,17 @@ class SearchDataAgent:
             encoding="utf-8",
         )
         source_issues = self._source_gate_issues(workspace_root, source_records)
+        if source_issues and self.official_data_provider is not None:
+            source_records.extend(
+                self._repair_with_official_apis(workspace_root, source_records)
+            )
+            existing = read_json(registry_path, [])
+            write_json(registry_path, existing + [
+                record.model_dump(mode="json")
+                for record in source_records
+                if record.source_id not in {item.get("source_id") for item in existing}
+            ])
+            source_issues = self._source_gate_issues(workspace_root, source_records)
         if source_issues:
             self._write_search_repair_report(workspace_root, source_issues, source_records)
         record_gate_decision(
@@ -170,6 +193,49 @@ class SearchDataAgent:
                 confidence=0.7,
                 used_in=self._lineage_used_in(record),
             ),
+        )
+
+    def _repair_with_official_apis(
+        self,
+        workspace_root: Path,
+        source_records: list[SourceRecord],
+    ) -> list[SourceRecord]:
+        if self.official_data_provider is None:
+            return []
+        search_plan = read_json(workspace_root / "data" / "search_plan.json", {})
+        data_needs = search_plan.get("data_needs", []) if isinstance(search_plan, dict) else []
+        repaired_records = []
+        for need in self._uncovered_searchable_needs(data_needs, source_records):
+            for payload in self.official_data_provider.repair(workspace_root, need):
+                record = self._source_record_from_official_payload(payload, need)
+                repaired_records.append(record)
+                self._record_provenance(
+                    workspace_root,
+                    record,
+                    record.accessed_at,
+                    query=record.source_query or need["query"],
+                )
+        return repaired_records
+
+    def _source_record_from_official_payload(
+        self,
+        payload: dict[str, str],
+        need: dict[str, str],
+    ) -> SourceRecord:
+        return SourceRecord(
+            source_id=payload["source_id"],
+            title=payload["title"],
+            url=payload["url"],
+            accessed_at=datetime.now(UTC),
+            license=payload.get("license", "unknown"),
+            provider=payload.get("provider", "official_data_api"),
+            source_rank="official",
+            used_for="official data repair",
+            citation=payload["title"],
+            local_path=payload.get("local_path"),
+            data_need_id=need["need_id"],
+            target_dataset=need["target_dataset"],
+            source_query=need["query"],
         )
 
     def _queries_from_plan(self, plan: str) -> list[str]:
