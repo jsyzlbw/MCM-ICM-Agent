@@ -189,6 +189,10 @@ need -> search query -> website URL -> extracted local page -> citation candidat
 The source gate also checks coverage for searchable feasibility-matrix needs: every
 available or unknown matrix need must have at least one official, academic, or reputable
 source bound to its `data_need_id`; otherwise the workflow routes back to `search_data`.
+When coverage fails, `reports/search_repair_report.md` and
+`data/search_repair_actions.json` summarize uncovered needs, attempted queries,
+untrusted sources, candidate official APIs, and whether the next move is another query,
+an official API call, user-provided data, or reframing.
 
 Every reported metric should be traceable through:
 

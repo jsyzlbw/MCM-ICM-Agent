@@ -252,7 +252,13 @@ def _mvp_stage_handlers(
 
     def search_data(workspace_root: Path) -> list[str]:
         SearchDataAgent(provider_bundle.search, provider_bundle.extractor).run(workspace_root)
-        return ["data/source_registry.json", "data/retrieval_log.jsonl", "review/source_gate.json"]
+        return [
+            "data/source_registry.json",
+            "data/retrieval_log.jsonl",
+            "review/source_gate.json",
+            "reports/search_repair_report.md",
+            "data/search_repair_actions.json",
+        ]
 
     def source_verifier(workspace_root: Path) -> list[str]:
         return ["review/source_gate.json"]

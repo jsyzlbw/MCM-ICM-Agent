@@ -470,6 +470,63 @@ def test_source_gate_fails_when_searchable_data_need_has_no_trusted_source(
     assert "public population data" in gate["blocking_findings"][0]
 
 
+def test_search_repair_report_explains_uncovered_data_need(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- cleaned attachment tables\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "public population data",
+                "query": "public population data public dataset official",
+                "availability": "available",
+                "confidence": 0.75,
+                "top_urls": [],
+                "proxy_variables": [],
+                "recommended_action": "Use public population data.",
+            }
+        ],
+    )
+
+    class BlogOnlySearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            if "population" not in query:
+                return []
+            return [
+                SearchResult(
+                    title="Population blog",
+                    url="https://blog.example/population",
+                    snippet="unofficial commentary",
+                    score=0.4,
+                )
+            ]
+
+    class FakeExtractor:
+        def extract(self, url: str):
+            return type(
+                "Extracted",
+                (),
+                {"url": url, "title": "Extracted page", "markdown": "# Page", "metadata": {}},
+            )()
+
+    SearchDataAgent(BlogOnlySearch(), FakeExtractor()).run(workspace.root)
+
+    report = (workspace.root / "reports" / "search_repair_report.md").read_text(
+        encoding="utf-8"
+    )
+    actions = read_json(workspace.root / "data" / "search_repair_actions.json", [])
+    assert "need_001" in report
+    assert "public population data public dataset official" in report
+    assert "https://blog.example/population" in report
+    assert actions[0]["data_need_id"] == "need_001"
+    assert actions[0]["recommended_action"] == "try_official_api_or_reframe"
+    assert "World Bank" in actions[0]["official_api_candidates"]
+
+
 def test_source_gate_allows_generic_feasibility_need_when_attachment_exists(
     tmp_path: Path,
 ) -> None:

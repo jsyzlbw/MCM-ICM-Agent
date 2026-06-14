@@ -113,6 +113,8 @@ class SearchDataAgent:
             encoding="utf-8",
         )
         source_issues = self._source_gate_issues(workspace_root, source_records)
+        if source_issues:
+            self._write_search_repair_report(workspace_root, source_issues, source_records)
         record_gate_decision(
             workspace_root,
             "source_gate.json",
@@ -355,3 +357,111 @@ class SearchDataAgent:
                 f"Searchable data need `{need_id}` for `{target}` has no trusted source coverage."
             )
         return issues
+
+    def _write_search_repair_report(
+        self,
+        workspace_root: Path,
+        source_issues: list[str],
+        source_records: list[SourceRecord],
+    ) -> None:
+        search_plan = read_json(workspace_root / "data" / "search_plan.json", {})
+        data_needs = search_plan.get("data_needs", []) if isinstance(search_plan, dict) else []
+        uncovered = self._uncovered_searchable_needs(data_needs, source_records)
+        actions = [self._repair_action(need, source_records) for need in uncovered]
+        write_json(workspace_root / "data" / "search_repair_actions.json", actions)
+        lines = [
+            "# Search Repair Report",
+            "",
+            "## Blocking Findings",
+            *[f"- {issue}" for issue in source_issues],
+            "",
+            "## Repair Actions",
+            "",
+        ]
+        if not actions:
+            lines.append("- No data-need-specific repair action was generated.")
+        for action in actions:
+            lines.extend(
+                [
+                    f"### {action['data_need_id']}: {action['target_dataset']}",
+                    f"- Attempted query: `{action['attempted_query']}`",
+                    f"- Recommended action: `{action['recommended_action']}`",
+                    "- Official API candidates: "
+                    + ", ".join(action["official_api_candidates"]),
+                    "- Untrusted sources seen:",
+                ]
+            )
+            untrusted_urls = action["untrusted_urls"]
+            if untrusted_urls:
+                lines.extend(f"  - {url}" for url in untrusted_urls)
+            else:
+                lines.append("  - None.")
+            lines.append("")
+        (workspace_root / "reports" / "search_repair_report.md").write_text(
+            "\n".join(lines),
+            encoding="utf-8",
+        )
+
+    def _uncovered_searchable_needs(
+        self,
+        data_needs: object,
+        source_records: list[SourceRecord],
+    ) -> list[dict[str, str]]:
+        if not isinstance(data_needs, list):
+            return []
+        trusted_need_ids = {
+            record.data_need_id
+            for record in source_records
+            if record.data_need_id
+            and record.source_rank in {"official", "academic", "reputable"}
+        }
+        uncovered = []
+        for need in data_needs:
+            if not isinstance(need, dict):
+                continue
+            if need.get("source") != "data_feasibility_matrix":
+                continue
+            if need.get("status") in {"skipped_private_or_unavailable", "covered_by_attachment"}:
+                continue
+            need_id = str(need.get("need_id", "")).strip()
+            if need_id and need_id not in trusted_need_ids:
+                uncovered.append(
+                    {
+                        "need_id": need_id,
+                        "target_dataset": str(need.get("target_dataset", "")),
+                        "query": str(need.get("query", "")),
+                    }
+                )
+        return uncovered
+
+    def _repair_action(
+        self,
+        need: dict[str, str],
+        source_records: list[SourceRecord],
+    ) -> dict[str, object]:
+        need_id = need["need_id"]
+        untrusted_urls = [
+            record.url
+            for record in source_records
+            if record.data_need_id == need_id
+            and record.source_rank not in {"official", "academic", "reputable"}
+        ]
+        return {
+            "data_need_id": need_id,
+            "target_dataset": need["target_dataset"],
+            "attempted_query": need["query"],
+            "recommended_action": "try_official_api_or_reframe",
+            "official_api_candidates": self._official_api_candidates(need["target_dataset"]),
+            "untrusted_urls": untrusted_urls,
+        }
+
+    def _official_api_candidates(self, target_dataset: str) -> list[str]:
+        lowered = target_dataset.lower()
+        candidates = []
+        if "population" in lowered:
+            candidates.extend(["World Bank", "UNData", "US Census"])
+        if "climate" in lowered or "weather" in lowered:
+            candidates.extend(["NOAA", "NASA", "Open-Meteo"])
+        if "economic" in lowered or "gdp" in lowered:
+            candidates.extend(["World Bank", "OECD", "FRED"])
+        return candidates or ["World Bank", "OECD", "UNData", "OpenAlex"]
