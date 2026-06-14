@@ -183,6 +183,11 @@ plan with data availability visible. `search_data` also imports searchable matri
 into `data/search_plan.json`; rows marked `private_or_unavailable` are kept in the plan
 but skipped for deeper retrieval unless the user reframes them.
 
+When direct data is private or unavailable, `research_reframing` writes
+`discussion/reframing_options.md` and `discussion/reframing_options.json`. The options
+include proxy-modeling routes, user-provided-assumption routes, required caveats, and
+recommended model changes before `user_discussion` locks the final direction.
+
 Each accepted source in `data/source_registry.json` records optional `data_need_id`,
 `target_dataset`, and `source_query` fields. This creates a reviewable chain from data
 need -> search query -> website URL -> extracted local page -> citation candidate.

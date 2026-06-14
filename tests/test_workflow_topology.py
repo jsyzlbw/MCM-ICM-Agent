@@ -55,6 +55,15 @@ def test_data_availability_policy_reframes_private_or_missing_data() -> None:
     assert "change the research question" in decision.recommendation
 
 
+def test_research_reframing_outputs_machine_readable_options() -> None:
+    graph = build_default_workflow_graph()
+    node = graph.nodes["research_reframing"]
+
+    assert "data/data_feasibility_matrix.json" in node.input_artifacts
+    assert "discussion/reframing_options.md" in node.output_artifacts
+    assert "discussion/reframing_options.json" in node.output_artifacts
+
+
 def test_review_failure_policy_routes_to_responsible_stage() -> None:
     assert (
         route_review_failure(ReviewFailure(category="data", severity="critical")).next_stage

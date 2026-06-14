@@ -12,6 +12,7 @@ from mcm_agent.agents.modeling import ModelJudge, ModelingCouncil
 from mcm_agent.agents.problem_understanding import ProblemUnderstandingAgent
 from mcm_agent.agents.rag import MethodologyRAGAgent
 from mcm_agent.agents.reference_manager import ReferenceManager
+from mcm_agent.agents.reframing import ResearchReframingAgent
 from mcm_agent.agents.reviewer import ReviewerAgent
 from mcm_agent.agents.search_data import SearchDataAgent
 from mcm_agent.agents.solver import SolverCoderAgent
@@ -199,21 +200,8 @@ def _mvp_stage_handlers(
         )
 
     def research_reframing(workspace_root: Path) -> list[str]:
-        output = workspace_root / "discussion" / "reframing_options.md"
-        output.write_text(
-            "\n".join(
-                [
-                    "# Reframing Options",
-                    "",
-                    "- Use proxy variables when direct private data is unavailable.",
-                    "- Ask the user to provide explicit assumptions only if they can justify them.",
-                    "- Narrow or change the research question before locking the paper route.",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        return ["discussion/reframing_options.md"]
+        ResearchReframingAgent().run(workspace_root)
+        return ["discussion/reframing_options.md", "discussion/reframing_options.json"]
 
     def user_discussion(workspace_root: Path) -> StageResult:
         UserDiscussionAgent().confirm_direction(

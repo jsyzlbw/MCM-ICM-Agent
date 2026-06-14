@@ -257,8 +257,14 @@ def build_default_workflow_graph() -> WorkflowGraph:
             node_id="research_reframing",
             label="Research Reframing Agent",
             responsibility="Convert unavailable private-data plans into proxy-data or alternate-study routes.",
-            input_artifacts=["reports/data_feasibility_report.md"],
-            output_artifacts=["discussion/reframing_options.md"],
+            input_artifacts=[
+                "data/data_feasibility_matrix.json",
+                "data/search_repair_actions.json",
+            ],
+            output_artifacts=[
+                "discussion/reframing_options.md",
+                "discussion/reframing_options.json",
+            ],
             pass_criteria=["At least one feasible proxy or alternate formulation is ready for user choice."],
         ),
     }
