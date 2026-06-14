@@ -10,6 +10,8 @@ class DiscussionDecision(BaseModel):
     selected_route: str
     new_data_needs: list[str] = Field(default_factory=list)
     requires_data_scout: bool = False
+    adopted_reframing_strategy: str = ""
+    adopted_reframing_option_id: str = ""
 
     @model_validator(mode="after")
     def sync_data_scout_flag(self) -> DiscussionDecision:

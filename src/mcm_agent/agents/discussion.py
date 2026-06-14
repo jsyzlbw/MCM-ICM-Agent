@@ -26,6 +26,8 @@ class UserDiscussionAgent:
         discussion_dir.mkdir(parents=True, exist_ok=True)
         new_data_needs = new_data_needs or []
         feasibility_snapshot = self._data_feasibility_snapshot(workspace_root)
+        adopted_reframing = self._adopted_reframing_option(workspace_root)
+        reframing_snapshot = self._reframing_snapshot(adopted_reframing)
 
         user_brief = "\n".join(
             [
@@ -36,6 +38,7 @@ class UserDiscussionAgent:
                 user_idea_summary,
                 "",
                 feasibility_snapshot,
+                reframing_snapshot,
             ]
         )
         (discussion_dir / "user_brief.md").write_text(user_brief, encoding="utf-8")
@@ -43,6 +46,8 @@ class UserDiscussionAgent:
             status="needs_data_scout" if new_data_needs else "locked",
             selected_route=selected_route,
             new_data_needs=new_data_needs,
+            adopted_reframing_strategy=str(adopted_reframing.get("strategy", "")),
+            adopted_reframing_option_id=self._reframing_option_id(adopted_reframing),
         )
         write_json(discussion_dir / "direction_lock.json", decision.model_dump(mode="json"))
         write_json(discussion_dir / "data_questions.json", new_data_needs)
@@ -72,6 +77,8 @@ class UserDiscussionAgent:
                 paper_outline,
                 "",
                 feasibility_snapshot,
+                "",
+                reframing_snapshot,
                 "",
                 "## Decisions To Preserve",
                 decisions or "- No explicit decisions yet.",
@@ -117,5 +124,38 @@ class UserDiscussionAgent:
             proxy_variables = row.get("proxy_variables", [])
             if isinstance(proxy_variables, list) and proxy_variables:
                 lines.append("  Proxy variables: " + ", ".join(str(item) for item in proxy_variables))
+        lines.append("")
+        return "\n".join(lines)
+
+    def _adopted_reframing_option(self, workspace_root: Path) -> dict[str, object]:
+        options = read_json(workspace_root / "discussion" / "reframing_options.json", [])
+        if not isinstance(options, list):
+            return {}
+        valid_options = [option for option in options if isinstance(option, dict)]
+        for option in valid_options:
+            if option.get("strategy") == "proxy_modeling":
+                return option
+        return valid_options[0] if valid_options else {}
+
+    def _reframing_option_id(self, option: dict[str, object]) -> str:
+        if not option:
+            return ""
+        return f"{option.get('data_need_id', 'unknown')}:{option.get('strategy', 'unknown')}"
+
+    def _reframing_snapshot(self, option: dict[str, object]) -> str:
+        if not option:
+            return ""
+        lines = [
+            "## Adopted Reframing Option",
+            "",
+            f"- Option ID: `{self._reframing_option_id(option)}`",
+            f"- Strategy: {option.get('strategy', '')}",
+            f"- Target dataset: {option.get('target_dataset', '')}",
+            f"- Recommended model change: {option.get('recommended_model_change', '')}",
+            f"- Risk note: {option.get('risk_note', '')}",
+        ]
+        proxy_variables = option.get("proxy_variables", [])
+        if isinstance(proxy_variables, list) and proxy_variables:
+            lines.append("- Proxy variables: " + ", ".join(str(item) for item in proxy_variables))
         lines.append("")
         return "\n".join(lines)

@@ -103,6 +103,49 @@ def test_discussion_brief_includes_data_feasibility_matrix(tmp_path: Path) -> No
     assert "## Data Feasibility Snapshot" in confirmed
 
 
+def test_discussion_locks_adopted_reframing_option(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "discussion" / "reframing_options.json",
+        [
+            {
+                "data_need_id": "need_001",
+                "target_dataset": "football player salary and bonus contracts",
+                "strategy": "proxy_modeling",
+                "proxy_variables": ["Market value or transfer fee"],
+                "recommended_model_change": "Use a proxy-index scoring model.",
+                "risk_note": "Do not claim private salaries are observed.",
+            },
+            {
+                "data_need_id": "need_001",
+                "target_dataset": "football player salary and bonus contracts",
+                "strategy": "user_provided_assumptions",
+                "proxy_variables": [],
+                "recommended_model_change": "Use scenario simulation.",
+                "risk_note": "Requires explicit user assumptions.",
+            },
+        ],
+    )
+
+    UserDiscussionAgent().confirm_direction(
+        workspace.root,
+        mode="hybrid",
+        user_idea_summary="Compare compensation strategies.",
+        selected_route="Compensation route.",
+        paper_outline="Abstract, model, results.",
+        decisions_to_preserve=["Avoid unsupported salary claims."],
+    )
+
+    decision = read_json(workspace.root / "discussion" / "direction_lock.json", {})
+    confirmed = (workspace.root / "discussion" / "confirmed_direction.md").read_text(
+        encoding="utf-8"
+    )
+    assert decision["adopted_reframing_strategy"] == "proxy_modeling"
+    assert decision["adopted_reframing_option_id"] == "need_001:proxy_modeling"
+    assert "## Adopted Reframing Option" in confirmed
+    assert "Market value or transfer fee" in confirmed
+
+
 def test_data_scout_uses_discussion_data_questions(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     (workspace.root / "reports" / "problem_understanding.md").write_text(

@@ -187,6 +187,9 @@ When direct data is private or unavailable, `research_reframing` writes
 `discussion/reframing_options.md` and `discussion/reframing_options.json`. The options
 include proxy-modeling routes, user-provided-assumption routes, required caveats, and
 recommended model changes before `user_discussion` locks the final direction.
+`UserDiscussionAgent` records the adopted option in `discussion/direction_lock.json` as
+`adopted_reframing_strategy` and `adopted_reframing_option_id`, and copies the adopted
+option into `discussion/confirmed_direction.md` for the modeling council.
 
 Each accepted source in `data/source_registry.json` records optional `data_need_id`,
 `target_dataset`, and `source_query` fields. This creates a reviewable chain from data
