@@ -4,6 +4,7 @@ from pathlib import Path
 from mcm_agent.core.models import TaskInput
 from mcm_agent.providers.base import ProviderBundle
 from mcm_agent.providers.humanizer import FakeHumanizerProvider
+from mcm_agent.providers.latex import LatexCompileResult
 from mcm_agent.providers.llm import FakeLLMProvider
 from mcm_agent.providers.mineru import ParsedDocument
 from mcm_agent.providers.search import SearchResult
@@ -47,6 +48,17 @@ class InjectedExtractProvider:
         )()
 
 
+class InjectedLatexProvider:
+    def compile(self, paper_dir: Path) -> LatexCompileResult:
+        pdf = paper_dir / "main.pdf"
+        pdf.write_bytes(b"%PDF injected")
+        return LatexCompileResult(
+            success=True,
+            pdf_path=str(pdf),
+            log_path=str(paper_dir / "compile_log.txt"),
+        )
+
+
 def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
     workspace = tmp_path / "demo"
 
@@ -88,6 +100,8 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "review/source_audit_report.md",
         "review/methodology_checklist_report.md",
         "final_submission/AI_use_report.md",
+        "final_submission/submission_manifest.json",
+        "final_submission/submission_package.zip",
     ]
     for relative_path in required:
         assert (workspace / relative_path).exists(), relative_path
@@ -108,6 +122,7 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
     assert "validation_gate" in stage_ids
     assert "figure_quality_gate" in stage_ids
     assert "final_gatekeeper" in stage_ids
+    assert stage_ids[-1] == "submission_packager"
 
 
 def test_run_mvp_workflow_uses_injected_provider_bundle(tmp_path: Path) -> None:
@@ -122,7 +137,7 @@ def test_run_mvp_workflow_uses_injected_provider_bundle(tmp_path: Path) -> None:
         search=InjectedSearchProvider(),
         extractor=InjectedExtractProvider(),
         humanizer=FakeHumanizerProvider({}),
-        latex=object(),
+        latex=InjectedLatexProvider(),
     )
 
     run_mvp_workflow(
@@ -135,3 +150,4 @@ def test_run_mvp_workflow_uses_injected_provider_bundle(tmp_path: Path) -> None:
     assert "Injected Parse" in (workspace / "parsed/problem.md").read_text(encoding="utf-8")
     source_registry = read_json(workspace / "data/source_registry.json", [])
     assert source_registry[0]["title"] == "Injected official source"
+    assert (workspace / "final_submission" / "submission_package.zip").exists()

@@ -15,6 +15,7 @@ from mcm_agent.agents.reference_manager import ReferenceManager
 from mcm_agent.agents.reviewer import ReviewerAgent
 from mcm_agent.agents.search_data import SearchDataAgent
 from mcm_agent.agents.solver import SolverCoderAgent
+from mcm_agent.agents.submission import SubmissionPackager
 from mcm_agent.agents.validation import ValidationAgent
 from mcm_agent.agents.visualization import FigurePlanningAgent, VisualizationAgent
 from mcm_agent.agents.writer import PaperWriterAgent
@@ -24,7 +25,7 @@ from mcm_agent.core.stage_executor import StageExecutor, StageHandler, StageResu
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.base import ProviderBundle
 from mcm_agent.providers.humanizer import FakeHumanizerProvider
-from mcm_agent.providers.latex import LatexProvider
+from mcm_agent.providers.latex import LatexCompileResult
 from mcm_agent.providers.llm import FakeLLMProvider
 from mcm_agent.providers.mineru import FakeMinerUProvider
 from mcm_agent.providers.search import SearchResult
@@ -58,6 +59,19 @@ class DemoExtractProvider:
         )()
 
 
+class DemoLatexProvider:
+    def compile(self, paper_dir: Path) -> LatexCompileResult:
+        pdf_path = paper_dir / "main.pdf"
+        log_path = paper_dir / "compile_log.txt"
+        pdf_path.write_bytes(b"%PDF demo\n")
+        log_path.write_text("Demo LaTeX compile succeeded.\n", encoding="utf-8")
+        return LatexCompileResult(
+            success=True,
+            pdf_path=str(pdf_path),
+            log_path=str(log_path),
+        )
+
+
 def run_mvp_workflow(
     workspace_root: Path,
     inputs: TaskInput,
@@ -77,7 +91,7 @@ def run_mvp_workflow(
             auto_approve=auto_approve,
         ),
     )
-    executor.run_until_complete("intake", terminal_stage="final_gatekeeper")
+    executor.run_until_complete("intake", terminal_stage="submission_packager")
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
     _write_ai_use_report(workspace.root)
@@ -105,7 +119,7 @@ def resume_mvp_workflow(
             auto_approve=auto_approve,
         ),
     )
-    executor.run_until_complete(start_stage, terminal_stage=until_stage or "final_gatekeeper")
+    executor.run_until_complete(start_stage, terminal_stage=until_stage or "submission_packager")
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
     _write_ai_use_report(workspace.root)
@@ -129,7 +143,7 @@ def _default_demo_providers() -> ProviderBundle:
         search=DemoSearchProvider(),
         extractor=DemoExtractProvider(),
         humanizer=FakeHumanizerProvider({}),
-        latex=LatexProvider(),
+        latex=DemoLatexProvider(),
     )
 
 
@@ -277,9 +291,11 @@ def _mvp_stage_handlers(
     def typesetting(workspace_root: Path) -> list[str]:
         ComplianceOriginalityAgent(provider_bundle.humanizer).run(workspace_root)
         ReferenceManager().run(workspace_root)
+        compile_outputs = _compile_latex(provider_bundle.latex, workspace_root)
         return [
             "paper/main.tex",
             "paper/references.bib",
+            *compile_outputs,
             "review/originality_report.md",
             "review/reference_audit_report.md",
         ]
@@ -290,6 +306,17 @@ def _mvp_stage_handlers(
 
     def final_gatekeeper(workspace_root: Path) -> list[str]:
         return ["review/final_gate.json"]
+
+    def submission_packager(workspace_root: Path) -> list[str]:
+        success = SubmissionPackager().package(workspace_root)
+        if success:
+            return [
+                "final_submission/submission_package.zip",
+                "final_submission/source_code.zip",
+                "final_submission/submission_manifest.json",
+                "final_submission/submission_checklist.md",
+            ]
+        return ["final_submission/submission_blocked.md"]
 
     handlers: dict[str, StageHandler] = {
         "intake": intake,
@@ -314,8 +341,36 @@ def _mvp_stage_handlers(
         "typesetting": typesetting,
         "pre_submission_review": pre_submission_review,
         "final_gatekeeper": final_gatekeeper,
+        "submission_packager": submission_packager,
     }
     return handlers
+
+
+def _compile_latex(latex_provider: object, workspace_root: Path) -> list[str]:
+    paper_dir = workspace_root / "paper"
+    compile_method = getattr(latex_provider, "compile", None)
+    if not callable(compile_method):
+        return []
+    result = compile_method(paper_dir)
+    report_path = workspace_root / "review" / "typesetting_report.md"
+    report_path.write_text(
+        "\n".join(
+            [
+                "# Typesetting Report",
+                "",
+                f"- Success: {result.success}",
+                f"- PDF: `{result.pdf_path or 'missing'}`",
+                f"- Log: `{result.log_path}`",
+                f"- Reason: {result.reason or 'none'}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    outputs = ["review/typesetting_report.md"]
+    if result.pdf_path:
+        outputs.append("paper/main.pdf")
+    return outputs
 
 
 def _write_ai_use_report(workspace_root: Path) -> None:

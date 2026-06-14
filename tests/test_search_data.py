@@ -254,3 +254,55 @@ def test_search_data_agent_allows_attachment_only_workflow_without_search_result
 
     gate = read_json(workspace.root / "review" / "source_gate.json", {})
     assert gate["status"] == "pass"
+
+
+def test_search_data_agent_builds_route_aware_search_plan(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- cleaned attachment tables\n",
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "model_decision.md").write_text(
+        "\n".join(
+            [
+                "# Model Decision",
+                "",
+                "## Selected Route",
+                "multi_criteria_evaluation + constrained_optimization. Weighted score: 8.60.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    class RecordingSearch:
+        def __init__(self) -> None:
+            self.queries: list[str] = []
+
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            self.queries.append(query)
+            return [
+                SearchResult(
+                    title="Official statistics",
+                    url="https://data.gov/example",
+                    snippet="official source",
+                    score=0.99,
+                )
+            ]
+
+    class FakeExtractor:
+        def extract(self, url: str):
+            return type(
+                "Extracted",
+                (),
+                {"url": url, "title": "Extracted page", "markdown": "# Page", "metadata": {}},
+            )()
+
+    search = RecordingSearch()
+    SearchDataAgent(search, FakeExtractor()).run(workspace.root)
+
+    plan = read_json(workspace.root / "data" / "search_plan.json", {})
+    assert "multi_criteria_evaluation" in plan["selected_routes"]
+    assert any("priority indicator" in query for query in search.queries)
+    assert any("resource allocation constraint" in query for query in search.queries)
+    assert any(need["route_id"] == "constrained_optimization" for need in plan["data_needs"])

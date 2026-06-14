@@ -50,6 +50,7 @@ class PaperWriterAgent:
             section_content["results.tex"] = generated_results
         else:
             section_content["results.tex"] = self._fallback_results_section(evidence, figures, sources)
+        section_content["sensitivity.tex"] = self._fallback_sensitivity_section(route_summary)
 
         for filename, content in section_content.items():
             (section_dir / filename).write_text(content, encoding="utf-8")
@@ -96,11 +97,41 @@ class PaperWriterAgent:
         evidence_id = self._first_id(evidence, "evidence_id")
         figure_id = self._first_id(figures, "figure_id")
         source_id = self._first_id(sources, "source_id")
-        return (
-            "\\section{Results}\n"
-            "Validated evidence items support the numerical claims in this section. "
-            f"The primary trace links are evidence_id={evidence_id}, "
-            f"figure_id={figure_id}, and source_id={source_id}.\n"
+        evidence_lines = []
+        for item in evidence[:5]:
+            evidence_lines.append(
+                "- Evidence "
+                + self._texttt(str(item.get("evidence_id", "missing")))
+                + " supports: "
+                + self._latex_escape(str(item.get("claim", "registered model claim")))
+                + "."
+            )
+        figure_lines = []
+        for item in figures[:5]:
+            figure_lines.append(
+                "- Figure "
+                + self._texttt(str(item.get("figure_id", "missing")))
+                + " is used for "
+                + self._latex_escape(str(item.get("caption_intent", "registered result figure")))
+                + "."
+            )
+        source_comment = f"% source_id={source_id}"
+        return "\n".join(
+            [
+                "\\section{Results}",
+                "The reported results are restricted to registered evidence, figures, and sources. "
+                "The primary trace links are "
+                f"evidence {self._texttt(evidence_id)}, figure {self._texttt(figure_id)}, "
+                f"and source {self._texttt('source_id=' + source_id)}.",
+                source_comment,
+                "",
+                "\\subsection{Evidence Trace}",
+                *(evidence_lines or ["- No verified evidence was available at drafting time."]),
+                "",
+                "\\subsection{Figure Trace}",
+                *(figure_lines or ["- No registered figure was available at drafting time."]),
+                "",
+            ]
         )
 
     def _fallback_model_section(self, route_summary: object) -> str:
@@ -130,6 +161,32 @@ class PaperWriterAgent:
             f"The selected route is {route_text}. "
             "This route is chosen because it binds the problem diagnosis to reproducible "
             f"code outputs and later figure planning.{metric_sentence}\n"
+        )
+
+    def _fallback_sensitivity_section(self, route_summary: object) -> str:
+        if not isinstance(route_summary, dict):
+            return SECTION_CONTENT["sensitivity.tex"]
+        metrics = route_summary.get("route_metrics", {})
+        metric_lines = []
+        if isinstance(metrics, dict):
+            for metric_name, payload in metrics.items():
+                if isinstance(payload, dict) and "value" in payload:
+                    metric_lines.append(
+                        "- "
+                        + self._texttt(
+                            f"{str(metric_name)}={str(payload['value'])}"
+                        )
+                        + " is treated as a baseline sensitivity anchor."
+                    )
+        return "\n".join(
+            [
+                "\\section{Sensitivity Analysis}",
+                "Sensitivity analysis focuses on the registered route-specific metrics, "
+                "so reviewers can trace robustness claims back to code outputs.",
+                "",
+                *(metric_lines or ["- No route-specific metric was available for sensitivity analysis."]),
+                "",
+            ]
         )
 
     def _generate_results_section(
@@ -173,3 +230,6 @@ class PaperWriterAgent:
 
     def _latex_escape(self, value: str) -> str:
         return value.replace("_", "\\_")
+
+    def _texttt(self, value: str) -> str:
+        return "\\texttt{" + self._latex_escape(value) + "}"

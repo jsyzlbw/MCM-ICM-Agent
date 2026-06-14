@@ -21,7 +21,18 @@ class SearchDataAgent:
         if not experiment_plan.exists():
             raise FileNotFoundError("missing reports/experiment_plan.md")
 
-        queries = self._queries_from_plan(experiment_plan.read_text(encoding="utf-8"))
+        selected_routes = self._selected_routes(workspace_root)
+        plan_queries = self._queries_from_plan(experiment_plan.read_text(encoding="utf-8"))
+        data_needs = self._route_data_needs(selected_routes)
+        queries = self._dedupe(plan_queries + [item["query"] for item in data_needs])
+        write_json(
+            workspace_root / "data" / "search_plan.json",
+            {
+                "selected_routes": selected_routes,
+                "queries": queries,
+                "data_needs": data_needs,
+            },
+        )
         source_records: list[SourceRecord] = []
         registry_path = workspace_root / "data" / "source_registry.json"
         log_path = workspace_root / "data" / "retrieval_log.jsonl"
@@ -148,11 +159,77 @@ class SearchDataAgent:
         )
 
     def _queries_from_plan(self, plan: str) -> list[str]:
+        queries = []
         for line in plan.splitlines():
             stripped = line.strip()
             if stripped.startswith("- "):
-                return [stripped[2:]]
-        return ["external data for math modeling problem"]
+                queries.append(stripped[2:])
+        return queries or ["external data for math modeling problem"]
+
+    def _selected_routes(self, workspace_root: Path) -> list[str]:
+        text = (workspace_root / "reports" / "model_decision.md").read_text(
+            encoding="utf-8"
+        ) if (workspace_root / "reports" / "model_decision.md").exists() else ""
+        route_ids = [
+            "multi_criteria_evaluation",
+            "constrained_optimization",
+            "forecasting_model",
+            "monte_carlo_simulation",
+            "network_flow_graph",
+            "multi_objective_decision",
+        ]
+        return [route_id for route_id in route_ids if route_id in text]
+
+    def _route_data_needs(self, selected_routes: list[str]) -> list[dict[str, str]]:
+        templates = {
+            "multi_criteria_evaluation": [
+                (
+                    "indicator_table",
+                    "official priority indicator dataset for evaluation model",
+                ),
+                (
+                    "normalization_context",
+                    "official benchmark indicator definitions for priority scoring",
+                ),
+            ],
+            "constrained_optimization": [
+                (
+                    "resource_constraints",
+                    "official resource allocation constraint data budget capacity",
+                ),
+                (
+                    "policy_limits",
+                    "official policy limits for resource allocation constraint",
+                ),
+            ],
+            "forecasting_model": [
+                ("historical_observations", "official historical time series data forecast demand"),
+            ],
+            "monte_carlo_simulation": [
+                ("uncertainty_ranges", "official parameter uncertainty ranges scenario analysis"),
+            ],
+            "network_flow_graph": [
+                ("network_edges", "official road network nodes edges capacity data"),
+            ],
+            "multi_objective_decision": [
+                ("objective_weights", "official multi objective decision criteria weights data"),
+            ],
+        }
+        needs = []
+        for route_id in selected_routes:
+            for need_id, query in templates.get(route_id, []):
+                needs.append({"route_id": route_id, "need_id": need_id, "query": query})
+        return needs
+
+    def _dedupe(self, values: list[str]) -> list[str]:
+        seen = set()
+        deduped = []
+        for value in values:
+            normalized = value.strip()
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                deduped.append(normalized)
+        return deduped
 
     def _rank_source(self, url: str) -> str:
         official_markers = ["data.gov", ".gov", "worldbank.org", "oecd.org", "un.org"]

@@ -54,6 +54,10 @@ Package a reviewed workspace after `paper/main.pdf` exists:
 mcm-agent package /tmp/mcm_agent_task
 ```
 
+The normal `run` and `resume` workflows continue through `submission_packager`. If
+`latexmk` is unavailable or `paper/main.pdf` cannot be produced, the workflow writes
+`final_submission/submission_blocked.md` rather than silently claiming a final package.
+
 Check configured provider connectivity manually:
 
 ```bash
@@ -109,6 +113,7 @@ paper_writer
 typesetting
 pre_submission_review
 final_gatekeeper
+submission_packager
 ```
 
 Some edges are conditional:

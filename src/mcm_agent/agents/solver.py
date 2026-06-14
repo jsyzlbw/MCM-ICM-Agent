@@ -23,6 +23,7 @@ class SolverCoderAgent:
         results_dir.mkdir(parents=True, exist_ok=True)
 
         processed_relative = str(processed_files[0].relative_to(workspace_root))
+        selected_routes = self._selected_routes(workspace_root)
         script = "\n".join(
             [
                 "import json",
@@ -31,6 +32,28 @@ class SolverCoderAgent:
                 "",
                 "workspace = Path.cwd()",
                 f"df = pd.read_csv(workspace / {processed_relative!r})",
+                f"selected_routes = {selected_routes!r}",
+                "numeric = df.select_dtypes(include='number')",
+                "if 'multi_criteria_evaluation' in selected_routes and not numeric.empty:",
+                "    normalized = numeric.copy()",
+                "    for column in normalized.columns:",
+                "        minimum = normalized[column].min()",
+                "        maximum = normalized[column].max()",
+                "        if maximum == minimum:",
+                "            normalized[column] = 1.0",
+                "        else:",
+                "            normalized[column] = (normalized[column] - minimum) / (maximum - minimum)",
+                "    df['priority_score'] = normalized.mean(axis=1)",
+                "    df['priority_rank'] = df['priority_score'].rank(ascending=False, method='dense').astype(int)",
+                "if 'constrained_optimization' in selected_routes and not numeric.empty:",
+                "    if 'priority_score' not in df.columns:",
+                "        df['priority_score'] = numeric.mean(axis=1)",
+                "    total_capacity = float(numeric['budget'].sum()) if 'budget' in numeric.columns else float(numeric.sum().sum())",
+                "    score_sum = float(df['priority_score'].sum())",
+                "    if total_capacity > 0 and score_sum > 0:",
+                "        df['recommended_allocation'] = df['priority_score'] / score_sum * total_capacity",
+                "    else:",
+                "        df['recommended_allocation'] = 0.0",
                 "df.to_csv(workspace / 'results/problem1_results.csv', index=False)",
                 "numeric = df.select_dtypes(include='number')",
                 "metrics = {",
@@ -74,7 +97,6 @@ class SolverCoderAgent:
 
         result_path = results_dir / "problem1_results.csv"
         metrics = read_json(results_dir / "model_metrics.json", {})
-        selected_routes = self._selected_routes(workspace_root)
         route_metrics = self._route_metrics(result_path, selected_routes)
         write_json(
             results_dir / "model_route_summary.json",
@@ -164,8 +186,14 @@ class SolverCoderAgent:
             if route_id == "multi_criteria_evaluation":
                 value = self._mean_for_column(numeric, "priority")
                 route_metrics["priority_score_mean"] = {"route_id": route_id, "value": value}
+                entity = self._top_priority_entity(frame)
+                if entity is not None:
+                    route_metrics["top_priority_entity"] = {
+                        "route_id": route_id,
+                        "value": entity,
+                    }
             elif route_id == "constrained_optimization":
-                value = self._sum_for_column(numeric, "budget")
+                value = self._sum_for_column(numeric, "recommended_allocation")
                 route_metrics["allocation_capacity_total"] = {"route_id": route_id, "value": value}
             elif route_id == "forecasting_model":
                 value = float(len(frame))
@@ -190,3 +218,14 @@ class SolverCoderAgent:
         if preferred_column in numeric.columns:
             return float(numeric[preferred_column].sum())
         return float(numeric.sum().sum()) if not numeric.empty else 0.0
+
+    def _top_priority_entity(self, frame: pd.DataFrame) -> str | None:
+        if "priority_score" not in frame.columns or frame.empty:
+            return None
+        row = frame.sort_values("priority_score", ascending=False).iloc[0]
+        for column in frame.columns:
+            if column not in {"priority_score", "priority_rank", "recommended_allocation"}:
+                value = row[column]
+                if not isinstance(value, int | float):
+                    return str(value)
+        return str(row.name)

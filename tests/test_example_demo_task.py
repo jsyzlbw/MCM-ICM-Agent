@@ -62,4 +62,8 @@ def test_example_demo_task_runs_end_to_end(tmp_path: Path) -> None:
         for line in (workspace / "stage_runs.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     assert stage_ids[0] == "intake"
-    assert stage_ids[-1] == "final_gatekeeper"
+    assert stage_ids[-1] == "submission_packager"
+    assert (
+        (workspace / "final_submission" / "submission_package.zip").exists()
+        or (workspace / "final_submission" / "submission_blocked.md").exists()
+    )

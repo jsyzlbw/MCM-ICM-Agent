@@ -122,6 +122,62 @@ def test_paper_writer_includes_selected_model_route_summary(tmp_path: Path) -> N
     assert "allocation\\_capacity\\_total=16.0" in model_section
 
 
+def test_paper_writer_builds_evidence_driven_results_and_sensitivity(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {
+            "selected_routes": ["multi_criteria_evaluation"],
+            "route_metrics": {
+                "priority_score_mean": {
+                    "route_id": "multi_criteria_evaluation",
+                    "value": 0.6,
+                },
+                "top_priority_entity": {
+                    "route_id": "multi_criteria_evaluation",
+                    "value": "A",
+                },
+            },
+        },
+    )
+    write_json(
+        workspace.root / "results" / "evidence_registry.json",
+        [
+            {
+                "evidence_id": "metric_priority_score_mean",
+                "claim": "Route metric priority_score_mean equals 0.6.",
+                "value": 0.6,
+                "source_type": "code_output",
+                "source_path": "results/model_route_summary.json",
+                "generated_by": "code/experiments/problem1.py",
+                "used_in": ["multi_criteria_evaluation"],
+                "verified": True,
+            }
+        ],
+    )
+    write_json(
+        workspace.root / "figures" / "figure_registry.json",
+        [{"figure_id": "fig_priority_ranking", "caption_intent": "Priority ranking."}],
+    )
+    write_json(workspace.root / "data" / "source_registry.json", [{"source_id": "web_001"}])
+
+    PaperWriterAgent().run(workspace.root)
+
+    results = (workspace.root / "paper" / "sections" / "results.tex").read_text(
+        encoding="utf-8"
+    )
+    sensitivity = (workspace.root / "paper" / "sections" / "sensitivity.tex").read_text(
+        encoding="utf-8"
+    )
+    assert "metric\\_priority\\_score\\_mean" in results
+    assert "fig\\_priority\\_ranking" in results
+    assert "source\\_id=web\\_001" in results
+    assert "priority\\_score\\_mean=0.6" in sensitivity
+    assert "top\\_priority\\_entity=A" in sensitivity
+
+
 def test_reviewer_falls_back_on_invalid_llm_output(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
 
