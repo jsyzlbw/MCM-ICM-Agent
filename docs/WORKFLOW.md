@@ -232,6 +232,13 @@ columns, fail validation with `failure_reason=weak_model` and route repair to
 `model_route_summary.json` binds the selected model route to route-specific metrics,
 figure planning, and the paper model section.
 
+`modeling_quality_gate` runs after `model_judge` and before deep search. It writes
+`reports/modeling_quality_report.md` and `review/modeling_gate.json`, blocking model
+plans whose experiment spec has missing metrics, missing expected outputs, required
+route bindings that cannot be justified, or unavailable data needs without an adopted
+proxy/reframing strategy. Failures use `failure_reason=weak_model` and route back to
+`modeling_council`.
+
 The first reusable solver modules are:
 
 - `mcm_agent.solver_modules.evaluation`: entropy weighting and TOPSIS ranking.

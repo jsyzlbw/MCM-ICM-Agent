@@ -36,7 +36,9 @@ def test_default_workflow_creates_experiment_plan_before_deep_search() -> None:
 
     assert graph.has_edge("methodology_rag", "modeling_council")
     assert graph.has_edge("modeling_council", "model_judge")
-    assert graph.has_edge("model_judge", "search_data")
+    assert graph.has_edge("model_judge", "modeling_quality_gate")
+    assert graph.has_edge("modeling_quality_gate", "search_data")
+    assert graph.failure_route("modeling_quality_gate", "weak_model") == "modeling_council"
 
 
 def test_data_availability_policy_reframes_private_or_missing_data() -> None:

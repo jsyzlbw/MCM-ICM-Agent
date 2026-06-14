@@ -30,6 +30,7 @@ StageHandler = Callable[[Path], StageResult | list[str] | None]
 GATE_DECISION_FILES = {
     "extraction_quality_gate": "review/extraction_gate.json",
     "source_verifier": "review/source_gate.json",
+    "modeling_quality_gate": "review/modeling_gate.json",
     "validation_gate": "review/validation_gate.json",
     "figure_quality_gate": "review/figure_gate.json",
     "final_gatekeeper": "review/final_gate.json",

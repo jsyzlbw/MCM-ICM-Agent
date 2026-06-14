@@ -9,6 +9,7 @@ from mcm_agent.agents.eda import DataEDAAgent
 from mcm_agent.agents.extraction import DocumentExtractionAgent
 from mcm_agent.agents.intake import IntakeAgent
 from mcm_agent.agents.modeling import ModelJudge, ModelingCouncil
+from mcm_agent.agents.modeling_quality import ModelingPlanQualityAgent
 from mcm_agent.agents.problem_understanding import ProblemUnderstandingAgent
 from mcm_agent.agents.rag import MethodologyRAGAgent
 from mcm_agent.agents.reference_manager import ReferenceManager
@@ -239,6 +240,10 @@ def _mvp_stage_handlers(
             "reports/experiment_spec.json",
         ]
 
+    def modeling_quality_gate(workspace_root: Path) -> list[str]:
+        ModelingPlanQualityAgent().run(workspace_root)
+        return ["reports/modeling_quality_report.md", "review/modeling_gate.json"]
+
     def search_data(workspace_root: Path) -> list[str]:
         SearchDataAgent(
             provider_bundle.search,
@@ -333,6 +338,7 @@ def _mvp_stage_handlers(
         "methodology_rag": methodology_rag,
         "modeling_council": modeling_council,
         "model_judge": model_judge,
+        "modeling_quality_gate": modeling_quality_gate,
         "search_data": search_data,
         "source_verifier": source_verifier,
         "data_eda": data_eda,

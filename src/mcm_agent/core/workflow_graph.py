@@ -162,6 +162,22 @@ def build_default_workflow_graph() -> WorkflowGraph:
             ],
             pass_criteria=["Selected route is justified by fit, data feasibility, and implementation risk."],
         ),
+        "modeling_quality_gate": AgentNode(
+            node_id="modeling_quality_gate",
+            label="Modeling Quality Gate",
+            responsibility="Reject model plans that do not match available data, adopted reframing, metrics, or executable experiment specs.",
+            input_artifacts=[
+                "reports/model_decision.md",
+                "reports/experiment_spec.json",
+                "data/data_feasibility_matrix.json",
+                "discussion/direction_lock.json",
+            ],
+            output_artifacts=[
+                "reports/modeling_quality_report.md",
+                "review/modeling_gate.json",
+            ],
+            pass_criteria=["Selected route is data-aligned, measurable, and executable before solver work begins."],
+        ),
         "solver_coder": AgentNode(
             node_id="solver_coder",
             label="Solver / Coding Agent",
@@ -280,7 +296,8 @@ def build_default_workflow_graph() -> WorkflowGraph:
         WorkflowEdge("user_discussion", "methodology_rag", "direction_locked"),
         WorkflowEdge("methodology_rag", "modeling_council"),
         WorkflowEdge("modeling_council", "model_judge"),
-        WorkflowEdge("model_judge", "search_data"),
+        WorkflowEdge("model_judge", "modeling_quality_gate"),
+        WorkflowEdge("modeling_quality_gate", "search_data"),
         WorkflowEdge("search_data", "source_verifier"),
         WorkflowEdge("source_verifier", "data_eda"),
         WorkflowEdge("data_eda", "solver_coder"),
@@ -297,6 +314,7 @@ def build_default_workflow_graph() -> WorkflowGraph:
     failure_routes = {
         ("extraction_quality_gate", "missing_problem_text"): "mineru_extraction",
         ("source_verifier", "source_unreliable"): "search_data",
+        ("modeling_quality_gate", "weak_model"): "modeling_council",
         ("validation_gate", "bad_data"): "search_data",
         ("validation_gate", "weak_model"): "modeling_council",
         ("validation_gate", "code_error"): "solver_coder",
