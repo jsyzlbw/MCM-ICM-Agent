@@ -2,6 +2,7 @@ from pathlib import Path
 
 from mcm_agent.agents.modeling import ModelJudge
 from mcm_agent.agents.solver import SolverCoderAgent
+from mcm_agent.core.experiment_spec import build_experiment_spec
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.utils.json_io import read_json
 
@@ -71,3 +72,72 @@ def test_solver_prefers_experiment_spec_over_markdown_route_detection(tmp_path: 
     summary = read_json(workspace.root / "results" / "model_route_summary.json", {})
     assert "priority_score" in result
     assert summary["selected_routes"] == ["multi_criteria_evaluation"]
+
+
+def test_experiment_spec_includes_column_binding_contract() -> None:
+    spec = build_experiment_spec(["forecasting_model", "network_flow_graph"])
+
+    forecast = spec.experiments[0]
+    network = spec.experiments[1]
+    assert forecast.column_bindings == {"time_column": "", "target_column": ""}
+    assert network.column_bindings == {
+        "source_column": "",
+        "target_column": "",
+        "cost_column": "",
+    }
+
+
+def test_solver_records_inferred_column_bindings_in_route_summary(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text(
+        "origin,destination,distance,year,sales\nA,B,1,2021,10\nB,C,2,2022,12\nA,C,5,2023,14\n",
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "experiment_spec.json").write_text(
+        """
+{
+  "version": 1,
+  "experiments": [
+    {
+      "route_id": "forecasting_model",
+      "solver_module": "mcm_agent.solver_modules.forecasting",
+      "method": "linear_trend_forecast",
+      "input_requirements": ["time column", "target numeric column"],
+      "expected_outputs": ["results/forecast_results.csv"],
+      "metrics": ["forecast_training_mae"],
+      "column_bindings": {
+        "time_column": "year",
+        "target_column": "sales"
+      }
+    },
+    {
+      "route_id": "network_flow_graph",
+      "solver_module": "mcm_agent.solver_modules.network",
+      "method": "shortest_path_table",
+      "input_requirements": ["source column", "target column", "cost column"],
+      "expected_outputs": ["results/network_paths.csv"],
+      "metrics": ["shortest_path_cost"],
+      "column_bindings": {
+        "source_column": "origin",
+        "target_column": "destination",
+        "cost_column": "distance"
+      }
+    }
+  ]
+}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    summary = read_json(workspace.root / "results" / "model_route_summary.json", {})
+    bindings = summary["column_bindings"]
+    assert bindings["forecasting_model"]["time_column"] == "year"
+    assert bindings["forecasting_model"]["target_column"] == "sales"
+    assert bindings["network_flow_graph"]["source_column"] == "origin"
+    assert bindings["network_flow_graph"]["cost_column"] == "distance"
+    assert (workspace.root / "results" / "forecast_results.csv").exists()
+    assert (workspace.root / "results" / "network_paths.csv").exists()

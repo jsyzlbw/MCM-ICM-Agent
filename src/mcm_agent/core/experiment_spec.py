@@ -10,6 +10,7 @@ class ExperimentSpecItem(BaseModel):
     input_requirements: list[str] = Field(default_factory=list)
     expected_outputs: list[str] = Field(default_factory=list)
     metrics: list[str] = Field(default_factory=list)
+    column_bindings: dict[str, str] = Field(default_factory=dict)
 
 
 class ExperimentSpec(BaseModel):
@@ -25,6 +26,7 @@ ROUTE_EXPERIMENTS = {
         input_requirements=["numeric indicators", "optional entity column"],
         expected_outputs=["results/problem1_results.csv"],
         metrics=["priority_score_mean", "top_priority_entity"],
+        column_bindings={"entity_column": "", "indicator_columns": ""},
     ),
     "constrained_optimization": ExperimentSpecItem(
         route_id="constrained_optimization",
@@ -33,6 +35,7 @@ ROUTE_EXPERIMENTS = {
         input_requirements=["priority score", "optional capacity or budget column"],
         expected_outputs=["results/problem1_results.csv"],
         metrics=["allocation_capacity_total"],
+        column_bindings={"priority_column": "priority_score", "capacity_column": ""},
     ),
     "forecasting_model": ExperimentSpecItem(
         route_id="forecasting_model",
@@ -41,6 +44,7 @@ ROUTE_EXPERIMENTS = {
         input_requirements=["time column", "target numeric column"],
         expected_outputs=["results/forecast_results.csv"],
         metrics=["forecast_training_mae", "forecast_training_rmse"],
+        column_bindings={"time_column": "", "target_column": ""},
     ),
     "monte_carlo_simulation": ExperimentSpecItem(
         route_id="monte_carlo_simulation",
@@ -49,6 +53,7 @@ ROUTE_EXPERIMENTS = {
         input_requirements=["base numeric value", "uncertainty assumption"],
         expected_outputs=["results/simulation_summary.json"],
         metrics=["simulation_mean", "simulation_p95"],
+        column_bindings={"base_value_column": ""},
     ),
     "network_flow_graph": ExperimentSpecItem(
         route_id="network_flow_graph",
@@ -57,6 +62,7 @@ ROUTE_EXPERIMENTS = {
         input_requirements=["source column", "target column", "cost column"],
         expected_outputs=["results/network_paths.csv"],
         metrics=["shortest_path_cost", "shortest_path_edge_count"],
+        column_bindings={"source_column": "", "target_column": "", "cost_column": ""},
     ),
 }
 

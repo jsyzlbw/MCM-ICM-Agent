@@ -26,6 +26,11 @@ class SolverCoderAgent:
         processed_relative = str(processed_files[0].relative_to(workspace_root))
         experiment_spec = self._experiment_spec(workspace_root)
         selected_routes = self._selected_routes(workspace_root, experiment_spec)
+        column_bindings = self._column_bindings(
+            pd.read_csv(processed_files[0]),
+            experiment_spec,
+            selected_routes,
+        )
         package_src = str(Path(__file__).resolve().parents[2])
         script = "\n".join(
             [
@@ -43,32 +48,40 @@ class SolverCoderAgent:
                 "workspace = Path.cwd()",
                 f"df = pd.read_csv(workspace / {processed_relative!r})",
                 f"selected_routes = {selected_routes!r}",
+                f"column_bindings = {column_bindings!r}",
                 "route_metric_payload = {}",
                 "numeric = df.select_dtypes(include='number')",
                 "if 'multi_criteria_evaluation' in selected_routes and not numeric.empty:",
-                "    entity_column = next((column for column in df.columns if column not in numeric.columns), None)",
-                "    df = topsis_rank(df, indicator_columns=list(numeric.columns), entity_column=entity_column)",
+                "    evaluation_bindings = column_bindings.get('multi_criteria_evaluation', {})",
+                "    entity_column = evaluation_bindings.get('entity_column') or next((column for column in df.columns if column not in numeric.columns), None)",
+                "    indicator_columns = [column for column in evaluation_bindings.get('indicator_columns', []) if column in df.columns]",
+                "    df = topsis_rank(df, indicator_columns=indicator_columns or list(numeric.columns), entity_column=entity_column)",
                 "if 'constrained_optimization' in selected_routes and not numeric.empty:",
                 "    if 'priority_score' not in df.columns:",
                 "        df['priority_score'] = numeric.mean(axis=1)",
-                "    total_resource = float(numeric['budget'].sum()) if 'budget' in numeric.columns else float(numeric.sum().sum())",
-                "    capacity_column = 'budget' if 'budget' in df.columns else None",
+                "    optimization_bindings = column_bindings.get('constrained_optimization', {})",
+                "    priority_column = optimization_bindings.get('priority_column') or 'priority_score'",
+                "    capacity_column = optimization_bindings.get('capacity_column') or ('budget' if 'budget' in df.columns else None)",
+                "    total_resource = float(df[capacity_column].sum()) if capacity_column else float(numeric.sum().sum())",
                 "    df = allocate_by_priority(",
                 "        df,",
-                "        priority_column='priority_score',",
+                "        priority_column=priority_column,",
                 "        total_resource=total_resource,",
                 "        capacity_column=capacity_column,",
                 "    )",
                 "if 'forecasting_model' in selected_routes and len(numeric.columns) >= 2:",
-                "    time_column = 'period' if 'period' in df.columns else numeric.columns[0]",
-                "    target_column = 'demand' if 'demand' in df.columns else numeric.columns[-1]",
+                "    forecast_bindings = column_bindings.get('forecasting_model', {})",
+                "    time_column = forecast_bindings.get('time_column') or ('period' if 'period' in df.columns else numeric.columns[0])",
+                "    target_column = forecast_bindings.get('target_column') or ('demand' if 'demand' in df.columns else numeric.columns[-1])",
                 "    forecast, forecast_metrics = linear_trend_forecast(",
                 "        df, time_column=time_column, target_column=target_column, periods=3",
                 "    )",
                 "    forecast.to_csv(workspace / 'results/forecast_results.csv', index=False)",
                 "    route_metric_payload.update({f'forecast_{key}': value for key, value in forecast_metrics.items()})",
                 "if 'monte_carlo_simulation' in selected_routes and not numeric.empty:",
-                "    base_value = float(numeric.mean().mean())",
+                "    simulation_bindings = column_bindings.get('monte_carlo_simulation', {})",
+                "    base_value_column = simulation_bindings.get('base_value_column')",
+                "    base_value = float(df[base_value_column].mean()) if base_value_column else float(numeric.mean().mean())",
                 "    simulation_metrics = monte_carlo_scenarios(",
                 "        base_value=base_value, relative_std=0.1, iterations=1000, seed=42",
                 "    )",
@@ -76,13 +89,23 @@ class SolverCoderAgent:
                 "        json.dumps(simulation_metrics, indent=2), encoding='utf-8'",
                 "    )",
                 "    route_metric_payload.update({f'simulation_{key}': value for key, value in simulation_metrics.items()})",
-                "if 'network_flow_graph' in selected_routes and {'source', 'target', 'cost'}.issubset(df.columns):",
-                "    path_table = shortest_path_table(",
-                "        df, source=str(df.iloc[0]['source']), target=str(df.iloc[-1]['target'])",
-                "    )",
-                "    path_table.to_csv(workspace / 'results/network_paths.csv', index=False)",
-                "    route_metric_payload['shortest_path_cost'] = float(path_table.iloc[0]['path_cost'])",
-                "    route_metric_payload['shortest_path_edge_count'] = float(path_table.iloc[0]['edge_count'])",
+                "if 'network_flow_graph' in selected_routes:",
+                "    network_bindings = column_bindings.get('network_flow_graph', {})",
+                "    source_column = network_bindings.get('source_column') or 'source'",
+                "    target_column = network_bindings.get('target_column') or 'target'",
+                "    cost_column = network_bindings.get('cost_column') or 'cost'",
+                "    if {source_column, target_column, cost_column}.issubset(df.columns):",
+                "        path_table = shortest_path_table(",
+                "            df,",
+                "            source=str(df.iloc[0][source_column]),",
+                "            target=str(df.iloc[-1][target_column]),",
+                "            source_column=source_column,",
+                "            target_column=target_column,",
+                "            cost_column=cost_column,",
+                "        )",
+                "        path_table.to_csv(workspace / 'results/network_paths.csv', index=False)",
+                "        route_metric_payload['shortest_path_cost'] = float(path_table.iloc[0]['path_cost'])",
+                "        route_metric_payload['shortest_path_edge_count'] = float(path_table.iloc[0]['edge_count'])",
                 "df.to_csv(workspace / 'results/problem1_results.csv', index=False)",
                 "numeric = df.select_dtypes(include='number')",
                 "metrics = {",
@@ -134,6 +157,7 @@ class SolverCoderAgent:
                 "selected_routes": selected_routes,
                 "solver_modules": self._solver_modules(selected_routes),
                 "experiment_spec_used": bool(experiment_spec.experiments),
+                "column_bindings": column_bindings,
                 "route_metrics": route_metrics,
                 "source_result": str(result_path.relative_to(workspace_root)),
             },
@@ -217,6 +241,50 @@ class SolverCoderAgent:
         ]
         selected = [route_id for route_id in route_ids if route_id in text]
         return selected or ["balanced_contest_route"]
+
+    def _column_bindings(
+        self,
+        frame: pd.DataFrame,
+        experiment_spec: ExperimentSpec,
+        selected_routes: list[str],
+    ) -> dict[str, dict[str, object]]:
+        explicit = {
+            item.route_id: {
+                key: value
+                for key, value in item.column_bindings.items()
+                if value or isinstance(value, list)
+            }
+            for item in experiment_spec.experiments
+        }
+        numeric_columns = list(frame.select_dtypes(include="number").columns)
+        text_columns = [column for column in frame.columns if column not in numeric_columns]
+        bindings: dict[str, dict[str, object]] = {}
+        for route_id in selected_routes:
+            current = dict(explicit.get(route_id, {}))
+            if route_id == "multi_criteria_evaluation":
+                current.setdefault("entity_column", text_columns[0] if text_columns else "")
+                current.setdefault("indicator_columns", numeric_columns)
+            elif route_id == "constrained_optimization":
+                current.setdefault("priority_column", "priority_score")
+                current.setdefault("capacity_column", self._first_existing(frame, ["budget", "capacity"]))
+            elif route_id == "forecasting_model":
+                current.setdefault("time_column", self._first_existing(frame, ["period", "year", "time", "month"]) or (numeric_columns[0] if numeric_columns else ""))
+                current.setdefault("target_column", self._first_existing(frame, ["demand", "sales", "target", "value"]) or (numeric_columns[-1] if numeric_columns else ""))
+            elif route_id == "monte_carlo_simulation":
+                current.setdefault("base_value_column", numeric_columns[-1] if numeric_columns else "")
+            elif route_id == "network_flow_graph":
+                current.setdefault("source_column", self._first_existing(frame, ["source", "origin", "from"]))
+                current.setdefault("target_column", self._first_existing(frame, ["target", "destination", "to"]))
+                current.setdefault("cost_column", self._first_existing(frame, ["cost", "distance", "weight"]))
+            bindings[route_id] = current
+        return bindings
+
+    def _first_existing(self, frame: pd.DataFrame, candidates: list[str]) -> str:
+        lower_to_original = {column.lower(): column for column in frame.columns}
+        for candidate in candidates:
+            if candidate in lower_to_original:
+                return lower_to_original[candidate]
+        return ""
 
     def _route_metrics(
         self,

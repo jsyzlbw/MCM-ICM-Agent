@@ -181,7 +181,9 @@ Every reported metric should be traceable through:
 
 `experiment_spec.json` is the machine-readable bridge from model decision to solver
 execution. It lists each selected route, solver module, method, input requirements,
-expected outputs, and metrics.
+expected outputs, metrics, and column-binding contracts. Solver execution records the
+resolved bindings in `model_route_summary.json`, for example `time_column=year`,
+`target_column=demand`, or `source_column=origin`.
 
 `model_route_summary.json` binds the selected model route to route-specific metrics,
 figure planning, and the paper model section.
