@@ -9,7 +9,7 @@ from mcm_agent.utils.json_io import read_json, write_json
 EVIDENCE_PATTERN = re.compile(r"evidence_id=([A-Za-z0-9_-]+)")
 FIGURE_PATTERN = re.compile(r"figure_id=([A-Za-z0-9_-]+)")
 SOURCE_PATTERN = re.compile(r"source_id=([A-Za-z0-9_-]+)")
-CLAIM_SECTIONS = {"results.tex"}
+CLAIM_SECTIONS = {"conclusion.tex", "model.tex", "results.tex", "sensitivity.tex"}
 PLACEHOLDER_IDS = {"missing", "none", "unknown"}
 
 

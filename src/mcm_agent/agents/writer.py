@@ -30,6 +30,9 @@ class PaperWriterAgent:
         evidence = read_json(workspace_root / "results" / "evidence_registry.json", [])
         figures = read_json(workspace_root / "figures" / "figure_registry.json", [])
         sources = read_json(workspace_root / "data" / "source_registry.json", [])
+        evidence_id = self._first_id(evidence, "evidence_id")
+        figure_id = self._first_id(figures, "figure_id")
+        source_id = self._first_id(sources, "source_id")
         route_summary = read_json(workspace_root / "results" / "model_route_summary.json", {})
         unresolved_path = workspace_root / "unresolved_issues.md"
         if not evidence:
@@ -44,13 +47,28 @@ class PaperWriterAgent:
             )
 
         section_content = dict(SECTION_CONTENT)
-        section_content["model.tex"] = self._fallback_model_section(route_summary)
+        section_content["model.tex"] = self._fallback_model_section(
+            route_summary,
+            evidence_id,
+            figure_id,
+            source_id,
+        )
         generated_results = self._generate_results_section(evidence, figures, sources)
         if generated_results is not None:
             section_content["results.tex"] = generated_results
         else:
             section_content["results.tex"] = self._fallback_results_section(evidence, figures, sources)
-        section_content["sensitivity.tex"] = self._fallback_sensitivity_section(route_summary)
+        section_content["sensitivity.tex"] = self._fallback_sensitivity_section(
+            route_summary,
+            evidence_id,
+            figure_id,
+            source_id,
+        )
+        section_content["conclusion.tex"] = self._fallback_conclusion_section(
+            evidence_id,
+            figure_id,
+            source_id,
+        )
 
         for filename, content in section_content.items():
             (section_dir / filename).write_text(content, encoding="utf-8")
@@ -138,13 +156,29 @@ class PaperWriterAgent:
             ]
         )
 
-    def _fallback_model_section(self, route_summary: object) -> str:
+    def _fallback_model_section(
+        self,
+        route_summary: object,
+        evidence_id: str = "missing",
+        figure_id: str = "missing",
+        source_id: str = "missing",
+    ) -> str:
         if not isinstance(route_summary, dict):
-            return SECTION_CONTENT["model.tex"]
+            return self._with_trace_comments(
+                SECTION_CONTENT["model.tex"],
+                evidence_id,
+                figure_id,
+                source_id,
+            )
         routes = route_summary.get("selected_routes", [])
         metrics = route_summary.get("route_metrics", {})
         if not isinstance(routes, list) or not routes:
-            return SECTION_CONTENT["model.tex"]
+            return self._with_trace_comments(
+                SECTION_CONTENT["model.tex"],
+                evidence_id,
+                figure_id,
+                source_id,
+            )
         route_text = " + ".join(self._latex_escape(str(route)) for route in routes)
         metric_parts = []
         if isinstance(metrics, dict):
@@ -165,11 +199,25 @@ class PaperWriterAgent:
             f"The selected route is {route_text}. "
             "This route is chosen because it binds the problem diagnosis to reproducible "
             f"code outputs and later figure planning.{metric_sentence}\n"
+            f"% evidence_id={evidence_id}\n"
+            f"% figure_id={figure_id}\n"
+            f"% source_id={source_id}\n"
         )
 
-    def _fallback_sensitivity_section(self, route_summary: object) -> str:
+    def _fallback_sensitivity_section(
+        self,
+        route_summary: object,
+        evidence_id: str = "missing",
+        figure_id: str = "missing",
+        source_id: str = "missing",
+    ) -> str:
         if not isinstance(route_summary, dict):
-            return SECTION_CONTENT["sensitivity.tex"]
+            return self._with_trace_comments(
+                SECTION_CONTENT["sensitivity.tex"],
+                evidence_id,
+                figure_id,
+                source_id,
+            )
         metrics = route_summary.get("route_metrics", {})
         metric_lines = []
         if isinstance(metrics, dict):
@@ -187,10 +235,26 @@ class PaperWriterAgent:
                 "\\section{Sensitivity Analysis}",
                 "Sensitivity analysis focuses on the registered route-specific metrics, "
                 "so reviewers can trace robustness claims back to code outputs.",
+                f"% evidence_id={evidence_id}",
+                f"% figure_id={figure_id}",
+                f"% source_id={source_id}",
                 "",
                 *(metric_lines or ["- No route-specific metric was available for sensitivity analysis."]),
                 "",
             ]
+        )
+
+    def _fallback_conclusion_section(
+        self,
+        evidence_id: str = "missing",
+        figure_id: str = "missing",
+        source_id: str = "missing",
+    ) -> str:
+        return self._with_trace_comments(
+            SECTION_CONTENT["conclusion.tex"],
+            evidence_id,
+            figure_id,
+            source_id,
         )
 
     def _generate_results_section(
@@ -231,6 +295,21 @@ class PaperWriterAgent:
             return "missing"
         value = rows[0].get(key)
         return str(value) if value else "missing"
+
+    def _with_trace_comments(
+        self,
+        content: str,
+        evidence_id: str,
+        figure_id: str,
+        source_id: str,
+    ) -> str:
+        return (
+            content.rstrip()
+            + "\n"
+            + f"% evidence_id={evidence_id}\n"
+            + f"% figure_id={figure_id}\n"
+            + f"% source_id={source_id}\n"
+        )
 
     def _latex_escape(self, value: str) -> str:
         return value.replace("_", "\\_")
