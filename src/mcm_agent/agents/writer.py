@@ -136,6 +136,12 @@ class PaperWriterAgent:
         source_comment = f"% source_id={source_id}"
         evidence_comment = f"% evidence_id={evidence_id}"
         figure_comment = f"% figure_id={figure_id}"
+        claim_comment = self._claim_trace_comment(
+            "claim_results_primary",
+            evidence_id,
+            figure_id,
+            source_id,
+        )
         return "\n".join(
             [
                 "\\section{Results}",
@@ -146,6 +152,7 @@ class PaperWriterAgent:
                 evidence_comment,
                 figure_comment,
                 source_comment,
+                claim_comment,
                 "",
                 "\\subsection{Evidence Trace}",
                 *(evidence_lines or ["- No verified evidence was available at drafting time."]),
@@ -169,6 +176,7 @@ class PaperWriterAgent:
                 evidence_id,
                 figure_id,
                 source_id,
+                claim_id="claim_model_route",
             )
         routes = route_summary.get("selected_routes", [])
         metrics = route_summary.get("route_metrics", {})
@@ -178,6 +186,7 @@ class PaperWriterAgent:
                 evidence_id,
                 figure_id,
                 source_id,
+                claim_id="claim_model_route",
             )
         route_text = " + ".join(self._latex_escape(str(route)) for route in routes)
         metric_parts = []
@@ -202,6 +211,13 @@ class PaperWriterAgent:
             f"% evidence_id={evidence_id}\n"
             f"% figure_id={figure_id}\n"
             f"% source_id={source_id}\n"
+            + self._claim_trace_comment(
+                "claim_model_route",
+                evidence_id,
+                figure_id,
+                source_id,
+            )
+            + "\n"
         )
 
     def _fallback_sensitivity_section(
@@ -217,6 +233,7 @@ class PaperWriterAgent:
                 evidence_id,
                 figure_id,
                 source_id,
+                claim_id="claim_sensitivity_baseline",
             )
         metrics = route_summary.get("route_metrics", {})
         metric_lines = []
@@ -238,6 +255,12 @@ class PaperWriterAgent:
                 f"% evidence_id={evidence_id}",
                 f"% figure_id={figure_id}",
                 f"% source_id={source_id}",
+                self._claim_trace_comment(
+                    "claim_sensitivity_baseline",
+                    evidence_id,
+                    figure_id,
+                    source_id,
+                ),
                 "",
                 *(metric_lines or ["- No route-specific metric was available for sensitivity analysis."]),
                 "",
@@ -255,6 +278,7 @@ class PaperWriterAgent:
             evidence_id,
             figure_id,
             source_id,
+            claim_id="claim_conclusion_traceability",
         )
 
     def _generate_results_section(
@@ -302,13 +326,32 @@ class PaperWriterAgent:
         evidence_id: str,
         figure_id: str,
         source_id: str,
+        *,
+        claim_id: str | None = None,
     ) -> str:
-        return (
+        traced = (
             content.rstrip()
             + "\n"
             + f"% evidence_id={evidence_id}\n"
             + f"% figure_id={figure_id}\n"
             + f"% source_id={source_id}\n"
+        )
+        if claim_id is None:
+            return traced
+        return traced + self._claim_trace_comment(claim_id, evidence_id, figure_id, source_id) + "\n"
+
+    def _claim_trace_comment(
+        self,
+        claim_id: str,
+        evidence_id: str,
+        figure_id: str,
+        source_id: str,
+    ) -> str:
+        return (
+            f"% claim_id={claim_id} "
+            f"evidence_id={evidence_id} "
+            f"figure_id={figure_id} "
+            f"source_id={source_id}"
         )
 
     def _latex_escape(self, value: str) -> str:
