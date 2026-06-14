@@ -10,6 +10,7 @@ from mcm_agent.agents.extraction import DocumentExtractionAgent
 from mcm_agent.agents.intake import IntakeAgent
 from mcm_agent.agents.modeling import ModelJudge, ModelingCouncil
 from mcm_agent.agents.modeling_quality import ModelingPlanQualityAgent
+from mcm_agent.agents.paper_evidence import PaperEvidenceBindingAgent
 from mcm_agent.agents.problem_understanding import ProblemUnderstandingAgent
 from mcm_agent.agents.rag import MethodologyRAGAgent
 from mcm_agent.agents.reference_manager import ReferenceManager
@@ -297,6 +298,10 @@ def _mvp_stage_handlers(
         PaperWriterAgent(provider_bundle.llm).run(workspace_root)
         return ["paper/main.tex", "paper/sections"]
 
+    def paper_evidence_binding(workspace_root: Path) -> list[str]:
+        PaperEvidenceBindingAgent().run(workspace_root)
+        return ["review/paper_evidence_bindings.json", "review/paper_evidence_report.md"]
+
     def typesetting(workspace_root: Path) -> list[str]:
         ComplianceOriginalityAgent(provider_bundle.humanizer).run(workspace_root)
         ReferenceManager().run(workspace_root)
@@ -348,6 +353,7 @@ def _mvp_stage_handlers(
         "visualization": visualization,
         "figure_quality_gate": figure_quality_gate,
         "paper_writer": paper_writer,
+        "paper_evidence_binding": paper_evidence_binding,
         "typesetting": typesetting,
         "pre_submission_review": pre_submission_review,
         "final_gatekeeper": final_gatekeeper,

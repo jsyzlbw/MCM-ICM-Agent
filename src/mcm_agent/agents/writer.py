@@ -116,6 +116,8 @@ class PaperWriterAgent:
                 + "."
             )
         source_comment = f"% source_id={source_id}"
+        evidence_comment = f"% evidence_id={evidence_id}"
+        figure_comment = f"% figure_id={figure_id}"
         return "\n".join(
             [
                 "\\section{Results}",
@@ -123,6 +125,8 @@ class PaperWriterAgent:
                 "The primary trace links are "
                 f"evidence {self._texttt(evidence_id)}, figure {self._texttt(figure_id)}, "
                 f"and source {self._texttt('source_id=' + source_id)}.",
+                evidence_comment,
+                figure_comment,
                 source_comment,
                 "",
                 "\\subsection{Evidence Trace}",

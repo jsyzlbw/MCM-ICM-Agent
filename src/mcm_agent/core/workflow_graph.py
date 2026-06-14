@@ -232,6 +232,22 @@ def build_default_workflow_graph() -> WorkflowGraph:
             output_artifacts=["paper/sections"],
             pass_criteria=["No unsupported claims or unresolved placeholders in section drafts."],
         ),
+        "paper_evidence_binding": AgentNode(
+            node_id="paper_evidence_binding",
+            label="Paper Evidence Binding Agent",
+            responsibility="Bind claim-bearing paper sections to registered evidence, figures, and sources.",
+            input_artifacts=[
+                "paper/sections",
+                "results/evidence_registry.json",
+                "figures/figure_registry.json",
+                "data/source_registry.json",
+            ],
+            output_artifacts=[
+                "review/paper_evidence_bindings.json",
+                "review/paper_evidence_report.md",
+            ],
+            pass_criteria=["Every claim-bearing section has at least one valid evidence, figure, or source binding."],
+        ),
         "typesetting": AgentNode(
             node_id="typesetting",
             label="Typesetting Agent",
@@ -306,7 +322,8 @@ def build_default_workflow_graph() -> WorkflowGraph:
         WorkflowEdge("figure_planning", "visualization"),
         WorkflowEdge("visualization", "figure_quality_gate"),
         WorkflowEdge("figure_quality_gate", "paper_writer"),
-        WorkflowEdge("paper_writer", "typesetting"),
+        WorkflowEdge("paper_writer", "paper_evidence_binding"),
+        WorkflowEdge("paper_evidence_binding", "typesetting"),
         WorkflowEdge("typesetting", "pre_submission_review"),
         WorkflowEdge("pre_submission_review", "final_gatekeeper"),
         WorkflowEdge("final_gatekeeper", "submission_packager"),

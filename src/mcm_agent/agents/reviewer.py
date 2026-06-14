@@ -37,6 +37,13 @@ class ReviewerAgent:
                 + ", ".join(f"`{source_id}`" for source_id in missing_references)
                 + "."
             )
+        missing_paper_bindings = self._missing_paper_bindings(workspace_root)
+        if missing_paper_bindings:
+            blocking.append(
+                "Paper claims are missing evidence bindings: "
+                + ", ".join(f"`{section}`" for section in missing_paper_bindings)
+                + "."
+            )
         self._write_source_audit_report(workspace_root, unbound_sources)
 
         reviewer_report = self._generate_review(blocking) or self._fallback_review(blocking)
@@ -75,6 +82,9 @@ class ReviewerAgent:
             repair_stage = "search_data"
         elif missing_references:
             failure_reason = "bad_data"
+            repair_stage = "paper_writer"
+        elif missing_paper_bindings:
+            failure_reason = "bad_writing"
             repair_stage = "paper_writer"
         elif blocking:
             failure_reason = "bad_writing"
@@ -157,6 +167,16 @@ class ReviewerAgent:
                     if source_id not in PLACEHOLDER_SOURCE_IDS
                 )
         return used
+
+    def _missing_paper_bindings(self, workspace_root: Path) -> list[str]:
+        bindings = read_json(workspace_root / "review" / "paper_evidence_bindings.json", [])
+        if not isinstance(bindings, list):
+            return []
+        missing = []
+        for binding in bindings:
+            if isinstance(binding, dict) and binding.get("status") == "fail":
+                missing.append(str(binding.get("section", "unknown_section")))
+        return missing
 
     def _fallback_review(self, blocking: list[str]) -> str:
         return "\n".join(

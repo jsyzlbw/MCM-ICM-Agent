@@ -96,6 +96,8 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "review/figure_quality_report.md",
         "review/figure_gate.json",
         "paper/main.tex",
+        "review/paper_evidence_bindings.json",
+        "review/paper_evidence_report.md",
         "review/originality_report.md",
         "review/humanization_diff.md",
         "review/fact_regression_report.md",

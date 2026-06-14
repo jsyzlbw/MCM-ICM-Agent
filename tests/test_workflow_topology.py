@@ -29,6 +29,8 @@ def test_default_workflow_contains_review_feedback_loops() -> None:
     assert graph.failure_route("final_gatekeeper", "weak_model") == "modeling_council"
     assert graph.failure_route("final_gatekeeper", "bad_figures") == "figure_planning"
     assert graph.failure_route("figure_quality_gate", "visual_or_vector_issue") == "figure_planning"
+    assert graph.has_edge("paper_writer", "paper_evidence_binding")
+    assert graph.has_edge("paper_evidence_binding", "typesetting")
 
 
 def test_default_workflow_creates_experiment_plan_before_deep_search() -> None:

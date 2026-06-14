@@ -101,6 +101,7 @@ user_discussion
 methodology_rag
 modeling_council
 model_judge
+modeling_quality_gate
 search_data
 source_verifier
 data_eda
@@ -110,6 +111,7 @@ figure_planning
 visualization
 figure_quality_gate
 paper_writer
+paper_evidence_binding
 typesetting
 pre_submission_review
 final_gatekeeper
@@ -238,6 +240,12 @@ plans whose experiment spec has missing metrics, missing expected outputs, requi
 route bindings that cannot be justified, or unavailable data needs without an adopted
 proxy/reframing strategy. Failures use `failure_reason=weak_model` and route back to
 `modeling_council`.
+
+`paper_evidence_binding` runs after `paper_writer` and before typesetting. It writes
+`review/paper_evidence_bindings.json` and `review/paper_evidence_report.md`, checking
+that the Results section contains valid `evidence_id`, `figure_id`, or `source_id`
+bindings to registered artifacts. The final reviewer blocks claim-bearing sections whose
+bindings are missing or reference unknown IDs.
 
 The first reusable solver modules are:
 
