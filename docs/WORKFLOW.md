@@ -185,6 +185,11 @@ expected outputs, metrics, and column-binding contracts. Solver execution record
 resolved bindings in `model_route_summary.json`, for example `time_column=year`,
 `target_column=demand`, or `source_column=origin`.
 
+`schema_profile.json` is produced by EDA and records field-level dtype, missing rate,
+unique count, and semantic tags such as `time`, `target`, `source_node`, `target_node`,
+`cost`, `capacity`, and `numeric_indicator`. Solver column binding uses these tags before
+falling back to column-name heuristics.
+
 `model_route_summary.json` binds the selected model route to route-specific metrics,
 figure planning, and the paper model section.
 

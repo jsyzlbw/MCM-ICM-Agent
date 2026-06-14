@@ -27,7 +27,9 @@ class SolverCoderAgent:
         experiment_spec = self._experiment_spec(workspace_root)
         selected_routes = self._selected_routes(workspace_root, experiment_spec)
         column_bindings = self._column_bindings(
+            workspace_root,
             pd.read_csv(processed_files[0]),
+            processed_relative,
             experiment_spec,
             selected_routes,
         )
@@ -244,10 +246,13 @@ class SolverCoderAgent:
 
     def _column_bindings(
         self,
+        workspace_root: Path,
         frame: pd.DataFrame,
+        processed_relative: str,
         experiment_spec: ExperimentSpec,
         selected_routes: list[str],
     ) -> dict[str, dict[str, object]]:
+        semantic = self._semantic_columns(workspace_root, processed_relative)
         explicit = {
             item.route_id: {
                 key: value
@@ -262,22 +267,53 @@ class SolverCoderAgent:
         for route_id in selected_routes:
             current = dict(explicit.get(route_id, {}))
             if route_id == "multi_criteria_evaluation":
-                current.setdefault("entity_column", text_columns[0] if text_columns else "")
-                current.setdefault("indicator_columns", numeric_columns)
+                current.setdefault("entity_column", semantic.get("entity", text_columns[0] if text_columns else ""))
+                current.setdefault("indicator_columns", semantic.get("numeric_indicator", numeric_columns))
             elif route_id == "constrained_optimization":
                 current.setdefault("priority_column", "priority_score")
-                current.setdefault("capacity_column", self._first_existing(frame, ["budget", "capacity"]))
+                current.setdefault(
+                    "capacity_column",
+                    semantic.get("capacity", self._first_existing(frame, ["budget", "capacity"])),
+                )
             elif route_id == "forecasting_model":
-                current.setdefault("time_column", self._first_existing(frame, ["period", "year", "time", "month"]) or (numeric_columns[0] if numeric_columns else ""))
-                current.setdefault("target_column", self._first_existing(frame, ["demand", "sales", "target", "value"]) or (numeric_columns[-1] if numeric_columns else ""))
+                current.setdefault("time_column", semantic.get("time", self._first_existing(frame, ["period", "year", "time", "month"]) or (numeric_columns[0] if numeric_columns else "")))
+                current.setdefault("target_column", semantic.get("target", self._first_existing(frame, ["demand", "sales", "target", "value"]) or (numeric_columns[-1] if numeric_columns else "")))
             elif route_id == "monte_carlo_simulation":
-                current.setdefault("base_value_column", numeric_columns[-1] if numeric_columns else "")
+                current.setdefault("base_value_column", semantic.get("target", numeric_columns[-1] if numeric_columns else ""))
             elif route_id == "network_flow_graph":
-                current.setdefault("source_column", self._first_existing(frame, ["source", "origin", "from"]))
-                current.setdefault("target_column", self._first_existing(frame, ["target", "destination", "to"]))
-                current.setdefault("cost_column", self._first_existing(frame, ["cost", "distance", "weight"]))
+                current.setdefault("source_column", semantic.get("source_node", self._first_existing(frame, ["source", "origin", "from"])))
+                current.setdefault("target_column", semantic.get("target_node", self._first_existing(frame, ["target", "destination", "to"])))
+                current.setdefault("cost_column", semantic.get("cost", self._first_existing(frame, ["cost", "distance", "weight"])))
             bindings[route_id] = current
         return bindings
+
+    def _semantic_columns(self, workspace_root: Path, processed_relative: str) -> dict[str, object]:
+        profile = read_json(workspace_root / "results" / "schema_profile.json", {})
+        if not isinstance(profile, dict):
+            return {}
+        datasets = profile.get("datasets", [])
+        if not isinstance(datasets, list):
+            return {}
+        semantic: dict[str, object] = {}
+        for dataset in datasets:
+            if not isinstance(dataset, dict) or dataset.get("file") != processed_relative:
+                continue
+            for column in dataset.get("columns", []):
+                if not isinstance(column, dict):
+                    continue
+                name = str(column.get("name", ""))
+                tags = column.get("semantic_tags", [])
+                if not name or not isinstance(tags, list):
+                    continue
+                for tag in tags:
+                    if tag == "numeric_indicator":
+                        semantic.setdefault("numeric_indicator", [])
+                        if isinstance(semantic["numeric_indicator"], list):
+                            semantic["numeric_indicator"].append(name)
+                    else:
+                        semantic.setdefault(str(tag), name)
+            break
+        return semantic
 
     def _first_existing(self, frame: pd.DataFrame, candidates: list[str]) -> str:
         lower_to_original = {column.lower(): column for column in frame.columns}

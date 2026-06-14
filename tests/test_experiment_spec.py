@@ -141,3 +141,69 @@ def test_solver_records_inferred_column_bindings_in_route_summary(tmp_path: Path
     assert bindings["network_flow_graph"]["cost_column"] == "distance"
     assert (workspace.root / "results" / "forecast_results.csv").exists()
     assert (workspace.root / "results" / "network_paths.csv").exists()
+
+
+def test_solver_uses_schema_profile_semantic_tags_for_column_bindings(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text(
+        "a,b,c,d,e\nA,B,1,2021,10\nB,C,2,2022,12\nA,C,5,2023,14\n",
+        encoding="utf-8",
+    )
+    (workspace.root / "results" / "schema_profile.json").write_text(
+        """
+{
+  "datasets": [
+    {
+      "file": "data/processed/sample.csv",
+      "columns": [
+        {"name": "a", "semantic_tags": ["source_node"]},
+        {"name": "b", "semantic_tags": ["target_node"]},
+        {"name": "c", "semantic_tags": ["cost"]},
+        {"name": "d", "semantic_tags": ["time"]},
+        {"name": "e", "semantic_tags": ["target"]}
+      ]
+    }
+  ]
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "experiment_spec.json").write_text(
+        """
+{
+  "version": 1,
+  "experiments": [
+    {
+      "route_id": "forecasting_model",
+      "solver_module": "mcm_agent.solver_modules.forecasting",
+      "method": "linear_trend_forecast",
+      "input_requirements": ["time column", "target numeric column"],
+      "expected_outputs": ["results/forecast_results.csv"],
+      "metrics": ["forecast_training_mae"],
+      "column_bindings": {"time_column": "", "target_column": ""}
+    },
+    {
+      "route_id": "network_flow_graph",
+      "solver_module": "mcm_agent.solver_modules.network",
+      "method": "shortest_path_table",
+      "input_requirements": ["source column", "target column", "cost column"],
+      "expected_outputs": ["results/network_paths.csv"],
+      "metrics": ["shortest_path_cost"],
+      "column_bindings": {"source_column": "", "target_column": "", "cost_column": ""}
+    }
+  ]
+}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    summary = read_json(workspace.root / "results" / "model_route_summary.json", {})
+    assert summary["column_bindings"]["forecasting_model"]["time_column"] == "d"
+    assert summary["column_bindings"]["forecasting_model"]["target_column"] == "e"
+    assert summary["column_bindings"]["network_flow_graph"]["source_column"] == "a"
+    assert summary["column_bindings"]["network_flow_graph"]["target_column"] == "b"
+    assert summary["column_bindings"]["network_flow_graph"]["cost_column"] == "c"

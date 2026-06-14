@@ -24,6 +24,28 @@ def test_eda_agent_profiles_csv_and_registers_evidence(tmp_path: Path) -> None:
     assert any(item["source_type"] == "attachment" for item in evidence)
 
 
+def test_eda_agent_writes_schema_profile_with_semantic_hints(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    csv_path = workspace.root / "input" / "attachments" / "sample.csv"
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    csv_path.write_text(
+        "origin,destination,distance,year,sales\nA,B,1,2021,10\nB,C,2,2022,\n",
+        encoding="utf-8",
+    )
+
+    DataEDAAgent().run(workspace.root)
+
+    profile = read_json(workspace.root / "results" / "schema_profile.json", {})
+    columns = profile["datasets"][0]["columns"]
+    by_name = {column["name"]: column for column in columns}
+    assert by_name["year"]["semantic_tags"] == ["time"]
+    assert "target" in by_name["sales"]["semantic_tags"]
+    assert "source_node" in by_name["origin"]["semantic_tags"]
+    assert "target_node" in by_name["destination"]["semantic_tags"]
+    assert "cost" in by_name["distance"]["semantic_tags"]
+    assert by_name["sales"]["missing_rate"] == 0.5
+
+
 def test_eda_and_solver_preserve_external_data_lineage(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     external = workspace.root / "data" / "external" / "source_001.csv"

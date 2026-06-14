@@ -16,6 +16,7 @@ class DataEDAAgent:
         processed_dir.mkdir(parents=True, exist_ok=True)
 
         summaries: list[dict[str, object]] = []
+        schema_datasets: list[dict[str, object]] = []
         evidence = read_json(workspace_root / "results" / "evidence_registry.json", [])
         lineage_records = read_json(workspace_root / "data" / "data_lineage.json", [])
 
@@ -39,6 +40,12 @@ class DataEDAAgent:
                 "lineage_ids": lineage_ids,
             }
             summaries.append(summary)
+            schema_datasets.append(
+                {
+                    "file": str(output.relative_to(workspace_root)),
+                    "columns": [self._column_profile(frame, column) for column in frame.columns],
+                }
+            )
             evidence.append(
                 EvidenceItem(
                     evidence_id=f"eda_{input_file.stem}_row_count",
@@ -54,6 +61,7 @@ class DataEDAAgent:
             )
 
         write_json(workspace_root / "results" / "eda_summary.json", summaries)
+        write_json(workspace_root / "results" / "schema_profile.json", {"datasets": schema_datasets})
         write_json(workspace_root / "results" / "evidence_registry.json", evidence)
 
         lines = ["# Data Profile", ""]
@@ -62,10 +70,57 @@ class DataEDAAgent:
                 f"- `{summary['file']}`: {summary['rows']} rows, "
                 f"{summary['columns']} columns, {summary['missing_values']} missing values"
             )
+        lines.extend(["", "## Schema Profile"])
+        for dataset in schema_datasets:
+            lines.append(f"- `{dataset['file']}`")
+            for column in dataset["columns"]:
+                tags = ", ".join(column["semantic_tags"]) or "unclassified"
+                lines.append(
+                    f"  - `{column['name']}`: {column['dtype']}, "
+                    f"missing_rate={column['missing_rate']}, tags={tags}"
+                )
         (workspace_root / "reports" / "data_profile.md").write_text(
             "\n".join(lines) + "\n",
             encoding="utf-8",
         )
+
+    def _column_profile(self, frame: pd.DataFrame, column: str) -> dict[str, object]:
+        series = frame[column]
+        return {
+            "name": column,
+            "dtype": str(series.dtype),
+            "missing_count": int(series.isna().sum()),
+            "missing_rate": float(series.isna().mean()) if len(series) else 0.0,
+            "unique_count": int(series.nunique(dropna=True)),
+            "semantic_tags": self._semantic_tags(column, series),
+        }
+
+    def _semantic_tags(self, column: str, series: pd.Series) -> list[str]:
+        lowered = column.lower()
+        tags: list[str] = []
+        if lowered in {"year", "period", "time", "date", "month"} or any(
+            token in lowered for token in ["year", "period", "time", "date", "month"]
+        ):
+            tags.append("time")
+        if lowered in {"demand", "sales", "target", "value", "outcome"} or any(
+            token in lowered for token in ["demand", "sales", "target", "outcome"]
+        ):
+            tags.append("target")
+        if lowered in {"source", "origin", "from", "start"}:
+            tags.append("source_node")
+        if lowered in {"target", "destination", "to", "end"}:
+            tags.append("target_node")
+        if lowered in {"cost", "distance", "weight", "length", "travel_time"} or any(
+            token in lowered for token in ["cost", "distance", "weight"]
+        ):
+            tags.append("cost")
+        if lowered in {"budget", "capacity", "limit", "resource"} or any(
+            token in lowered for token in ["budget", "capacity", "resource"]
+        ):
+            tags.append("capacity")
+        if pd.api.types.is_numeric_dtype(series) and "time" not in tags:
+            tags.append("numeric_indicator")
+        return tags
 
     def _lineage_ids_for_input(
         self,
