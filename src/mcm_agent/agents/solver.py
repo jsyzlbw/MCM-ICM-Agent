@@ -7,6 +7,7 @@ import pandas as pd
 
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.experiment import run_experiment
+from mcm_agent.core.experiment_spec import ExperimentSpec
 from mcm_agent.core.models import EvidenceItem
 from mcm_agent.utils.json_io import read_json, write_json
 
@@ -23,7 +24,8 @@ class SolverCoderAgent:
         results_dir.mkdir(parents=True, exist_ok=True)
 
         processed_relative = str(processed_files[0].relative_to(workspace_root))
-        selected_routes = self._selected_routes(workspace_root)
+        experiment_spec = self._experiment_spec(workspace_root)
+        selected_routes = self._selected_routes(workspace_root, experiment_spec)
         package_src = str(Path(__file__).resolve().parents[2])
         script = "\n".join(
             [
@@ -131,6 +133,7 @@ class SolverCoderAgent:
             {
                 "selected_routes": selected_routes,
                 "solver_modules": self._solver_modules(selected_routes),
+                "experiment_spec_used": bool(experiment_spec.experiments),
                 "route_metrics": route_metrics,
                 "source_result": str(result_path.relative_to(workspace_root)),
             },
@@ -191,7 +194,15 @@ class SolverCoderAgent:
                 return [str(item) for item in summary.get("lineage_ids", [])]
         return []
 
-    def _selected_routes(self, workspace_root: Path) -> list[str]:
+    def _experiment_spec(self, workspace_root: Path) -> ExperimentSpec:
+        payload = read_json(workspace_root / "reports" / "experiment_spec.json", {})
+        if isinstance(payload, dict):
+            return ExperimentSpec.model_validate(payload)
+        return ExperimentSpec()
+
+    def _selected_routes(self, workspace_root: Path, experiment_spec: ExperimentSpec | None = None) -> list[str]:
+        if experiment_spec and experiment_spec.experiments:
+            return [item.route_id for item in experiment_spec.experiments]
         decision_path = workspace_root / "reports" / "model_decision.md"
         if not decision_path.exists():
             return ["balanced_contest_route"]

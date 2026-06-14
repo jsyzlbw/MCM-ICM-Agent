@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.experiment_spec import build_experiment_spec
 from mcm_agent.core.modeling_intelligence import ModelingIntelligence, ProblemDiagnosis
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
@@ -220,10 +221,15 @@ class ModelJudge:
             diagnosis if diagnosis.routes else None
         )
         experiment_plan = self._fallback_experiment_plan(diagnosis)
+        experiment_spec = build_experiment_spec([route.route_id for route in diagnosis.routes])
 
         (workspace_root / "reports" / "model_decision.md").write_text(decision, encoding="utf-8")
         (workspace_root / "reports" / "experiment_plan.md").write_text(
             experiment_plan,
+            encoding="utf-8",
+        )
+        (workspace_root / "reports" / "experiment_spec.json").write_text(
+            experiment_spec.model_dump_json(indent=2) + "\n",
             encoding="utf-8",
         )
 
@@ -248,6 +254,15 @@ class ModelJudge:
                 status=ArtifactStatus.REVIEW_REQUIRED,
                 created_at=now,
             ),
+            ArtifactRecord(
+                artifact_id="experiment_spec_v1",
+                type="experiment_spec",
+                path="reports/experiment_spec.json",
+                producer="ModelJudge",
+                depends_on=["model_decision_v1"],
+                status=ArtifactStatus.REVIEW_REQUIRED,
+                created_at=now,
+            ),
         ]:
             try:
                 registry.add(record)
@@ -258,7 +273,7 @@ class ModelJudge:
         coordinator.emit("model.candidates.ready", payload={"artifact_ids": ["model_candidates_v1"]}, source="ModelJudge")
         coordinator.emit(
             "model.decision.ready",
-            payload={"artifact_ids": ["model_decision_v1", "experiment_plan_v1"]},
+            payload={"artifact_ids": ["model_decision_v1", "experiment_plan_v1", "experiment_spec_v1"]},
             source="ModelJudge",
         )
 

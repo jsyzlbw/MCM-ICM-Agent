@@ -173,10 +173,15 @@ Every external source should be traceable through:
 
 Every reported metric should be traceable through:
 
+- `reports/experiment_spec.json`
 - `results/experiment_runs.jsonl`
 - `results/model_metrics.json`
 - `results/model_route_summary.json`
 - `results/evidence_registry.json`
+
+`experiment_spec.json` is the machine-readable bridge from model decision to solver
+execution. It lists each selected route, solver module, method, input requirements,
+expected outputs, and metrics.
 
 `model_route_summary.json` binds the selected model route to route-specific metrics,
 figure planning, and the paper model section.

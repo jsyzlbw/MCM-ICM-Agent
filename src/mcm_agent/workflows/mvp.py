@@ -244,7 +244,11 @@ def _mvp_stage_handlers(
             workspace_root,
             workspace_root / "reports" / "model_candidates.md",
         )
-        return ["reports/model_decision.md", "reports/experiment_plan.md"]
+        return [
+            "reports/model_decision.md",
+            "reports/experiment_plan.md",
+            "reports/experiment_spec.json",
+        ]
 
     def search_data(workspace_root: Path) -> list[str]:
         SearchDataAgent(provider_bundle.search, provider_bundle.extractor).run(workspace_root)

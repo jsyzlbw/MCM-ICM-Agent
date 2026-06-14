@@ -155,7 +155,11 @@ def build_default_workflow_graph() -> WorkflowGraph:
             label="Model Judge Agent",
             responsibility="Score model candidates and choose an implementable paper route.",
             input_artifacts=["reports/model_candidates.md"],
-            output_artifacts=["reports/model_decision.md", "reports/experiment_plan.md"],
+            output_artifacts=[
+                "reports/model_decision.md",
+                "reports/experiment_plan.md",
+                "reports/experiment_spec.json",
+            ],
             pass_criteria=["Selected route is justified by fit, data feasibility, and implementation risk."],
         ),
         "solver_coder": AgentNode(
