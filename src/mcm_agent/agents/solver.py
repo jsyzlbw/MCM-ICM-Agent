@@ -24,36 +24,35 @@ class SolverCoderAgent:
 
         processed_relative = str(processed_files[0].relative_to(workspace_root))
         selected_routes = self._selected_routes(workspace_root)
+        package_src = str(Path(__file__).resolve().parents[2])
         script = "\n".join(
             [
                 "import json",
+                "import sys",
                 "from pathlib import Path",
                 "import pandas as pd",
+                f"sys.path.insert(0, {package_src!r})",
+                "from mcm_agent.solver_modules.evaluation import topsis_rank",
+                "from mcm_agent.solver_modules.optimization import allocate_by_priority",
                 "",
                 "workspace = Path.cwd()",
                 f"df = pd.read_csv(workspace / {processed_relative!r})",
                 f"selected_routes = {selected_routes!r}",
                 "numeric = df.select_dtypes(include='number')",
                 "if 'multi_criteria_evaluation' in selected_routes and not numeric.empty:",
-                "    normalized = numeric.copy()",
-                "    for column in normalized.columns:",
-                "        minimum = normalized[column].min()",
-                "        maximum = normalized[column].max()",
-                "        if maximum == minimum:",
-                "            normalized[column] = 1.0",
-                "        else:",
-                "            normalized[column] = (normalized[column] - minimum) / (maximum - minimum)",
-                "    df['priority_score'] = normalized.mean(axis=1)",
-                "    df['priority_rank'] = df['priority_score'].rank(ascending=False, method='dense').astype(int)",
+                "    entity_column = next((column for column in df.columns if column not in numeric.columns), None)",
+                "    df = topsis_rank(df, indicator_columns=list(numeric.columns), entity_column=entity_column)",
                 "if 'constrained_optimization' in selected_routes and not numeric.empty:",
                 "    if 'priority_score' not in df.columns:",
                 "        df['priority_score'] = numeric.mean(axis=1)",
-                "    total_capacity = float(numeric['budget'].sum()) if 'budget' in numeric.columns else float(numeric.sum().sum())",
-                "    score_sum = float(df['priority_score'].sum())",
-                "    if total_capacity > 0 and score_sum > 0:",
-                "        df['recommended_allocation'] = df['priority_score'] / score_sum * total_capacity",
-                "    else:",
-                "        df['recommended_allocation'] = 0.0",
+                "    total_resource = float(numeric['budget'].sum()) if 'budget' in numeric.columns else float(numeric.sum().sum())",
+                "    capacity_column = 'budget' if 'budget' in df.columns else None",
+                "    df = allocate_by_priority(",
+                "        df,",
+                "        priority_column='priority_score',",
+                "        total_resource=total_resource,",
+                "        capacity_column=capacity_column,",
+                "    )",
                 "df.to_csv(workspace / 'results/problem1_results.csv', index=False)",
                 "numeric = df.select_dtypes(include='number')",
                 "metrics = {",
@@ -102,6 +101,7 @@ class SolverCoderAgent:
             results_dir / "model_route_summary.json",
             {
                 "selected_routes": selected_routes,
+                "solver_modules": self._solver_modules(selected_routes),
                 "route_metrics": route_metrics,
                 "source_result": str(result_path.relative_to(workspace_root)),
             },
@@ -208,6 +208,21 @@ class SolverCoderAgent:
                 value = float(len(numeric.columns))
                 route_metrics["objective_proxy_count"] = {"route_id": route_id, "value": value}
         return route_metrics
+
+    def _solver_modules(self, selected_routes: list[str]) -> list[dict[str, str]]:
+        modules = {
+            "multi_criteria_evaluation": {
+                "route_id": "multi_criteria_evaluation",
+                "module": "mcm_agent.solver_modules.evaluation",
+                "method": "entropy_weighted_topsis",
+            },
+            "constrained_optimization": {
+                "route_id": "constrained_optimization",
+                "module": "mcm_agent.solver_modules.optimization",
+                "method": "capacity_constrained_priority_allocation",
+            },
+        }
+        return [modules[route_id] for route_id in selected_routes if route_id in modules]
 
     def _mean_for_column(self, numeric: pd.DataFrame, preferred_column: str) -> float:
         if preferred_column in numeric.columns:

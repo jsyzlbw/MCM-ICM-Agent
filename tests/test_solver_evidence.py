@@ -108,6 +108,7 @@ def test_solver_binds_outputs_to_selected_model_routes(tmp_path: Path) -> None:
         "multi_criteria_evaluation",
         "constrained_optimization",
     ]
+    assert route_summary["solver_modules"][0]["method"] == "entropy_weighted_topsis"
     assert "priority_score_mean" in route_summary["route_metrics"]
     assert "allocation_capacity_total" in route_summary["route_metrics"]
     assert any(
@@ -146,3 +147,22 @@ def test_solver_generates_route_specific_evaluation_and_allocation_columns(
     assert "recommended_allocation" in result
     assert "top_priority_entity" in route_summary["route_metrics"]
     assert route_summary["route_metrics"]["top_priority_entity"]["value"] == "A"
+
+
+def test_solver_generated_script_uses_reusable_solver_modules(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text("district,risk,exposure,budget\nA,9,5,10\nB,2,8,6\n", encoding="utf-8")
+    (workspace.root / "reports" / "model_decision.md").write_text(
+        "# Model Decision\n\n## Selected Route\nmulti_criteria_evaluation + constrained_optimization.",
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    script = (workspace.root / "code" / "experiments" / "problem1.py").read_text(
+        encoding="utf-8"
+    )
+    assert "mcm_agent.solver_modules.evaluation" in script
+    assert "mcm_agent.solver_modules.optimization" in script

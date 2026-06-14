@@ -181,6 +181,11 @@ Every reported metric should be traceable through:
 `model_route_summary.json` binds the selected model route to route-specific metrics,
 figure planning, and the paper model section.
 
+The first reusable solver modules are:
+
+- `mcm_agent.solver_modules.evaluation`: entropy weighting and TOPSIS ranking.
+- `mcm_agent.solver_modules.optimization`: capacity-constrained priority allocation.
+
 `ReferenceManager` creates `paper/references.bib` from registered citation candidates
 and writes `review/reference_audit_report.md`. Placeholder IDs such as `source_id=missing`
 are ignored as placeholders, not treated as real external sources.
