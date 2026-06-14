@@ -74,7 +74,7 @@ Each run writes to a workspace directory. Important files and folders:
 | `parsed/` | MinerU or fake parser outputs: `problem.md`, `problem.json`, layout files. |
 | `reports/` | Human-readable reports: problem understanding, feasibility, validation. |
 | `discussion/` | User direction lock, user brief, data questions, reframing options. |
-| `data/` | Source registry, retrieval log, external extracts, processed data, lineage. |
+| `data/` | Feasibility matrix, source registry, retrieval log, external extracts, processed data, lineage. |
 | `results/` | Model metrics, evidence registry, experiment runs, sensitivity files. |
 | `figures/` | Figure plan, figure registry, generated PDF/SVG/PNG, source scripts. |
 | `paper/` | LaTeX sections, `main.tex`, `references.bib`, optional PDF. |
@@ -166,10 +166,16 @@ At that point, inspect the blocking findings before resuming.
 
 Every external source should be traceable through:
 
+- `data/data_feasibility_matrix.json`
 - `data/source_registry.json`
 - `data/retrieval_log.jsonl`
 - `data/data_lineage.json`
 - `data/citation_candidates.json`
+
+`data_feasibility_matrix.json` is written before the user direction is locked. It records
+each proposed data need, the early official-data query, top URLs, availability judgment,
+proxy variables, and the recommended next action. If the user adds new data needs during
+discussion, the workflow can loop back to `data_feasibility_scout` before modeling.
 
 Every reported metric should be traceable through:
 

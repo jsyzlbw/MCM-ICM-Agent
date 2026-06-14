@@ -33,28 +33,35 @@ class DataFeasibilityScoutAgent:
             raise FileNotFoundError("missing reports/problem_understanding.md")
 
         problem_text = problem_report.read_text(encoding="utf-8")
-        target_dataset = self._target_dataset_from_discussion(workspace_root) or self._infer_target_dataset(
-            problem_text
-        )
-        query = f"{target_dataset} public dataset official"
-        results = self.search_provider.search(query, max_results=5)
-        append_jsonl(
-            workspace_root / "data" / "retrieval_log.jsonl",
-            RetrievalLogEntry(
-                time=datetime.now(UTC),
-                provider=self.search_provider.__class__.__name__,
-                query=query,
-                top_urls=[result.url for result in results],
-                decision="data_feasibility_probe",
-            ).model_dump(mode="json"),
-        )
+        target_datasets = self._target_datasets(workspace_root, problem_text)
+        matrix = []
+        all_results = []
+        for index, target_dataset in enumerate(target_datasets, start=1):
+            query = f"{target_dataset} public dataset official"
+            results = self.search_provider.search(query, max_results=5)
+            all_results.extend(results)
+            append_jsonl(
+                workspace_root / "data" / "retrieval_log.jsonl",
+                RetrievalLogEntry(
+                    time=datetime.now(UTC),
+                    provider=self.search_provider.__class__.__name__,
+                    query=query,
+                    top_urls=[result.url for result in results],
+                    decision="data_feasibility_probe",
+                ).model_dump(mode="json"),
+            )
+            availability = self._classify_availability(problem_text, results, target_dataset)
+            row = self._matrix_row(index, availability, query, results)
+            matrix.append(row)
 
-        availability = self._classify_availability(problem_text, results, target_dataset)
+        write_json(workspace_root / "data" / "data_feasibility_matrix.json", matrix)
+
+        availability = self._aggregate_availability(matrix)
         route = route_data_availability(availability)
 
         report_path = workspace_root / "reports" / "data_feasibility_report.md"
         report_path.write_text(
-            self._build_report(availability, route.recommendation, results),
+            self._build_report(availability, route.recommendation, all_results, matrix),
             encoding="utf-8",
         )
         write_json(
@@ -62,7 +69,8 @@ class DataFeasibilityScoutAgent:
             {
                 "availability": availability.model_dump(mode="json"),
                 "route": route.model_dump(mode="json"),
-                "top_results": [result.model_dump(mode="json") for result in results],
+                "matrix": matrix,
+                "top_results": [result.model_dump(mode="json") for result in all_results],
             },
         )
 
@@ -87,11 +95,23 @@ class DataFeasibilityScoutAgent:
             return "public population data"
         return "problem-specific modeling data"
 
+    def _target_datasets(self, workspace_root: Path, problem_text: str) -> list[str]:
+        discussion_needs = self._target_datasets_from_discussion(workspace_root)
+        if discussion_needs:
+            return discussion_needs
+        return [self._infer_target_dataset(problem_text)]
+
     def _target_dataset_from_discussion(self, workspace_root: Path) -> str | None:
-        questions = read_json(workspace_root / "discussion" / "data_questions.json", [])
-        if not questions:
+        datasets = self._target_datasets_from_discussion(workspace_root)
+        if not datasets:
             return None
-        return str(questions[0])
+        return datasets[0]
+
+    def _target_datasets_from_discussion(self, workspace_root: Path) -> list[str]:
+        questions = read_json(workspace_root / "discussion" / "data_questions.json", [])
+        if not isinstance(questions, list):
+            return []
+        return [str(question).strip() for question in questions if str(question).strip()]
 
     def _classify_availability(
         self,
@@ -126,11 +146,63 @@ class DataFeasibilityScoutAgent:
             reason="The early probe did not find an official source, but the data need is not clearly private.",
         )
 
+    def _matrix_row(
+        self,
+        index: int,
+        availability: DataAvailabilityDecision,
+        query: str,
+        results: list[SearchResult],
+    ) -> dict[str, object]:
+        route = route_data_availability(availability)
+        return {
+            "need_id": f"need_{index:03d}",
+            "target_dataset": availability.target_dataset,
+            "query": query,
+            "availability": availability.availability,
+            "confidence": availability.confidence,
+            "reason": availability.reason,
+            "top_urls": [result.url for result in results],
+            "proxy_variables": self._proxy_variables(availability),
+            "recommended_action": route.recommendation,
+        }
+
+    def _aggregate_availability(self, matrix: list[dict[str, object]]) -> DataAvailabilityDecision:
+        decisions = [
+            DataAvailabilityDecision(
+                target_dataset=str(row["target_dataset"]),
+                availability=row["availability"],
+                confidence=float(row["confidence"]),
+                reason=str(row["reason"]),
+            )
+            for row in matrix
+        ]
+        for decision in decisions:
+            if decision.availability == "private_or_unavailable" and decision.confidence >= 0.8:
+                return decision
+        for decision in decisions:
+            if decision.availability == "proxy_required":
+                return decision
+        for decision in decisions:
+            if decision.availability == "unknown":
+                return decision
+        return decisions[0]
+
+    def _proxy_variables(self, availability: DataAvailabilityDecision) -> list[str]:
+        if availability.availability != "private_or_unavailable":
+            return []
+        return [
+            "Player performance statistics",
+            "Market value or transfer fee",
+            "Age, position, league strength, injury history, and playing time",
+            "Team revenue, ranking, attendance, or budget class",
+        ]
+
     def _build_report(
         self,
         availability: DataAvailabilityDecision,
         recommendation: str,
         results: list[SearchResult],
+        matrix: list[dict[str, object]] | None = None,
     ) -> str:
         lines = [
             "# Data Feasibility Report",
@@ -148,14 +220,30 @@ class DataFeasibilityScoutAgent:
             recommendation,
             "",
         ]
+        matrix = matrix or []
+        if matrix:
+            lines.extend(["## Feasibility Matrix", ""])
+            for row in matrix:
+                lines.extend(
+                    [
+                        f"### {row['need_id']}: {row['target_dataset']}",
+                        f"- Availability: {row['availability']}",
+                        f"- Confidence: {row['confidence']}",
+                        f"- Query: `{row['query']}`",
+                        f"- Reason: {row['reason']}",
+                        f"- Recommended action: {row['recommended_action']}",
+                    ]
+                )
+                proxy_variables = row.get("proxy_variables", [])
+                if isinstance(proxy_variables, list) and proxy_variables:
+                    lines.append("- Proxy variables:")
+                    lines.extend(f"  - {proxy}" for proxy in proxy_variables)
+                lines.append("")
         if availability.availability == "private_or_unavailable":
             lines.extend(
                 [
                     "## Proxy Variables",
-                    "- Player performance statistics.",
-                    "- Market value or transfer fee.",
-                    "- Age, position, league strength, injury history, and playing time.",
-                    "- Team revenue, ranking, attendance, or budget class.",
+                    *[f"- {proxy}" for proxy in self._proxy_variables(availability)],
                     "",
                 ]
             )
