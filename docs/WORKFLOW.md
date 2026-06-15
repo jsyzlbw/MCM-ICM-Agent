@@ -195,6 +195,17 @@ contracts. `solver_coder` writes `results/model_route_summary.json` with inferre
 route. `reports/model_candidates.md` also includes a solver blueprint listing each
 route's module, method, required bindings, and metrics before code execution begins.
 
+`figure_planning` creates route-aware data plots and two concept diagrams:
+`fig_method_overview` and `fig_claim_evidence_map`. These concept diagrams are generated
+from workspace artifacts such as `results/model_route_summary.json`,
+`results/evidence_registry.json`, `data/source_registry.json`, and
+`paper/claim_plan.json`, not from freeform decoration.
+
+`visualization` writes Mermaid source files in `figures/source/*.mmd` and deterministic
+SVG vector outputs in `figures/*.svg` for concept diagrams. `figure_quality_gate` checks
+that each concept diagram has a Mermaid source, vector output, caption intent, and target
+paper section before claim planning begins.
+
 ## Gate Repair Flow
 
 Gate outputs are machine-readable JSON files. They have:
@@ -362,7 +373,7 @@ are ignored as placeholders, not treated as real external sources.
 | `extraction_gate` fails | Parsed problem text is empty. | Check MinerU mode, PDF path, or rerun with a simpler problem file. |
 | `source_gate` fails | No reliable external sources were found. | Configure Tavily/Firecrawl, add attachments, or reframe the data need. |
 | `validation_gate` fails | Metrics lack evidence or an experiment run failed. | Inspect `results/experiment_runs.jsonl` and rerun from `solver_coder`. |
-| `figure_gate` fails | Missing PDF/SVG, caption, target section, or evidence IDs. | Rerun from `figure_planning` after fixing the figure plan. |
+| `figure_gate` fails | Missing PDF/SVG, Mermaid source, concept SVG, caption, target section, or evidence IDs. | Rerun from `figure_planning` after fixing the figure plan. |
 | `final_gate` fails with `format_issue` | Typesetting QA found compile or layout blockers. | Inspect `review/typesetting_quality_report.md` and resume from the reported `repair_stage`. |
 | `final_gate` fails | Reviewer found source, writing, figure, or fact regression blockers. | Inspect `review/final_gate.json` and resume from its `repair_stage`. |
 | Repeated gate loop | The repair stage cannot fix the same issue automatically. | Add data/API keys or manually edit inputs, then resume. |

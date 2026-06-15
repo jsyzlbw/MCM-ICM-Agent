@@ -27,7 +27,7 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 257 passed
+# 262 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -121,10 +121,11 @@ Rules:
 | E1 RAG ingestion expansion | Complete |
 | F1 Final QA and provider readiness | Complete |
 | G1 Stronger modeling generation | Complete as recipe-driven deterministic baselines |
+| H1 Concept diagram system | Complete as Mermaid plus deterministic SVG concept diagrams |
 
 ## 4. Active Next Phase
 
-The active next phase is **Concepts, Citations, And LaTeX Repair**.
+The active next phase is **Citations And LaTeX Repair**.
 
 Purpose:
 
@@ -135,8 +136,9 @@ official-data repair records, and provenance-aware local RAG entries across the 
 provider families. The system also runs deterministic solver recipes for evaluation,
 optimization, forecasting, simulation, classification, clustering, queueing, and network
 tasks, plus deterministic typesetting QA and first-class provider smoke checks. The
-remaining work is to make concept figures, citation placement, LaTeX repair, and user
-interaction more adaptive.
+system also generates artifact-derived methodology and claim-evidence concept diagrams
+as Mermaid source plus SVG vector outputs. The remaining work is to make citation
+placement, LaTeX repair, and user interaction more adaptive.
 
 Current core artifact:
 
@@ -145,6 +147,7 @@ results/model_route_summary.json
 reports/model_candidates.md
 paper/claim_plan.json
 figures/figure_registry.json
+figures/source/*.mmd
 review/typesetting_quality.json
 ```
 
@@ -164,29 +167,14 @@ submission package
 
 ## 5. Next Phase Tasks
 
-### Task 1: Concept Diagram System
-
-Inputs:
-
-- `reports/problem_understanding.md`
-- `reports/model_candidates.md`
-- `reports/model_decision.md`
-- `paper/claim_plan.json`
-
-Target behavior:
-
-- Generate vector-first methodology and workflow diagrams with Mermaid, Graphviz, TikZ,
-  or Draw.io.
-- Register concept figures in `figures/figure_registry.json` with claim support.
-
-### Task 2: Citation And Source Writing Enhancement
+### Task 1: Citation And Source Writing Enhancement
 
 Target behavior:
 
 - Insert source-specific citations in the right paper sections.
 - Use source reliability and data lineage to avoid unsupported factual claims.
 
-### Task 3: Automatic LaTeX Repair
+### Task 2: Automatic LaTeX Repair
 
 Target behavior:
 

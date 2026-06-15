@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 257 passed
+# 262 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -53,7 +53,7 @@ f7769ea feat: execute new modeling recipe routes
 | Data/EDA Agent | Implemented |
 | Solver/Coder Agent, deterministic solver modules, experiment runner, evidence registry | Implemented |
 | Validation Agent and validation gate | Implemented |
-| Figure planning, vector-first visualization, figure quality gate | Implemented |
+| Figure planning, vector-first data visualization, artifact-derived concept diagrams, figure quality gate | Implemented |
 | Claim Planning Agent and `paper/claim_plan.json` | Implemented with paper-context-aware assumptions, model, result, sensitivity, limitation, and conclusion claims |
 | Paper Writer Agent | Implemented as contextual claim-plan-aware writer |
 | Reference Manager and reference audit | Implemented |
@@ -73,7 +73,7 @@ f7769ea feat: execute new modeling recipe routes
 | Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` when present | Add richer citation insertion and optional style variants |
 | RAG | Imports selected Supervisor-Skills documents plus local `.md`, `.txt`, and MinerU-parsed `.pdf` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types with source type, relative path, chunk id, page hint, and usage restrictions | Add richer source-specific query planning and citation-style guidance for local method libraries |
 | Official data APIs | Provider pattern plus World Bank, OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass repair adapters with mocked tests and smoke checks | Add richer provider-specific query planning |
-| Visualization | Generates vector-first data figures and QA reports | Add richer concept-diagram generation via Mermaid, Graphviz, TikZ, and Draw.io |
+| Visualization | Generates vector-first data figures, Mermaid source concept diagrams, deterministic SVG concept outputs, and QA reports | Add richer diagram styling/export polish if needed |
 | LaTeX | Generates, compiles through provider abstraction, and runs deterministic typesetting QA for compile/layout risks | Add automatic LaTeX source repair beyond routing reports |
 | Humanization | Calls UShallPass or fake provider and performs fact-lock regression | Add privacy policy switches, batch job logs, retry reports, and user approval gates |
 | User interaction | File/CLI-oriented checkpoints | Add a smoother interactive conversation loop or UI later |
@@ -134,10 +134,9 @@ The next phase should focus on deeper contest intelligence.
 
 Build order:
 
-1. Add concept-diagram generation through Mermaid, Graphviz, TikZ, or Draw.io.
-2. Improve citation insertion and source-specific query planning.
-3. Add automatic LaTeX source repair for common formatting failures.
-4. Add a smoother interactive user loop or UI for checkpoint decisions.
+1. Improve citation insertion and source-specific query planning.
+2. Add automatic LaTeX source repair for common formatting failures.
+3. Add a smoother interactive user loop or UI for checkpoint decisions.
 
 This is the right next step because the main planning, modeling, RAG, official-data,
 paper, typesetting QA, and provider-readiness foundations now exist.

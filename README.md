@@ -150,6 +150,18 @@ assumptions, model, results, sensitivity, and conclusion sections. `ReviewerAgen
 `review/paper_quality_scores.json` with section completeness and claim trace density, and
 routes incomplete papers back to `paper_writer`.
 
+## Concept Diagrams And Figures
+
+Figure planning now creates both data plots and artifact-derived concept diagrams. The
+method overview and claim-evidence map are built from route summaries, evidence, sources,
+and `paper/claim_plan.json`, so they explain the actual workflow rather than decorating
+the paper.
+
+Concept diagrams write reproducible Mermaid source to `figures/source/*.mmd` and
+deterministic SVG outputs to `figures/*.svg`. `FigureQualityAgent` checks concept
+diagrams for a Mermaid source file, vector output, caption intent, and target section
+before the workflow proceeds to claim planning.
+
 ## Real Modeling Capability
 
 Model selection now uses a recipe library for common MCM/ICM archetypes. Each recipe
