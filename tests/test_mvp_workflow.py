@@ -216,6 +216,37 @@ def test_run_mvp_workflow_uses_configured_rag_knowledge_base(tmp_path: Path) -> 
     assert any(hit["title"] == "method_note.md" for hit in hits)
 
 
+def test_run_mvp_workflow_uses_configured_mineru_for_rag_pdf(tmp_path: Path) -> None:
+    workspace = tmp_path / "task"
+    problem = tmp_path / "problem.md"
+    attachment = tmp_path / "data.csv"
+    problem.write_text("# Problem\n\nUse a local PDF knowledge base.", encoding="utf-8")
+    attachment.write_text("x,y\n1,2\n2,3\n", encoding="utf-8")
+    knowledge_base = tmp_path / "knowledge_base"
+    knowledge_base.mkdir()
+    (knowledge_base / "paper_example.pdf").write_bytes(b"%PDF")
+    providers = ProviderBundle(
+        llm=FakeLLMProvider({"default": ""}),
+        mineru=InjectedMinerUProvider(),
+        search=InjectedSearchProvider(),
+        extractor=InjectedExtractProvider(),
+        official_data=None,
+        humanizer=FakeHumanizerProvider({}),
+        latex=InjectedLatexProvider(),
+    )
+
+    run_mvp_workflow(
+        workspace,
+        TaskInput(problem_file=problem, attachments=[attachment]),
+        providers=providers,
+        settings=Settings(rag_knowledge_base_dir=str(knowledge_base)),
+        auto_approve=True,
+    )
+
+    notes = (workspace / "rag" / "retrieval_notes.md").read_text(encoding="utf-8")
+    assert "Parsed PDF knowledge-base document via MinerU: paper_example.pdf" in notes
+
+
 def test_run_mvp_workflow_selects_forecast_simulation_network_routes(
     tmp_path: Path,
 ) -> None:

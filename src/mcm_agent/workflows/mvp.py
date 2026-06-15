@@ -236,6 +236,7 @@ def _mvp_stage_handlers(
             supervisor_skills_dir,
             knowledge_base_dir=knowledge_base_dir,
             ingest_extensions=settings.rag_ingest_extensions,
+            mineru_provider=provider_bundle.mineru,
         )
         return ["rag/methodology_hits.json", "review/methodology_checklist_report.md"]
 
