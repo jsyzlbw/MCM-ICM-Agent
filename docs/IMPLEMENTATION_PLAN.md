@@ -27,7 +27,7 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 183 passed
+# 196 passed
 
 ruff check src tests scripts
 # All checks passed

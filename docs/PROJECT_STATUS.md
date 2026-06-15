@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 183 passed
+# 196 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -22,7 +22,7 @@ ruff check src tests scripts
 Latest implementation commit at the time this status was written:
 
 ```text
-9d32de7 feat: add claim-level paper evidence bindings
+26c63e3 fix: plan sensitivity claim for paper drafts
 ```
 
 ## Implemented
