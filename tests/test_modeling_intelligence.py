@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from mcm_agent.agents.modeling import ModelJudge, ModelingCouncil
+from mcm_agent.core.model_route_plan import build_route_plan
 from mcm_agent.core.modeling_intelligence import ModelingIntelligence
 from mcm_agent.core.workspace import create_workspace
 
@@ -83,3 +84,32 @@ def test_model_judge_fallback_selects_diagnosed_route(tmp_path: Path) -> None:
 
     decision = (workspace.root / "reports" / "model_decision.md").read_text(encoding="utf-8")
     assert "multi_criteria_evaluation + constrained_optimization" in decision
+
+
+def test_route_plan_marks_hybrid_models_for_multi_type_problems() -> None:
+    diagnosis = ModelingIntelligence().diagnose(
+        "Rank districts, optimize limited resources, forecast demand, and simulate uncertainty."
+    )
+
+    plan = build_route_plan(diagnosis)
+
+    assert plan.is_hybrid is True
+    assert plan.route_ids[:3] == [
+        "multi_criteria_evaluation",
+        "constrained_optimization",
+        "forecasting_model",
+    ]
+    assert "monte_carlo_simulation" in plan.route_ids
+    assert plan.execution_order[0] == "multi_criteria_evaluation"
+    assert plan.route_roles["constrained_optimization"] == "decision"
+
+
+def test_route_plan_limits_routes_to_keep_solver_feasible() -> None:
+    diagnosis = ModelingIntelligence().diagnose(
+        "Rank, optimize, forecast, simulate, design a network, and balance multi-objective tradeoffs."
+    )
+
+    plan = build_route_plan(diagnosis, max_routes=4)
+
+    assert len(plan.route_ids) == 4
+    assert plan.truncated is True

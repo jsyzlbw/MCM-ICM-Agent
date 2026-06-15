@@ -131,7 +131,7 @@ class ModelingIntelligence:
             ),
         }
         ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-        return [problem_type for problem_type, score in ranked if score > 0][:3]
+        return [problem_type for problem_type, score in ranked if score > 0]
 
     def _score(self, lowered: str, keywords: list[str]) -> int:
         return sum(1 for keyword in keywords if keyword in lowered)
