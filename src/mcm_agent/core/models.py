@@ -216,6 +216,39 @@ class FigureRecord(BaseModel):
     claim_supported: str = ""
 
 
+class PaperClaimPlanItem(BaseModel):
+    claim_id: str
+    section: str
+    claim_text: str
+    claim_type: Literal[
+        "model_choice",
+        "metric_result",
+        "sensitivity",
+        "assumption",
+        "limitation",
+        "conclusion",
+    ]
+    evidence_ids: list[str] = Field(default_factory=list)
+    figure_ids: list[str] = Field(default_factory=list)
+    source_ids: list[str] = Field(default_factory=list)
+    priority: Literal["critical", "major", "supporting"]
+    status: Literal["planned", "written", "unresolved"] = "planned"
+    unresolved_reason: str = ""
+
+    @model_validator(mode="after")
+    def validate_claim_plan_item(self) -> PaperClaimPlanItem:
+        if not self.claim_id.strip():
+            raise ValueError("claim_id is required")
+        if not self.section.startswith("paper/sections/") or not self.section.endswith(".tex"):
+            raise ValueError("section must point to paper/sections/*.tex")
+        has_support = bool(self.evidence_ids or self.figure_ids or self.source_ids)
+        if self.priority == "critical" and self.status != "unresolved" and not has_support:
+            raise ValueError("critical claim requires evidence, figure, or source")
+        if self.status == "unresolved" and not self.unresolved_reason.strip():
+            raise ValueError("unresolved claim requires unresolved_reason")
+        return self
+
+
 class HumanizerJob(BaseModel):
     job_id: str
     provider: Literal["ushallpass", "fake"]
