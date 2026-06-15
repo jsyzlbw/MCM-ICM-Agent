@@ -30,7 +30,9 @@ def test_eda_agent_writes_schema_profile_with_semantic_hints(tmp_path: Path) -> 
     csv_path = workspace.root / "input" / "attachments" / "sample.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     csv_path.write_text(
-        "origin,destination,distance,year,sales\nA,B,1,2021,10\nB,C,2,2022,\n",
+        "origin,destination,distance,year,sales,risk_label,segment,arrival_rate,service_rate,servers\n"
+        "A,B,1,2021,10,low,north,2.0,3.0,2\n"
+        "B,C,2,2022,,high,south,2.2,3.1,2\n",
         encoding="utf-8",
     )
 
@@ -44,6 +46,11 @@ def test_eda_agent_writes_schema_profile_with_semantic_hints(tmp_path: Path) -> 
     assert "source_node" in by_name["origin"]["semantic_tags"]
     assert "target_node" in by_name["destination"]["semantic_tags"]
     assert "cost" in by_name["distance"]["semantic_tags"]
+    assert "label" in by_name["risk_label"]["semantic_tags"]
+    assert "group" in by_name["segment"]["semantic_tags"]
+    assert "arrival_rate" in by_name["arrival_rate"]["semantic_tags"]
+    assert "service_rate" in by_name["service_rate"]["semantic_tags"]
+    assert "server_count" in by_name["servers"]["semantic_tags"]
     assert by_name["sales"]["missing_rate"] == 0.5
 
 
@@ -279,6 +286,36 @@ def test_solver_runs_forecasting_simulation_and_network_modules(tmp_path: Path) 
     assert "simulation_p95" in summary["route_metrics"]
     assert "shortest_path_cost" in summary["route_metrics"]
     assert any(item["evidence_id"] == "metric_shortest_path_cost" for item in evidence)
+
+
+def test_solver_runs_classification_clustering_and_queuing_routes(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text(
+        "feature_a,feature_b,risk_label,segment_value,arrival_rate,service_rate,servers\n"
+        "0,0,0,1,2.0,3.0,2\n"
+        "1,1,0,1.2,2.2,3.1,2\n"
+        "4,3,1,8,2.4,3.2,2\n"
+        "5,4,1,8.2,2.1,3.0,2\n",
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "experiment_spec.json").write_text(
+        build_experiment_spec(
+            ["classification_model", "clustering_segmentation", "queuing_service_model"]
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    summary = read_json(workspace.root / "results" / "model_route_summary.json", {})
+    assert (workspace.root / "results" / "classification_results.csv").exists()
+    assert (workspace.root / "results" / "cluster_segments.csv").exists()
+    assert (workspace.root / "results" / "queue_summary.csv").exists()
+    assert "classification_accuracy" in summary["route_metrics"]
+    assert "cluster_count" in summary["route_metrics"]
+    assert "queue_utilization" in summary["route_metrics"]
 
 
 def test_solver_records_route_execution_status_for_hybrid_specs(tmp_path: Path) -> None:

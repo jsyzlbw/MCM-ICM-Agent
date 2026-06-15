@@ -285,3 +285,44 @@ def test_run_mvp_workflow_selects_forecast_simulation_network_routes(
     assert "monte_carlo_simulation" in summary["selected_routes"]
     assert "network_flow_graph" in summary["selected_routes"]
     assert summary["route_execution_status"]["forecasting_model"] == "executed"
+
+
+def test_run_mvp_workflow_selects_classification_clustering_queuing_routes(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "task"
+    problem = tmp_path / "problem.md"
+    attachment = tmp_path / "service.csv"
+    problem.write_text(
+        "# Problem\n\nClassify risk levels, cluster service regions, and estimate queue waiting time.",
+        encoding="utf-8",
+    )
+    attachment.write_text(
+        "feature_a,feature_b,risk_label,segment_value,arrival_rate,service_rate,servers\n"
+        "0,0,0,1,2.0,3.0,2\n"
+        "1,1,0,1.2,2.2,3.1,2\n"
+        "4,3,1,8,2.4,3.2,2\n"
+        "5,4,1,8.2,2.1,3.0,2\n",
+        encoding="utf-8",
+    )
+    providers = ProviderBundle(
+        llm=FakeLLMProvider({"default": ""}),
+        mineru=InjectedMinerUProvider(),
+        search=InjectedSearchProvider(),
+        extractor=InjectedExtractProvider(),
+        official_data=None,
+        humanizer=FakeHumanizerProvider({}),
+        latex=InjectedLatexProvider(),
+    )
+
+    run_mvp_workflow(
+        workspace,
+        TaskInput(problem_file=problem, attachments=[attachment]),
+        providers=providers,
+        auto_approve=True,
+    )
+
+    summary = read_json(workspace / "results" / "model_route_summary.json", {})
+    assert "classification_model" in summary["selected_routes"]
+    assert "clustering_segmentation" in summary["selected_routes"]
+    assert "queuing_service_model" in summary["selected_routes"]

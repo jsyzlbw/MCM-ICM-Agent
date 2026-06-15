@@ -118,6 +118,22 @@ class DataEDAAgent:
             token in lowered for token in ["budget", "capacity", "resource"]
         ):
             tags.append("capacity")
+        if lowered in {"label", "class", "category", "risk_label", "target_class"} or any(
+            token in lowered for token in ["label", "class", "category"]
+        ):
+            tags.append("label")
+        if lowered in {"segment", "group", "region", "cluster"} or any(
+            token in lowered for token in ["segment", "group", "region", "cluster"]
+        ):
+            tags.append("group")
+        if lowered in {"arrival", "arrival_rate", "lambda"} or "arrival" in lowered:
+            tags.append("arrival_rate")
+        if lowered in {"service", "service_rate", "mu"} or "service" in lowered:
+            tags.append("service_rate")
+        if lowered in {"servers", "server_count", "counter", "capacity_count"} or any(
+            token in lowered for token in ["server", "counter", "capacity_count"]
+        ):
+            tags.append("server_count")
         if pd.api.types.is_numeric_dtype(series) and "time" not in tags:
             tags.append("numeric_indicator")
         return tags

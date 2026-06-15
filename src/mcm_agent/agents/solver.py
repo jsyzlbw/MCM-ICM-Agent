@@ -43,10 +43,13 @@ class SolverCoderAgent:
                 "from pathlib import Path",
                 "import pandas as pd",
                 f"sys.path.insert(0, {package_src!r})",
+                "from mcm_agent.solver_modules.classification import logistic_regression_baseline",
+                "from mcm_agent.solver_modules.clustering import kmeans_segmentation",
                 "from mcm_agent.solver_modules.evaluation import topsis_rank",
                 "from mcm_agent.solver_modules.forecasting import linear_trend_forecast",
                 "from mcm_agent.solver_modules.network import shortest_path_table",
                 "from mcm_agent.solver_modules.optimization import allocate_by_priority",
+                "from mcm_agent.solver_modules.queuing import mmc_queue_summary",
                 "from mcm_agent.solver_modules.simulation import monte_carlo_scenarios",
                 "",
                 "workspace = Path.cwd()",
@@ -93,6 +96,39 @@ class SolverCoderAgent:
                 "        json.dumps(simulation_metrics, indent=2), encoding='utf-8'",
                 "    )",
                 "    route_metric_payload.update({f'simulation_{key}': value for key, value in simulation_metrics.items()})",
+                "if 'classification_model' in selected_routes and not numeric.empty:",
+                "    classification_bindings = column_bindings.get('classification_model', {})",
+                "    label_column = classification_bindings.get('label_column')",
+                "    feature_columns = [column for column in classification_bindings.get('feature_columns', []) if column in df.columns]",
+                "    if label_column in df.columns and feature_columns:",
+                "        classification_result, classification_metrics = logistic_regression_baseline(",
+                "            df, feature_columns=feature_columns, label_column=label_column",
+                "        )",
+                "        classification_result.to_csv(workspace / 'results/classification_results.csv', index=False)",
+                "        route_metric_payload.update(classification_metrics)",
+                "if 'clustering_segmentation' in selected_routes and not numeric.empty:",
+                "    clustering_bindings = column_bindings.get('clustering_segmentation', {})",
+                "    feature_columns = [column for column in clustering_bindings.get('feature_columns', []) if column in df.columns]",
+                "    if feature_columns:",
+                "        cluster_result, cluster_metrics = kmeans_segmentation(",
+                "            df, feature_columns=feature_columns, n_clusters=3",
+                "        )",
+                "        cluster_result.to_csv(workspace / 'results/cluster_segments.csv', index=False)",
+                "        route_metric_payload.update(cluster_metrics)",
+                "if 'queuing_service_model' in selected_routes:",
+                "    queue_bindings = column_bindings.get('queuing_service_model', {})",
+                "    arrival_rate_column = queue_bindings.get('arrival_rate_column')",
+                "    service_rate_column = queue_bindings.get('service_rate_column')",
+                "    server_count_column = queue_bindings.get('server_count_column') or None",
+                "    if arrival_rate_column in df.columns and service_rate_column in df.columns:",
+                "        queue_result, queue_metrics = mmc_queue_summary(",
+                "            df,",
+                "            arrival_rate_column=arrival_rate_column,",
+                "            service_rate_column=service_rate_column,",
+                "            server_count_column=server_count_column,",
+                "        )",
+                "        queue_result.to_csv(workspace / 'results/queue_summary.csv', index=False)",
+                "        route_metric_payload.update(queue_metrics)",
                 "if 'network_flow_graph' in selected_routes:",
                 "    network_bindings = column_bindings.get('network_flow_graph', {})",
                 "    source_column = network_bindings.get('source_column') or 'source'",
@@ -246,6 +282,9 @@ class SolverCoderAgent:
             "constrained_optimization",
             "forecasting_model",
             "monte_carlo_simulation",
+            "classification_model",
+            "clustering_segmentation",
+            "queuing_service_model",
             "network_flow_graph",
             "multi_objective_decision",
         ]
@@ -306,6 +345,83 @@ class SolverCoderAgent:
                         numeric_columns,
                     )
                 current["base_value_column"] = base_value_column
+            elif route_id == "classification_model":
+                label_column = str(current.get("label_column", ""))
+                if label_column not in frame.columns:
+                    label_column = self._classification_label_column(
+                        frame,
+                        semantic,
+                        numeric_columns,
+                    )
+                current["label_column"] = label_column
+                feature_columns = current.get("feature_columns", [])
+                if not isinstance(feature_columns, list):
+                    feature_columns = []
+                feature_columns = [
+                    str(column)
+                    for column in feature_columns
+                    if self._is_numeric_column(frame, str(column)) and str(column) != label_column
+                ]
+                if not feature_columns:
+                    feature_columns = [
+                        column
+                        for column in numeric_columns
+                        if column != label_column
+                    ]
+                current["feature_columns"] = feature_columns
+            elif route_id == "clustering_segmentation":
+                feature_columns = current.get("feature_columns", [])
+                if not isinstance(feature_columns, list):
+                    feature_columns = []
+                feature_columns = [
+                    str(column)
+                    for column in feature_columns
+                    if self._is_numeric_column(frame, str(column))
+                ]
+                if not feature_columns:
+                    feature_columns = self._clustering_feature_columns(
+                        frame,
+                        semantic,
+                        numeric_columns,
+                    )
+                current["feature_columns"] = feature_columns
+                current.setdefault("entity_column", semantic.get("entity", text_columns[0] if text_columns else ""))
+            elif route_id == "queuing_service_model":
+                arrival_rate_column = str(current.get("arrival_rate_column", ""))
+                if not self._is_numeric_column(frame, arrival_rate_column):
+                    arrival_rate_column = self._queue_rate_column(
+                        frame,
+                        semantic,
+                        numeric_columns,
+                        "arrival_rate",
+                        ["arrival_rate", "arrival", "lambda"],
+                    )
+                current["arrival_rate_column"] = arrival_rate_column
+                service_rate_column = str(current.get("service_rate_column", ""))
+                if (
+                    not self._is_numeric_column(frame, service_rate_column)
+                    or service_rate_column == arrival_rate_column
+                ):
+                    service_rate_column = self._queue_rate_column(
+                        frame,
+                        semantic,
+                        numeric_columns,
+                        "service_rate",
+                        ["service_rate", "service", "mu"],
+                        excluded={arrival_rate_column},
+                    )
+                current["service_rate_column"] = service_rate_column
+                server_count_column = str(current.get("server_count_column", ""))
+                if not self._is_numeric_column(frame, server_count_column):
+                    server_count_column = self._queue_rate_column(
+                        frame,
+                        semantic,
+                        numeric_columns,
+                        "server_count",
+                        ["servers", "server_count", "counter", "capacity_count"],
+                        excluded={arrival_rate_column, service_rate_column},
+                    )
+                current["server_count_column"] = server_count_column
             elif route_id == "network_flow_graph":
                 current.setdefault("source_column", semantic.get("source_node", self._first_existing(frame, ["source", "origin", "from"])))
                 current.setdefault("target_column", semantic.get("target_node", self._first_existing(frame, ["target", "destination", "to"])))
@@ -321,6 +437,8 @@ class SolverCoderAgent:
         required = {
             "forecasting_model": ["time_column", "target_column"],
             "network_flow_graph": ["source_column", "target_column", "cost_column"],
+            "classification_model": ["label_column"],
+            "queuing_service_model": ["arrival_rate_column", "service_rate_column"],
         }
         missing = []
         details = []
@@ -478,6 +596,73 @@ class SolverCoderAgent:
         ]
         return self._first_numeric_candidate(frame, candidates, excluded=excluded)
 
+    def _classification_label_column(
+        self,
+        frame: pd.DataFrame,
+        semantic: dict[str, object],
+        numeric_columns: list[str],
+    ) -> str:
+        candidates = [
+            *self._semantic_candidates(semantic, "label"),
+            *self._semantic_candidates(semantic, "target"),
+            "risk_label",
+            "target_class",
+            "label",
+            "class",
+            "category",
+            "outcome",
+        ]
+        for candidate in candidates:
+            column = self._first_existing(frame, [candidate])
+            if column:
+                return column
+        for column in frame.columns:
+            unique_count = frame[column].nunique(dropna=True)
+            if 1 < unique_count <= max(10, len(frame) // 2):
+                return column
+        return numeric_columns[-1] if numeric_columns else ""
+
+    def _clustering_feature_columns(
+        self,
+        frame: pd.DataFrame,
+        semantic: dict[str, object],
+        numeric_columns: list[str],
+    ) -> list[str]:
+        preferred = [
+            *self._semantic_candidates(semantic, "group"),
+            "segment_value",
+            "segment_score",
+            "region_score",
+            "cluster_value",
+        ]
+        selected = [
+            column
+            for column in (self._first_existing(frame, [candidate]) for candidate in preferred)
+            if column and self._is_numeric_column(frame, column)
+        ]
+        for column in numeric_columns:
+            if column not in selected:
+                selected.append(column)
+        return selected
+
+    def _queue_rate_column(
+        self,
+        frame: pd.DataFrame,
+        semantic: dict[str, object],
+        numeric_columns: list[str],
+        semantic_tag: str,
+        candidates: list[str],
+        *,
+        excluded: set[str] | None = None,
+    ) -> str:
+        excluded = excluded or set()
+        ordered = [
+            *self._semantic_candidates(semantic, semantic_tag),
+            *candidates,
+            *numeric_columns,
+        ]
+        return self._first_numeric_candidate(frame, ordered, excluded=excluded)
+
     def _route_metrics(
         self,
         result_path: Path,
@@ -511,6 +696,22 @@ class SolverCoderAgent:
                 if "simulation_p95" not in route_metrics:
                     value = float(numeric.std().mean()) if not numeric.empty else 0.0
                     route_metrics["scenario_variability_index"] = {"route_id": route_id, "value": value}
+            elif route_id == "classification_model":
+                self._copy_metric_prefix(route_metrics, metrics, "classification_", route_id)
+            elif route_id == "clustering_segmentation":
+                self._copy_metric_prefix(route_metrics, metrics, "cluster_", route_id)
+            elif route_id == "queuing_service_model":
+                self._copy_metric_prefix(route_metrics, metrics, "queue_", route_id)
+                if "expected_wait_time" in metrics:
+                    route_metrics["expected_wait_time"] = {
+                        "route_id": route_id,
+                        "value": metrics["expected_wait_time"],
+                    }
+                if "unstable_queue_count" in metrics:
+                    route_metrics["unstable_queue_count"] = {
+                        "route_id": route_id,
+                        "value": metrics["unstable_queue_count"],
+                    }
             elif route_id == "network_flow_graph":
                 if "shortest_path_cost" in metrics:
                     route_metrics["shortest_path_cost"] = {
@@ -562,6 +763,21 @@ class SolverCoderAgent:
                 "route_id": "monte_carlo_simulation",
                 "module": "mcm_agent.solver_modules.simulation",
                 "method": "monte_carlo_scenarios",
+            },
+            "classification_model": {
+                "route_id": "classification_model",
+                "module": "mcm_agent.solver_modules.classification",
+                "method": "logistic_regression_baseline",
+            },
+            "clustering_segmentation": {
+                "route_id": "clustering_segmentation",
+                "module": "mcm_agent.solver_modules.clustering",
+                "method": "kmeans_segmentation",
+            },
+            "queuing_service_model": {
+                "route_id": "queuing_service_model",
+                "module": "mcm_agent.solver_modules.queuing",
+                "method": "mmc_queue_summary",
             },
             "network_flow_graph": {
                 "route_id": "network_flow_graph",
