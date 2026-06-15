@@ -66,3 +66,47 @@ def test_figure_planning_uses_selected_model_routes(tmp_path: Path) -> None:
     assert "fig_priority_ranking" in figure_ids
     assert "fig_allocation_policy" in figure_ids
     assert "fig_q1_prediction" not in figure_ids
+
+
+def test_concept_diagram_builder_uses_routes_claims_and_sources(tmp_path: Path) -> None:
+    from mcm_agent.core.concept_diagrams import build_concept_diagram_specs
+
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {
+            "selected_routes": ["classification_model", "queuing_service_model"],
+            "route_metrics": {
+                "queue_utilization": {
+                    "route_id": "queuing_service_model",
+                    "value": 0.35,
+                }
+            },
+        },
+    )
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_model_route",
+                "section": "paper/sections/model.tex",
+                "claim_text": "The selected route is classification plus queueing.",
+                "claim_type": "model_choice",
+                "evidence_ids": ["metric_queue_utilization"],
+                "figure_ids": [],
+                "source_ids": ["source_001"],
+                "priority": "critical",
+            }
+        ],
+    )
+
+    specs = build_concept_diagram_specs(workspace.root)
+
+    spec_by_id = {spec.diagram_id: spec for spec in specs}
+    assert "fig_method_overview" in spec_by_id
+    assert "fig_claim_evidence_map" in spec_by_id
+    method = spec_by_id["fig_method_overview"]
+    assert any(node.label == "classification_model" for node in method.nodes)
+    assert any(node.label == "queuing_service_model" for node in method.nodes)
+    claim_map = spec_by_id["fig_claim_evidence_map"]
+    assert any("claim_model_route" in node.label for node in claim_map.nodes)
