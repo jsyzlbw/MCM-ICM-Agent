@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 246 passed
+# 257 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -22,7 +22,7 @@ ruff check src tests scripts
 Latest implementation commit at the time this status was written:
 
 ```text
-d5f0152 feat: expose provider smoke cli command
+f7769ea feat: execute new modeling recipe routes
 ```
 
 ## Implemented
@@ -44,14 +44,14 @@ d5f0152 feat: expose provider smoke cli command
 | User Discussion Agent with data feasibility feedback | Implemented |
 | Research Reframing Agent for unavailable/private data | Implemented |
 | Modeling Council and Model Judge | Implemented |
-| Hybrid model route planning for evaluation, optimization, forecasting, simulation, network, and multi-objective tasks | Implemented |
+| Model recipe library and hybrid route planning for evaluation, optimization, forecasting, simulation, classification, clustering, queueing, network, and multi-objective tasks | Implemented |
 | Modeling Plan Quality Agent | Implemented |
 | Search & Data Agent with source registry, retrieval log, lineage, citation candidates | Implemented |
 | Supervisor-Skills methodology RAG import skeleton | Implemented |
 | Local `knowledge_base/` RAG ingestion for `.md`, `.txt`, and MinerU-parsed `.pdf` with chunk provenance and usage restrictions | Implemented |
 | Multi-query methodology RAG for paper quality | Implemented |
 | Data/EDA Agent | Implemented |
-| Solver/Coder Agent, experiment runner, evidence registry | Implemented |
+| Solver/Coder Agent, deterministic solver modules, experiment runner, evidence registry | Implemented |
 | Validation Agent and validation gate | Implemented |
 | Figure planning, vector-first visualization, figure quality gate | Implemented |
 | Claim Planning Agent and `paper/claim_plan.json` | Implemented with paper-context-aware assumptions, model, result, sensitivity, limitation, and conclusion claims |
@@ -68,7 +68,7 @@ d5f0152 feat: expose provider smoke cli command
 
 | Area | Current capability | Remaining work |
 | --- | --- | --- |
-| Real automatic modeling | Selects bounded hybrid route plans, writes route-aware experiment specs, executes deterministic route modules, records route execution status, and routes binding-driven weak-model failures to modeling repair | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
+| Real automatic modeling | Selects recipe-driven hybrid route plans, writes route-aware experiment specs, emits solver blueprints, executes deterministic route modules for evaluation, optimization, forecasting, simulation, classification, clustering, queueing, and network tasks, records route execution status, and routes binding-driven weak-model failures to modeling repair | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
 | Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
 | Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` when present | Add richer citation insertion and optional style variants |
 | RAG | Imports selected Supervisor-Skills documents plus local `.md`, `.txt`, and MinerU-parsed `.pdf` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types with source type, relative path, chunk id, page hint, and usage restrictions | Add richer source-specific query planning and citation-style guidance for local method libraries |
@@ -134,9 +134,9 @@ The next phase should focus on deeper contest intelligence.
 
 Build order:
 
-1. Generate stronger problem-specific solver code beyond the deterministic route modules.
-2. Add concept-diagram generation through Mermaid, Graphviz, TikZ, or Draw.io.
-3. Improve citation insertion and source-specific query planning.
+1. Add concept-diagram generation through Mermaid, Graphviz, TikZ, or Draw.io.
+2. Improve citation insertion and source-specific query planning.
+3. Add automatic LaTeX source repair for common formatting failures.
 4. Add a smoother interactive user loop or UI for checkpoint decisions.
 
 This is the right next step because the main planning, modeling, RAG, official-data,

@@ -152,9 +152,12 @@ routes incomplete papers back to `paper_writer`.
 
 ## Real Modeling Capability
 
-Model selection now builds a bounded hybrid route plan for common MCM/ICM archetypes:
-multi-criteria evaluation, constrained optimization, forecasting, Monte Carlo simulation,
-network flow/graph structure, and multi-objective decision support.
+Model selection now uses a recipe library for common MCM/ICM archetypes. Each recipe
+defines the route ID, solver module, method, expected outputs, metrics, column-binding
+contract, and paper-writing guidance. Current routes include multi-criteria evaluation,
+constrained optimization, forecasting, Monte Carlo simulation, classification,
+clustering/segmentation, queueing service analysis, network flow/graph structure, and
+multi-objective decision support.
 
 `reports/experiment_spec.json` records `route_plan` metadata, execution order, route
 roles, solver modules, input requirements, expected outputs, metrics, and column-binding
@@ -162,9 +165,16 @@ contracts. `SolverCoderAgent` executes compatible deterministic solver modules a
 `results/model_route_summary.json`, including `route_execution_status` values such as
 `executed`, `blocked_missing_binding`, and `attempted_no_metric`.
 
+`reports/model_candidates.md` includes a solver blueprint for each diagnosed route.
+Executable route outputs now include `results/classification_results.csv`,
+`results/cluster_segments.csv`, and `results/queue_summary.csv` when those recipes are
+selected. These modules are contest-safe deterministic baselines, not unrestricted
+arbitrary code generation.
+
 Validation treats binding-driven weak-model failures as modeling-spec problems and routes
 them back to `modeling_council`, while solver execution failures still route to the solver
-stage. The workflow test suite includes a forecast + simulation + network archetype.
+stage. The workflow test suite includes forecast + simulation + network and
+classification + clustering + queueing archetypes.
 
 Setting `mineru.mode` to `rest` uses MinerU's precision API flow: create an upload batch,
 upload the local PDF to the returned URL, poll the batch result, download the result zip,

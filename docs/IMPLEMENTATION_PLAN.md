@@ -27,7 +27,7 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 225 passed
+# 257 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -120,25 +120,29 @@ Rules:
 | D1 Official data API expansion | Complete as MVP |
 | E1 RAG ingestion expansion | Complete |
 | F1 Final QA and provider readiness | Complete |
+| G1 Stronger modeling generation | Complete as recipe-driven deterministic baselines |
 
 ## 4. Active Next Phase
 
-The active next phase is **Deeper Contest Intelligence**.
+The active next phase is **Concepts, Citations, And LaTeX Repair**.
 
 Purpose:
 
 The system now stores sources, data lineage, evidence, figures, references, claim plans,
 contextual paper sections, claim-level paper bindings, paper-quality scores, hybrid route
-plans, route-aware experiment specs, route execution status, official-data repair
-records, and provenance-aware local RAG entries across the main provider families. The
-system also runs deterministic typesetting QA and exposes first-class provider smoke
-checks. The remaining work is to make solver generation, concept figures, citation
-placement, and user interaction more adaptive.
+plans, route-aware experiment specs, solver blueprints, route execution status,
+official-data repair records, and provenance-aware local RAG entries across the main
+provider families. The system also runs deterministic solver recipes for evaluation,
+optimization, forecasting, simulation, classification, clustering, queueing, and network
+tasks, plus deterministic typesetting QA and first-class provider smoke checks. The
+remaining work is to make concept figures, citation placement, LaTeX repair, and user
+interaction more adaptive.
 
 Current core artifact:
 
 ```text
 results/model_route_summary.json
+reports/model_candidates.md
 paper/claim_plan.json
 figures/figure_registry.json
 review/typesetting_quality.json
@@ -160,22 +164,14 @@ submission package
 
 ## 5. Next Phase Tasks
 
-### Task 1: Stronger Problem-Specific Solver Generation
+### Task 1: Concept Diagram System
 
 Inputs:
 
 - `reports/problem_understanding.md`
-- `reports/experiment_spec.json`
-- `data/source_registry.json`
-- existing solver module templates
-
-Target behavior:
-
-- Generate or select more problem-specific model code while preserving evidence and
-  reproducibility contracts.
-- Keep deterministic fallback solver modules for offline testing.
-
-### Task 2: Concept Diagram System
+- `reports/model_candidates.md`
+- `reports/model_decision.md`
+- `paper/claim_plan.json`
 
 Target behavior:
 
@@ -183,27 +179,30 @@ Target behavior:
   or Draw.io.
 - Register concept figures in `figures/figure_registry.json` with claim support.
 
-### Task 3: Citation And Interaction Refinement
+### Task 2: Citation And Source Writing Enhancement
 
 Target behavior:
 
 - Insert source-specific citations in the right paper sections.
-- Add smoother checkpoint review and user decision capture beyond file-oriented CLI
-  checkpoints.
+- Use source reliability and data lineage to avoid unsupported factual claims.
+
+### Task 3: Automatic LaTeX Repair
+
+Target behavior:
+
+- Move beyond detection/routing into targeted source rewrites for tables, equations,
+  float placement, and common compile failures.
+- Keep repair attempts traceable through review artifacts.
 
 ## 6. Later Build Phases
 
-After the F route, continue with these quality phases:
+After routes H, I, and J, continue with these quality phases:
 
-1. **Concept Diagram System**
-   - Add Mermaid, Graphviz, and TikZ concept figure generation.
-   - Keep final concept diagrams vector-first.
+1. **Smoother Interactive Checkpoints**
+   - Add user-friendly checkpoint review and decision capture beyond file-oriented CLI
+     checkpoints.
 
-2. **Automatic LaTeX Repair**
-   - Move beyond detection/routing into targeted source rewrites for tables, equations,
-     and float placement.
-
-3. **Live Provider History**
+2. **Live Provider History**
    - Persist smoke histories, cost estimates, and rate-limit notes for contest-day
      readiness.
 

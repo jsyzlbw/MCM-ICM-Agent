@@ -181,7 +181,10 @@ pre-submission review.
 `modeling_council` and `model_judge` diagnose common MCM/ICM archetypes and emit a
 bounded hybrid route plan. The current route IDs are `multi_criteria_evaluation`,
 `constrained_optimization`, `forecasting_model`, `monte_carlo_simulation`,
-`network_flow_graph`, and `multi_objective_decision`. Fallback diagnosis focuses on the
+`classification_model`, `clustering_segmentation`, `queuing_service_model`,
+`network_flow_graph`, and `multi_objective_decision`. The route plan is backed by
+`src/mcm_agent/core/model_recipes.py`, which stores solver contracts, expected outputs,
+metrics, and paper guidance for each recipe. Fallback diagnosis focuses on the
 problem-background section and avoids keyword substring matches, so workflow boilerplate
 does not trigger spurious models.
 
@@ -189,7 +192,8 @@ does not trigger spurious models.
 modules, roles, input requirements, expected outputs, metrics, and column-binding
 contracts. `solver_coder` writes `results/model_route_summary.json` with inferred
 `column_bindings`, `binding_status`, and `route_execution_status` for each selected
-route.
+route. `reports/model_candidates.md` also includes a solver blueprint listing each
+route's module, method, required bindings, and metrics before code execution begins.
 
 ## Gate Repair Flow
 
@@ -293,8 +297,9 @@ resolved bindings in `model_route_summary.json`, for example `time_column=year`,
 
 `schema_profile.json` is produced by EDA and records field-level dtype, missing rate,
 unique count, and semantic tags such as `time`, `target`, `source_node`, `target_node`,
-`cost`, `capacity`, and `numeric_indicator`. Solver column binding uses these tags before
-falling back to column-name heuristics.
+`cost`, `capacity`, `label`, `group`, `arrival_rate`, `service_rate`, `server_count`,
+and `numeric_indicator`. Solver column binding uses these tags before falling back to
+column-name heuristics.
 
 `solver_binding_report.json` records whether required solver columns were successfully
 bound. Missing required bindings, such as a network route without source/target/cost
@@ -305,6 +310,13 @@ columns, fail validation with `failure_reason=weak_model` and route repair to
 figure planning, and the paper model section. Its `route_execution_status` values show
 whether each selected route was `executed`, `blocked_missing_binding`, or
 `attempted_no_metric`.
+
+The deterministic solver modules can emit route-specific files in addition to
+`results/problem1_results.csv`, including `results/forecast_results.csv`,
+`results/simulation_summary.json`, `results/network_paths.csv`,
+`results/classification_results.csv`, `results/cluster_segments.csv`, and
+`results/queue_summary.csv`. These modules are bounded contest baselines; they do not
+run unrestricted LLM-generated code.
 
 `modeling_quality_gate` runs after `model_judge` and before deep search. It writes
 `reports/modeling_quality_report.md` and `review/modeling_gate.json`, blocking model
