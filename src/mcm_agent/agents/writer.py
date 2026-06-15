@@ -5,6 +5,7 @@ from pathlib import Path
 from mcm_agent.agents.paper_context import PaperContext, build_paper_context
 from mcm_agent.agents.paper_sections import render_claim_paragraph, render_claim_plan_sections
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.citations import build_citation_context
 from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
@@ -333,14 +334,15 @@ class PaperWriterAgent:
         for claim in claim_plan:
             if claim.status == "unresolved":
                 self._append_unresolved_claim(workspace_root, claim)
-        section_content = render_claim_plan_sections(claim_plan, context)
+        citation_context = build_citation_context(workspace_root)
+        section_content = render_claim_plan_sections(claim_plan, context, citation_context)
         for filename, content in section_content.items():
             (section_dir / filename).write_text(content, encoding="utf-8")
 
     def _claim_plan_paragraph(self, workspace_root: Path, claim: PaperClaimPlanItem) -> str:
         if claim.status == "unresolved":
             self._append_unresolved_claim(workspace_root, claim)
-        return render_claim_paragraph(claim)
+        return render_claim_paragraph(claim, build_citation_context(workspace_root))
 
     def _append_unresolved_claim(self, workspace_root: Path, claim: PaperClaimPlanItem) -> None:
         path = workspace_root / "unresolved_issues.md"

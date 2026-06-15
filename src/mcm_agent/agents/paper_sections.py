@@ -4,6 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from mcm_agent.agents.paper_context import PaperContext
+from mcm_agent.core.citations import CitationContext
 from mcm_agent.core.models import PaperClaimPlanItem
 
 
@@ -21,6 +22,7 @@ SECTION_TITLES = {
 def render_claim_plan_sections(
     claim_plan: list[PaperClaimPlanItem],
     context: PaperContext,
+    citation_context: CitationContext | None = None,
 ) -> dict[str, str]:
     grouped: dict[str, list[PaperClaimPlanItem]] = defaultdict(list)
     for claim in claim_plan:
@@ -40,11 +42,15 @@ def render_claim_plan_sections(
             filename,
             grouped.get(filename, []),
             context,
+            citation_context,
         )
     return sections
 
 
-def render_claim_paragraph(claim: PaperClaimPlanItem) -> str:
+def render_claim_paragraph(
+    claim: PaperClaimPlanItem,
+    citation_context: CitationContext | None = None,
+) -> str:
     evidence_id = claim.evidence_ids[0] if claim.evidence_ids else "missing"
     figure_id = claim.figure_ids[0] if claim.figure_ids else "missing"
     source_id = claim.source_ids[0] if claim.source_ids else "missing"
@@ -63,7 +69,8 @@ def render_claim_paragraph(claim: PaperClaimPlanItem) -> str:
             + "."
         )
     else:
-        body = _latex_escape(claim.claim_text)
+        cite = citation_context.cite_command(claim.source_ids) if citation_context else ""
+        body = _latex_escape(claim.claim_text) + (f" {cite}" if cite else "")
     return body + "\n" + trace
 
 
@@ -116,9 +123,13 @@ def _render_claim_section(
     filename: str,
     claims: list[PaperClaimPlanItem],
     context: PaperContext,
+    citation_context: CitationContext | None = None,
 ) -> str:
     title = SECTION_TITLES.get(filename, "\\section{Planned Claims}")
-    paragraphs = [render_claim_paragraph(claim) for claim in claims]
+    paragraphs = [
+        render_claim_paragraph(claim, citation_context)
+        for claim in claims
+    ]
     if filename == "model.tex" and context.model_decision_summary:
         paragraphs.insert(0, _latex_escape(context.model_decision_summary))
     if filename == "sensitivity.tex" and context.validation_summary:

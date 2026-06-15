@@ -278,6 +278,55 @@ def test_paper_writer_uses_claim_plan_when_available(tmp_path: Path) -> None:
     ) in results
 
 
+def test_paper_writer_inserts_claim_plan_source_citations(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_source_grounded_result",
+                "section": "paper/sections/results.tex",
+                "claim_text": "The reported data source supports the observed trend.",
+                "claim_type": "metric_result",
+                "evidence_ids": ["ev_001"],
+                "figure_ids": ["fig_001"],
+                "source_ids": ["web_001"],
+                "priority": "critical",
+                "status": "planned",
+                "unresolved_reason": "",
+            }
+        ],
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [{"evidence_id": "ev_001"}])
+    write_json(workspace.root / "figures" / "figure_registry.json", [{"figure_id": "fig_001"}])
+    write_json(
+        workspace.root / "data" / "source_registry.json",
+        [{"source_id": "web_001", "title": "Official data"}],
+    )
+    write_json(
+        workspace.root / "data" / "citation_candidates.json",
+        [
+            {
+                "citation_id": "cite_web_001",
+                "source_id": "web_001",
+                "title": "Official data",
+                "url": "https://data.gov/example",
+                "accessed_at": "2026-06-13T12:00:00Z",
+                "bibtex_key": "official_data_2026",
+            }
+        ],
+    )
+
+    PaperWriterAgent().run(workspace.root)
+
+    results = (workspace.root / "paper" / "sections" / "results.tex").read_text(
+        encoding="utf-8"
+    )
+    assert "\\cite{official_data_2026}" in results
+    assert "% claim_id=claim_source_grounded_result" in results
+    assert "source_id=web_001" in results
+
+
 def test_paper_writer_records_unresolved_planned_claims(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     write_json(
