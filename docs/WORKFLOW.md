@@ -155,13 +155,21 @@ Some edges are conditional:
 
 `claim_planning` runs after figure QA and before paper writing. It writes
 `paper/claim_plan.json`, which lists each planned paper claim, target section, claim type,
-priority, support IDs, and unresolved reason when support is missing. `paper_writer`
-uses this file as the authoritative list of important claims when it exists.
+priority, support IDs, and unresolved reason when support is missing. Claim planning now
+uses a paper context built from problem understanding, confirmed direction, model decision,
+validation, RAG hits, evidence, figures, and sources, so the plan can include assumption,
+model-choice, result, sensitivity, limitation, and conclusion claims.
+
+`paper_writer` uses `paper/claim_plan.json` as the authoritative list of important claims
+when it exists. It renders contextual abstract, introduction, assumptions, model, results,
+sensitivity, and conclusion sections while keeping claim trace comments near the prose.
 
 `methodology_rag` imports two optional methodology sources: the configured local
 `knowledge_base/` folder and any `--supervisor-skills-dir` passed on the command line.
 Both sources are additive, so a user can keep contest rules and method notes locally while
-still using supervisor skill excerpts.
+still using supervisor skill excerpts. It retrieves multiple paper-quality query types,
+including assumption writing, model formulation, limitation discussion, figure design, and
+pre-submission review.
 
 ## Gate Repair Flow
 
@@ -287,6 +295,9 @@ that claim-bearing sections contain valid `claim_id`, `evidence_id`, `figure_id`
 also checks that every planned critical or major claim is written and that written
 claim bindings stay within the planned evidence, figure, and source IDs. The final
 reviewer blocks omitted planned claims and unresolved critical planned claims.
+It also writes `review/paper_quality_scores.json`, scoring section completeness and claim
+trace density. Incomplete paper sections fail the final gate with repair stage
+`paper_writer`.
 
 The first reusable solver modules are:
 

@@ -27,7 +27,7 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 207 passed
+# 214 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -115,16 +115,18 @@ Rules:
 | P9 Claim planning and claim-plan enforcement | Complete as MVP |
 | A1 Unified JSON runtime config | Complete |
 | A2 User-fillable RAG knowledge base base | Complete as MVP |
+| B1 High-quality claim-aware paper generation | Complete as MVP |
 
 ## 4. Active Next Phase
 
-The active next phase is **High Quality Claim-Aware Paper Generation**.
+The active next phase is **Real Modeling Capability Expansion**.
 
 Purpose:
 
 The system now stores sources, data lineage, evidence, figures, references, claim plans,
-and claim-level paper bindings. The remaining work is to make the claim-aware paper read
-like a strong MCM/ICM submission rather than a mechanically traceable draft.
+contextual paper sections, claim-level paper bindings, and paper-quality scores. The
+remaining work is to improve whether the selected model and solver structure fit more
+MCM/ICM problem types.
 
 Current core artifact:
 
@@ -148,72 +150,64 @@ PaperWriterAgent writes sections from planned claims
         ↓
 PaperEvidenceBindingAgent checks planned claim coverage
         ↓
-ReviewerAgent blocks omitted or unsupported critical claims
+ReviewerAgent blocks omitted or unsupported critical claims and incomplete papers
 ```
 
 ## 5. Next Phase Tasks
 
-### Task 1: Improve Claim Plan Quality
+### Task 1: Expand Problem-Type Route Selection
 
 Inputs:
 
 - `reports/problem_understanding.md`
 - `discussion/confirmed_direction.md`
 - `reports/model_decision.md`
-- `results/model_route_summary.json`
-- `results/evidence_registry.json`
-- `figures/figure_registry.json`
-- `data/source_registry.json`
-- `reports/validation_report.md`
+- `reports/experiment_spec.json`
+- `data/schema_profile.json`
 
 Target behavior:
 
-- Generate assumption, limitation, model-choice, metric-result, sensitivity, and conclusion claims from the full artifact set.
-- Preserve `status="unresolved"` for unsupported claims instead of fabricating support.
-- Assign priorities based on contest-paper importance, not just artifact availability.
+- Distinguish evaluation, optimization, forecasting, simulation, network, and hybrid tasks.
+- Emit selected routes with explicit solver module contracts.
+- Preserve deterministic fallbacks for incomplete or ambiguous inputs.
 
-### Task 2: Upgrade Claim-Aware Paper Writing
-
-Target behavior:
-
-- Convert every critical planned claim into a coherent paragraph in the expected section.
-- Insert figure references and citation hooks near the claim text.
-- Improve abstract, introduction, assumptions, model formulation, results narrative, limitations, and conclusion.
-- Keep the deterministic fallback available for minimal/demo workspaces.
-
-### Task 3: Strengthen Reviewer Scoring
+### Task 2: Strengthen Solver Orchestration
 
 Target behavior:
 
-- Score planned claim coverage, narrative completeness, and contest readability.
-- Distinguish writing omissions from upstream model, data, source, and figure gaps.
-- Route every blocker to a concrete repair stage.
+- Build route-specific experiment specs with input requirements, expected metrics, and evidence IDs.
+- Execute multiple compatible solver modules when the selected task is hybrid.
+- Record solver binding decisions for validation and paper writing.
+
+### Task 3: Improve Model-Specific Validation
+
+Target behavior:
+
+- Validate route-specific metrics, missing bindings, and weak-model conditions.
+- Route model failures to `modeling_council`, `model_judge`, or `solver_coder` based on cause.
+- Add fixture tests for several MCM/ICM archetypes.
 
 ## 6. Later Build Phases
 
-After the current claim-planning MVP, continue with these quality phases:
+After the current modeling expansion phase, continue with these quality phases:
 
-1. **Real Data API Expansion**
+1. **Official Data API Expansion**
    - Add OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, and OSM/Overpass providers.
    - Add provider-specific source and lineage records.
 
-2. **Paper Quality Upgrade**
-   - Improve abstract, introduction, assumptions, model formulation, results narrative, limitations, and conclusion.
-   - Add stronger section templates and claim-aware citation insertion.
-
-3. **Concept Diagram System**
+2. **Concept Diagram System**
    - Add Mermaid, Graphviz, and TikZ concept figure generation.
    - Keep final concept diagrams vector-first.
 
-4. **LaTeX Layout QA**
+3. **LaTeX Layout QA**
    - Detect compile errors, table overflow, equation overflow, figure placement issues, and page-limit violations.
    - Route layout failures back to writer, visualization, or typesetting.
 
-5. **Provider Smoke Expansion**
+4. **Provider Smoke Expansion**
    - The manual smoke script now reads `--config-file` and checks configured live providers.
    - Later work can broaden it into a first-class CLI command and include additional official-data providers.
 
-6. **RAG Ingestion Expansion**
+5. **RAG Ingestion Expansion**
    - The base local `knowledge_base/` flow ingests `.md` and `.txt` and reports `.pdf` as pending.
    - Later work should add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions.
 

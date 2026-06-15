@@ -129,6 +129,18 @@ During the `methodology_rag` stage, `.md` and `.txt` files are inserted into the
 methodology store. `.pdf` files are discovered and reported in `rag/retrieval_notes.md` as
 pending MinerU-backed ingestion. Unsupported suffixes are reported as skipped.
 
+## Claim-Aware Paper Quality
+
+The paper pipeline now builds a compact paper context from problem understanding, confirmed
+direction, model decisions, validation, RAG hits, evidence, figures, and sources. That
+context enriches `paper/claim_plan.json` with assumption, model-choice, result,
+sensitivity, limitation, and conclusion claims.
+
+When a claim plan exists, `PaperWriterAgent` renders contextual abstract, introduction,
+assumptions, model, results, sensitivity, and conclusion sections. `ReviewerAgent` writes
+`review/paper_quality_scores.json` with section completeness and claim trace density, and
+routes incomplete papers back to `paper_writer`.
+
 Setting `mineru.mode` to `rest` uses MinerU's precision API flow: create an upload batch,
 upload the local PDF to the returned URL, poll the batch result, download the result zip,
 and persist `problem.md`, `problem.json`, `problem_layout.json`, and `formulas.json` into

@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 207 passed
+# 214 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -22,7 +22,7 @@ ruff check src tests scripts
 Latest implementation commit at the time this status was written:
 
 ```text
-d4e0885 feat: ingest configured rag knowledge base
+98a4384 test: assert paper quality artifacts in workflow
 ```
 
 ## Implemented
@@ -48,16 +48,17 @@ d4e0885 feat: ingest configured rag knowledge base
 | Search & Data Agent with source registry, retrieval log, lineage, citation candidates | Implemented |
 | Supervisor-Skills methodology RAG import skeleton | Implemented |
 | Local `knowledge_base/` RAG ingestion for `.md` and `.txt` with PDF pending notes | Implemented as MVP |
+| Multi-query methodology RAG for paper quality | Implemented |
 | Data/EDA Agent | Implemented |
 | Solver/Coder Agent, experiment runner, evidence registry | Implemented |
 | Validation Agent and validation gate | Implemented |
 | Figure planning, vector-first visualization, figure quality gate | Implemented |
-| Claim Planning Agent and `paper/claim_plan.json` | Implemented |
-| Paper Writer Agent | Implemented as claim-plan-aware MVP writer |
+| Claim Planning Agent and `paper/claim_plan.json` | Implemented with paper-context-aware assumptions, model, result, sensitivity, limitation, and conclusion claims |
+| Paper Writer Agent | Implemented as contextual claim-plan-aware writer |
 | Reference Manager and reference audit | Implemented |
 | Paper Evidence Binding Agent | Implemented with section-level, claim-level, and planned-claim coverage checks |
 | Compliance & Originality Agent with fact regression check | Implemented as MVP |
-| Reviewer, Revision, Submission Packager | Implemented as MVP with claim-plan final-gate blockers |
+| Reviewer, Revision, Submission Packager | Implemented with claim-plan blockers and paper-quality scoring |
 | End-to-end fake-provider workflow tests | Implemented |
 
 ## Partially Implemented
@@ -65,9 +66,9 @@ d4e0885 feat: ingest configured rag knowledge base
 | Area | Current capability | Remaining work |
 | --- | --- | --- |
 | Real automatic modeling | Runs deterministic solver modules and records evidence | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
-| Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, and planned critical/major claim coverage | Improve claim taxonomy and richer repair routing for ambiguous missing support |
-| Paper writing | Produces traceable LaTeX sections from `paper/claim_plan.json` when present | Improve full-paper quality, narrative structure, abstract, assumptions, and citations |
-| RAG | Imports selected Supervisor-Skills documents plus local `.md` and `.txt` files from `knowledge_base/` into SQLite FTS; reports `.pdf` as pending | Add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions |
+| Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
+| Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` when present | Add richer citation insertion and optional style variants |
+| RAG | Imports selected Supervisor-Skills documents plus local `.md` and `.txt` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types; reports `.pdf` as pending | Add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions |
 | Official data APIs | Includes provider pattern and World Bank example | Expand to OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, OSM/Overpass |
 | Visualization | Generates vector-first data figures and QA reports | Add richer concept-diagram generation via Mermaid, Graphviz, TikZ, and Draw.io |
 | LaTeX | Generates and compiles through provider abstraction | Add robust compile-error repair, page-limit checks, and layout QA |
@@ -77,7 +78,6 @@ d4e0885 feat: ingest configured rag knowledge base
 
 ## Not Yet Built
 
-- Full high-quality MCM/ICM paper generation from a claim plan.
 - Live, comprehensive official-data API coverage.
 - MinerU-backed PDF RAG ingestion for user-uploaded优秀论文 and modeling-method files.
 - Advanced LaTeX layout repair for page limits, figure placement, table overflow, and equation overflow.
@@ -119,22 +119,22 @@ The most important implemented safety property is evidence governance:
 - Figures enter `figures/figure_registry.json`.
 - Planned paper claims enter `paper/claim_plan.json`.
 - Paper claims are checked through `review/paper_evidence_bindings.json`.
+- Paper quality scores enter `review/paper_quality_scores.json`.
 - Runtime configuration is loaded from `mcm_agent_config.local.json` when passed with
   `--config-file`; `.env` remains backward compatible.
 - Local methodology notes in `knowledge_base/` are ingested during `methodology_rag`.
 
 ## Recommended Next Build Phase
 
-The next phase should focus on `High Quality Claim-Aware Paper Generation`.
+The next phase should focus on `Real Modeling Capability Expansion`.
 
 Build order:
 
-1. Improve claim-plan generation quality from problem requirements, model route, validation, figures, and data limitations.
-2. Upgrade `PaperWriterAgent` templates so each planned claim becomes a coherent paragraph with citations and figure references.
-3. Add stronger abstract, introduction, assumptions, model formulation, limitations, and conclusion writing rules.
-4. Add richer reviewer scoring for claim importance, narrative completeness, and contest-paper readability.
-5. Add tests proving a complete demo paper uses all planned critical claims in the expected sections.
+1. Expand model route selection for common MCM/ICM task types.
+2. Add stronger solver module orchestration and generated-code contracts.
+3. Keep deterministic fallback modules for tests and demos.
+4. Strengthen validation so model-specific failures route to the right repair stage.
+5. Add tests proving different task archetypes choose different model structures.
 
-This is the right next step because the repository already has provenance, evidence, figures,
-references, claim planning, and review gates. The remaining gap is not whether claims are
-traceable, but whether they form a persuasive contest-quality argument.
+This is the right next step because the paper argument chain is now stronger; the next
+quality bottleneck is whether the selected model and solver structure fit the problem type.
