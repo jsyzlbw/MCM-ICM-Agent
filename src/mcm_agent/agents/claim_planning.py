@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from mcm_agent.agents.paper_context import PaperContext, build_paper_context
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.utils.json_io import read_json, write_json
@@ -19,14 +20,16 @@ class ClaimPlanningAgent:
         )
         sources = self._rows(read_json(workspace_root / "data" / "source_registry.json", []))
         validation_text = self._read_text(workspace_root / "reports" / "validation_report.md")
+        context = build_paper_context(workspace_root)
 
         claims: list[PaperClaimPlanItem] = []
-        claims.extend(self._model_claims(route_summary, evidence, figures, sources))
+        claims.extend(self._assumption_claims(context, evidence, sources))
+        claims.extend(self._model_claims(route_summary, evidence, figures, sources, context))
         claims.extend(self._metric_claims(evidence, figures, sources))
         claims.extend(self._figure_claims(figures))
-        claims.extend(self._sensitivity_claims(evidence, figures, sources))
-        claims.extend(self._limitation_claims(validation_text, evidence, sources))
-        claims.append(self._conclusion_claim(evidence, figures, sources))
+        claims.extend(self._sensitivity_claims(evidence, figures, sources, context))
+        claims.extend(self._limitation_claims(validation_text, evidence, sources, context))
+        claims.append(self._conclusion_claim(evidence, figures, sources, context))
 
         deduped = self._dedupe_claims(claims)
         write_json(
@@ -40,12 +43,42 @@ class ClaimPlanningAgent:
             source="ClaimPlanningAgent",
         )
 
+    def _assumption_claims(
+        self,
+        context: PaperContext,
+        evidence: list[dict[str, object]],
+        sources: list[dict[str, object]],
+    ) -> list[PaperClaimPlanItem]:
+        evidence_ids = self._ids(evidence[:1], "evidence_id")
+        source_ids = self._ids(sources[:1], "source_id")
+        if not (evidence_ids or source_ids):
+            return []
+        context_text = (
+            context.problem_summary
+            or "The model uses explicit assumptions to connect problem conditions to computable variables."
+        )
+        return [
+            PaperClaimPlanItem(
+                claim_id="claim_assumption_problem_context",
+                section="paper/sections/assumptions.tex",
+                claim_text=(
+                    "The modeling assumptions are grounded in the problem context: "
+                    + context_text
+                ),
+                claim_type="assumption",
+                evidence_ids=evidence_ids,
+                source_ids=source_ids,
+                priority="major",
+            )
+        ]
+
     def _model_claims(
         self,
         route_summary: object,
         evidence: list[dict[str, object]],
         figures: list[dict[str, object]],
         sources: list[dict[str, object]],
+        context: PaperContext,
     ) -> list[PaperClaimPlanItem]:
         if not isinstance(route_summary, dict):
             return []
@@ -56,12 +89,17 @@ class ClaimPlanningAgent:
         evidence_ids = self._ids(evidence[:1], "evidence_id")
         figure_ids = self._ids(figures[:1], "figure_id")
         source_ids = self._ids(sources[:1], "source_id")
+        decision_text = (
+            f" The model decision context is: {context.model_decision_summary}"
+            if context.model_decision_summary
+            else ""
+        )
         if evidence_ids or figure_ids or source_ids:
             return [
                 PaperClaimPlanItem(
                     claim_id="claim_model_route",
                     section="paper/sections/model.tex",
-                    claim_text=f"The selected model route is {route_text}.",
+                    claim_text=f"The selected model route is {route_text}.{decision_text}",
                     claim_type="model_choice",
                     evidence_ids=evidence_ids,
                     figure_ids=figure_ids,
@@ -70,13 +108,13 @@ class ClaimPlanningAgent:
                 )
             ]
         return [
-            PaperClaimPlanItem(
-                claim_id="claim_model_route",
-                section="paper/sections/model.tex",
-                claim_text=f"The selected model route is {route_text}.",
-                claim_type="model_choice",
-                priority="critical",
-                status="unresolved",
+                PaperClaimPlanItem(
+                    claim_id="claim_model_route",
+                    section="paper/sections/model.tex",
+                    claim_text=f"The selected model route is {route_text}.{decision_text}",
+                    claim_type="model_choice",
+                    priority="critical",
+                    status="unresolved",
                 unresolved_reason=(
                     "Missing verified evidence, figure, or source for the selected model route."
                 ),
@@ -153,17 +191,24 @@ class ClaimPlanningAgent:
         evidence: list[dict[str, object]],
         figures: list[dict[str, object]],
         sources: list[dict[str, object]],
+        context: PaperContext,
     ) -> list[PaperClaimPlanItem]:
         evidence_ids = self._ids(evidence[:1], "evidence_id")
         if not evidence_ids:
             return []
+        route_metrics = ", ".join(context.route_metric_names[:3])
+        metric_phrase = (
+            f" for route metrics {route_metrics}"
+            if route_metrics
+            else ""
+        )
         return [
             PaperClaimPlanItem(
                 claim_id="claim_sensitivity_baseline",
                 section="paper/sections/sensitivity.tex",
                 claim_text=(
                     "Sensitivity analysis uses registered evidence as the baseline "
-                    "for robustness interpretation."
+                    f"for robustness interpretation{metric_phrase}."
                 ),
                 claim_type="sensitivity",
                 evidence_ids=evidence_ids,
@@ -178,8 +223,10 @@ class ClaimPlanningAgent:
         validation_text: str,
         evidence: list[dict[str, object]],
         sources: list[dict[str, object]],
+        context: PaperContext,
     ) -> list[PaperClaimPlanItem]:
-        lowered = validation_text.lower()
+        limitation_text = context.validation_summary or validation_text
+        lowered = limitation_text.lower()
         if not any(token in lowered for token in ("unresolved", "limitation", "missing", "weak")):
             return []
         return [
@@ -187,7 +234,8 @@ class ClaimPlanningAgent:
                 claim_id="claim_validation_limitation",
                 section="paper/sections/sensitivity.tex",
                 claim_text=(
-                    "The validation stage records remaining limitations that constrain interpretation."
+                    "The validation stage records remaining limitations that constrain "
+                    f"interpretation: {limitation_text}"
                 ),
                 claim_type="limitation",
                 evidence_ids=self._ids(evidence[:1], "evidence_id"),
@@ -205,16 +253,22 @@ class ClaimPlanningAgent:
         evidence: list[dict[str, object]],
         figures: list[dict[str, object]],
         sources: list[dict[str, object]],
+        context: PaperContext,
     ) -> PaperClaimPlanItem:
         evidence_ids = self._ids(evidence[:1], "evidence_id")
         figure_ids = self._ids(figures[:1], "figure_id")
         source_ids = self._ids(sources[:1], "source_id")
+        route_phrase = (
+            " for " + " + ".join(context.selected_routes)
+            if context.selected_routes
+            else ""
+        )
         if evidence_ids or figure_ids or source_ids:
             return PaperClaimPlanItem(
                 claim_id="claim_conclusion_traceability",
                 section="paper/sections/conclusion.tex",
                 claim_text=(
-                    "The final recommendation is traceable to registered evidence, "
+                    f"The final recommendation{route_phrase} is traceable to registered evidence, "
                     "figures, and sources."
                 ),
                 claim_type="conclusion",
@@ -227,7 +281,7 @@ class ClaimPlanningAgent:
             claim_id="claim_conclusion_traceability",
             section="paper/sections/conclusion.tex",
             claim_text=(
-                "The final recommendation is traceable to registered evidence, "
+                f"The final recommendation{route_phrase} is traceable to registered evidence, "
                 "figures, and sources."
             ),
             claim_type="conclusion",

@@ -178,3 +178,46 @@ def test_claim_planning_agent_adds_sensitivity_claim_when_evidence_exists(
     assert sensitivity_claim["section"] == "paper/sections/sensitivity.tex"
     assert sensitivity_claim["claim_type"] == "sensitivity"
     assert sensitivity_claim["evidence_ids"] == ["metric_priority_score_mean"]
+
+
+def test_claim_planning_uses_context_for_assumptions_model_and_limitations(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "problem_understanding.md").write_text(
+        "# Problem Understanding\n\nThe problem requires evacuation capacity assumptions.",
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "model_decision.md").write_text(
+        "# Model Decision\n\nThe model combines TOPSIS ranking with constrained allocation.",
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "validation_report.md").write_text(
+        "# Validation Report\n\nLimitation: mobility data is incomplete.",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {"selected_routes": ["multi_criteria_evaluation"], "route_metrics": {}},
+    )
+    write_json(
+        workspace.root / "results" / "evidence_registry.json",
+        [{"evidence_id": "ev_capacity", "claim": "Capacity constraints are feasible."}],
+    )
+    write_json(
+        workspace.root / "figures" / "figure_registry.json",
+        [{"figure_id": "fig_capacity", "status": "approved", "source_ids": ["web_001"]}],
+    )
+    write_json(workspace.root / "data" / "source_registry.json", [{"source_id": "web_001"}])
+
+    ClaimPlanningAgent().run(workspace.root)
+
+    plan = read_json(workspace.root / "paper" / "claim_plan.json", [])
+    claim_types = {item["claim_type"] for item in plan}
+    claim_text = "\n".join(item["claim_text"] for item in plan)
+    assert "assumption" in claim_types
+    assert "model_choice" in claim_types
+    assert "limitation" in claim_types
+    assert "evacuation capacity" in claim_text
+    assert "TOPSIS ranking" in claim_text
+    assert "mobility data is incomplete" in claim_text
