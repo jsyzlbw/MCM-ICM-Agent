@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 225 passed
+# 246 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -22,7 +22,7 @@ ruff check src tests scripts
 Latest implementation commit at the time this status was written:
 
 ```text
-60696ed fix: avoid route keyword substring matches
+d5f0152 feat: expose provider smoke cli command
 ```
 
 ## Implemented
@@ -57,9 +57,11 @@ Latest implementation commit at the time this status was written:
 | Claim Planning Agent and `paper/claim_plan.json` | Implemented with paper-context-aware assumptions, model, result, sensitivity, limitation, and conclusion claims |
 | Paper Writer Agent | Implemented as contextual claim-plan-aware writer |
 | Reference Manager and reference audit | Implemented |
+| Typesetting QA for compile errors, missing PDF, page-limit hints, table/equation/figure risks | Implemented |
 | Paper Evidence Binding Agent | Implemented with section-level, claim-level, and planned-claim coverage checks |
 | Compliance & Originality Agent with fact regression check | Implemented as MVP |
 | Reviewer, Revision, Submission Packager | Implemented with claim-plan blockers and paper-quality scoring |
+| Provider smoke CLI for LLM, search, extraction, MinerU, humanizer, and official-data checks | Implemented |
 | End-to-end fake-provider workflow tests | Implemented |
 
 ## Partially Implemented
@@ -70,17 +72,16 @@ Latest implementation commit at the time this status was written:
 | Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
 | Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` when present | Add richer citation insertion and optional style variants |
 | RAG | Imports selected Supervisor-Skills documents plus local `.md`, `.txt`, and MinerU-parsed `.pdf` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types with source type, relative path, chunk id, page hint, and usage restrictions | Add richer source-specific query planning and citation-style guidance for local method libraries |
-| Official data APIs | Provider pattern plus World Bank, OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass repair adapters with mocked tests | Add richer provider-specific query planning and live smoke coverage |
+| Official data APIs | Provider pattern plus World Bank, OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass repair adapters with mocked tests and smoke checks | Add richer provider-specific query planning |
 | Visualization | Generates vector-first data figures and QA reports | Add richer concept-diagram generation via Mermaid, Graphviz, TikZ, and Draw.io |
-| LaTeX | Generates and compiles through provider abstraction | Add robust compile-error repair, page-limit checks, and layout QA |
+| LaTeX | Generates, compiles through provider abstraction, and runs deterministic typesetting QA for compile/layout risks | Add automatic LaTeX source repair beyond routing reports |
 | Humanization | Calls UShallPass or fake provider and performs fact-lock regression | Add privacy policy switches, batch job logs, retry reports, and user approval gates |
 | User interaction | File/CLI-oriented checkpoints | Add a smoother interactive conversation loop or UI later |
-| Provider smoke tests | Manual smoke script reads `--config-file`, checks live LLM/Tavily/Firecrawl/UShallPass/MinerU connectivity, and reports skipped missing keys | Broaden to official-data providers and expose as a first-class CLI command if useful |
+| Provider smoke tests | `mcm-agent provider-smoke` and `scripts/smoke_providers.py` read `--config-file`, check configured live providers, and report skipped missing keys | Add richer paid-provider cost controls and batch smoke history |
 
 ## Not Yet Built
 
-- Live, comprehensive official-data API coverage.
-- Advanced LaTeX layout repair for page limits, figure placement, table overflow, and equation overflow.
+- Automatic LaTeX source repair for complex page-limit, figure-placement, table, and equation issues.
 - Production UI or hosted service.
 - Persistent multi-user authentication, billing, or SaaS deployment.
 - Any guarantee of contest award level.
@@ -120,6 +121,8 @@ The most important implemented safety property is evidence governance:
 - Planned paper claims enter `paper/claim_plan.json`.
 - Paper claims are checked through `review/paper_evidence_bindings.json`.
 - Paper quality scores enter `review/paper_quality_scores.json`.
+- Typesetting QA enters `review/typesetting_quality.json` and can route `format_issue`
+  failures to `typesetting`, `paper_writer`, or `visualization`.
 - Runtime configuration is loaded from `mcm_agent_config.local.json` when passed with
   `--config-file`; `.env` remains backward compatible.
 - Local methodology notes, rules, paper examples, and MinerU-parsed PDFs in
@@ -127,18 +130,14 @@ The most important implemented safety property is evidence governance:
 
 ## Recommended Next Build Phase
 
-The next phase should focus on `LaTeX Layout QA` and provider smoke expansion.
+The next phase should focus on deeper contest intelligence.
 
 Build order:
 
-1. Detect LaTeX compile errors, page-limit issues, table overflow, equation overflow, and
-   figure placement risks.
-2. Route typesetting failures back to writer, visualization, or typesetting repair notes.
-3. Broaden provider smoke checks into a first-class CLI command that covers configured
-   LLM, search, extraction, MinerU, humanizer, and official-data providers.
-4. Keep all API keys in `mcm_agent_config.local.json`, with only the example template
-   committed.
+1. Generate stronger problem-specific solver code beyond the deterministic route modules.
+2. Add concept-diagram generation through Mermaid, Graphviz, TikZ, or Draw.io.
+3. Improve citation insertion and source-specific query planning.
+4. Add a smoother interactive user loop or UI for checkpoint decisions.
 
-This is the right next step because local method knowledge can now guide modeling and
-writing; the next quality bottleneck is whether the generated paper compiles, fits the
-contest constraints, and all configured live providers can be checked quickly.
+This is the right next step because the main planning, modeling, RAG, official-data,
+paper, typesetting QA, and provider-readiness foundations now exist.

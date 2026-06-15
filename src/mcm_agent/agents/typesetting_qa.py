@@ -98,6 +98,16 @@ class TypesettingQAAgent:
         report_path = workspace_root / "review" / "typesetting_report.md"
         if report_path.exists():
             report_text = report_path.read_text(encoding="utf-8")
+        if "latexmk not installed" in log.lower() or "latexmk not installed" in report_text.lower():
+            return [
+                TypesettingIssue(
+                    issue_type="latex_tool_unavailable",
+                    severity="warning",
+                    message="LaTeX compiler is unavailable; PDF layout QA was skipped.",
+                    repair_stage="typesetting",
+                    evidence="latexmk not installed",
+                )
+            ]
         if log or "Success: False" in report_text:
             return [
                 TypesettingIssue(

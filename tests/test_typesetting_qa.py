@@ -59,3 +59,28 @@ def test_typesetting_qa_passes_clean_short_paper(tmp_path: Path) -> None:
     report = read_json(workspace.root / "review" / "typesetting_quality.json", {})
     assert report["status"] == "pass"
     assert report["blocking_findings"] == []
+
+
+def test_typesetting_qa_does_not_block_when_latex_tool_is_unavailable(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    paper = workspace.root / "paper"
+    paper.mkdir(exist_ok=True)
+    (paper / "main.tex").write_text(
+        "\\begin{document}\nShort paper.\n\\end{document}\n",
+        encoding="utf-8",
+    )
+    (paper / "compile_log.txt").write_text("latexmk not installed\n", encoding="utf-8")
+    (workspace.root / "review" / "typesetting_report.md").write_text(
+        "# Typesetting Report\n\n"
+        "- Success: False\n"
+        "- PDF: `missing`\n"
+        "- Reason: latexmk not installed\n",
+        encoding="utf-8",
+    )
+
+    TypesettingQAAgent().run(workspace.root)
+
+    report = read_json(workspace.root / "review" / "typesetting_quality.json", {})
+    assert report["status"] == "pass"
+    assert "latex_tool_unavailable" in report["issue_types"]
+    assert report["blocking_findings"] == []

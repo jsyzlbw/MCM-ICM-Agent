@@ -119,10 +119,11 @@ Rules:
 | C1 Real modeling capability expansion | Complete as MVP |
 | D1 Official data API expansion | Complete as MVP |
 | E1 RAG ingestion expansion | Complete |
+| F1 Final QA and provider readiness | Complete |
 
 ## 4. Active Next Phase
 
-The active next phase is **LaTeX Layout QA and Provider Smoke Expansion**.
+The active next phase is **Deeper Contest Intelligence**.
 
 Purpose:
 
@@ -130,82 +131,81 @@ The system now stores sources, data lineage, evidence, figures, references, clai
 contextual paper sections, claim-level paper bindings, paper-quality scores, hybrid route
 plans, route-aware experiment specs, route execution status, official-data repair
 records, and provenance-aware local RAG entries across the main provider families. The
-remaining work is to harden final paper production and make live provider readiness easy
-to check.
+system also runs deterministic typesetting QA and exposes first-class provider smoke
+checks. The remaining work is to make solver generation, concept figures, citation
+placement, and user interaction more adaptive.
 
 Current core artifact:
 
 ```text
-review/typesetting_report.md
-review/final_gate.json
-provider smoke output
+results/model_route_summary.json
+paper/claim_plan.json
+figures/figure_registry.json
+review/typesetting_quality.json
 ```
 
 Current implemented flow:
 
 ```text
-paper/main.tex + figures + references
+problem diagnosis + data/RAG context
         ↓
-LaTeX compile provider
+model route plan + evidence constraints
         ↓
-typesetting and layout QA
+solver/figure/paper generation
         ↓
-repair routing notes for writer / visualization / typesetting
+typesetting QA + final gate
         ↓
-final gate and submission package
+submission package
 ```
 
 ## 5. Next Phase Tasks
 
-### Task 1: Add LaTeX Layout QA
+### Task 1: Stronger Problem-Specific Solver Generation
 
 Inputs:
 
-- `paper/main.tex`
-- `paper/main.pdf` when available
-- `paper/compile_log.txt` or provider compile logs
-- contest page-limit and formatting assumptions
+- `reports/problem_understanding.md`
+- `reports/experiment_spec.json`
+- `data/source_registry.json`
+- existing solver module templates
 
 Target behavior:
 
-- Detect compile errors, missing PDF output, page-limit issues, table overflow, equation
-  overflow, and figure placement risks.
-- Write a machine-readable layout QA report that the final gate can inspect.
-- Preserve the current provider abstraction so fake tests do not require a real LaTeX
-  installation.
+- Generate or select more problem-specific model code while preserving evidence and
+  reproducibility contracts.
+- Keep deterministic fallback solver modules for offline testing.
 
-### Task 2: Add Repair Routing For Typesetting Issues
+### Task 2: Concept Diagram System
 
 Target behavior:
 
-- Route compile and equation issues back to typesetting or writer repair.
-- Route figure placement and figure file issues back to visualization or figure quality.
-- Keep user-facing reports concise enough to act on during a contest.
+- Generate vector-first methodology and workflow diagrams with Mermaid, Graphviz, TikZ,
+  or Draw.io.
+- Register concept figures in `figures/figure_registry.json` with claim support.
 
-### Task 3: Expand Provider Smoke
+### Task 3: Citation And Interaction Refinement
 
 Target behavior:
 
-- Provide one CLI command for configured provider smoke checks.
-- Report configured, skipped, passed, and failed providers without exposing secrets.
-- Include LLM, Tavily, Firecrawl, Brave, Exa, MinerU, UShallPass, and official-data
-  providers where a low-cost smoke check is available.
+- Insert source-specific citations in the right paper sections.
+- Add smoother checkpoint review and user decision capture beyond file-oriented CLI
+  checkpoints.
 
 ## 6. Later Build Phases
 
-After the official data API phase, continue with these quality phases:
+After the F route, continue with these quality phases:
 
 1. **Concept Diagram System**
    - Add Mermaid, Graphviz, and TikZ concept figure generation.
    - Keep final concept diagrams vector-first.
 
-2. **LaTeX Layout QA**
-   - Detect compile errors, table overflow, equation overflow, figure placement issues, and page-limit violations.
-   - Route layout failures back to writer, visualization, or typesetting.
+2. **Automatic LaTeX Repair**
+   - Move beyond detection/routing into targeted source rewrites for tables, equations,
+     and float placement.
 
-3. **Provider Smoke Expansion**
-   - The manual smoke script now reads `--config-file` and checks configured live providers.
-   - Later work can broaden it into a first-class CLI command and include additional official-data providers.
+3. **Live Provider History**
+   - Persist smoke histories, cost estimates, and rate-limit notes for contest-day
+     readiness.
 
 ## 7. Operating Rules
 

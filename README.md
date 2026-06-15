@@ -182,18 +182,27 @@ python scripts/smoke_providers.py \
   --workspace .smoke
 ```
 
+The same checks are available through the installed CLI:
+
+```bash
+mcm-agent provider-smoke \
+  --config-file mcm_agent_config.local.json \
+  --workspace .smoke
+```
+
 To include a real MinerU parse check, provide a small local PDF:
 
 ```bash
-python scripts/smoke_providers.py \
+mcm-agent provider-smoke \
   --config-file mcm_agent_config.local.json \
   --workspace .smoke \
   --mineru-file /path/to/sample.pdf
 ```
 
-The script reports `PASSED`, `SKIPPED`, or `FAILED` for LLM, Tavily, Firecrawl,
-UShallPass, and MinerU. Missing optional keys are reported as `SKIPPED`; actual API
-or response failures return a non-zero exit code.
+Smoke output reports `PASSED`, `SKIPPED`, or `FAILED` for configured LLM, Tavily,
+Brave, Exa, Firecrawl, UShallPass, MinerU, and official-data checks. Missing optional
+keys are reported as `SKIPPED`; actual API or response failures return a non-zero exit
+code.
 
 ## Verification
 
