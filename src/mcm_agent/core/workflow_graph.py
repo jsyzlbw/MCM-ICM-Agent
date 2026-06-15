@@ -286,7 +286,11 @@ def build_default_workflow_graph() -> WorkflowGraph:
             label="Pre-submission Reviewer",
             responsibility="Run requirement, evidence, format, visual, and originality review panels.",
             input_artifacts=["paper/main.tex", "paper/main.pdf"],
-            output_artifacts=["review/reviewer_report.md", "review/originality_report.md"],
+            output_artifacts=[
+                "review/reviewer_report.md",
+                "review/originality_report.md",
+                "review/paper_quality_scores.json",
+            ],
             pass_criteria=["Review findings are mapped to responsible repair stages."],
         ),
         "final_gatekeeper": AgentNode(

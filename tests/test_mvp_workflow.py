@@ -105,6 +105,7 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "review/humanization_diff.md",
         "review/fact_regression_report.md",
         "review/reviewer_report.md",
+        "review/paper_quality_scores.json",
         "review/final_gate.json",
         "review/gate_decisions.json",
         "review/source_audit_report.md",
@@ -135,6 +136,20 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
     assert stage_ids.index("claim_planning") < stage_ids.index("paper_writer")
     assert "final_gatekeeper" in stage_ids
     assert stage_ids[-1] == "submission_packager"
+    paper_quality = read_json(workspace / "review" / "paper_quality_scores.json", {})
+    assert paper_quality["status"] == "pass"
+    abstract = (workspace / "paper" / "sections" / "abstract.tex").read_text(
+        encoding="utf-8"
+    )
+    introduction = (workspace / "paper" / "sections" / "introduction.tex").read_text(
+        encoding="utf-8"
+    )
+    assumptions = (workspace / "paper" / "sections" / "assumptions.tex").read_text(
+        encoding="utf-8"
+    )
+    assert "traceable" in abstract.lower() or "model" in abstract.lower()
+    assert "planned claim chain" in introduction
+    assert "assumption" in assumptions.lower()
 
 
 def test_run_mvp_workflow_uses_injected_provider_bundle(tmp_path: Path) -> None:
