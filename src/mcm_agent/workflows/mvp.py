@@ -21,6 +21,7 @@ from mcm_agent.agents.reviewer import ReviewerAgent
 from mcm_agent.agents.search_data import SearchDataAgent
 from mcm_agent.agents.solver import SolverCoderAgent
 from mcm_agent.agents.submission import SubmissionPackager
+from mcm_agent.agents.typesetting_qa import TypesettingQAAgent
 from mcm_agent.agents.validation import ValidationAgent
 from mcm_agent.agents.visualization import FigurePlanningAgent, VisualizationAgent
 from mcm_agent.agents.writer import PaperWriterAgent
@@ -328,10 +329,13 @@ def _mvp_stage_handlers(
         ComplianceOriginalityAgent(provider_bundle.humanizer).run(workspace_root)
         ReferenceManager().run(workspace_root)
         compile_outputs = _compile_latex(provider_bundle.latex, workspace_root)
+        TypesettingQAAgent().run(workspace_root)
         return [
             "paper/main.tex",
             "paper/references.bib",
             *compile_outputs,
+            "review/typesetting_quality.json",
+            "review/typesetting_quality_report.md",
             "review/originality_report.md",
             "review/reference_audit_report.md",
         ]

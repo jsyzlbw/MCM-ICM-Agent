@@ -67,6 +67,9 @@ class ReviewerAgent:
         write_json(workspace_root / "review" / "paper_quality_scores.json", quality_scores)
         if quality_scores["status"] == "fail":
             blocking.append("Paper section completeness is too low.")
+        typesetting_quality = self._typesetting_quality_failure(workspace_root)
+        if typesetting_quality:
+            blocking.extend(typesetting_quality["blocking_findings"])
         self._write_source_audit_report(workspace_root, unbound_sources)
 
         reviewer_report = self._generate_review(blocking) or self._fallback_review(blocking)
@@ -118,6 +121,9 @@ class ReviewerAgent:
         elif quality_scores["status"] == "fail":
             failure_reason = "bad_writing"
             repair_stage = "paper_writer"
+        elif typesetting_quality:
+            failure_reason = "format_issue"
+            repair_stage = typesetting_quality["repair_stage"]
         elif blocking:
             failure_reason = "bad_writing"
             repair_stage = "paper_writer"
@@ -136,6 +142,24 @@ class ReviewerAgent:
             "paper.review.failed" if blocking else "paper.review.passed",
             source="ReviewerAgent",
         )
+
+    def _typesetting_quality_failure(self, workspace_root: Path) -> dict[str, object] | None:
+        report = read_json(workspace_root / "review" / "typesetting_quality.json", {})
+        if not isinstance(report, dict) or report.get("status") != "fail":
+            return None
+        findings = report.get("blocking_findings")
+        blocking_findings = [
+            str(finding)
+            for finding in findings
+            if isinstance(finding, str) and finding.strip()
+        ] if isinstance(findings, list) else []
+        if not blocking_findings:
+            blocking_findings = ["Typesetting quality check failed."]
+        repair_stage = str(report.get("repair_stage") or "typesetting")
+        return {
+            "blocking_findings": blocking_findings,
+            "repair_stage": repair_stage,
+        }
 
     def _score_paper_quality(self, workspace_root: Path) -> dict[str, object]:
         section_dir = workspace_root / "paper" / "sections"

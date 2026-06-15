@@ -105,6 +105,8 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "review/originality_report.md",
         "review/humanization_diff.md",
         "review/fact_regression_report.md",
+        "review/typesetting_quality.json",
+        "review/typesetting_quality_report.md",
         "review/reviewer_report.md",
         "review/paper_quality_scores.json",
         "review/final_gate.json",

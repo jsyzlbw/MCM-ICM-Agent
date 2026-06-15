@@ -80,6 +80,31 @@ def test_reviewer_blocks_incomplete_paper_sections(tmp_path: Path) -> None:
     assert "Paper section completeness is too low." in gate["blocking_findings"]
 
 
+def test_reviewer_routes_typesetting_quality_failure_to_typesetting(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    _write_complete_paper_sections(workspace.root)
+    write_json(workspace.root / "results" / "evidence_registry.json", [{"evidence_id": "ev_001"}])
+    write_json(workspace.root / "review" / "paper_evidence_bindings.json", [])
+    write_json(
+        workspace.root / "review" / "typesetting_quality.json",
+        {
+            "status": "fail",
+            "blocking_findings": ["LaTeX compile error: Undefined control sequence."],
+            "repair_stage": "typesetting",
+            "issue_types": ["compile_error"],
+            "issues": [],
+            "page_count": None,
+        },
+    )
+
+    ReviewerAgent().run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "final_gate.json", {})
+    assert gate["status"] == "fail"
+    assert gate["failure_reason"] == "format_issue"
+    assert gate["repair_stage"] == "typesetting"
+
+
 def test_reviewer_fails_with_unresolved_placeholder(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     (workspace.root / "unresolved_issues.md").write_text("[[UNRESOLVED:\n]]")
