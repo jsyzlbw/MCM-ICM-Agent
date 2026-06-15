@@ -1,3 +1,4 @@
+import importlib.util
 from pathlib import Path
 
 import respx
@@ -5,6 +6,16 @@ from httpx import Response
 
 from mcm_agent.config import Settings
 from mcm_agent.providers.smoke import ProviderSmokeTester, SmokeStatus
+
+
+def _load_smoke_script():
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "smoke_providers.py"
+    spec = importlib.util.spec_from_file_location("smoke_providers_script", script_path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_smoke_tester_skips_missing_provider_keys(tmp_path: Path) -> None:
@@ -113,3 +124,12 @@ def test_smoke_tester_requires_mineru_file_for_rest_mode(tmp_path: Path) -> None
 
     assert result.status == SmokeStatus.SKIPPED
     assert "mineru_file" in result.detail
+
+
+def test_smoke_script_accepts_json_config_file_argument(tmp_path: Path) -> None:
+    config_file = tmp_path / "mcm_agent_config.local.json"
+    config_file.write_text("{}", encoding="utf-8")
+
+    args = _load_smoke_script().build_parser().parse_args(["--config-file", str(config_file)])
+
+    assert args.config_file == str(config_file)

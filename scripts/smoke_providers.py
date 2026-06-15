@@ -12,9 +12,14 @@ from mcm_agent.providers.smoke import ProviderSmokeTester, SmokeStatus
 DEFAULT_PROVIDERS = ["llm", "tavily", "firecrawl", "humanizer", "mineru"]
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Smoke test configured MCM Agent providers.")
     parser.add_argument("--env-file", default=".env", help="Path to .env file.")
+    parser.add_argument(
+        "--config-file",
+        default=None,
+        help="Path to local JSON runtime config.",
+    )
     parser.add_argument(
         "--workspace",
         default=".smoke",
@@ -30,10 +35,15 @@ def main() -> int:
         default=None,
         help="Optional PDF/document file for MinerU parse smoke.",
     )
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
     args = parser.parse_args()
 
     providers = [item.strip() for item in args.providers.split(",") if item.strip()]
-    settings = load_settings(args.env_file)
+    settings = load_settings(args.env_file, args.config_file)
     tester = ProviderSmokeTester(
         settings,
         workspace_root=Path(args.workspace),

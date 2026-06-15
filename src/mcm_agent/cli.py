@@ -121,11 +121,12 @@ def run_workflow(
     template_dir: Path | None = typer.Option(None, "--template-dir"),
     supervisor_skills_dir: Path | None = typer.Option(None, "--supervisor-skills-dir"),
     env_file: str | None = typer.Option(None, "--env-file"),
+    config_file: str | None = typer.Option(None, "--config-file"),
     auto_approve: bool = typer.Option(False, "--auto-approve/--no-auto-approve"),
 ) -> None:
     """Run the MVP workflow on real task inputs using configured providers."""
     workspace_path = Path(workspace)
-    settings = load_settings(env_file)
+    settings = load_settings(env_file, config_file)
     providers = build_provider_bundle(settings, workspace_root=workspace_path)
     run_mvp_workflow(
         workspace_path,
@@ -151,13 +152,14 @@ def resume_workflow(
     template_dir: Path | None = typer.Option(None, "--template-dir"),
     supervisor_skills_dir: Path | None = typer.Option(None, "--supervisor-skills-dir"),
     env_file: str | None = typer.Option(None, "--env-file"),
+    config_file: str | None = typer.Option(None, "--config-file"),
     from_stage: str | None = typer.Option(None, "--from-stage"),
     until_stage: str | None = typer.Option(None, "--until-stage"),
     auto_approve: bool = typer.Option(False, "--auto-approve/--no-auto-approve"),
 ) -> None:
     """Resume an existing workspace from a stage or from task_state."""
     workspace_path = Path(workspace)
-    settings = load_settings(env_file)
+    settings = load_settings(env_file, config_file)
     providers = build_provider_bundle(settings, workspace_root=workspace_path)
     resume_mvp_workflow(
         workspace_path,
@@ -192,9 +194,12 @@ def package_submission(workspace: str) -> None:
 
 
 @app.command("provider-status")
-def provider_status(env_file: str | None = None) -> None:
+def provider_status(
+    env_file: str | None = typer.Option(None, "--env-file"),
+    config_file: str | None = typer.Option(None, "--config-file"),
+) -> None:
     """Print which providers will be used for the current configuration."""
-    settings = load_settings(env_file)
+    settings = load_settings(env_file, config_file)
     llm_status = (
         f"openai-compatible ({settings.openai_model})"
         if settings.openai_api_key
