@@ -186,3 +186,39 @@ def test_typesetting_repair_agent_reports_no_action_for_clean_quality(
     assert report.status == "skipped"
     repair_json = read_json(workspace.root / "review" / "typesetting_repair.json", {})
     assert repair_json["status"] == "skipped"
+
+
+def test_typesetting_qa_report_mentions_repair_status(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    paper = workspace.root / "paper"
+    paper.mkdir(exist_ok=True)
+    (paper / "main.tex").write_text(
+        "\\begin{document}\nShort.\\end{document}\n",
+        encoding="utf-8",
+    )
+    (paper / "main.pdf").write_bytes(b"%PDF")
+    (paper / "compile_log.txt").write_text(
+        "Latexmk: All targets are up-to-date\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "review" / "typesetting_repair.json",
+        {
+            "status": "repaired",
+            "actions": [
+                {
+                    "action_type": "scale_graphics",
+                    "message": "Scaled graphics.",
+                    "changed": True,
+                }
+            ],
+        },
+    )
+
+    TypesettingQAAgent().run(workspace.root)
+
+    markdown = (workspace.root / "review" / "typesetting_quality_report.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Repair status: repaired" in markdown
+    assert "Scaled graphics." in markdown

@@ -254,8 +254,29 @@ class TypesettingQAAgent:
             )
         else:
             lines.append("- No blocking typesetting issues detected.")
+        repair_summary = self._repair_summary_lines(review_dir / "typesetting_repair.json")
+        if repair_summary:
+            lines.extend(["", "## Repair Summary", "", *repair_summary])
         lines.append("")
         (review_dir / "typesetting_quality_report.md").write_text(
             "\n".join(lines),
             encoding="utf-8",
         )
+
+    def _repair_summary_lines(self, repair_path: Path) -> list[str]:
+        payload = read_json(repair_path, {})
+        if not isinstance(payload, dict) or not payload:
+            return []
+        lines = [f"- Repair status: {payload.get('status', 'unknown')}"]
+        actions = payload.get("actions", [])
+        if not isinstance(actions, list) or not actions:
+            lines.append("- Repair actions: none.")
+            return lines
+        for action in actions:
+            if not isinstance(action, dict):
+                continue
+            action_type = action.get("action_type", "unknown")
+            message = action.get("message", "")
+            changed = action.get("changed", False)
+            lines.append(f"- [{action_type}] {message} changed={changed}")
+        return lines
