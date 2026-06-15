@@ -353,8 +353,17 @@ trace density. Incomplete paper sections fail the final gate with repair stage
 step writes `review/typesetting_quality.json` and
 `review/typesetting_quality_report.md`, checking compile errors, missing PDF output,
 wide tables, long display equations, figure placement/file risks, and page-limit hints.
-When this report fails, the final gate uses `failure_reason=format_issue` and routes to
-`typesetting`, `paper_writer`, or `visualization` according to the blocking issue.
+After the first QA pass, `TypesettingRepairAgent` reads the quality JSON and applies one
+conservative source-repair pass when a safe pattern is available. Current repairs wrap
+wide `tabular` environments in `\resizebox{\textwidth}{!}{...}`, add
+`width=0.9\linewidth` to unscaled `\includegraphics{...}` calls, and wrap long plain
+`equation` bodies in `split` when they are not already multi-line math environments.
+Repair artifacts are written to `review/typesetting_repair.json` and
+`review/typesetting_repair_report.md`. If source changed, the workflow recompiles once
+and reruns typesetting QA; it does not loop indefinitely. The QA markdown includes a
+repair summary when repair artifacts exist. Remaining format failures use
+`failure_reason=format_issue` and route to `typesetting`, `paper_writer`, or
+`visualization` according to the blocking issue.
 
 The first reusable solver modules are:
 
@@ -379,7 +388,7 @@ as placeholders, not treated as real external sources.
 | `source_gate` fails | No reliable external sources were found. | Configure Tavily/Firecrawl, add attachments, or reframe the data need. |
 | `validation_gate` fails | Metrics lack evidence or an experiment run failed. | Inspect `results/experiment_runs.jsonl` and rerun from `solver_coder`. |
 | `figure_gate` fails | Missing PDF/SVG, Mermaid source, concept SVG, caption, target section, or evidence IDs. | Rerun from `figure_planning` after fixing the figure plan. |
-| `final_gate` fails with `format_issue` | Typesetting QA found compile or layout blockers. | Inspect `review/typesetting_quality_report.md` and resume from the reported `repair_stage`. |
+| `final_gate` fails with `format_issue` | Typesetting QA found compile or layout blockers after the one safe repair pass was skipped, made no change, or was insufficient. | Inspect `review/typesetting_quality_report.md` and `review/typesetting_repair_report.md`, then resume from the reported `repair_stage`. |
 | `final_gate` fails | Reviewer found source, writing, figure, or fact regression blockers. | Inspect `review/final_gate.json` and resume from its `repair_stage`. |
 | Repeated gate loop | The repair stage cannot fix the same issue automatically. | Add data/API keys or manually edit inputs, then resume. |
 

@@ -27,7 +27,7 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 266 passed
+# 271 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -123,10 +123,11 @@ Rules:
 | G1 Stronger modeling generation | Complete as recipe-driven deterministic baselines |
 | H1 Concept diagram system | Complete as Mermaid plus deterministic SVG concept diagrams |
 | I1 Citation and source writing enhancement | Complete |
+| J1 Automatic LaTeX repair | Complete as deterministic one-pass repair for safe table, graphic, and equation patterns |
 
 ## 4. Active Next Phase
 
-The active next phase is **Automatic LaTeX Repair**.
+The active next phase is **Smoother Interactive Checkpoints**.
 
 Purpose:
 
@@ -140,7 +141,9 @@ tasks, plus deterministic typesetting QA and first-class provider smoke checks. 
 system also generates artifact-derived methodology and claim-evidence concept diagrams
 as Mermaid source plus SVG vector outputs. Source-backed claim writing now maps
 `source_id` values to BibTeX keys and records citation keys in evidence bindings. The
-remaining work is to make LaTeX repair and user interaction more adaptive.
+typesetting stage now applies one deterministic repair pass for safe table, graphic, and
+equation patterns, recompiles, and reruns QA. The remaining work is to make user
+interaction and contest-day provider readiness more adaptive.
 
 Current core artifact:
 
@@ -153,6 +156,7 @@ figures/source/*.mmd
 paper/references.bib
 review/paper_evidence_bindings.json
 review/typesetting_quality.json
+review/typesetting_repair.json
 ```
 
 Current implemented flow:
@@ -171,25 +175,26 @@ submission package
 
 ## 5. Next Phase Tasks
 
-### Task 1: Automatic LaTeX Repair
+### Task 1: Smoother Interactive Checkpoints
 
 Target behavior:
 
-- Move beyond detection/routing into targeted source rewrites for tables, equations,
-  float placement, and common compile failures.
-- Keep repair attempts traceable through review artifacts.
+- Add a user-friendly checkpoint review loop beyond file-oriented CLI checkpoints.
+- Preserve current machine-readable `task_state.json` and gate artifacts.
+- Let users approve, revise, or redirect stage decisions without manually editing
+  workspace files.
 
 ## 6. Later Build Phases
 
-After routes H, I, and J, continue with these quality phases:
+After route J, continue with these quality phases:
 
-1. **Smoother Interactive Checkpoints**
-   - Add user-friendly checkpoint review and decision capture beyond file-oriented CLI
-     checkpoints.
-
-2. **Live Provider History**
+1. **Live Provider History**
    - Persist smoke histories, cost estimates, and rate-limit notes for contest-day
      readiness.
+
+2. **Richer Source-Specific Query Planning**
+   - Improve provider-specific query expansion and source repair decisions for official
+     datasets.
 
 ## 7. Operating Rules
 

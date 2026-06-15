@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 266 passed
+# 271 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -22,7 +22,7 @@ ruff check src tests scripts
 Latest implementation commit at the time this status was written:
 
 ```text
-f7769ea feat: execute new modeling recipe routes
+cb42095 feat: summarize latex repairs in typesetting qa
 ```
 
 ## Implemented
@@ -57,7 +57,7 @@ f7769ea feat: execute new modeling recipe routes
 | Claim Planning Agent and `paper/claim_plan.json` | Implemented with paper-context-aware assumptions, model, result, sensitivity, limitation, and conclusion claims |
 | Paper Writer Agent | Implemented as contextual claim-plan-aware writer |
 | Reference Manager and source-to-BibTeX reference audit | Implemented |
-| Typesetting QA for compile errors, missing PDF, page-limit hints, table/equation/figure risks | Implemented |
+| Typesetting QA plus deterministic one-pass LaTeX repair for safe table, graphic, and equation patterns | Implemented |
 | Paper Evidence Binding Agent | Implemented with section-level, claim-level, and planned-claim coverage checks |
 | Compliance & Originality Agent with fact regression check | Implemented as MVP |
 | Reviewer, Revision, Submission Packager | Implemented with claim-plan blockers and paper-quality scoring |
@@ -74,14 +74,14 @@ f7769ea feat: execute new modeling recipe routes
 | RAG | Imports selected Supervisor-Skills documents plus local `.md`, `.txt`, and MinerU-parsed `.pdf` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types with source type, relative path, chunk id, page hint, and usage restrictions | Add richer source-specific query planning and citation-style guidance for local method libraries |
 | Official data APIs | Provider pattern plus World Bank, OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass repair adapters with mocked tests and smoke checks | Add richer provider-specific query planning |
 | Visualization | Generates vector-first data figures, Mermaid source concept diagrams, deterministic SVG concept outputs, and QA reports | Add richer diagram styling/export polish if needed |
-| LaTeX | Generates, compiles through provider abstraction, and runs deterministic typesetting QA for compile/layout risks | Add automatic LaTeX source repair beyond routing reports |
+| LaTeX | Generates, compiles through provider abstraction, runs deterministic typesetting QA, applies one conservative source-repair pass for safe table, graphic, and equation patterns, recompiles, and records repair artifacts | Add richer repair coverage for complex page-limit and float-placement failures |
 | Humanization | Calls UShallPass or fake provider and performs fact-lock regression | Add privacy policy switches, batch job logs, retry reports, and user approval gates |
 | User interaction | File/CLI-oriented checkpoints | Add a smoother interactive conversation loop or UI later |
 | Provider smoke tests | `mcm-agent provider-smoke` and `scripts/smoke_providers.py` read `--config-file`, check configured live providers, and report skipped missing keys | Add richer paid-provider cost controls and batch smoke history |
 
 ## Not Yet Built
 
-- Automatic LaTeX source repair for complex page-limit, figure-placement, table, and equation issues.
+- Automatic LaTeX source repair for complex page-limit, float-placement, template-specific, and semantic compile issues.
 - Production UI or hosted service.
 - Persistent multi-user authentication, billing, or SaaS deployment.
 - Any guarantee of contest award level.
@@ -123,6 +123,9 @@ The most important implemented safety property is evidence governance:
 - Paper quality scores enter `review/paper_quality_scores.json`.
 - Typesetting QA enters `review/typesetting_quality.json` and can route `format_issue`
   failures to `typesetting`, `paper_writer`, or `visualization`.
+- Typesetting repair enters `review/typesetting_repair.json` and
+  `review/typesetting_repair_report.md`; when source changes, the workflow recompiles
+  once and reruns typesetting QA.
 - Runtime configuration is loaded from `mcm_agent_config.local.json` when passed with
   `--config-file`; `.env` remains backward compatible.
 - Local methodology notes, rules, paper examples, and MinerU-parsed PDFs in
@@ -130,13 +133,14 @@ The most important implemented safety property is evidence governance:
 
 ## Recommended Next Build Phase
 
-The next phase should focus on deeper contest intelligence.
+The next phase should focus on smoother human-in-the-loop operation and contest-day
+readiness.
 
 Build order:
 
-1. Add automatic LaTeX source repair for common formatting failures.
+1. Add a smoother interactive user loop or UI for checkpoint decisions.
 2. Add richer source-specific query planning.
-3. Add a smoother interactive user loop or UI for checkpoint decisions.
+3. Persist live provider smoke histories, cost estimates, and rate-limit notes.
 
 This is the right next step because the main planning, modeling, RAG, official-data,
-paper, typesetting QA, and provider-readiness foundations now exist.
+paper, automatic typesetting repair, and provider-readiness foundations now exist.

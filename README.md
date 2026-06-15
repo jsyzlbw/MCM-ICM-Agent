@@ -175,6 +175,19 @@ deterministic SVG outputs to `figures/*.svg`. `FigureQualityAgent` checks concep
 diagrams for a Mermaid source file, vector output, caption intent, and target section
 before the workflow proceeds to claim planning.
 
+## Automatic LaTeX Repair
+
+The typesetting stage now runs deterministic, pattern-limited LaTeX repair after QA
+finds safe formatting issues. It can wrap wide `tabular` environments, add width limits
+to unscaled `\includegraphics` calls, and wrap long plain `equation` bodies in `split`
+when they are not already using a multi-line math environment.
+
+The workflow performs one repair pass, recompiles, and reruns typesetting QA. Repair
+evidence is written to `review/typesetting_repair.json` and
+`review/typesetting_repair_report.md`, and the QA markdown includes the repair summary.
+Complex compile errors, missing source figures, page-limit problems, and unsafe layout
+failures still route through the final gate for targeted stage repair or human review.
+
 ## Real Modeling Capability
 
 Model selection now uses a recipe library for common MCM/ICM archetypes. Each recipe
