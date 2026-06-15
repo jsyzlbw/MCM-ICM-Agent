@@ -96,7 +96,10 @@ class ValidationAgent:
                 gate_id="validation_gate",
                 status="fail" if blocking_issues else "pass",
                 failure_reason="weak_model" if binding_failure else ("bad_results" if blocking_issues else None),
-                repair_stage="solver_coder" if blocking_issues else None,
+                repair_stage=self._repair_stage_for_blockers(
+                    binding_failure=binding_failure,
+                    blocking_issues=blocking_issues,
+                ),
                 blocking_findings=blocking_issues,
             ),
         )
@@ -105,6 +108,18 @@ class ValidationAgent:
             "validation.failed" if blocking_issues else "validation.passed",
             source="ValidationAgent",
         )
+
+    def _repair_stage_for_blockers(
+        self,
+        *,
+        binding_failure: bool,
+        blocking_issues: list[str],
+    ) -> str | None:
+        if not blocking_issues:
+            return None
+        if binding_failure:
+            return "modeling_council"
+        return "solver_coder"
 
     def _read_experiment_runs(self, path: Path) -> list[dict[str, object]]:
         if not path.exists():

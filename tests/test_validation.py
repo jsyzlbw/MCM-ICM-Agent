@@ -64,3 +64,30 @@ def test_validation_fails_on_solver_binding_report_failure(tmp_path: Path) -> No
     assert decision["status"] == "fail"
     assert decision["failure_reason"] == "weak_model"
     assert "network_flow_graph.source_column" in decision["blocking_findings"][0]
+
+
+def test_validation_routes_missing_solver_bindings_to_modeling_when_spec_is_wrong(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(workspace.root / "results" / "model_metrics.json", {"row_count": 2})
+    write_json(
+        workspace.root / "results" / "evidence_registry.json",
+        [{"evidence_id": "metric_row_count", "source_path": "results/model_metrics.json"}],
+    )
+    write_json(
+        workspace.root / "results" / "solver_binding_report.json",
+        {
+            "status": "fail",
+            "missing_bindings": [
+                "network_flow_graph.source_column",
+                "network_flow_graph.target_column",
+            ],
+        },
+    )
+
+    ValidationAgent().run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "validation_gate.json", {})
+    assert gate["failure_reason"] == "weak_model"
+    assert gate["repair_stage"] == "modeling_council"
