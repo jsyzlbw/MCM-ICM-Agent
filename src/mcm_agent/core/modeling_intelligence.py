@@ -4,6 +4,8 @@ import re
 
 from pydantic import BaseModel, Field
 
+from mcm_agent.core.model_recipes import recipe_for_problem_type
+
 
 class ModelRoute(BaseModel):
     route_id: str
@@ -131,6 +133,43 @@ class ModelingIntelligence:
                     "conflicting",
                 ],
             ),
+            "classification": self._score(
+                lowered,
+                [
+                    "classify",
+                    "classification",
+                    "category",
+                    "label",
+                    "risk level",
+                    "binary",
+                    "logistic",
+                ],
+            ),
+            "clustering": self._score(
+                lowered,
+                [
+                    "cluster",
+                    "clustering",
+                    "segmentation",
+                    "segment",
+                    "group",
+                    "unsupervised",
+                    "typology",
+                ],
+            ),
+            "queuing": self._score(
+                lowered,
+                [
+                    "queue",
+                    "queuing",
+                    "waiting time",
+                    "arrival",
+                    "service rate",
+                    "server",
+                    "counter",
+                    "line",
+                ],
+            ),
         }
         ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
         return [problem_type for problem_type, score in ranked if score > 0]
@@ -143,66 +182,14 @@ class ModelingIntelligence:
         return re.search(pattern, lowered) is not None
 
     def _route_for(self, problem_type: str) -> ModelRoute:
-        routes = {
-            "evaluation": ModelRoute(
-                route_id="multi_criteria_evaluation",
-                candidate="Entropy-TOPSIS priority scoring",
-                problem_type="evaluation",
-                main_strength="Transparent ranking from normalized indicators",
-                data_needs=["indicator table", "weights or entropy-derived weights"],
-                methods=["normalization", "entropy weighting", "TOPSIS"],
-                metrics=["priority score", "rank stability"],
-                implementation_risk="low",
-            ),
-            "optimization": ModelRoute(
-                route_id="constrained_optimization",
-                candidate="Resource allocation optimization",
-                problem_type="optimization",
-                main_strength="Turns model scores into budget-aware recommendations",
-                data_needs=["resource limits", "priority scores", "capacity constraints"],
-                methods=["linear programming", "integer allocation", "sensitivity analysis"],
-                metrics=["objective value", "coverage", "constraint violation count"],
-                implementation_risk="medium",
-            ),
-            "prediction": ModelRoute(
-                route_id="forecasting_model",
-                candidate="Interpretable forecasting baseline",
-                problem_type="prediction",
-                main_strength="Forecasts future demand or risk with explainable features",
-                data_needs=["historical observations", "time or feature columns"],
-                methods=["linear regression", "random forest", "time-series baseline"],
-                metrics=["RMSE", "MAE", "out-of-sample error"],
-                implementation_risk="medium",
-            ),
-            "simulation": ModelRoute(
-                route_id="monte_carlo_simulation",
-                candidate="Scenario and uncertainty simulation",
-                problem_type="simulation",
-                main_strength="Tests robustness under uncertain assumptions",
-                data_needs=["parameter ranges", "uncertainty assumptions"],
-                methods=["Monte Carlo simulation", "scenario analysis"],
-                metrics=["expected value", "percentile outcomes", "failure probability"],
-                implementation_risk="medium",
-            ),
-            "graph_network": ModelRoute(
-                route_id="network_flow_graph",
-                candidate="Network flow or shortest-path model",
-                problem_type="graph_network",
-                main_strength="Captures routes, flows, connectivity, and bottlenecks",
-                data_needs=["nodes", "edges", "capacities or travel costs"],
-                methods=["shortest path", "max flow", "minimum cost flow"],
-                metrics=["travel cost", "flow served", "bottleneck count"],
-                implementation_risk="medium",
-            ),
-            "multi_objective": ModelRoute(
-                route_id="multi_objective_decision",
-                candidate="Multi-objective trade-off model",
-                problem_type="multi_objective",
-                main_strength="Makes conflicting goals and Pareto trade-offs explicit",
-                data_needs=["objective definitions", "decision variables", "constraints"],
-                methods=["weighted sum", "Pareto analysis", "goal programming"],
-                metrics=["Pareto dominance", "weighted utility", "trade-off slope"],
-                implementation_risk="medium",
-            ),
-        }
-        return routes[problem_type]
+        recipe = recipe_for_problem_type(problem_type)
+        return ModelRoute(
+            route_id=recipe.route_id,
+            candidate=recipe.candidate,
+            problem_type=recipe.problem_type,
+            main_strength=recipe.main_strength,
+            data_needs=recipe.data_needs,
+            methods=recipe.methods,
+            metrics=recipe.metrics,
+            implementation_risk=recipe.implementation_risk,
+        )

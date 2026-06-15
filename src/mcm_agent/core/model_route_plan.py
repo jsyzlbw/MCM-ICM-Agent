@@ -10,6 +10,9 @@ ROUTE_ROLES = {
     "constrained_optimization": "decision",
     "forecasting_model": "prediction",
     "monte_carlo_simulation": "uncertainty",
+    "classification_model": "prediction",
+    "clustering_segmentation": "structure",
+    "queuing_service_model": "service",
     "network_flow_graph": "structure",
     "multi_objective_decision": "tradeoff",
 }
@@ -19,6 +22,9 @@ ROUTE_ORDER = [
     "constrained_optimization",
     "forecasting_model",
     "monte_carlo_simulation",
+    "classification_model",
+    "clustering_segmentation",
+    "queuing_service_model",
     "network_flow_graph",
     "multi_objective_decision",
 ]

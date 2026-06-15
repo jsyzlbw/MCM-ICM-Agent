@@ -39,6 +39,20 @@ def test_modeling_intelligence_detects_graph_route() -> None:
     assert "network_flow_graph" in route_ids
 
 
+def test_modeling_intelligence_detects_classification_clustering_and_queuing() -> None:
+    diagnosis = ModelingIntelligence().diagnose(
+        "Classify risk levels, cluster customer segments, and model queue waiting time with service counters."
+    )
+
+    route_ids = [route.route_id for route in diagnosis.routes]
+    assert "classification" in diagnosis.primary_problem_types
+    assert "clustering" in diagnosis.primary_problem_types
+    assert "queuing" in diagnosis.primary_problem_types
+    assert "classification_model" in route_ids
+    assert "clustering_segmentation" in route_ids
+    assert "queuing_service_model" in route_ids
+
+
 def test_modeling_intelligence_does_not_match_graph_keywords_inside_other_words() -> None:
     diagnosis = ModelingIntelligence().diagnose(
         "Build a modeling workflow for flood response priority scoring and resource allocation."
@@ -67,6 +81,25 @@ def test_modeling_council_fallback_includes_problem_type_diagnosis(tmp_path: Pat
     assert "## Problem Type Diagnosis" in content
     assert "multi_criteria_evaluation" in content
     assert "constrained_optimization" in content
+
+
+def test_modeling_council_fallback_includes_solver_blueprint(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    problem_report = workspace.root / "reports" / "problem_understanding.md"
+    direction = workspace.root / "discussion" / "confirmed_direction.md"
+    problem_report.write_text(
+        "# Report\n\nClassify risk levels and cluster customer groups.",
+        encoding="utf-8",
+    )
+    direction.parent.mkdir(parents=True, exist_ok=True)
+    direction.write_text("# Direction\nUse interpretable model recipes.", encoding="utf-8")
+
+    ModelingCouncil().run(workspace.root, problem_report, direction)
+
+    content = (workspace.root / "reports" / "model_candidates.md").read_text(encoding="utf-8")
+    assert "## Solver Blueprint" in content
+    assert "classification_model" in content
+    assert "clustering_segmentation" in content
 
 
 def test_modeling_council_ignores_problem_understanding_boilerplate_for_diagnosis(

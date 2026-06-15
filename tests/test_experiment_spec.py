@@ -119,6 +119,22 @@ def test_experiment_spec_includes_column_binding_contract() -> None:
     }
 
 
+def test_experiment_spec_builds_new_recipe_routes() -> None:
+    spec = build_experiment_spec(
+        ["classification_model", "clustering_segmentation", "queuing_service_model"]
+    )
+
+    route_ids = [item.route_id for item in spec.experiments]
+    assert route_ids == [
+        "classification_model",
+        "clustering_segmentation",
+        "queuing_service_model",
+    ]
+    assert spec.experiments[0].solver_module == "mcm_agent.solver_modules.classification"
+    assert spec.experiments[0].column_bindings["label_column"] == ""
+    assert spec.experiments[2].method == "mmc_queue_summary"
+
+
 def test_experiment_spec_records_hybrid_route_metadata() -> None:
     spec = build_experiment_spec(
         ["multi_criteria_evaluation", "constrained_optimization", "forecasting_model"]

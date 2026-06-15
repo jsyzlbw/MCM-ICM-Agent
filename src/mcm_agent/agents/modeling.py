@@ -7,6 +7,7 @@ from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.experiment_spec import build_experiment_spec
 from mcm_agent.core.model_route_plan import build_route_plan
 from mcm_agent.core.modeling_intelligence import ModelingIntelligence, ProblemDiagnosis
+from mcm_agent.core.model_recipes import route_recipe
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
 from mcm_agent.providers.base import TextGenerationProvider
@@ -109,6 +110,22 @@ class ModelingCouncil:
                     f"Data needs: {', '.join(route.data_needs)}.",
                     "",
                 ]
+            )
+        lines.extend(
+            [
+                "## Solver Blueprint",
+                "",
+                "| Route ID | Solver Module | Method | Required Bindings | Metrics |",
+                "|---|---|---|---|---|",
+            ]
+        )
+        for route in diagnosis.routes:
+            recipe = route_recipe(route.route_id)
+            bindings = ", ".join(recipe.column_bindings.keys()) or "none"
+            metrics = ", ".join(recipe.metrics) or "none"
+            lines.append(
+                f"| {recipe.route_id} | {recipe.solver_module} | {recipe.method} | "
+                f"{bindings} | {metrics} |"
             )
         lines.extend(
             [
@@ -362,6 +379,9 @@ class ModelJudge:
             "constrained_optimization",
             "forecasting_model",
             "monte_carlo_simulation",
+            "classification_model",
+            "clustering_segmentation",
+            "queuing_service_model",
             "network_flow_graph",
             "multi_objective_decision",
         ]
@@ -435,6 +455,9 @@ class ModelJudge:
             ("constrained_optimization", "optimization"),
             ("forecasting_model", "prediction"),
             ("monte_carlo_simulation", "simulation"),
+            ("classification_model", "classification"),
+            ("clustering_segmentation", "clustering"),
+            ("queuing_service_model", "queuing"),
             ("network_flow_graph", "graph_network"),
             ("multi_objective_decision", "multi_objective"),
         ]
@@ -454,6 +477,12 @@ class ModelJudge:
             )
         if "forecasting_model" in route_ids:
             return "Estimate future target values from historical observations and explanatory features."
+        if "classification_model" in route_ids:
+            return "Map feature vectors to interpretable category or risk labels."
+        if "clustering_segmentation" in route_ids:
+            return "Partition entities into data-driven segments and interpret each group profile."
+        if "queuing_service_model" in route_ids:
+            return "Represent arrivals, service capacity, utilization, and waiting time in a service system."
         if "network_flow_graph" in route_ids:
             return "Represent locations as nodes and connections as weighted edges or capacities."
         return "Define task-specific objective functions after data profiling."
@@ -467,6 +496,12 @@ class ModelJudge:
             objectives.append("maximize benefit under resource constraints")
         if "forecasting_model" in route_ids:
             objectives.append("minimize forecast error")
+        if "classification_model" in route_ids:
+            objectives.append("maximize classification accuracy and F1 score")
+        if "clustering_segmentation" in route_ids:
+            objectives.append("maximize segment separation and interpretability")
+        if "queuing_service_model" in route_ids:
+            objectives.append("minimize expected waiting time while keeping utilization stable")
         if "network_flow_graph" in route_ids:
             objectives.append("minimize travel cost or maximize feasible flow")
         return "; ".join(objectives) + "." if objectives else "Minimize prediction error and optimize the final decision metric."
