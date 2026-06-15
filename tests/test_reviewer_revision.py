@@ -6,6 +6,7 @@ from mcm_agent.core.events import EventLog
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
 from mcm_agent.core.workspace import create_workspace
+from mcm_agent.utils.json_io import read_json
 from mcm_agent.utils.json_io import write_json
 
 
@@ -68,6 +69,61 @@ def test_reviewer_blocks_unbound_external_data_source(tmp_path: Path) -> None:
     assert events[-1].event_type == "paper.review.failed"
     assert "web_001" in report
     assert "Unbound external data sources" in report
+
+
+def test_reviewer_routes_omitted_planned_claims_to_writer(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "review" / "paper_evidence_bindings.json",
+        [
+            {
+                "section": "paper/sections/results.tex",
+                "status": "fail",
+                "missing_bindings": ["Omitted planned claims: claim_planned_result"],
+                "claim_bindings": [],
+            }
+        ],
+    )
+
+    ReviewerAgent().run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "final_gate.json", {})
+    assert gate["status"] == "fail"
+    assert gate["failure_reason"] == "bad_writing"
+    assert gate["repair_stage"] == "paper_writer"
+
+
+def test_reviewer_routes_unresolved_critical_claims_to_solver(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_unresolved_metric",
+                "section": "paper/sections/results.tex",
+                "claim_text": "The missing metric is required for the result.",
+                "claim_type": "metric_result",
+                "evidence_ids": [],
+                "figure_ids": [],
+                "source_ids": [],
+                "priority": "critical",
+                "status": "unresolved",
+                "unresolved_reason": "Solver evidence is missing.",
+            }
+        ],
+    )
+    write_json(workspace.root / "review" / "paper_evidence_bindings.json", [])
+
+    ReviewerAgent().run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "final_gate.json", {})
+    assert gate["status"] == "fail"
+    assert gate["failure_reason"] == "bad_results"
+    assert gate["repair_stage"] == "solver_coder"
+    assert any(
+        "Critical planned claims remain unresolved" in item
+        for item in gate["blocking_findings"]
+    )
 
 
 def test_revision_marks_artifacts_stale_for_result_request(tmp_path: Path) -> None:

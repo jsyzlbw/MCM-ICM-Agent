@@ -6,6 +6,7 @@ from pathlib import Path
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.lineage import find_unbound_external_data
+from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
 
@@ -37,11 +38,20 @@ class ReviewerAgent:
                 + ", ".join(f"`{source_id}`" for source_id in missing_references)
                 + "."
             )
-        missing_paper_bindings = self._missing_paper_bindings(workspace_root)
+        missing_paper_bindings, has_omitted_planned_claim = (
+            self._paper_binding_failure_reason(workspace_root)
+        )
         if missing_paper_bindings:
             blocking.append(
                 "Paper claims are missing evidence bindings: "
                 + ", ".join(f"`{section}`" for section in missing_paper_bindings)
+                + "."
+            )
+        unresolved_critical_claims = self._unresolved_critical_claims(workspace_root)
+        if unresolved_critical_claims:
+            blocking.append(
+                "Critical planned claims remain unresolved: "
+                + ", ".join(f"`{claim_id}`" for claim_id in unresolved_critical_claims)
                 + "."
             )
         self._write_source_audit_report(workspace_root, unbound_sources)
@@ -82,6 +92,12 @@ class ReviewerAgent:
             repair_stage = "search_data"
         elif missing_references:
             failure_reason = "bad_data"
+            repair_stage = "paper_writer"
+        elif unresolved_critical_claims:
+            failure_reason = "bad_results"
+            repair_stage = "solver_coder"
+        elif has_omitted_planned_claim:
+            failure_reason = "bad_writing"
             repair_stage = "paper_writer"
         elif missing_paper_bindings:
             failure_reason = "bad_writing"
@@ -168,15 +184,34 @@ class ReviewerAgent:
                 )
         return used
 
-    def _missing_paper_bindings(self, workspace_root: Path) -> list[str]:
+    def _unresolved_critical_claims(self, workspace_root: Path) -> list[str]:
+        rows = read_json(workspace_root / "paper" / "claim_plan.json", [])
+        if not isinstance(rows, list):
+            return []
+        unresolved = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            item = PaperClaimPlanItem.model_validate(row)
+            if item.priority == "critical" and item.status == "unresolved":
+                unresolved.append(item.claim_id)
+        return unresolved
+
+    def _paper_binding_failure_reason(self, workspace_root: Path) -> tuple[list[str], bool]:
         bindings = read_json(workspace_root / "review" / "paper_evidence_bindings.json", [])
         if not isinstance(bindings, list):
-            return []
+            return [], False
         missing = []
+        has_omitted_plan = False
         for binding in bindings:
             if isinstance(binding, dict) and binding.get("status") == "fail":
                 missing.append(str(binding.get("section", "unknown_section")))
-        return missing
+                missing_bindings = binding.get("missing_bindings", [])
+                if isinstance(missing_bindings, list) and any(
+                    "Omitted planned claims:" in str(item) for item in missing_bindings
+                ):
+                    has_omitted_plan = True
+        return missing, has_omitted_plan
 
     def _fallback_review(self, blocking: list[str]) -> str:
         return "\n".join(
