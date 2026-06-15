@@ -343,6 +343,8 @@ that claim-bearing sections contain valid `claim_id`, `evidence_id`, `figure_id`
 also checks that every planned critical or major claim is written and that written
 claim bindings stay within the planned evidence, figure, and source IDs. The final
 reviewer blocks omitted planned claims and unresolved critical planned claims.
+The binding JSON also records `citation_keys` derived from source IDs and
+`data/citation_candidates.json`.
 It also writes `review/paper_quality_scores.json`, scoring section completeness and claim
 trace density. Incomplete paper sections fail the final gate with repair stage
 `paper_writer`.
@@ -362,9 +364,12 @@ The first reusable solver modules are:
 - `mcm_agent.solver_modules.simulation`: reproducible Monte Carlo scenario summaries.
 - `mcm_agent.solver_modules.network`: shortest-path table generation.
 
-`ReferenceManager` creates `paper/references.bib` from registered citation candidates
-and writes `review/reference_audit_report.md`. Placeholder IDs such as `source_id=missing`
-are ignored as placeholders, not treated as real external sources.
+`ReferenceManager` creates `paper/references.bib` from registered citation candidates,
+inserts `\cite{...}` commands for registered `source_id=` markers, and writes
+`review/reference_audit_report.md`. The audit report includes a source-to-bibliography
+mapping such as `web_001 -> official_data_2026`, making it clear which source IDs
+resolved to which BibTeX keys. Placeholder IDs such as `source_id=missing` are ignored
+as placeholders, not treated as real external sources.
 
 ## Common Failure Modes
 

@@ -27,7 +27,7 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 262 passed
+# 266 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -122,10 +122,11 @@ Rules:
 | F1 Final QA and provider readiness | Complete |
 | G1 Stronger modeling generation | Complete as recipe-driven deterministic baselines |
 | H1 Concept diagram system | Complete as Mermaid plus deterministic SVG concept diagrams |
+| I1 Citation and source writing enhancement | Complete |
 
 ## 4. Active Next Phase
 
-The active next phase is **Citations And LaTeX Repair**.
+The active next phase is **Automatic LaTeX Repair**.
 
 Purpose:
 
@@ -137,8 +138,9 @@ provider families. The system also runs deterministic solver recipes for evaluat
 optimization, forecasting, simulation, classification, clustering, queueing, and network
 tasks, plus deterministic typesetting QA and first-class provider smoke checks. The
 system also generates artifact-derived methodology and claim-evidence concept diagrams
-as Mermaid source plus SVG vector outputs. The remaining work is to make citation
-placement, LaTeX repair, and user interaction more adaptive.
+as Mermaid source plus SVG vector outputs. Source-backed claim writing now maps
+`source_id` values to BibTeX keys and records citation keys in evidence bindings. The
+remaining work is to make LaTeX repair and user interaction more adaptive.
 
 Current core artifact:
 
@@ -148,6 +150,8 @@ reports/model_candidates.md
 paper/claim_plan.json
 figures/figure_registry.json
 figures/source/*.mmd
+paper/references.bib
+review/paper_evidence_bindings.json
 review/typesetting_quality.json
 ```
 
@@ -167,14 +171,7 @@ submission package
 
 ## 5. Next Phase Tasks
 
-### Task 1: Citation And Source Writing Enhancement
-
-Target behavior:
-
-- Insert source-specific citations in the right paper sections.
-- Use source reliability and data lineage to avoid unsupported factual claims.
-
-### Task 2: Automatic LaTeX Repair
+### Task 1: Automatic LaTeX Repair
 
 Target behavior:
 

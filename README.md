@@ -150,6 +150,19 @@ assumptions, model, results, sensitivity, and conclusion sections. `ReviewerAgen
 `review/paper_quality_scores.json` with section completeness and claim trace density, and
 routes incomplete papers back to `paper_writer`.
 
+## Source Citations
+
+The writing pipeline maps `source_id` values to BibTeX keys through
+`data/citation_candidates.json`. Source-backed planned claims include source-specific
+`\cite{...}` commands in the generated LaTeX while preserving trace comments such as
+`source_id=web_001`.
+
+`ReferenceManager` writes `paper/references.bib`, inserts citations for existing
+`source_id=` markers, and reports a source-to-bibliography mapping in
+`review/reference_audit_report.md`. `PaperEvidenceBindingAgent` records citation keys in
+`review/paper_evidence_bindings.json` so reviewers can trace prose citations back to
+registered sources.
+
 ## Concept Diagrams And Figures
 
 Figure planning now creates both data plots and artifact-derived concept diagrams. The

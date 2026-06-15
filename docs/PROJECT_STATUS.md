@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 262 passed
+# 266 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -56,7 +56,7 @@ f7769ea feat: execute new modeling recipe routes
 | Figure planning, vector-first data visualization, artifact-derived concept diagrams, figure quality gate | Implemented |
 | Claim Planning Agent and `paper/claim_plan.json` | Implemented with paper-context-aware assumptions, model, result, sensitivity, limitation, and conclusion claims |
 | Paper Writer Agent | Implemented as contextual claim-plan-aware writer |
-| Reference Manager and reference audit | Implemented |
+| Reference Manager and source-to-BibTeX reference audit | Implemented |
 | Typesetting QA for compile errors, missing PDF, page-limit hints, table/equation/figure risks | Implemented |
 | Paper Evidence Binding Agent | Implemented with section-level, claim-level, and planned-claim coverage checks |
 | Compliance & Originality Agent with fact regression check | Implemented as MVP |
@@ -69,8 +69,8 @@ f7769ea feat: execute new modeling recipe routes
 | Area | Current capability | Remaining work |
 | --- | --- | --- |
 | Real automatic modeling | Selects recipe-driven hybrid route plans, writes route-aware experiment specs, emits solver blueprints, executes deterministic route modules for evaluation, optimization, forecasting, simulation, classification, clustering, queueing, and network tasks, records route execution status, and routes binding-driven weak-model failures to modeling repair | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
-| Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
-| Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` when present | Add richer citation insertion and optional style variants |
+| Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, citation keys, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
+| Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` with source-specific citations when present | Add optional style variants |
 | RAG | Imports selected Supervisor-Skills documents plus local `.md`, `.txt`, and MinerU-parsed `.pdf` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types with source type, relative path, chunk id, page hint, and usage restrictions | Add richer source-specific query planning and citation-style guidance for local method libraries |
 | Official data APIs | Provider pattern plus World Bank, OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass repair adapters with mocked tests and smoke checks | Add richer provider-specific query planning |
 | Visualization | Generates vector-first data figures, Mermaid source concept diagrams, deterministic SVG concept outputs, and QA reports | Add richer diagram styling/export polish if needed |
@@ -134,8 +134,8 @@ The next phase should focus on deeper contest intelligence.
 
 Build order:
 
-1. Improve citation insertion and source-specific query planning.
-2. Add automatic LaTeX source repair for common formatting failures.
+1. Add automatic LaTeX source repair for common formatting failures.
+2. Add richer source-specific query planning.
 3. Add a smoother interactive user loop or UI for checkpoint decisions.
 
 This is the right next step because the main planning, modeling, RAG, official-data,
