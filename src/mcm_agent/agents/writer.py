@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mcm_agent.agents.paper_context import PaperContext, build_paper_context
+from mcm_agent.agents.paper_sections import render_claim_paragraph, render_claim_plan_sections
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.providers.base import TextGenerationProvider
@@ -30,7 +32,12 @@ class PaperWriterAgent:
 
         claim_plan = self._read_claim_plan(workspace_root)
         if claim_plan:
-            self._write_claim_plan_sections(workspace_root, section_dir, claim_plan)
+            self._write_claim_plan_sections(
+                workspace_root,
+                section_dir,
+                claim_plan,
+                build_paper_context(workspace_root),
+            )
             self._write_main_files(paper_dir)
             Coordinator(workspace_root).emit(
                 "paper.draft.ready",
@@ -321,38 +328,19 @@ class PaperWriterAgent:
         workspace_root: Path,
         section_dir: Path,
         claim_plan: list[PaperClaimPlanItem],
+        context: PaperContext,
     ) -> None:
-        section_content = dict(SECTION_CONTENT)
         for claim in claim_plan:
-            section_name = Path(claim.section).name
-            if section_name not in section_content:
-                section_content[section_name] = "\\section{Planned Claims}\n"
-            section_content[section_name] = (
-                section_content[section_name].rstrip()
-                + "\n"
-                + self._claim_plan_paragraph(workspace_root, claim)
-                + "\n"
-            )
+            if claim.status == "unresolved":
+                self._append_unresolved_claim(workspace_root, claim)
+        section_content = render_claim_plan_sections(claim_plan, context)
         for filename, content in section_content.items():
             (section_dir / filename).write_text(content, encoding="utf-8")
 
     def _claim_plan_paragraph(self, workspace_root: Path, claim: PaperClaimPlanItem) -> str:
-        evidence_id = claim.evidence_ids[0] if claim.evidence_ids else "missing"
-        figure_id = claim.figure_ids[0] if claim.figure_ids else "missing"
-        source_id = claim.source_ids[0] if claim.source_ids else "missing"
-        trace = self._claim_trace_comment(claim.claim_id, evidence_id, figure_id, source_id)
         if claim.status == "unresolved":
             self._append_unresolved_claim(workspace_root, claim)
-            return "\n".join(
-                [
-                    "The planned claim "
-                    + self._texttt(claim.claim_id)
-                    + " remains unresolved: "
-                    + self._latex_escape(claim.unresolved_reason),
-                    trace,
-                ]
-            )
-        return "\n".join([self._latex_escape(claim.claim_text), trace])
+        return render_claim_paragraph(claim)
 
     def _append_unresolved_claim(self, workspace_root: Path, claim: PaperClaimPlanItem) -> None:
         path = workspace_root / "unresolved_issues.md"

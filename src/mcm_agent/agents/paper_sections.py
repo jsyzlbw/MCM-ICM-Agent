@@ -1,0 +1,140 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from pathlib import Path
+
+from mcm_agent.agents.paper_context import PaperContext
+from mcm_agent.core.models import PaperClaimPlanItem
+
+
+SECTION_TITLES = {
+    "abstract.tex": "\\section*{Abstract}",
+    "introduction.tex": "\\section{Introduction}",
+    "assumptions.tex": "\\section{Assumptions}",
+    "model.tex": "\\section{Model}",
+    "results.tex": "\\section{Results}",
+    "sensitivity.tex": "\\section{Sensitivity Analysis}",
+    "conclusion.tex": "\\section{Conclusion}",
+}
+
+
+def render_claim_plan_sections(
+    claim_plan: list[PaperClaimPlanItem],
+    context: PaperContext,
+) -> dict[str, str]:
+    grouped: dict[str, list[PaperClaimPlanItem]] = defaultdict(list)
+    for claim in claim_plan:
+        grouped[Path(claim.section).name].append(claim)
+    sections = {
+        "abstract.tex": _render_abstract(context, claim_plan),
+        "introduction.tex": _render_introduction(context),
+    }
+    for filename in [
+        "assumptions.tex",
+        "model.tex",
+        "results.tex",
+        "sensitivity.tex",
+        "conclusion.tex",
+    ]:
+        sections[filename] = _render_claim_section(
+            filename,
+            grouped.get(filename, []),
+            context,
+        )
+    return sections
+
+
+def render_claim_paragraph(claim: PaperClaimPlanItem) -> str:
+    evidence_id = claim.evidence_ids[0] if claim.evidence_ids else "missing"
+    figure_id = claim.figure_ids[0] if claim.figure_ids else "missing"
+    source_id = claim.source_ids[0] if claim.source_ids else "missing"
+    trace = (
+        f"% claim_id={claim.claim_id} "
+        f"evidence_id={evidence_id} "
+        f"figure_id={figure_id} "
+        f"source_id={source_id}"
+    )
+    if claim.status == "unresolved":
+        body = (
+            "The planned claim "
+            + _texttt(claim.claim_id)
+            + " remains unresolved: "
+            + _latex_escape(claim.unresolved_reason)
+            + "."
+        )
+    else:
+        body = _latex_escape(claim.claim_text)
+    return body + "\n" + trace
+
+
+def _render_abstract(
+    context: PaperContext,
+    claim_plan: list[PaperClaimPlanItem],
+) -> str:
+    critical = [
+        claim.claim_text
+        for claim in claim_plan
+        if claim.priority == "critical" and claim.status != "unresolved"
+    ]
+    return "\n".join(
+        [
+            SECTION_TITLES["abstract.tex"],
+            (
+                "This paper studies "
+                + _latex_escape(context.problem_summary or "the contest problem")
+                + " using "
+                + _latex_escape(
+                    ", ".join(context.selected_routes) or "a traceable modeling workflow"
+                )
+                + "."
+            ),
+            _latex_escape(" ".join(critical[:2])),
+            "",
+        ]
+    )
+
+
+def _render_introduction(context: PaperContext) -> str:
+    return "\n".join(
+        [
+            SECTION_TITLES["introduction.tex"],
+            _latex_escape(
+                context.problem_summary
+                or "The problem is decomposed into data, model, and validation tasks."
+            ),
+            _latex_escape(
+                context.direction_summary
+                or "The confirmed direction emphasizes interpretable and reproducible modeling."
+            ),
+            "The remainder of the paper follows the planned claim chain from assumptions to validated results.",
+            "",
+        ]
+    )
+
+
+def _render_claim_section(
+    filename: str,
+    claims: list[PaperClaimPlanItem],
+    context: PaperContext,
+) -> str:
+    title = SECTION_TITLES.get(filename, "\\section{Planned Claims}")
+    paragraphs = [render_claim_paragraph(claim) for claim in claims]
+    if filename == "model.tex" and context.model_decision_summary:
+        paragraphs.insert(0, _latex_escape(context.model_decision_summary))
+    if filename == "sensitivity.tex" and context.validation_summary:
+        paragraphs.append(_latex_escape("Validation context: " + context.validation_summary))
+    return "\n\n".join(
+        [
+            title,
+            *(paragraphs or ["No planned claims were available for this section."]),
+            "",
+        ]
+    )
+
+
+def _latex_escape(value: str) -> str:
+    return value.replace("_", "\\_")
+
+
+def _texttt(value: str) -> str:
+    return "\\texttt{" + _latex_escape(value) + "}"

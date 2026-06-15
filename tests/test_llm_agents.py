@@ -186,3 +186,55 @@ def test_reviewer_falls_back_on_invalid_llm_output(tmp_path: Path) -> None:
     report = (workspace.root / "review" / "reviewer_report.md").read_text(encoding="utf-8")
     assert "# 自动评审报告" in report
     assert "## 高风险问题" in report
+
+
+def test_paper_writer_renders_contextual_abstract_intro_and_assumptions(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "problem_understanding.md").write_text(
+        "# Problem Understanding\n\nNeed an evacuation allocation model.",
+        encoding="utf-8",
+    )
+    (workspace.root / "discussion" / "confirmed_direction.md").write_text(
+        "# Confirmed Direction\n\nUse interpretable optimization.",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_assumption_problem_context",
+                "section": "paper/sections/assumptions.tex",
+                "claim_text": "Capacity assumptions define feasible allocation.",
+                "claim_type": "assumption",
+                "evidence_ids": ["ev_capacity"],
+                "priority": "major",
+            },
+            {
+                "claim_id": "claim_model_route",
+                "section": "paper/sections/model.tex",
+                "claim_text": "The selected model combines ranking and allocation.",
+                "claim_type": "model_choice",
+                "evidence_ids": ["ev_capacity"],
+                "priority": "critical",
+            },
+        ],
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [{"evidence_id": "ev_capacity"}])
+
+    PaperWriterAgent().run(workspace.root)
+
+    abstract = (workspace.root / "paper" / "sections" / "abstract.tex").read_text(
+        encoding="utf-8"
+    )
+    introduction = (workspace.root / "paper" / "sections" / "introduction.tex").read_text(
+        encoding="utf-8"
+    )
+    assumptions = (workspace.root / "paper" / "sections" / "assumptions.tex").read_text(
+        encoding="utf-8"
+    )
+    assert "evacuation allocation" in abstract
+    assert "interpretable optimization" in introduction
+    assert "Capacity assumptions define feasible allocation" in assumptions
+    assert "% claim_id=claim_assumption_problem_context evidence_id=ev_capacity" in assumptions
