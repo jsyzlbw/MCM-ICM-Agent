@@ -171,3 +171,23 @@ def test_methodology_hits_include_provenance_and_usage_restrictions(tmp_path: Pa
     assert rule_hit["usage"] == (
         "Use as contest or formatting guidance only; do not cite as external factual data."
     )
+
+
+def test_methodology_rag_agent_chunks_large_knowledge_base_documents(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    knowledge_base = tmp_path / "knowledge_base"
+    knowledge_base.mkdir()
+    first = "Figure design should explain the model claim. " * 80
+    second = "Model formulation should define variables and constraints. " * 80
+    (knowledge_base / "method_note.md").write_text(first + "\n\n" + second, encoding="utf-8")
+
+    MethodologyRAGAgent().run(
+        workspace.root,
+        supervisor_skills_dir=None,
+        knowledge_base_dir=knowledge_base,
+    )
+
+    hits = read_json(workspace.root / "rag" / "methodology_hits.json", [])
+    chunk_ids = {hit["chunk_id"] for hit in hits if hit["title"] == "method_note.md"}
+    assert "method_note.md#chunk-001" in chunk_ids
+    assert "method_note.md#chunk-002" in chunk_ids
