@@ -2,7 +2,7 @@ from pathlib import Path
 
 from mcm_agent.agents.typesetting_qa import TypesettingQAAgent
 from mcm_agent.core.workspace import create_workspace
-from mcm_agent.utils.json_io import read_json
+from mcm_agent.utils.json_io import read_json, write_json
 
 
 def test_typesetting_qa_flags_compile_error_and_overflow(tmp_path: Path) -> None:
@@ -103,8 +103,6 @@ def test_typesetting_repair_agent_wraps_wide_tables_and_scales_graphics(
         "\\end{document}\n",
         encoding="utf-8",
     )
-    from mcm_agent.utils.json_io import write_json
-
     write_json(
         workspace.root / "review" / "typesetting_quality.json",
         {
@@ -126,3 +124,65 @@ def test_typesetting_repair_agent_wraps_wide_tables_and_scales_graphics(
     assert "\\resizebox{\\textwidth}{!}{%" in tex
     assert "\\includegraphics[width=0.9\\linewidth]{figures/missing.png}" in tex
     assert (workspace.root / "review" / "typesetting_repair_report.md").exists()
+
+
+def test_typesetting_repair_agent_wraps_long_equations(tmp_path: Path) -> None:
+    from mcm_agent.agents.typesetting_repair import TypesettingRepairAgent
+
+    workspace = create_workspace(tmp_path / "run_001")
+    paper = workspace.root / "paper"
+    paper.mkdir(exist_ok=True)
+    long_rhs = " + ".join(f"x_{{{index}}}" for index in range(30))
+    (paper / "main.tex").write_text(
+        "\\begin{document}\n"
+        "\\begin{equation}\n"
+        f"y = {long_rhs}\n"
+        "\\end{equation}\n"
+        "\\end{document}\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "review" / "typesetting_quality.json",
+        {
+            "status": "fail",
+            "issue_types": ["equation_overflow_risk"],
+            "blocking_findings": ["Long display equation may overflow the page width."],
+            "repair_stage": "paper_writer",
+            "issues": [],
+        },
+    )
+
+    TypesettingRepairAgent().run(workspace.root)
+
+    tex = (paper / "main.tex").read_text(encoding="utf-8")
+    assert "\\begin{split}" in tex
+    assert "\\end{split}" in tex
+
+
+def test_typesetting_repair_agent_reports_no_action_for_clean_quality(
+    tmp_path: Path,
+) -> None:
+    from mcm_agent.agents.typesetting_repair import TypesettingRepairAgent
+
+    workspace = create_workspace(tmp_path / "run_001")
+    paper = workspace.root / "paper"
+    paper.mkdir(exist_ok=True)
+    (paper / "main.tex").write_text(
+        "\\begin{document}Short.\\end{document}\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "review" / "typesetting_quality.json",
+        {
+            "status": "pass",
+            "issue_types": [],
+            "blocking_findings": [],
+            "repair_stage": None,
+        },
+    )
+
+    report = TypesettingRepairAgent().run(workspace.root)
+
+    assert report.status == "skipped"
+    repair_json = read_json(workspace.root / "review" / "typesetting_repair.json", {})
+    assert repair_json["status"] == "skipped"

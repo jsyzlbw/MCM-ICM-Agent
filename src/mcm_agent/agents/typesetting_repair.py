@@ -93,7 +93,42 @@ class TypesettingRepairAgent:
         return updated, updated != tex
 
     def _wrap_long_equations(self, tex: str) -> tuple[str, bool]:
-        return tex, False
+        pattern = re.compile(r"\\begin\{equation\}(.*?)\\end\{equation\}", re.S)
+
+        def replace(match: re.Match[str]) -> str:
+            body = match.group(1)
+            if re.search(r"\\begin\{(?:split|aligned|multline|gathered)\}", body):
+                return match.group(0)
+            if not any(len(line.strip()) > 100 for line in body.splitlines()):
+                return match.group(0)
+            wrapped = self._split_equation_body(body)
+            return "\\begin{equation}\n\\begin{split}\n" + wrapped + "\n\\end{split}\n\\end{equation}"
+
+        updated = pattern.sub(replace, tex)
+        return updated, updated != tex
+
+    def _split_equation_body(self, body: str) -> str:
+        stripped = " ".join(line.strip() for line in body.splitlines() if line.strip())
+        if len(stripped) <= 100 or " + " not in stripped:
+            return stripped
+        left, separator, right = stripped.partition("=")
+        prefix = f"{left.strip()} {separator}".strip() if separator else ""
+        terms = [term.strip() for term in right.split(" + ") if term.strip()] if separator else [
+            term.strip() for term in stripped.split(" + ") if term.strip()
+        ]
+        lines: list[str] = []
+        current = prefix
+        for index, term in enumerate(terms):
+            token = term if index == 0 and prefix else f"+ {term}"
+            candidate = f"{current} {token}".strip()
+            if current and len(candidate) > 88:
+                lines.append(current + r" \\")
+                current = f"& {token}"
+            else:
+                current = candidate
+        if current:
+            lines.append(current)
+        return "\n".join(lines)
 
     def _write_repair_report(
         self,
