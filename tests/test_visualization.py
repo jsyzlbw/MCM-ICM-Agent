@@ -148,3 +148,33 @@ def test_figure_planning_adds_method_and_claim_concept_diagrams(tmp_path: Path) 
     assert by_id["fig_method_overview"]["figure_type"] == "concept_diagram"
     assert by_id["fig_claim_evidence_map"]["target_section"] == "paper/sections/model.tex"
     assert "svg" in by_id["fig_method_overview"]["output_formats"]
+
+
+def test_visualization_agent_renders_concept_diagram_mermaid_and_svg(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {
+            "selected_routes": ["classification_model", "queuing_service_model"],
+            "route_metrics": {},
+        },
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [])
+    (workspace.root / "results" / "problem1_results.csv").write_text(
+        "x,y\n1,2\n2,4\n",
+        encoding="utf-8",
+    )
+    FigurePlanningAgent().run(workspace.root)
+
+    VisualizationAgent().run(workspace.root)
+
+    mermaid = workspace.root / "figures" / "source" / "fig_method_overview.mmd"
+    svg = workspace.root / "figures" / "fig_method_overview.svg"
+    registry = read_json(workspace.root / "figures" / "figure_registry.json", [])
+    method_record = next(item for item in registry if item["figure_id"] == "fig_method_overview")
+    assert mermaid.exists()
+    assert svg.exists()
+    assert "classification_model" in mermaid.read_text(encoding="utf-8")
+    assert "<svg" in svg.read_text(encoding="utf-8")
+    assert "figures/fig_method_overview.svg" in method_record["outputs"]
+    assert method_record["status"] == "approved"

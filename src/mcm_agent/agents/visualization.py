@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from html import escape
 from pathlib import Path
 
 import matplotlib
@@ -9,7 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from mcm_agent.agents.figure_quality import FigureQualityAgent
-from mcm_agent.core.concept_diagrams import build_concept_diagram_specs
+from mcm_agent.core.concept_diagrams import ConceptDiagramSpec, build_concept_diagram_specs
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import ArtifactStatus, FigurePlanItem, FigureRecord
 from mcm_agent.utils.json_io import read_json, write_json
@@ -220,32 +221,143 @@ class VisualizationAgent:
         )
 
     def _write_mermaid(self, workspace_root: Path, item: FigurePlanItem) -> FigureRecord:
+        spec = self._concept_spec_for_item(workspace_root, item)
         source_path = workspace_root / "figures" / "source" / f"{item.figure_id}.mmd"
         source_path.parent.mkdir(parents=True, exist_ok=True)
-        source_path.write_text(
-            "\n".join(
-                [
-                    "flowchart LR",
-                    '  A["Problem"] --> B["Modeling"]',
-                    '  B --> C["Data and Solver"]',
-                    '  C --> D["Validation"]',
-                    '  D --> E["Paper"]',
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
+        source_path.write_text(self._mermaid_source(spec), encoding="utf-8")
+        svg_path = workspace_root / "figures" / f"{item.figure_id}.svg"
+        svg_path.write_text(self._svg_source(spec), encoding="utf-8")
         return FigureRecord(
             figure_id=item.figure_id,
             type="concept_diagram",
-            tool="mermaid",
+            tool="mermaid+svg",
             source_file=str(source_path.relative_to(workspace_root)),
-            outputs=[str(source_path.relative_to(workspace_root))],
+            outputs=[
+                str(source_path.relative_to(workspace_root)),
+                str(svg_path.relative_to(workspace_root)),
+            ],
             used_in=[item.target_section],
-            status=ArtifactStatus.REVIEW_REQUIRED,
+            status=ArtifactStatus.APPROVED,
             source_data=item.source_data,
             source_ids=item.source_ids,
             evidence_ids=item.evidence_ids,
             caption_intent=item.caption_intent,
             claim_supported=item.claim_supported,
         )
+
+    def _concept_spec_for_item(
+        self,
+        workspace_root: Path,
+        item: FigurePlanItem,
+    ) -> ConceptDiagramSpec:
+        for spec in build_concept_diagram_specs(workspace_root):
+            if spec.diagram_id == item.figure_id:
+                return spec
+        return ConceptDiagramSpec(
+            diagram_id=item.figure_id,
+            title=item.purpose,
+            target_section=item.target_section,
+            caption_intent=item.caption_intent,
+            claim_supported=item.claim_supported,
+            nodes=[],
+            edges=[],
+            evidence_ids=item.evidence_ids,
+            source_ids=item.source_ids,
+        )
+
+    def _mermaid_source(self, spec: ConceptDiagramSpec) -> str:
+        lines = ["flowchart LR"]
+        for node in spec.nodes:
+            lines.append(f'  {node.node_id}["{self._mermaid_label(node.label)}"]')
+        for edge in spec.edges:
+            label = f"|{self._mermaid_label(edge.label)}|" if edge.label else ""
+            lines.append(f"  {edge.source} -->{label} {edge.target}")
+        lines.append("")
+        return "\n".join(lines)
+
+    def _svg_source(self, spec: ConceptDiagramSpec) -> str:
+        nodes = spec.nodes or []
+        node_width = 210
+        node_height = 56
+        x_gap = 54
+        y_base = 70
+        width = max(360, 70 + len(nodes) * (node_width + x_gap))
+        height = 220
+        positions = {
+            node.node_id: (40 + index * (node_width + x_gap), y_base)
+            for index, node in enumerate(nodes)
+        }
+        palette = {
+            "input": "#d9ead3",
+            "process": "#cfe2f3",
+            "model": "#fff2cc",
+            "evidence": "#eadcf8",
+            "claim": "#fce5cd",
+            "output": "#d9e2f3",
+        }
+        parts = [
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+            "<defs>",
+            '<marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">',
+            '<path d="M0,0 L8,4 L0,8 Z" fill="#334155" />',
+            "</marker>",
+            "</defs>",
+            f'<text x="40" y="32" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#111827">{escape(spec.title)}</text>',
+        ]
+        for edge in spec.edges:
+            if edge.source not in positions or edge.target not in positions:
+                continue
+            source_x, source_y = positions[edge.source]
+            target_x, target_y = positions[edge.target]
+            x1 = source_x + node_width
+            y1 = source_y + node_height / 2
+            x2 = target_x
+            y2 = target_y + node_height / 2
+            parts.append(
+                f'<line x1="{x1}" y1="{y1}" x2="{x2 - 8}" y2="{y2}" '
+                'stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)" />'
+            )
+            if edge.label:
+                parts.append(
+                    f'<text x="{(x1 + x2) / 2 - 24}" y="{y1 - 8}" '
+                    'font-family="Arial, sans-serif" font-size="10" fill="#475569">'
+                    f"{escape(edge.label)}</text>"
+                )
+        for node in nodes:
+            x, y = positions[node.node_id]
+            fill = palette.get(node.kind, "#e5e7eb")
+            label_lines = self._wrap_svg_label(node.label, max_chars=24)
+            parts.extend(
+                [
+                    f'<rect x="{x}" y="{y}" width="{node_width}" height="{node_height}" rx="6" fill="{fill}" stroke="#64748b" />',
+                    f'<text x="{x + 12}" y="{y + 22}" font-family="Arial, sans-serif" font-size="12" fill="#111827">',
+                ]
+            )
+            for line_index, line in enumerate(label_lines[:2]):
+                dy = 0 if line_index == 0 else 16
+                parts.append(f'<tspan x="{x + 12}" dy="{dy}">{escape(line)}</tspan>')
+            parts.append("</text>")
+            parts.append(
+                f'<text x="{x + 12}" y="{y + 48}" font-family="Arial, sans-serif" font-size="9" fill="#475569">{escape(node.kind)}</text>'
+            )
+        parts.append("</svg>")
+        return "\n".join(parts)
+
+    def _wrap_svg_label(self, label: str, *, max_chars: int) -> list[str]:
+        words = label.split()
+        lines: list[str] = []
+        current = ""
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if len(candidate) <= max_chars:
+                current = candidate
+                continue
+            if current:
+                lines.append(current)
+            current = word[:max_chars]
+        if current:
+            lines.append(current)
+        return lines or [label[:max_chars]]
+
+    def _mermaid_label(self, value: str) -> str:
+        return value.replace('"', "'")
