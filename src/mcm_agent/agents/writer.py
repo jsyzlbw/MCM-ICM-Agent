@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
 
@@ -26,6 +27,17 @@ class PaperWriterAgent:
         paper_dir = workspace_root / "paper"
         section_dir = paper_dir / "sections"
         section_dir.mkdir(parents=True, exist_ok=True)
+
+        claim_plan = self._read_claim_plan(workspace_root)
+        if claim_plan:
+            self._write_claim_plan_sections(workspace_root, section_dir, claim_plan)
+            self._write_main_files(paper_dir)
+            Coordinator(workspace_root).emit(
+                "paper.draft.ready",
+                payload={"artifact_ids": ["paper_draft_v1"]},
+                source="PaperWriterAgent",
+            )
+            return
 
         evidence = read_json(workspace_root / "results" / "evidence_registry.json", [])
         figures = read_json(workspace_root / "figures" / "figure_registry.json", [])
@@ -73,33 +85,7 @@ class PaperWriterAgent:
         for filename, content in section_content.items():
             (section_dir / filename).write_text(content, encoding="utf-8")
 
-        (paper_dir / "references.bib").write_text(
-            "@misc{registered_sources,\n  title={Registered data sources},\n  year={2026}\n}\n",
-            encoding="utf-8",
-        )
-        (paper_dir / "main.tex").write_text(
-            "\n".join(
-                [
-                    "\\documentclass[12pt]{article}",
-                    "\\usepackage{graphicx}",
-                    "\\usepackage{amsmath}",
-                    "\\usepackage{booktabs}",
-                    "\\begin{document}",
-                    "\\input{sections/abstract}",
-                    "\\input{sections/introduction}",
-                    "\\input{sections/assumptions}",
-                    "\\input{sections/model}",
-                    "\\input{sections/results}",
-                    "\\input{sections/sensitivity}",
-                    "\\input{sections/conclusion}",
-                    "\\bibliographystyle{plain}",
-                    "\\bibliography{references}",
-                    "\\end{document}",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
+        self._write_main_files(paper_dir)
         Coordinator(workspace_root).emit(
             "paper.draft.ready",
             payload={"artifact_ids": ["paper_draft_v1"]},
@@ -319,6 +305,96 @@ class PaperWriterAgent:
             return "missing"
         value = rows[0].get(key)
         return str(value) if value else "missing"
+
+    def _read_claim_plan(self, workspace_root: Path) -> list[PaperClaimPlanItem]:
+        rows = read_json(workspace_root / "paper" / "claim_plan.json", [])
+        if not isinstance(rows, list):
+            return []
+        return [
+            PaperClaimPlanItem.model_validate(row)
+            for row in rows
+            if isinstance(row, dict)
+        ]
+
+    def _write_claim_plan_sections(
+        self,
+        workspace_root: Path,
+        section_dir: Path,
+        claim_plan: list[PaperClaimPlanItem],
+    ) -> None:
+        section_content = dict(SECTION_CONTENT)
+        for claim in claim_plan:
+            section_name = Path(claim.section).name
+            if section_name not in section_content:
+                section_content[section_name] = "\\section{Planned Claims}\n"
+            section_content[section_name] = (
+                section_content[section_name].rstrip()
+                + "\n"
+                + self._claim_plan_paragraph(workspace_root, claim)
+                + "\n"
+            )
+        for filename, content in section_content.items():
+            (section_dir / filename).write_text(content, encoding="utf-8")
+
+    def _claim_plan_paragraph(self, workspace_root: Path, claim: PaperClaimPlanItem) -> str:
+        evidence_id = claim.evidence_ids[0] if claim.evidence_ids else "missing"
+        figure_id = claim.figure_ids[0] if claim.figure_ids else "missing"
+        source_id = claim.source_ids[0] if claim.source_ids else "missing"
+        trace = self._claim_trace_comment(claim.claim_id, evidence_id, figure_id, source_id)
+        if claim.status == "unresolved":
+            self._append_unresolved_claim(workspace_root, claim)
+            return "\n".join(
+                [
+                    "The planned claim "
+                    + self._texttt(claim.claim_id)
+                    + " remains unresolved: "
+                    + self._latex_escape(claim.unresolved_reason),
+                    trace,
+                ]
+            )
+        return "\n".join([self._latex_escape(claim.claim_text), trace])
+
+    def _append_unresolved_claim(self, workspace_root: Path, claim: PaperClaimPlanItem) -> None:
+        path = workspace_root / "unresolved_issues.md"
+        current = path.read_text(encoding="utf-8") if path.exists() else ""
+        path.write_text(
+            current
+            + "[[UNRESOLVED:\n"
+            + f'reason = "{claim.unresolved_reason}"\n'
+            + f'needed_input = "Resolve planned claim {claim.claim_id}"\n'
+            + f'affected_section = "{claim.section}"\n'
+            + "]]\n",
+            encoding="utf-8",
+        )
+
+    def _write_main_files(self, paper_dir: Path) -> None:
+        (paper_dir / "references.bib").write_text(
+            "@misc{registered_sources,\n  title={Registered data sources},\n  year={2026}\n}\n",
+            encoding="utf-8",
+        )
+        (paper_dir / "main.tex").write_text(
+            "\n".join(
+                [
+                    "\\documentclass[12pt]{article}",
+                    "\\usepackage{graphicx}",
+                    "\\usepackage{amsmath}",
+                    "\\usepackage{booktabs}",
+                    "\\begin{document}",
+                    "\\input{sections/abstract}",
+                    "\\input{sections/introduction}",
+                    "\\input{sections/assumptions}",
+                    "\\input{sections/model}",
+                    "\\input{sections/results}",
+                    "\\input{sections/sensitivity}",
+                    "\\input{sections/conclusion}",
+                    "\\bibliographystyle{plain}",
+                    "\\bibliography{references}",
+                    "\\end{document}",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
 
     def _with_trace_comments(
         self,

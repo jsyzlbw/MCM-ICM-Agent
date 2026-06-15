@@ -241,3 +241,72 @@ def test_paper_writer_emits_claim_level_trace_tokens(tmp_path: Path) -> None:
         assert "evidence_id=metric_priority_score_mean" in text
         assert "figure_id=fig_priority_ranking" in text
         assert "source_id=web_001" in text
+
+
+def test_paper_writer_uses_claim_plan_when_available(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_planned_result",
+                "section": "paper/sections/results.tex",
+                "claim_text": "The planned result is supported by the registered metric.",
+                "claim_type": "metric_result",
+                "evidence_ids": ["ev_001"],
+                "figure_ids": ["fig_001"],
+                "source_ids": ["web_001"],
+                "priority": "critical",
+                "status": "planned",
+                "unresolved_reason": "",
+            }
+        ],
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [{"evidence_id": "ev_001"}])
+    write_json(workspace.root / "figures" / "figure_registry.json", [{"figure_id": "fig_001"}])
+    write_json(workspace.root / "data" / "source_registry.json", [{"source_id": "web_001"}])
+
+    PaperWriterAgent().run(workspace.root)
+
+    results = (workspace.root / "paper" / "sections" / "results.tex").read_text(
+        encoding="utf-8"
+    )
+    assert "The planned result is supported by the registered metric." in results
+    assert (
+        "% claim_id=claim_planned_result evidence_id=ev_001 "
+        "figure_id=fig_001 source_id=web_001"
+    ) in results
+
+
+def test_paper_writer_records_unresolved_planned_claims(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_unresolved_result",
+                "section": "paper/sections/results.tex",
+                "claim_text": "The missing metric cannot be reported.",
+                "claim_type": "metric_result",
+                "evidence_ids": [],
+                "figure_ids": [],
+                "source_ids": [],
+                "priority": "critical",
+                "status": "unresolved",
+                "unresolved_reason": "Solver evidence is missing.",
+            }
+        ],
+    )
+
+    PaperWriterAgent().run(workspace.root)
+
+    unresolved = (workspace.root / "unresolved_issues.md").read_text(encoding="utf-8")
+    results = (workspace.root / "paper" / "sections" / "results.tex").read_text(
+        encoding="utf-8"
+    )
+    assert "claim_unresolved_result" in unresolved
+    assert "Solver evidence is missing." in unresolved
+    assert (
+        "% claim_id=claim_unresolved_result evidence_id=missing "
+        "figure_id=missing source_id=missing"
+    ) in results
