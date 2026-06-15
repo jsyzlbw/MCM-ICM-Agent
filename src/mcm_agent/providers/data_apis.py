@@ -52,6 +52,22 @@ def _official_source(
     )
 
 
+def _payload_from_source(workspace_root: Path, source: SourceRecord) -> dict[str, str]:
+    local_path = Path(source.local_path or "")
+    try:
+        relative_local_path = str(local_path.relative_to(workspace_root))
+    except ValueError:
+        relative_local_path = str(local_path)
+    return {
+        "source_id": source.source_id,
+        "title": source.title,
+        "url": source.url,
+        "license": source.license,
+        "provider": source.provider,
+        "local_path": relative_local_path,
+    }
+
+
 class WorldBankProvider:
     def __init__(self, workspace_data_dir: Path) -> None:
         self.data_dir = workspace_data_dir
@@ -349,25 +365,117 @@ class OfficialDataApiRepairProvider:
 
     def repair(self, workspace_root: Path, need: dict[str, str]) -> list[dict[str, str]]:
         target = need.get("target_dataset", "").lower()
-        if "population" in target:
-            return [self._worldbank_population(workspace_root)]
+        for repair in self._repair_candidates(target):
+            try:
+                return [repair(workspace_root)]
+            except Exception:
+                continue
         return []
+
+    def _repair_candidates(self, target: str):
+        candidates = []
+        if any(keyword in target for keyword in ["census", "state population"]):
+            candidates.append(self._us_census_population)
+        if any(
+            keyword in target
+            for keyword in ["road", "network", "nodes", "edges", "osm", "transport"]
+        ):
+            candidates.append(self._overpass_roads)
+        if any(
+            keyword in target
+            for keyword in ["weather", "climate", "rainfall", "temperature", "precipitation"]
+        ):
+            candidates.extend([self._open_meteo_weather, self._nasa_power_weather])
+            if self.noaa_api_key:
+                candidates.append(self._noaa_weather)
+        if any(
+            keyword in target
+            for keyword in ["fred", "gdp", "inflation", "economic", "unemployment"]
+        ):
+            if self.fred_api_key:
+                candidates.append(self._fred_gdp)
+            candidates.extend([self._oecd_economic, self._worldbank_gdp])
+        if "population" in target:
+            candidates.append(self._worldbank_population)
+        return candidates
 
     def _worldbank_population(self, workspace_root: Path) -> dict[str, str]:
         source = WorldBankProvider(workspace_root / "data").fetch_indicator(
             "all",
             "SP.POP.TOTL",
         )
-        local_path = Path(source.local_path or "")
-        try:
-            relative_local_path = str(local_path.relative_to(workspace_root))
-        except ValueError:
-            relative_local_path = str(local_path)
-        return {
-            "source_id": source.source_id,
-            "title": source.title,
-            "url": source.url,
-            "license": source.license,
-            "provider": source.provider,
-            "local_path": relative_local_path,
-        }
+        return _payload_from_source(workspace_root, source)
+
+    def _worldbank_gdp(self, workspace_root: Path) -> dict[str, str]:
+        source = WorldBankProvider(workspace_root / "data").fetch_indicator(
+            "all",
+            "NY.GDP.MKTP.CD",
+        )
+        return _payload_from_source(workspace_root, source)
+
+    def _fred_gdp(self, workspace_root: Path) -> dict[str, str]:
+        source = FredProvider(workspace_root / "data", api_key=self.fred_api_key).fetch_series("GDP")
+        return _payload_from_source(workspace_root, source)
+
+    def _oecd_economic(self, workspace_root: Path) -> dict[str, str]:
+        source = OECDProvider(
+            workspace_root / "data",
+            base_url=self.oecd_base_url,
+        ).fetch_dataset("DF_DP_LIVE", {"MEASURE": "GDP"})
+        return _payload_from_source(workspace_root, source)
+
+    def _us_census_population(self, workspace_root: Path) -> dict[str, str]:
+        source = USCensusProvider(
+            workspace_root / "data",
+            api_key=self.us_census_api_key,
+            base_url=self.us_census_base_url,
+        ).fetch_dataset(
+            "2022/acs/acs5",
+            {"get": "NAME,B01003_001E", "for": "state:*"},
+        )
+        return _payload_from_source(workspace_root, source)
+
+    def _open_meteo_weather(self, workspace_root: Path) -> dict[str, str]:
+        source = OpenMeteoProvider(
+            workspace_root / "data",
+            base_url=self.open_meteo_base_url,
+        ).fetch_archive(
+            {
+                "latitude": "39",
+                "longitude": "-77",
+                "start_date": "2023-01-01",
+                "end_date": "2023-01-07",
+                "daily": "precipitation_sum",
+            }
+        )
+        return _payload_from_source(workspace_root, source)
+
+    def _nasa_power_weather(self, workspace_root: Path) -> dict[str, str]:
+        source = NASAPowerProvider(
+            workspace_root / "data",
+            base_url=self.nasa_power_base_url,
+        ).fetch_point(
+            {
+                "latitude": "39",
+                "longitude": "-77",
+                "start": "20230101",
+                "end": "20230107",
+                "parameters": "PRECTOTCORR",
+            }
+        )
+        return _payload_from_source(workspace_root, source)
+
+    def _noaa_weather(self, workspace_root: Path) -> dict[str, str]:
+        source = NOAAProvider(
+            workspace_root / "data",
+            api_key=self.noaa_api_key,
+            base_url=self.noaa_base_url,
+        ).fetch_data({"datasetid": "GHCND"})
+        return _payload_from_source(workspace_root, source)
+
+    def _overpass_roads(self, workspace_root: Path) -> dict[str, str]:
+        source = OverpassProvider(
+            workspace_root / "data",
+            base_url=self.overpass_base_url,
+        ).fetch_query("[out:json];way[highway](0,0,1,1);out body;")
+        return _payload_from_source(workspace_root, source)

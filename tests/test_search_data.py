@@ -313,6 +313,46 @@ def test_official_data_api_repair_provider_fetches_population_from_worldbank(
 
 
 @respx.mock
+def test_official_data_api_repair_provider_routes_multiple_data_needs(
+    tmp_path: Path,
+) -> None:
+    respx.get("https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL").mock(
+        return_value=Response(200, json=[{"page": 1}, [{"date": "2023", "value": 1}]])
+    )
+    respx.get("https://api.stlouisfed.org/fred/series/observations").mock(
+        return_value=Response(200, json={"observations": [{"date": "2024-01-01", "value": "1"}]})
+    )
+    respx.get("https://weather.example/archive").mock(
+        return_value=Response(200, json={"daily": {"precipitation_sum": [1]}})
+    )
+    respx.get("https://census.example/2022/acs/acs5").mock(
+        return_value=Response(200, json=[["NAME", "B01003_001E"], ["Alabama", "1"]])
+    )
+    respx.post("https://overpass.example").mock(
+        return_value=Response(200, json={"elements": [{"type": "node"}]})
+    )
+    provider = OfficialDataApiRepairProvider(
+        fred_api_key="fred-key",
+        open_meteo_base_url="https://weather.example/archive",
+        us_census_api_key="census-key",
+        us_census_base_url="https://census.example",
+        overpass_base_url="https://overpass.example",
+    )
+
+    population = provider.repair(tmp_path, {"target_dataset": "public population data"})
+    economic = provider.repair(tmp_path, {"target_dataset": "GDP economic indicators"})
+    weather = provider.repair(tmp_path, {"target_dataset": "weather climate rainfall data"})
+    census = provider.repair(tmp_path, {"target_dataset": "US census population by state"})
+    roads = provider.repair(tmp_path, {"target_dataset": "road network nodes edges"})
+
+    assert population[0]["provider"] == "world_bank_api"
+    assert economic[0]["provider"] == "fred_api"
+    assert weather[0]["provider"] == "open_meteo_api"
+    assert census[0]["provider"] == "us_census_api"
+    assert roads[0]["provider"] == "overpass_api"
+
+
+@respx.mock
 def test_openalex_provider_maps_academic_sources() -> None:
     respx.get("https://api.openalex.org/works").mock(
         return_value=Response(
