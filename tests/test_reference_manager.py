@@ -45,6 +45,32 @@ def test_reference_manager_writes_bibtex_and_registered_citations(tmp_path: Path
     assert "Missing references: 0" in report
 
 
+def test_citation_context_maps_sources_to_bibtex_keys(tmp_path: Path) -> None:
+    from mcm_agent.core.citations import build_citation_context
+
+    workspace = create_workspace(tmp_path / "run_001")
+    _write_registered_source(workspace.root)
+    write_json(
+        workspace.root / "data" / "citation_candidates.json",
+        [
+            {
+                "citation_id": "cite_web_001",
+                "source_id": "web_001",
+                "title": "Official data",
+                "url": "https://data.gov/example",
+                "accessed_at": "2026-06-13T12:00:00Z",
+                "bibtex_key": "official_data_2026",
+            }
+        ],
+    )
+
+    context = build_citation_context(workspace.root)
+
+    assert context.bibtex_key_for_source("web_001") == "official_data_2026"
+    assert context.cite_command(["web_001"]) == "\\cite{official_data_2026}"
+    assert context.source_title("web_001") == "Official data"
+
+
 def test_reviewer_blocks_used_source_missing_from_references(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     _write_registered_source(workspace.root)
