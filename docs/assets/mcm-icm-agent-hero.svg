@@ -1,131 +1,151 @@
-<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">MCM-ICM Agent animated workflow hero</title>
-  <desc id="desc">An animated research workflow moving from problem files through planning, modeling, evidence, paper writing, and submission packaging.</desc>
+<svg width="1280" height="520" viewBox="0 0 1280 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">MCM-ICM Agent workflow architecture</title>
+  <desc id="desc">A readable architecture diagram showing user inputs, multi-agent workflow stages, quality gates, repair loops, and auditable workspace artifacts.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="420" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#07111F"/>
-      <stop offset="0.46" stop-color="#102B36"/>
-      <stop offset="1" stop-color="#201A36"/>
+    <linearGradient id="background" x1="0" y1="0" x2="1280" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#E9EEF5"/>
     </linearGradient>
-    <linearGradient id="line" x1="180" y1="211" x2="1100" y2="211" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#38BDF8"/>
-      <stop offset="0.52" stop-color="#34D399"/>
-      <stop offset="1" stop-color="#F59E0B"/>
+    <linearGradient id="header" x1="0" y1="0" x2="1280" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1220"/>
+      <stop offset=".52" stop-color="#12343B"/>
+      <stop offset="1" stop-color="#2A1F45"/>
     </linearGradient>
-    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#FFFFFF" stop-opacity="0.13"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.04"/>
-    </linearGradient>
-    <filter id="soft" x="-20%" y="-40%" width="140%" height="180%" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000000" flood-opacity="0.35"/>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="8" refY="5.5" orient="auto">
+      <path d="M1 1 L9 5.5 L1 10" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowAccent" markerWidth="11" markerHeight="11" refX="8" refY="5.5" orient="auto">
+      <path d="M1 1 L9 5.5 L1 10" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowWarn" markerWidth="11" markerHeight="11" refX="8" refY="5.5" orient="auto">
+      <path d="M1 1 L9 5.5 L1 10" fill="none" stroke="#B45309" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <filter id="cardShadow" x="-8%" y="-18%" width="116%" height="140%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#0F172A" flood-opacity=".13"/>
     </filter>
     <style>
+      .sans{font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif}
       .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
-      .sans{font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif}
-      .white{fill:#F8FAFC}
-      .muted{fill:#B8C4D6}
-      .dim{fill:#708198}
-      .card{fill:url(#panel);stroke:#FFFFFF;stroke-opacity:.18}
-      .hair{stroke:#FFFFFF;stroke-opacity:.16}
-      .route{stroke:url(#line);stroke-width:4;stroke-linecap:round;stroke-dasharray:12 18;animation:dash 9s linear infinite}
-      .pulse{animation:pulse 3.4s ease-in-out infinite;transform-origin:center}
-      .floatA{animation:floatA 6s ease-in-out infinite}
-      .floatB{animation:floatB 7s ease-in-out infinite}
-      .floatC{animation:floatC 8s ease-in-out infinite}
-      .spark{animation:spark 3.2s ease-in-out infinite}
-      .spark2{animation:spark 3.2s ease-in-out .9s infinite}
-      .spark3{animation:spark 3.2s ease-in-out 1.8s infinite}
-      @keyframes dash{to{stroke-dashoffset:-180}}
-      @keyframes pulse{0%,100%{opacity:.64;transform:scale(.94)}50%{opacity:1;transform:scale(1.04)}}
-      @keyframes floatA{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-      @keyframes floatB{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
-      @keyframes floatC{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-      @keyframes spark{0%,100%{opacity:.22}50%{opacity:1}}
+      .title{fill:#F8FAFC;font-size:42px;font-weight:800;letter-spacing:.2px}
+      .subtitle{fill:#CBD5E1;font-size:17px;font-weight:500}
+      .section{fill:#334155;font-size:12px;font-weight:800;letter-spacing:1.7px}
+      .label{fill:#0F172A;font-size:15px;font-weight:750}
+      .small{fill:#475569;font-size:12px;font-weight:520}
+      .tiny{fill:#64748B;font-size:11px;font-weight:650}
+      .panel{fill:#FFFFFF;stroke:#CBD5E1;stroke-width:1.2}
+      .node{fill:#F8FAFC;stroke:#94A3B8;stroke-width:1.2}
+      .nodeBlue{fill:#ECFEFF;stroke:#0891B2;stroke-width:1.4}
+      .nodeGreen{fill:#ECFDF5;stroke:#059669;stroke-width:1.4}
+      .nodeAmber{fill:#FFFBEB;stroke:#D97706;stroke-width:1.4}
+      .nodePurple{fill:#F5F3FF;stroke:#7C3AED;stroke-width:1.4}
+      .line{stroke:#475569;stroke-width:1.6;fill:none;marker-end:url(#arrow)}
+      .lineAccent{stroke:#0E7490;stroke-width:1.8;fill:none;marker-end:url(#arrowAccent)}
+      .lineWarn{stroke:#B45309;stroke-width:1.6;fill:none;stroke-dasharray:5 5;marker-end:url(#arrowWarn)}
+      .pulse{animation:pulse 2.8s ease-in-out infinite;transform-origin:center}
+      .dash{stroke-dasharray:6 6;animation:dash 12s linear infinite}
+      @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+      @keyframes dash{to{stroke-dashoffset:-120}}
     </style>
   </defs>
 
-  <rect width="1280" height="420" rx="28" fill="url(#bg)"/>
-  <path d="M0 322 C180 285 244 368 415 321 C570 279 647 236 824 268 C989 298 1062 216 1280 245 V420 H0 V322Z" fill="#0F172A" fill-opacity=".36"/>
-  <path d="M0 85 C213 126 297 45 466 82 C628 117 746 169 912 129 C1076 90 1142 55 1280 86" stroke="#FFFFFF" stroke-opacity=".08" stroke-width="2"/>
-
-  <g transform="translate(72 68)">
-    <text class="sans white" x="0" y="0" font-size="44" font-weight="760">MCM-ICM Agent</text>
-    <text class="sans muted" x="1" y="38" font-size="18">Traceable multi-agent workflow for mathematical modeling contests.</text>
-    <g transform="translate(0 72)">
-      <rect width="122" height="32" rx="16" fill="#38BDF8" fill-opacity=".16" stroke="#38BDF8" stroke-opacity=".52"/>
-      <text class="mono white" x="18" y="21" font-size="13">CLI-first</text>
-      <rect x="136" width="168" height="32" rx="16" fill="#34D399" fill-opacity=".15" stroke="#34D399" stroke-opacity=".48"/>
-      <text class="mono white" x="154" y="21" font-size="13">JSON config</text>
-      <rect x="318" width="178" height="32" rx="16" fill="#F59E0B" fill-opacity=".14" stroke="#F59E0B" stroke-opacity=".48"/>
-      <text class="mono white" x="336" y="21" font-size="13">evidence-first</text>
-    </g>
+  <rect width="1280" height="520" rx="26" fill="url(#background)"/>
+  <rect x="24" y="24" width="1232" height="110" rx="20" fill="url(#header)"/>
+  <text class="sans title" x="56" y="78">MCM-ICM Agent</text>
+  <text class="sans subtitle" x="58" y="106">Agent topology, repair loops, and artifact contracts for mathematical modeling papers.</text>
+  <g transform="translate(900 52)">
+    <rect x="0" y="0" width="286" height="54" rx="14" fill="#FFFFFF" fill-opacity=".08" stroke="#FFFFFF" stroke-opacity=".22"/>
+    <text class="mono" x="18" y="23" fill="#A7F3D0" font-size="13" font-weight="700">workspace = source of truth</text>
+    <text class="mono" x="18" y="41" fill="#CBD5E1" font-size="12">inspect -> repair -> resume</text>
   </g>
 
-  <g transform="translate(118 205)">
-    <path class="route" d="M64 8 H916"/>
-    <circle class="pulse" cx="64" cy="8" r="9" fill="#38BDF8"/>
-    <circle class="pulse" cx="234" cy="8" r="9" fill="#22C55E"/>
-    <circle class="pulse" cx="405" cy="8" r="9" fill="#34D399"/>
-    <circle class="pulse" cx="576" cy="8" r="9" fill="#A78BFA"/>
-    <circle class="pulse" cx="746" cy="8" r="9" fill="#F59E0B"/>
-    <circle class="pulse" cx="916" cy="8" r="9" fill="#F97316"/>
+  <g filter="url(#cardShadow)">
+    <rect class="panel" x="52" y="170" width="160" height="260" rx="18"/>
+    <text class="sans section" x="76" y="200">USER INPUT</text>
+    <rect class="nodeBlue" x="76" y="222" width="112" height="40" rx="10"/>
+    <text class="sans label" x="96" y="247">Problem</text>
+    <rect class="nodeBlue" x="76" y="274" width="112" height="40" rx="10"/>
+    <text class="sans label" x="95" y="299">Data files</text>
+    <rect class="nodeBlue" x="76" y="326" width="112" height="40" rx="10"/>
+    <text class="sans label" x="93" y="351">User idea</text>
+    <rect class="nodeBlue" x="76" y="378" width="112" height="34" rx="10"/>
+    <text class="sans small" x="95" y="399">JSON config</text>
   </g>
 
-  <g class="floatA" transform="translate(82 248)" filter="url(#soft)">
-    <rect class="card" width="162" height="88" rx="16"/>
-    <text class="mono dim" x="18" y="25" font-size="12">01 / INPUT</text>
-    <text class="sans white" x="18" y="51" font-size="18" font-weight="700">Problem Pack</text>
-    <text class="sans muted" x="18" y="72" font-size="13">PDF, data, notes</text>
+  <g filter="url(#cardShadow)">
+    <rect class="panel" x="260" y="160" width="540" height="284" rx="18"/>
+    <text class="sans section" x="286" y="190">MULTI-AGENT WORKFLOW</text>
+
+    <rect class="node" x="286" y="214" width="118" height="44" rx="10"/>
+    <text class="sans label" x="313" y="240">Intake</text>
+    <rect class="node" x="432" y="214" width="118" height="44" rx="10"/>
+    <text class="sans label" x="454" y="240">Parse QA</text>
+    <rect class="nodeGreen" x="578" y="214" width="164" height="44" rx="10"/>
+    <text class="sans label" x="607" y="240">Understand</text>
+
+    <rect class="nodeAmber" x="286" y="286" width="156" height="44" rx="10"/>
+    <text class="sans label" x="310" y="312">Data Scout</text>
+    <rect class="nodeAmber" x="470" y="286" width="156" height="44" rx="10"/>
+    <text class="sans label" x="494" y="312">User Discuss</text>
+    <rect class="nodePurple" x="654" y="286" width="88" height="44" rx="10"/>
+    <text class="sans label" x="681" y="312">RAG</text>
+
+    <rect class="nodeGreen" x="286" y="358" width="156" height="44" rx="10"/>
+    <text class="sans label" x="315" y="384">Modeling</text>
+    <rect class="nodeGreen" x="470" y="358" width="156" height="44" rx="10"/>
+    <text class="sans label" x="508" y="384">Solver</text>
+    <rect class="nodeGreen" x="654" y="358" width="88" height="44" rx="10"/>
+    <text class="sans label" x="681" y="384">Valid</text>
+
+    <path class="lineAccent dash" d="M404 236 H432"/>
+    <path class="lineAccent dash" d="M550 236 H578"/>
+    <path class="lineAccent dash" d="M660 258 V286"/>
+    <path class="lineAccent dash" d="M442 308 H470"/>
+    <path class="lineAccent dash" d="M626 308 H654"/>
+    <path class="lineAccent dash" d="M698 330 V358"/>
+    <path class="lineAccent dash" d="M442 380 H470"/>
+    <path class="lineAccent dash" d="M626 380 H654"/>
+    <path class="lineWarn" d="M470 330 C420 344 342 342 326 330"/>
+    <text class="sans tiny" x="310" y="348">new data need loops back</text>
   </g>
 
-  <g class="floatB" transform="translate(252 246)" filter="url(#soft)">
-    <rect class="card" width="162" height="88" rx="16"/>
-    <text class="mono dim" x="18" y="25" font-size="12">02 / PLAN</text>
-    <text class="sans white" x="18" y="51" font-size="18" font-weight="700">Direction Lock</text>
-    <text class="sans muted" x="18" y="72" font-size="13">human-in-loop</text>
+  <g filter="url(#cardShadow)">
+    <rect class="panel" x="848" y="160" width="380" height="284" rx="18"/>
+    <text class="sans section" x="874" y="190">PAPER, QA, AND ARTIFACTS</text>
+
+    <rect class="nodePurple" x="874" y="214" width="142" height="44" rx="10"/>
+    <text class="sans label" x="904" y="240">Figures</text>
+    <rect class="nodePurple" x="1044" y="214" width="142" height="44" rx="10"/>
+    <text class="sans label" x="1076" y="240">Claims</text>
+    <rect class="nodePurple" x="874" y="286" width="142" height="44" rx="10"/>
+    <text class="sans label" x="913" y="312">Write</text>
+    <rect class="nodeAmber" x="1044" y="286" width="142" height="44" rx="10"/>
+    <text class="sans label" x="1071" y="312">Evidence</text>
+    <rect class="nodeAmber" x="874" y="358" width="142" height="44" rx="10"/>
+    <text class="sans label" x="906" y="384">Typeset</text>
+    <rect class="nodeAmber" x="1044" y="358" width="142" height="44" rx="10"/>
+    <text class="sans label" x="1073" y="384">Review</text>
+
+    <path class="lineAccent dash" d="M742 380 C790 380 812 236 874 236"/>
+    <path class="lineAccent dash" d="M1016 236 H1044"/>
+    <path class="lineAccent dash" d="M1115 258 V286"/>
+    <path class="lineAccent dash" d="M1044 308 H1016"/>
+    <path class="lineAccent dash" d="M945 330 V358"/>
+    <path class="lineAccent dash" d="M1016 380 H1044"/>
+    <path class="lineWarn" d="M1044 402 C1002 440 742 456 566 402"/>
+    <text class="sans tiny" x="828" y="464">gate failures route to responsible agents</text>
   </g>
 
-  <g class="floatC" transform="translate(422 246)" filter="url(#soft)">
-    <rect class="card" width="162" height="88" rx="16"/>
-    <text class="mono dim" x="18" y="25" font-size="12">03 / MODEL</text>
-    <text class="sans white" x="18" y="51" font-size="18" font-weight="700">Route Recipes</text>
-    <text class="sans muted" x="18" y="72" font-size="13">solver contracts</text>
+  <g>
+    <path class="lineAccent dash" d="M212 300 H260"/>
+    <path class="lineAccent dash" d="M800 308 H848"/>
   </g>
 
-  <g class="floatA" transform="translate(592 246)" filter="url(#soft)">
-    <rect class="card" width="162" height="88" rx="16"/>
-    <text class="mono dim" x="18" y="25" font-size="12">04 / EVIDENCE</text>
-    <text class="sans white" x="18" y="51" font-size="18" font-weight="700">Source Graph</text>
-    <text class="sans muted" x="18" y="72" font-size="13">claims and figures</text>
-  </g>
-
-  <g class="floatB" transform="translate(762 246)" filter="url(#soft)">
-    <rect class="card" width="162" height="88" rx="16"/>
-    <text class="mono dim" x="18" y="25" font-size="12">05 / PAPER</text>
-    <text class="sans white" x="18" y="51" font-size="18" font-weight="700">LaTeX Draft</text>
-    <text class="sans muted" x="18" y="72" font-size="13">claim-aware prose</text>
-  </g>
-
-  <g class="floatC" transform="translate(932 246)" filter="url(#soft)">
-    <rect class="card" width="162" height="88" rx="16"/>
-    <text class="mono dim" x="18" y="25" font-size="12">06 / QA</text>
-    <text class="sans white" x="18" y="51" font-size="18" font-weight="700">Submission Zip</text>
-    <text class="sans muted" x="18" y="72" font-size="13">reviewed artifacts</text>
-  </g>
-
-  <g transform="translate(833 68)">
-    <rect class="card" width="350" height="132" rx="18"/>
-    <path class="hair" d="M24 44 H326M24 82 H326"/>
-    <text class="mono dim" x="24" y="30" font-size="12">WORKSPACE TRACE</text>
-    <text class="mono muted" x="24" y="66" font-size="15">paper/claim_plan.json</text>
-    <text class="mono muted" x="24" y="104" font-size="15">review/final_gate.json</text>
-    <circle class="spark" cx="303" cy="61" r="5" fill="#34D399"/>
-    <circle class="spark2" cx="303" cy="99" r="5" fill="#F59E0B"/>
-  </g>
-
-  <g transform="translate(1115 116)">
-    <circle class="spark3" cx="0" cy="0" r="3" fill="#38BDF8"/>
-    <circle class="spark2" cx="36" cy="-36" r="3" fill="#34D399"/>
-    <circle class="spark" cx="68" cy="20" r="3" fill="#F59E0B"/>
+  <g transform="translate(56 460)">
+    <circle class="pulse" cx="0" cy="0" r="5" fill="#0891B2"/>
+    <text class="mono small" x="14" y="4">CLI commands create, inspect, resume, and package workspaces.</text>
+    <circle class="pulse" cx="418" cy="0" r="5" fill="#059669"/>
+    <text class="mono small" x="432" y="4">Agents exchange typed files, not hidden chat state.</text>
+    <circle class="pulse" cx="812" cy="0" r="5" fill="#D97706"/>
+    <text class="mono small" x="826" y="4">QA gates produce repair routes.</text>
   </g>
 </svg>
