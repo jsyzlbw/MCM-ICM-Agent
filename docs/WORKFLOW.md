@@ -263,9 +263,12 @@ When coverage fails, `reports/search_repair_report.md` and
 `data/search_repair_actions.json` summarize uncovered needs, attempted queries,
 untrusted sources, candidate official APIs, and whether the next move is another query,
 an official API call, user-provided data, or reframing.
-The first official API repair adapter can automatically register World Bank population
-data without a key. Open-Meteo is configured through `official_data.open_meteo_base_url`;
-FRED repair is only enabled when the user supplies `official_data.fred_api_key`.
+Official API repair can automatically register source and lineage records for World Bank,
+OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass payloads.
+World Bank, OECD public SDMX, UNData download, NASA POWER, Open-Meteo, and Overpass can
+run without keys. FRED needs `official_data.fred_api_key`; US Census can use
+`official_data.us_census_api_key`; NOAA uses `official_data.noaa_api_key` when configured.
+Unit tests mock these HTTP calls with `respx` rather than touching live APIs.
 
 Every reported metric should be traceable through:
 

@@ -105,9 +105,11 @@ Humanizer: fake
 ```
 
 When multiple search keys are configured, the runtime tries Tavily first, then Brave,
-then Exa. World Bank and Open-Meteo are available as no-key official data repair sources
-when search coverage fails. FRED requires registration; leave `official_data.fred_api_key`
-empty to disable FRED repair.
+then Exa. Official data repair can use World Bank, OECD, UNData, NASA POWER,
+Open-Meteo, and OSM/Overpass without keys. FRED requires `official_data.fred_api_key`.
+US Census works without a key for low-volume use but supports
+`official_data.us_census_api_key`. NOAA uses `official_data.noaa_api_key` when configured.
+All provider keys and base URLs live under `official_data` in the local JSON config.
 
 `.env` loading remains supported for compatibility through `--env-file`, but JSON values
 win when both `--env-file` and `--config-file` are passed.

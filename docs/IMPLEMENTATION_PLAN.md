@@ -117,92 +117,86 @@ Rules:
 | A2 User-fillable RAG knowledge base base | Complete as MVP |
 | B1 High-quality claim-aware paper generation | Complete as MVP |
 | C1 Real modeling capability expansion | Complete as MVP |
+| D1 Official data API expansion | Complete as MVP |
 
 ## 4. Active Next Phase
 
-The active next phase is **Official Data API Expansion**.
+The active next phase is **RAG Ingestion Expansion**.
 
 Purpose:
 
 The system now stores sources, data lineage, evidence, figures, references, claim plans,
 contextual paper sections, claim-level paper bindings, paper-quality scores, hybrid route
-plans, route-aware experiment specs, and route execution status. The remaining work is to
-improve whether official data can be fetched automatically for the selected modeling route.
+plans, route-aware experiment specs, route execution status, and official-data repair
+records across the main provider families. The remaining work is to let user-filled
+knowledge bases guide modeling and writing with richer provenance.
 
 Current core artifact:
 
 ```text
-reports/experiment_spec.json
-results/model_route_summary.json
+rag/methodology.db
+rag/methodology_hits.json
 ```
 
 Current implemented flow:
 
 ```text
-problem_understanding.md
-discussion/confirmed_direction.md
+knowledge_base/
         ↓
-ModelingCouncil / ModelJudge
+MethodologyRAGAgent
         ↓
-reports/experiment_spec.json with route_plan
+rag/methodology.db with local notes and rules
         ↓
-SolverCoderAgent executes compatible route modules
+modeling and writing stages retrieve relevant method context
         ↓
-results/model_route_summary.json with route_execution_status
-        ↓
-ValidationAgent routes missing-binding weak models to modeling_council
+paper and model artifacts cite retrieved method context where appropriate
 ```
 
 ## 5. Next Phase Tasks
 
-### Task 1: Add Official Data Provider Adapters
+### Task 1: Add PDF Knowledge-Base Ingestion
 
 Inputs:
 
-- `mcm_agent_config.local.json`
-- `data/data_feasibility_matrix.json`
-- `data/search_plan.json`
-- provider-specific query parameters
+- `knowledge_base/**/*.pdf`
+- MinerU provider abstraction
+- existing RAG ingestion settings
 
 Target behavior:
 
-- Add adapters for priority official data sources, starting with no-key providers when possible.
-- Normalize provider outputs into source registry and lineage records.
-- Keep provider-specific API keys optional and configured through the local JSON file.
+- Parse user-uploaded PDF papers, rules, and method notes through MinerU when available.
+- Store chunks with file path, title, page or section hint, source type, and usage restrictions.
+- Keep local user files ignored by git.
 
-### Task 2: Integrate Official Data Into Search Repair
-
-Target behavior:
-
-- When searchable needs lack reliable web sources, try matching official-data providers.
-- Record attempted provider queries and skipped providers in repair reports.
-- Avoid live provider calls in unit tests by using fakes or mocked HTTP responses.
-
-### Task 3: Document Provider Requirements
+### Task 2: Add RAG Provenance And Retrieval Controls
 
 Target behavior:
 
-- Document which official-data providers require API keys.
-- Document no-key providers and their rate-limit caveats.
-- Keep `mcm_agent_config.example.json` free of secrets and complete enough for user setup.
+- Add chunk-level provenance to `rag/methodology_hits.json`.
+- Separate paper examples, method notes, contest rules, and checklists.
+- Let modeling and writing query the knowledge base without treating local notes as external data facts.
+
+### Task 3: Expand RAG Tests And Docs
+
+Target behavior:
+
+- Test `.md`, `.txt`, `.pdf`, unsupported suffix handling, and empty-folder behavior.
+- Document how users should fill `knowledge_base/`.
+- Keep `mcm_agent_config.example.json` free of secrets and keep local knowledge-base content ignored.
 
 ## 6. Later Build Phases
 
 After the official data API phase, continue with these quality phases:
 
-1. **RAG Ingestion Expansion**
-   - The base local `knowledge_base/` flow ingests `.md` and `.txt` and reports `.pdf` as pending.
-   - Later work should add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions.
-
-2. **Concept Diagram System**
+1. **Concept Diagram System**
    - Add Mermaid, Graphviz, and TikZ concept figure generation.
    - Keep final concept diagrams vector-first.
 
-3. **LaTeX Layout QA**
+2. **LaTeX Layout QA**
    - Detect compile errors, table overflow, equation overflow, figure placement issues, and page-limit violations.
    - Route layout failures back to writer, visualization, or typesetting.
 
-4. **Provider Smoke Expansion**
+3. **Provider Smoke Expansion**
    - The manual smoke script now reads `--config-file` and checks configured live providers.
    - Later work can broaden it into a first-class CLI command and include additional official-data providers.
 

@@ -70,7 +70,7 @@ Latest implementation commit at the time this status was written:
 | Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
 | Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` when present | Add richer citation insertion and optional style variants |
 | RAG | Imports selected Supervisor-Skills documents plus local `.md` and `.txt` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types; reports `.pdf` as pending | Add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions |
-| Official data APIs | Includes provider pattern and World Bank example | Expand to OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, OSM/Overpass |
+| Official data APIs | Provider pattern plus World Bank, OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass repair adapters with mocked tests | Add richer provider-specific query planning and live smoke coverage |
 | Visualization | Generates vector-first data figures and QA reports | Add richer concept-diagram generation via Mermaid, Graphviz, TikZ, and Draw.io |
 | LaTeX | Generates and compiles through provider abstraction | Add robust compile-error repair, page-limit checks, and layout QA |
 | Humanization | Calls UShallPass or fake provider and performs fact-lock regression | Add privacy policy switches, batch job logs, retry reports, and user approval gates |
@@ -127,16 +127,16 @@ The most important implemented safety property is evidence governance:
 
 ## Recommended Next Build Phase
 
-The next phase should focus on `Official Data API Expansion`.
+The next phase should focus on `RAG Ingestion Expansion`.
 
 Build order:
 
-1. Add provider adapters for OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, and OSM/Overpass where practical.
-2. Normalize source and lineage records across official-data providers.
-3. Keep all live API calls out of unit tests through fakes or HTTP mocks.
-4. Extend search repair so provider-specific datasets can satisfy feasibility-matrix needs.
-5. Document which providers require API keys and which can run without keys.
+1. Add MinerU-backed PDF ingestion for user-filled `knowledge_base/` files.
+2. Add chunk metadata, provenance, source type, and usage restrictions for RAG entries.
+3. Let writing and modeling retrieve from user paper notes, method notes, and contest rules.
+4. Keep user knowledge-base files ignored by git.
+5. Add tests for `.md`, `.txt`, `.pdf`, skipped files, and retrieval provenance.
 
-This is the right next step because route selection and deterministic solver orchestration
-are now stronger; the next quality bottleneck is whether the agent can reliably fetch
-official data for the selected modeling route.
+This is the right next step because official data repair now covers the main provider
+families; the next quality bottleneck is whether local excellent papers, method notes,
+and rules can reliably guide modeling and writing.
