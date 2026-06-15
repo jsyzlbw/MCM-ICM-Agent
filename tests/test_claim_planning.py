@@ -143,3 +143,38 @@ def test_claim_planning_agent_marks_missing_evidence_as_unresolved(
     assert unresolved
     assert any(item["priority"] == "critical" for item in unresolved)
     assert "Missing verified evidence" in unresolved[0]["unresolved_reason"]
+
+
+def test_claim_planning_agent_adds_sensitivity_claim_when_evidence_exists(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {"selected_routes": ["multi_criteria_evaluation"], "route_metrics": {}},
+    )
+    write_json(
+        workspace.root / "results" / "evidence_registry.json",
+        [
+            {
+                "evidence_id": "metric_priority_score_mean",
+                "claim": "Route metric priority_score_mean equals 0.6.",
+                "verified": True,
+            }
+        ],
+    )
+    write_json(
+        workspace.root / "figures" / "figure_registry.json",
+        [{"figure_id": "fig_priority_ranking", "status": "approved"}],
+    )
+    write_json(workspace.root / "data" / "source_registry.json", [{"source_id": "web_001"}])
+
+    ClaimPlanningAgent().run(workspace.root)
+
+    plan = read_json(workspace.root / "paper" / "claim_plan.json", [])
+    sensitivity_claim = next(
+        item for item in plan if item["claim_id"] == "claim_sensitivity_baseline"
+    )
+    assert sensitivity_claim["section"] == "paper/sections/sensitivity.tex"
+    assert sensitivity_claim["claim_type"] == "sensitivity"
+    assert sensitivity_claim["evidence_ids"] == ["metric_priority_score_mean"]

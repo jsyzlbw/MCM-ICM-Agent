@@ -24,6 +24,7 @@ class ClaimPlanningAgent:
         claims.extend(self._model_claims(route_summary, evidence, figures, sources))
         claims.extend(self._metric_claims(evidence, figures, sources))
         claims.extend(self._figure_claims(figures))
+        claims.extend(self._sensitivity_claims(evidence, figures, sources))
         claims.extend(self._limitation_claims(validation_text, evidence, sources))
         claims.append(self._conclusion_claim(evidence, figures, sources))
 
@@ -146,6 +147,31 @@ class ClaimPlanningAgent:
                 )
             )
         return claims
+
+    def _sensitivity_claims(
+        self,
+        evidence: list[dict[str, object]],
+        figures: list[dict[str, object]],
+        sources: list[dict[str, object]],
+    ) -> list[PaperClaimPlanItem]:
+        evidence_ids = self._ids(evidence[:1], "evidence_id")
+        if not evidence_ids:
+            return []
+        return [
+            PaperClaimPlanItem(
+                claim_id="claim_sensitivity_baseline",
+                section="paper/sections/sensitivity.tex",
+                claim_text=(
+                    "Sensitivity analysis uses registered evidence as the baseline "
+                    "for robustness interpretation."
+                ),
+                claim_type="sensitivity",
+                evidence_ids=evidence_ids,
+                figure_ids=self._ids(figures[:1], "figure_id"),
+                source_ids=self._ids(sources[:1], "source_id"),
+                priority="major",
+            )
+        ]
 
     def _limitation_claims(
         self,
