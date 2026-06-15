@@ -6,10 +6,10 @@ import sys
 from pathlib import Path
 
 from mcm_agent.config import load_settings
-from mcm_agent.providers.smoke import ProviderSmokeTester, SmokeStatus
+from mcm_agent.providers.smoke import DEFAULT_SMOKE_PROVIDERS, ProviderSmokeTester, SmokeStatus
 
 
-DEFAULT_PROVIDERS = ["llm", "tavily", "firecrawl", "humanizer", "mineru"]
+DEFAULT_PROVIDERS = DEFAULT_SMOKE_PROVIDERS
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--providers",
         default=",".join(DEFAULT_PROVIDERS),
-        help="Comma-separated providers: llm,tavily,firecrawl,humanizer,mineru.",
+        help="Comma-separated provider smoke checks.",
     )
     parser.add_argument(
         "--mineru-file",

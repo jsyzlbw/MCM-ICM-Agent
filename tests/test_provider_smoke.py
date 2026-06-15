@@ -21,14 +21,30 @@ def _load_smoke_script():
 def test_smoke_tester_skips_missing_provider_keys(tmp_path: Path) -> None:
     tester = ProviderSmokeTester(Settings(), workspace_root=tmp_path)
 
-    results = tester.run(["llm", "tavily", "firecrawl", "humanizer", "mineru"])
+    results = tester.run(
+        [
+            "llm",
+            "tavily",
+            "brave",
+            "exa",
+            "firecrawl",
+            "humanizer",
+            "mineru",
+            "fred",
+            "noaa",
+        ]
+    )
 
     assert {result.provider: result.status for result in results} == {
         "llm": "skipped",
         "tavily": "skipped",
+        "brave": "skipped",
+        "exa": "skipped",
         "firecrawl": "skipped",
         "humanizer": "skipped",
         "mineru": "skipped",
+        "fred": "skipped",
+        "noaa": "skipped",
     }
 
 
@@ -73,6 +89,46 @@ def test_smoke_tester_checks_tavily_search(tmp_path: Path) -> None:
 
     assert result.status == SmokeStatus.PASSED
     assert "1 result" in result.detail
+
+
+@respx.mock
+def test_smoke_tester_checks_brave_search(tmp_path: Path) -> None:
+    respx.get("https://api.search.brave.com/res/v1/web/search").mock(
+        return_value=Response(
+            200,
+            json={
+                "web": {
+                    "results": [
+                        {
+                            "title": "Official",
+                            "url": "https://data.gov",
+                            "description": "Data",
+                        }
+                    ]
+                }
+            },
+        )
+    )
+    tester = ProviderSmokeTester(Settings(brave_search_api_key="test-key"), workspace_root=tmp_path)
+
+    result = tester.check("brave")
+
+    assert result.status == SmokeStatus.PASSED
+
+
+@respx.mock
+def test_smoke_tester_checks_exa_search(tmp_path: Path) -> None:
+    respx.post("https://api.exa.ai/search").mock(
+        return_value=Response(
+            200,
+            json={"results": [{"title": "Official", "url": "https://data.gov", "text": "Data"}]},
+        )
+    )
+    tester = ProviderSmokeTester(Settings(exa_api_key="test-key"), workspace_root=tmp_path)
+
+    result = tester.check("exa")
+
+    assert result.status == SmokeStatus.PASSED
 
 
 @respx.mock
@@ -124,6 +180,18 @@ def test_smoke_tester_requires_mineru_file_for_rest_mode(tmp_path: Path) -> None
 
     assert result.status == SmokeStatus.SKIPPED
     assert "mineru_file" in result.detail
+
+
+@respx.mock
+def test_smoke_tester_checks_no_key_official_data_provider(tmp_path: Path) -> None:
+    respx.get("https://archive-api.open-meteo.com/v1/archive").mock(
+        return_value=Response(200, json={"daily": {"temperature_2m_max": [1]}})
+    )
+    tester = ProviderSmokeTester(Settings(), workspace_root=tmp_path)
+
+    result = tester.check("open_meteo")
+
+    assert result.status == SmokeStatus.PASSED
 
 
 def test_smoke_script_accepts_json_config_file_argument(tmp_path: Path) -> None:

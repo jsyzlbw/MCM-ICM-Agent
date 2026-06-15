@@ -8,10 +8,46 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from mcm_agent.config import Settings
+from mcm_agent.providers.data_apis import (
+    FredProvider,
+    NASAPowerProvider,
+    NOAAProvider,
+    OECDProvider,
+    OpenMeteoProvider,
+    OverpassProvider,
+    USCensusProvider,
+    UNDataProvider,
+    WorldBankProvider,
+)
 from mcm_agent.providers.humanizer import UShallPassHumanizerProvider
 from mcm_agent.providers.llm import OpenAICompatibleLLMProvider
 from mcm_agent.providers.mineru import RestMinerUProvider
-from mcm_agent.providers.search import FirecrawlProvider, TavilyProvider
+from mcm_agent.providers.search import (
+    BraveSearchProvider,
+    ExaSearchProvider,
+    FirecrawlProvider,
+    TavilyProvider,
+)
+
+
+DEFAULT_SMOKE_PROVIDERS = [
+    "llm",
+    "tavily",
+    "brave",
+    "exa",
+    "firecrawl",
+    "humanizer",
+    "mineru",
+    "world_bank",
+    "oecd",
+    "undata",
+    "fred",
+    "us_census",
+    "noaa",
+    "nasa_power",
+    "open_meteo",
+    "overpass",
+]
 
 
 class SmokeStatus(StrEnum):
@@ -46,9 +82,20 @@ class ProviderSmokeTester:
         checks = {
             "llm": self._check_llm,
             "tavily": self._check_tavily,
+            "brave": self._check_brave,
+            "exa": self._check_exa,
             "firecrawl": self._check_firecrawl,
             "humanizer": self._check_humanizer,
             "mineru": self._check_mineru,
+            "world_bank": self._check_world_bank,
+            "oecd": self._check_oecd,
+            "undata": self._check_undata,
+            "fred": self._check_fred,
+            "us_census": self._check_us_census,
+            "noaa": self._check_noaa,
+            "nasa_power": self._check_nasa_power,
+            "open_meteo": self._check_open_meteo,
+            "overpass": self._check_overpass,
         }
         if provider not in checks:
             return ProviderSmokeResult(
@@ -96,6 +143,28 @@ class ProviderSmokeTester:
         if not results:
             raise RuntimeError("Tavily returned no results")
         return self._passed("tavily", f"{len(results)} result(s): {results[0].url}")
+
+    def _check_brave(self) -> ProviderSmokeResult:
+        if not self.settings.brave_search_api_key:
+            return self._skipped("brave", "BRAVE_SEARCH_API_KEY is not configured.")
+        results = BraveSearchProvider(self.settings.brave_search_api_key).search(
+            "official public population dataset",
+            max_results=1,
+        )
+        if not results:
+            raise RuntimeError("Brave returned no results")
+        return self._passed("brave", f"{len(results)} result(s): {results[0].url}")
+
+    def _check_exa(self) -> ProviderSmokeResult:
+        if not self.settings.exa_api_key:
+            return self._skipped("exa", "EXA_API_KEY is not configured.")
+        results = ExaSearchProvider(self.settings.exa_api_key).search(
+            "official public population dataset",
+            max_results=1,
+        )
+        if not results:
+            raise RuntimeError("Exa returned no results")
+        return self._passed("exa", f"{len(results)} result(s): {results[0].url}")
 
     def _check_firecrawl(self) -> ProviderSmokeResult:
         if not self.settings.firecrawl_api_key:
@@ -164,6 +233,100 @@ class ProviderSmokeTester:
         if not markdown.exists():
             raise RuntimeError("MinerU did not produce markdown output")
         return self._passed("mineru", f"Parsed markdown: {markdown}")
+
+    def _check_world_bank(self) -> ProviderSmokeResult:
+        source = WorldBankProvider(self.workspace_root / "smoke" / "official_data").fetch_indicator(
+            "US",
+            "SP.POP.TOTL",
+        )
+        return self._passed("world_bank", f"Fetched {source.source_id}.")
+
+    def _check_oecd(self) -> ProviderSmokeResult:
+        source = OECDProvider(
+            self.workspace_root / "smoke" / "official_data",
+            base_url=self.settings.oecd_base_url,
+        ).fetch_dataset("DF_DP_LIVE/.USA.POP.TOT...A", params={"contentType": "csv"})
+        return self._passed("oecd", f"Fetched {source.source_id}.")
+
+    def _check_undata(self) -> ProviderSmokeResult:
+        source = UNDataProvider(
+            self.workspace_root / "smoke" / "official_data",
+            base_url=self.settings.undata_base_url,
+        ).fetch_dataset("WDI")
+        return self._passed("undata", f"Fetched {source.source_id}.")
+
+    def _check_fred(self) -> ProviderSmokeResult:
+        if not self.settings.fred_api_key:
+            return self._skipped("fred", "FRED_API_KEY is not configured.")
+        source = FredProvider(
+            self.workspace_root / "smoke" / "official_data",
+            api_key=self.settings.fred_api_key,
+        ).fetch_series("GDP")
+        return self._passed("fred", f"Fetched {source.source_id}.")
+
+    def _check_us_census(self) -> ProviderSmokeResult:
+        source = USCensusProvider(
+            self.workspace_root / "smoke" / "official_data",
+            api_key=self.settings.us_census_api_key,
+            base_url=self.settings.us_census_base_url,
+        ).fetch_dataset("2022/pep/population", {"get": "NAME,POP", "for": "state:06"})
+        return self._passed("us_census", f"Fetched {source.source_id}.")
+
+    def _check_noaa(self) -> ProviderSmokeResult:
+        if not self.settings.noaa_api_key:
+            return self._skipped("noaa", "NOAA_API_KEY is not configured.")
+        source = NOAAProvider(
+            self.workspace_root / "smoke" / "official_data",
+            api_key=self.settings.noaa_api_key,
+            base_url=self.settings.noaa_base_url,
+        ).fetch_data(
+            {
+                "datasetid": "GHCND",
+                "datatypeid": "TMAX",
+                "stationid": "GHCND:USW00094728",
+                "startdate": "2024-01-01",
+                "enddate": "2024-01-01",
+                "limit": "1",
+            }
+        )
+        return self._passed("noaa", f"Fetched {source.source_id}.")
+
+    def _check_nasa_power(self) -> ProviderSmokeResult:
+        source = NASAPowerProvider(
+            self.workspace_root / "smoke" / "official_data",
+            base_url=self.settings.nasa_power_base_url,
+        ).fetch_point(
+            {
+                "latitude": "38.9",
+                "longitude": "-77.0",
+                "start": "20240101",
+                "end": "20240101",
+                "parameters": "T2M",
+            }
+        )
+        return self._passed("nasa_power", f"Fetched {source.source_id}.")
+
+    def _check_open_meteo(self) -> ProviderSmokeResult:
+        source = OpenMeteoProvider(
+            self.workspace_root / "smoke" / "official_data",
+            base_url=self.settings.open_meteo_base_url,
+        ).fetch_archive(
+            {
+                "latitude": "38.9",
+                "longitude": "-77.0",
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-01",
+                "daily": "temperature_2m_max",
+            }
+        )
+        return self._passed("open_meteo", f"Fetched {source.source_id}.")
+
+    def _check_overpass(self) -> ProviderSmokeResult:
+        source = OverpassProvider(
+            self.workspace_root / "smoke" / "official_data",
+            base_url=self.settings.overpass_base_url,
+        ).fetch_query("[out:json][timeout:5];node(0,0,0.01,0.01);out count;")
+        return self._passed("overpass", f"Fetched {source.source_id}.")
 
     def _passed(self, provider: str, detail: str) -> ProviderSmokeResult:
         return ProviderSmokeResult(provider=provider, status=SmokeStatus.PASSED, detail=detail)
