@@ -52,9 +52,11 @@ flowchart TD
     FP --> VIZ["Visualize"]
     VIZ --> FQ["Figure QA"]
     FQ -->|retry| FP
-    FQ -->|ok| PW["Write Paper"]
+    FQ -->|ok| CP["Claim Plan"]
 
-    PW --> TS["Typeset"]
+    CP --> PW["Write Paper"]
+    PW --> PEB["Bind Evidence"]
+    PEB --> TS["Typeset"]
     TS --> PR["Review"]
     PR --> FG["Gatekeeper"]
 
@@ -92,7 +94,9 @@ previewers. The full responsibilities are:
 | Figure Plan | Figure Planning Agent | Plans every figure's purpose, data source, and target section. |
 | Visualize | Visualization Agent | Generates vector-first plots and diagrams. |
 | Figure QA | Figure QA Agent | Checks vector output, visual style, readability, captions, and placement. |
+| Claim Plan | Claim Planning Agent | Plans every important paper claim, target section, priority, and evidence/source/figure support before drafting. |
 | Write Paper | Paper Writer Agent | Writes evidence-backed paper sections. |
+| Bind Evidence | Paper Evidence Binding Agent | Checks written sections against registries and planned claim coverage. |
 | Typeset | Typesetting Agent | Assembles LaTeX, citations, template rules, page limits, and figure placement. |
 | Review | Pre-submission Reviewer | Runs requirement, evidence, format, visual, and originality review panels. |
 | Gatekeeper | Final Gatekeeper | Routes blocking findings back to the responsible repair stage. |

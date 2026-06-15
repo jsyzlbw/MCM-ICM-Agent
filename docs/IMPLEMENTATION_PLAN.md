@@ -1,6 +1,6 @@
 # MCM/ICM Agent Implementation Plan
 
-Status date: 2026-06-14
+Status date: 2026-06-15
 
 This plan reflects the current repository at `/Users/mac/Programming/MCM-ICM-Agent`.
 The earlier `MathModelAgentDesign/reference_implementation/` layout has been superseded:
@@ -15,11 +15,12 @@ The repository already contains a tested MVP with:
 - CLI-first Python package under `src/mcm_agent/`.
 - Workspace, artifact registry, event log, handoff packets, workflow topology, and stage executor.
 - Provider adapters for LLM, MinerU, Tavily, Firecrawl, Brave, Exa, UShallPass, LaTeX, academic APIs, and official data APIs.
-- Core agents for intake, extraction, problem understanding, data feasibility, discussion, reframing, modeling, search, RAG, EDA, solver, validation, visualization, writing, compliance, review, revision, reference management, and submission packaging.
+- Core agents for intake, extraction, problem understanding, data feasibility, discussion, reframing, modeling, search, RAG, EDA, solver, validation, visualization, claim planning, writing, compliance, review, revision, reference management, and submission packaging.
 - Source governance through `source_registry.json`, `retrieval_log.jsonl`, `data_lineage.json`, and `citation_candidates.json`.
 - Modeling evidence through `experiment_runs.jsonl`, `model_metrics.json`, `model_route_summary.json`, and `evidence_registry.json`.
 - Vector-first figure planning and figure QA.
-- Paper evidence binding at section level and claim level.
+- Claim planning through `paper/claim_plan.json`.
+- Paper evidence binding at section level, claim level, and planned-claim coverage level.
 - Fake-provider end-to-end workflow tests.
 
 Latest verified baseline:
@@ -125,24 +126,25 @@ Rules:
 | P6 Solver evidence and reproducible experiments | Complete as MVP |
 | P7 Vector-first figure system | Complete as MVP |
 | P8 Paper, references, and final review | Complete as MVP |
+| P9 Claim planning and claim-plan enforcement | Complete as MVP |
 
 ## 4. Active Next Phase
 
-The next phase is **Claim Planning + High Quality Paper Generation**.
+The active next phase is **High Quality Claim-Aware Paper Generation**.
 
 Purpose:
 
-The system now stores sources, data lineage, evidence, figures, references, and claim-level
-paper bindings. The missing bridge is a planned argument structure that tells the writer what
-claims must appear, where they belong, and which artifacts support them.
+The system now stores sources, data lineage, evidence, figures, references, claim plans,
+and claim-level paper bindings. The remaining work is to make the claim-aware paper read
+like a strong MCM/ICM submission rather than a mechanically traceable draft.
 
-Target new artifact:
+Current core artifact:
 
 ```text
 paper/claim_plan.json
 ```
 
-Target flow:
+Current implemented flow:
 
 ```text
 model_route_summary.json
@@ -163,175 +165,45 @@ ReviewerAgent blocks omitted or unsupported critical claims
 
 ## 5. Next Phase Tasks
 
-### Task 1: Add Claim Planning Data Contract
-
-Files:
-
-- Modify: `src/mcm_agent/core/models.py`
-- Create or modify tests: `tests/test_claim_planning.py`
-
-Implement `PaperClaimPlanItem` with fields:
-
-- `claim_id`
-- `section`
-- `claim_text`
-- `claim_type`: `model_choice`, `metric_result`, `sensitivity`, `assumption`, `limitation`, `conclusion`
-- `evidence_ids`
-- `figure_ids`
-- `source_ids`
-- `priority`: `critical`, `major`, `supporting`
-- `status`: `planned`, `written`, `unresolved`
-- `unresolved_reason`
-
-Validation rules:
-
-- `claim_id` is required.
-- `section` must point to a paper section path.
-- Critical claims require at least one of `evidence_ids`, `figure_ids`, or `source_ids`, unless `status="unresolved"`.
-
-Acceptance criteria:
-
-- Focused tests prove unsupported critical claims are rejected.
-- Existing tests remain green.
-
-### Task 2: Implement ClaimPlanningAgent
-
-Files:
-
-- Create: `src/mcm_agent/agents/claim_planning.py`
-- Modify: `src/mcm_agent/agents/__init__.py` if needed
-- Create or modify tests: `tests/test_claim_planning.py`
+### Task 1: Improve Claim Plan Quality
 
 Inputs:
 
+- `reports/problem_understanding.md`
+- `discussion/confirmed_direction.md`
+- `reports/model_decision.md`
 - `results/model_route_summary.json`
 - `results/evidence_registry.json`
 - `figures/figure_registry.json`
 - `data/source_registry.json`
 - `reports/validation_report.md`
 
-Outputs:
+Target behavior:
 
-- `paper/claim_plan.json`
-- `review/claim_plan_report.md`
+- Generate assumption, limitation, model-choice, metric-result, sensitivity, and conclusion claims from the full artifact set.
+- Preserve `status="unresolved"` for unsupported claims instead of fabricating support.
+- Assign priorities based on contest-paper importance, not just artifact availability.
 
-Rules:
+### Task 2: Upgrade Claim-Aware Paper Writing
 
-- Generate at least one model-route claim when a selected route exists.
-- Generate metric-result claims from verified evidence.
-- Generate figure-supported claims from approved figures.
-- Generate limitation claims when data feasibility or validation reports include unresolved limitations.
-- Mark unsupported required claims as `unresolved`, not fabricated.
+Target behavior:
 
-Acceptance criteria:
+- Convert every critical planned claim into a coherent paragraph in the expected section.
+- Insert figure references and citation hooks near the claim text.
+- Improve abstract, introduction, assumptions, model formulation, results narrative, limitations, and conclusion.
+- Keep the deterministic fallback available for minimal/demo workspaces.
 
-- A workspace with route summary, one evidence item, one figure, and one source produces a claim plan with model, result, and conclusion claims.
-- A workspace without evidence produces unresolved claims and writes a review report.
+### Task 3: Strengthen Reviewer Scoring
 
-### Task 3: Wire Claim Planning Into Workflow
+Target behavior:
 
-Files:
-
-- Modify: `src/mcm_agent/core/workflow_graph.py`
-- Modify: `src/mcm_agent/workflows/mvp.py`
-- Modify tests: `tests/test_workflow_topology.py`, `tests/test_mvp_workflow.py`
-
-Workflow change:
-
-```text
-validation
-        ↓
-figure_planning / visualization
-        ↓
-claim_planning
-        ↓
-paper_writer
-```
-
-Acceptance criteria:
-
-- `workflow_topology.json` contains `claim_planning`.
-- MVP workflow creates `paper/claim_plan.json`.
-- Stage executor can route claim-plan failures back to `claim_planning` or upstream artifact producers.
-
-### Task 4: Make PaperWriterAgent Claim-Plan Driven
-
-Files:
-
-- Modify: `src/mcm_agent/agents/writer.py`
-- Modify tests: `tests/test_paper_evidence_binding.py`, `tests/test_llm_agents.py`
-
-Rules:
-
-- If `paper/claim_plan.json` exists, Writer must use it as the authoritative list of important claims.
-- Writer must emit one machine-readable claim trace per written planned claim.
-- Writer must not silently omit critical planned claims.
-- Unsupported planned claims must be written as structured unresolved placeholders, not as unsupported prose.
-- Existing deterministic fallback remains available for minimal/demo workspaces.
-
-Acceptance criteria:
-
-- A planned claim appears in the expected section with `claim_id`, `evidence_id`, `figure_id`, and `source_id`.
-- An unresolved planned claim is recorded in `unresolved_issues.md`.
-- Existing LLM fallback tests remain green.
-
-### Task 5: Extend PaperEvidenceBindingAgent To Check Planned Coverage
-
-Files:
-
-- Modify: `src/mcm_agent/agents/paper_evidence.py`
-- Modify tests: `tests/test_paper_evidence_binding.py`
-
-Rules:
-
-- Read `paper/claim_plan.json` when present.
-- Check that every non-unresolved planned critical or major claim appears in paper sections.
-- Check that written claim bindings match or are a valid subset of planned bindings.
-- Report omitted claims in `review/paper_evidence_report.md`.
-
-Acceptance criteria:
-
-- Missing planned critical claims fail `paper_evidence_binding`.
-- Unknown IDs still fail as they do now.
-- Existing section-level trace compatibility remains.
-
-### Task 6: Extend ReviewerAgent For Claim Plan Quality
-
-Files:
-
-- Modify: `src/mcm_agent/agents/reviewer.py`
-- Modify tests: `tests/test_reviewer_revision.py` or create `tests/test_claim_planning.py`
-
-Rules:
-
-- Final gate blocks when critical planned claims are omitted.
-- Final gate blocks when unresolved critical claims remain.
-- Final gate distinguishes writing failures from upstream missing-evidence failures through `repair_stage`.
-
-Acceptance criteria:
-
-- Omitted planned claims route to `paper_writer`.
-- Missing evidence for planned claims routes to `validation` or `solver`.
-- Missing source bindings route to `search_data`.
-
-### Task 7: Update Docs And Demo
-
-Files:
-
-- Modify: `docs/DESIGN.md`
-- Modify: `docs/WORKFLOW.md`
-- Modify: `docs/PROJECT_STATUS.md`
-- Modify: `scripts/run_demo_task.py` if needed
-
-Acceptance criteria:
-
-- Documentation explains `paper/claim_plan.json`.
-- Demo run includes claim plan artifacts.
-- `PROJECT_STATUS.md` reflects the new implementation state after the phase lands.
+- Score planned claim coverage, narrative completeness, and contest readability.
+- Distinguish writing omissions from upstream model, data, source, and figure gaps.
+- Route every blocker to a concrete repair stage.
 
 ## 6. Later Build Phases
 
-After claim planning, continue with these quality phases:
+After the current claim-planning MVP, continue with these quality phases:
 
 1. **Real Data API Expansion**
    - Add OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, and OSM/Overpass providers.

@@ -1,6 +1,6 @@
 # MCM/ICM Agent Project Status
 
-Status date: 2026-06-14
+Status date: 2026-06-15
 
 This document records the implementation state of the repository at
 `/Users/mac/Programming/MCM-ICM-Agent`. It is the source of truth for what has
@@ -51,11 +51,12 @@ Latest implementation commit at the time this status was written:
 | Solver/Coder Agent, experiment runner, evidence registry | Implemented |
 | Validation Agent and validation gate | Implemented |
 | Figure planning, vector-first visualization, figure quality gate | Implemented |
-| Paper Writer Agent | Implemented as MVP writer |
+| Claim Planning Agent and `paper/claim_plan.json` | Implemented |
+| Paper Writer Agent | Implemented as claim-plan-aware MVP writer |
 | Reference Manager and reference audit | Implemented |
-| Paper Evidence Binding Agent | Implemented with section-level and claim-level binding |
+| Paper Evidence Binding Agent | Implemented with section-level, claim-level, and planned-claim coverage checks |
 | Compliance & Originality Agent with fact regression check | Implemented as MVP |
-| Reviewer, Revision, Submission Packager | Implemented as MVP |
+| Reviewer, Revision, Submission Packager | Implemented as MVP with claim-plan final-gate blockers |
 | End-to-end fake-provider workflow tests | Implemented |
 
 ## Partially Implemented
@@ -63,8 +64,8 @@ Latest implementation commit at the time this status was written:
 | Area | Current capability | Remaining work |
 | --- | --- | --- |
 | Real automatic modeling | Runs deterministic solver modules and records evidence | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
-| Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, and `source_id` markers | Generate a real `paper/claim_plan.json` before writing |
-| Paper writing | Produces traceable LaTeX sections | Improve full-paper quality, narrative structure, abstract, assumptions, and citations |
+| Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, and planned critical/major claim coverage | Improve claim taxonomy and richer repair routing for ambiguous missing support |
+| Paper writing | Produces traceable LaTeX sections from `paper/claim_plan.json` when present | Improve full-paper quality, narrative structure, abstract, assumptions, and citations |
 | RAG | Imports selected Supervisor-Skills documents into SQLite FTS | Add ingestion for user-uploaded excellent papers, method notes, and competition rules |
 | Official data APIs | Includes provider pattern and World Bank example | Expand to OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, OSM/Overpass |
 | Visualization | Generates vector-first data figures and QA reports | Add richer concept-diagram generation via Mermaid, Graphviz, TikZ, and Draw.io |
@@ -75,7 +76,6 @@ Latest implementation commit at the time this status was written:
 
 ## Not Yet Built
 
-- `ClaimPlanningAgent` and `paper/claim_plan.json`.
 - Full high-quality MCM/ICM paper generation from a claim plan.
 - Live, comprehensive official-data API coverage.
 - Full paper-method RAG ingestion from user-uploaded优秀论文 and modeling-method files.
@@ -101,6 +101,8 @@ Modeling, Search, RAG, EDA, Solver, Validation
         ↓
 Figure Planning and Vector-first Visualization
         ↓
+Claim Planning for paper arguments
+        ↓
 Paper Writing with claim-level evidence traces
         ↓
 References, Humanization, Review, Revision, Submission Packaging
@@ -114,21 +116,21 @@ The most important implemented safety property is evidence governance:
 - Citation candidates enter `data/citation_candidates.json`.
 - Model outputs enter `results/evidence_registry.json`.
 - Figures enter `figures/figure_registry.json`.
+- Planned paper claims enter `paper/claim_plan.json`.
 - Paper claims are checked through `review/paper_evidence_bindings.json`.
 
 ## Recommended Next Build Phase
 
-The next phase should focus on `Claim Planning + High Quality Paper Generation`.
+The next phase should focus on `High Quality Claim-Aware Paper Generation`.
 
 Build order:
 
-1. Add `ClaimPlanningAgent`.
-2. Generate `paper/claim_plan.json` from model route summary, evidence registry, figure registry, and source registry.
-3. Update `PaperWriterAgent` to write sections from `claim_plan.json`.
-4. Update `PaperEvidenceBindingAgent` to check planned claim coverage, not only claim marker validity.
-5. Update `ReviewerAgent` to block papers that omit planned critical claims.
-6. Add tests proving every planned claim is either written with bindings or marked unresolved.
+1. Improve claim-plan generation quality from problem requirements, model route, validation, figures, and data limitations.
+2. Upgrade `PaperWriterAgent` templates so each planned claim becomes a coherent paragraph with citations and figure references.
+3. Add stronger abstract, introduction, assumptions, model formulation, limitations, and conclusion writing rules.
+4. Add richer reviewer scoring for claim importance, narrative completeness, and contest-paper readability.
+5. Add tests proving a complete demo paper uses all planned critical claims in the expected sections.
 
 This is the right next step because the repository already has provenance, evidence, figures,
-references, and review gates. A claim plan is the missing bridge between "we have artifacts" and
-"the paper argues from those artifacts in a controlled, contest-quality way."
+references, claim planning, and review gates. The remaining gap is not whether claims are
+traceable, but whether they form a persuasive contest-quality argument.

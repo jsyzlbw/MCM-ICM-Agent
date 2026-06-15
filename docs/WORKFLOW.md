@@ -77,8 +77,8 @@ Each run writes to a workspace directory. Important files and folders:
 | `data/` | Feasibility matrix, source registry, retrieval log, external extracts, processed data, lineage. |
 | `results/` | Model metrics, evidence registry, experiment runs, sensitivity files. |
 | `figures/` | Figure plan, figure registry, generated PDF/SVG/PNG, source scripts. |
-| `paper/` | LaTeX sections, `main.tex`, `references.bib`, optional PDF. |
-| `review/` | Gate JSON, reviewer report, source audit, figure audit, fact regression report. |
+| `paper/` | Claim plan, LaTeX sections, `main.tex`, `references.bib`, optional PDF. |
+| `review/` | Gate JSON, claim-plan report, reviewer report, source audit, figure audit, fact regression report. |
 | `final_submission/` | AI use report, submission checklist, machine-readable manifest, packages when packaging is run. |
 | `workflow_topology.json` | Snapshot of graph nodes, edges, and failure routes. |
 | `stage_runs.jsonl` | Append-only stage execution log. |
@@ -110,6 +110,7 @@ validation_gate
 figure_planning
 visualization
 figure_quality_gate
+claim_planning
 paper_writer
 paper_evidence_binding
 typesetting
@@ -123,6 +124,11 @@ Some edges are conditional:
 - `data_feasibility_scout -> research_reframing` when critical data appears unavailable.
 - `user_discussion -> data_feasibility_scout` when the user introduces a new data need.
 - Gate stages route to repair stages when they fail.
+
+`claim_planning` runs after figure QA and before paper writing. It writes
+`paper/claim_plan.json`, which lists each planned paper claim, target section, claim type,
+priority, support IDs, and unresolved reason when support is missing. `paper_writer`
+uses this file as the authoritative list of important claims when it exists.
 
 ## Gate Repair Flow
 
@@ -243,9 +249,11 @@ proxy/reframing strategy. Failures use `failure_reason=weak_model` and route bac
 
 `paper_evidence_binding` runs after `paper_writer` and before typesetting. It writes
 `review/paper_evidence_bindings.json` and `review/paper_evidence_report.md`, checking
-that the Results section contains valid `evidence_id`, `figure_id`, or `source_id`
-bindings to registered artifacts. The final reviewer blocks claim-bearing sections whose
-bindings are missing or reference unknown IDs.
+that claim-bearing sections contain valid `claim_id`, `evidence_id`, `figure_id`, or
+`source_id` bindings to registered artifacts. When `paper/claim_plan.json` exists, it
+also checks that every planned critical or major claim is written and that written
+claim bindings stay within the planned evidence, figure, and source IDs. The final
+reviewer blocks omitted planned claims and unresolved critical planned claims.
 
 The first reusable solver modules are:
 

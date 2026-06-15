@@ -97,6 +97,8 @@ Validation Agent 做结果验证、敏感性分析、鲁棒性分析
         ↓
 Visualization Agent 生成论文级图表
         ↓
+Claim Planning Agent 规划关键论断、目标章节和证据绑定
+        ↓
 Paper Writer Agent 写论文正文
         ↓
 Paper Evidence Binding Agent 检查章节和 claim 级证据绑定
@@ -984,7 +986,7 @@ Writer Agent 输入：
 - `figure_registry.json`
 - `evidence_registry.json`
 - `source_registry.json`
-- 后续增强：`paper/claim_plan.json`
+- `paper/claim_plan.json`
 
 输出：
 
@@ -1010,7 +1012,7 @@ Writer Agent 输入：
 % claim_id=claim_results_primary evidence_id=metric_001 figure_id=fig_001 source_id=web_001
 ```
 
-当前实现支持固定 claim 级 trace；下一阶段应由 Claim Planning Agent 先生成 `paper/claim_plan.json`，再由 Writer 按 claim plan 组织全文。
+当前实现支持 Claim Planning Agent 先生成 `paper/claim_plan.json`，再由 Writer 按 claim plan 组织全文。Writer Agent must not silently invent or omit critical claims. A critical claim must either bind to registered evidence, figures, or sources in `paper/claim_plan.json`, or be marked `status="unresolved"` with a concrete unresolved reason.
 
 ### 4.15 LaTeX Typesetter Agent
 
@@ -1361,7 +1363,7 @@ Writer Agent 写论文时必须引用 evidence registry。
 - claim 是否至少绑定了一个有效证据、图表或来源
 - `model.tex`、`results.tex`、`sensitivity.tex`、`conclusion.tex` 是否包含可追溯绑定
 
-下一阶段需要新增 `paper/claim_plan.json`。它应在写作前规划每个关键论断的章节、论点、证据、图表和来源，Writer 只能围绕该计划写作或显式标记 unresolved。
+`paper/claim_plan.json` 在写作前规划每个关键论断的章节、论点、证据、图表和来源，Writer 只能围绕该计划写作或显式标记 unresolved。
 
 ## 8. 运行时目录结构
 
@@ -1476,7 +1478,7 @@ workspace/
     └── submission_package.zip
 ```
 
-说明：`paper/claim_plan.json` 是下一阶段推荐新增的核心产物；当前实现已经支持 claim 级 trace 和审核，但 claim 仍主要由 Writer 的固定规则生成。
+说明：`paper/claim_plan.json` 是当前写作阶段的核心桥接产物；当前实现已经支持 claim 级 trace、planned claim coverage 审核，以及 unresolved critical claim 的最终 gate 阻塞。
 
 ## 9. MVP 范围
 
@@ -1511,7 +1513,7 @@ MVP 输出：
 
 当前 MVP 的主要限制：
 
-- 论文写作仍偏模板化，尚未由 `claim_plan.json` 驱动完整论证结构。
+- 论文写作已能由 `claim_plan.json` 驱动关键论断，但段落质量和完整叙事仍偏模板化。
 - 自动建模代码生成能力仍是 MVP 级，不能保证任意赛题都有高质量模型。
 - 官方数据 API 只完成 provider 模式和部分示例，尚未覆盖全部常见美赛数据源。
 - LaTeX 编译和图文排版 QA 还不能处理复杂模板和页数约束。
