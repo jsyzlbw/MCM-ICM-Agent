@@ -310,3 +310,87 @@ def test_paper_writer_records_unresolved_planned_claims(tmp_path: Path) -> None:
         "% claim_id=claim_unresolved_result evidence_id=missing "
         "figure_id=missing source_id=missing"
     ) in results
+
+
+def test_paper_evidence_binding_fails_missing_planned_critical_claim(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    section_dir = workspace.root / "paper" / "sections"
+    section_dir.mkdir(parents=True, exist_ok=True)
+    (section_dir / "results.tex").write_text(
+        "\\section{Results}\nNo planned claim marker.\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_planned_result",
+                "section": "paper/sections/results.tex",
+                "claim_text": "The planned result must be written.",
+                "claim_type": "metric_result",
+                "evidence_ids": ["ev_001"],
+                "figure_ids": [],
+                "source_ids": [],
+                "priority": "critical",
+                "status": "planned",
+                "unresolved_reason": "",
+            }
+        ],
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [{"evidence_id": "ev_001"}])
+    write_json(workspace.root / "figures" / "figure_registry.json", [])
+    write_json(workspace.root / "data" / "source_registry.json", [])
+
+    PaperEvidenceBindingAgent().run(workspace.root)
+
+    bindings = read_json(workspace.root / "review" / "paper_evidence_bindings.json", [])
+    report = (workspace.root / "review" / "paper_evidence_report.md").read_text(
+        encoding="utf-8"
+    )
+    assert bindings[0]["status"] == "fail"
+    assert "Omitted planned claims: claim_planned_result" in report
+
+
+def test_paper_evidence_binding_rejects_bindings_outside_plan(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    section_dir = workspace.root / "paper" / "sections"
+    section_dir.mkdir(parents=True, exist_ok=True)
+    (section_dir / "results.tex").write_text(
+        "\\section{Results}\n"
+        "% claim_id=claim_planned_result evidence_id=ev_wrong\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_planned_result",
+                "section": "paper/sections/results.tex",
+                "claim_text": "The planned result must use ev_001.",
+                "claim_type": "metric_result",
+                "evidence_ids": ["ev_001"],
+                "figure_ids": [],
+                "source_ids": [],
+                "priority": "major",
+                "status": "planned",
+                "unresolved_reason": "",
+            }
+        ],
+    )
+    write_json(
+        workspace.root / "results" / "evidence_registry.json",
+        [{"evidence_id": "ev_001"}, {"evidence_id": "ev_wrong"}],
+    )
+    write_json(workspace.root / "figures" / "figure_registry.json", [])
+    write_json(workspace.root / "data" / "source_registry.json", [])
+
+    PaperEvidenceBindingAgent().run(workspace.root)
+
+    bindings = read_json(workspace.root / "review" / "paper_evidence_bindings.json", [])
+    assert bindings[0]["status"] == "fail"
+    assert any(
+        "Evidence ids outside claim plan: ev_wrong" in item
+        for item in bindings[0]["missing_bindings"]
+    )

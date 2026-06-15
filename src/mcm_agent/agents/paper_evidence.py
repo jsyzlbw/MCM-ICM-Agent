@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.utils.json_io import read_json, write_json
 
 
@@ -28,6 +29,7 @@ class PaperEvidenceBindingAgent:
             workspace_root / "data" / "source_registry.json",
             "source_id",
         )
+        claim_plan = self._read_claim_plan(workspace_root)
         bindings = []
         section_dir = workspace_root / "paper" / "sections"
         if section_dir.exists():
@@ -39,6 +41,7 @@ class PaperEvidenceBindingAgent:
                         evidence_ids,
                         figure_ids,
                         source_ids,
+                        claim_plan,
                     )
                 )
         write_json(workspace_root / "review" / "paper_evidence_bindings.json", bindings)
@@ -51,6 +54,7 @@ class PaperEvidenceBindingAgent:
         evidence_ids: set[str],
         figure_ids: set[str],
         source_ids: set[str],
+        claim_plan: dict[str, PaperClaimPlanItem],
     ) -> dict[str, object]:
         text = section.read_text(encoding="utf-8")
         found_evidence = self._valid_ids(EVIDENCE_PATTERN.findall(text))
@@ -74,7 +78,16 @@ class PaperEvidenceBindingAgent:
             missing.append("Unknown source ids: " + ", ".join(unknown_sources))
         if section.name in CLAIM_SECTIONS and not (found_evidence or found_figures or found_sources):
             missing.append("Claim-bearing section has no evidence, figure, or source binding.")
+        missing.extend(
+            self._planned_coverage_missing(
+                claim_plan,
+                section,
+                workspace_root,
+                claim_bindings,
+            )
+        )
         for claim_binding in claim_bindings:
+            missing.extend(self._claim_plan_subset_missing(claim_plan, claim_binding))
             if claim_binding.get("status") == "fail":
                 missing.append(
                     "Claim-level binding failed: "
@@ -89,6 +102,71 @@ class PaperEvidenceBindingAgent:
             "missing_bindings": missing,
             "status": "fail" if missing else "pass",
         }
+
+    def _read_claim_plan(self, workspace_root: Path) -> dict[str, PaperClaimPlanItem]:
+        rows = read_json(workspace_root / "paper" / "claim_plan.json", [])
+        if not isinstance(rows, list):
+            return {}
+        return {
+            item.claim_id: item
+            for item in (
+                PaperClaimPlanItem.model_validate(row)
+                for row in rows
+                if isinstance(row, dict)
+            )
+        }
+
+    def _planned_claims_for_section(
+        self,
+        claim_plan: dict[str, PaperClaimPlanItem],
+        section: Path,
+        workspace_root: Path,
+    ) -> list[PaperClaimPlanItem]:
+        section_path = str(section.relative_to(workspace_root))
+        return [
+            item
+            for item in claim_plan.values()
+            if item.section == section_path
+            and item.status != "unresolved"
+            and item.priority in {"critical", "major"}
+        ]
+
+    def _planned_coverage_missing(
+        self,
+        claim_plan: dict[str, PaperClaimPlanItem],
+        section: Path,
+        workspace_root: Path,
+        claim_bindings: list[dict[str, object]],
+    ) -> list[str]:
+        written_claim_ids = {
+            str(binding["claim_id"])
+            for binding in claim_bindings
+            if isinstance(binding, dict) and binding.get("claim_id")
+        }
+        planned = self._planned_claims_for_section(claim_plan, section, workspace_root)
+        omitted = [item.claim_id for item in planned if item.claim_id not in written_claim_ids]
+        return ["Omitted planned claims: " + ", ".join(omitted)] if omitted else []
+
+    def _claim_plan_subset_missing(
+        self,
+        claim_plan: dict[str, PaperClaimPlanItem],
+        claim_binding: dict[str, object],
+    ) -> list[str]:
+        claim_id = str(claim_binding.get("claim_id", ""))
+        planned = claim_plan.get(claim_id)
+        if planned is None or planned.status == "unresolved":
+            return []
+        missing = []
+        for key, planned_values, label in (
+            ("evidence_ids", planned.evidence_ids, "Evidence"),
+            ("figure_ids", planned.figure_ids, "Figure"),
+            ("source_ids", planned.source_ids, "Source"),
+        ):
+            found_values = [str(value) for value in claim_binding.get(key, [])]
+            outside = sorted(set(found_values) - set(planned_values))
+            if outside:
+                missing.append(f"{label} ids outside claim plan: " + ", ".join(outside))
+        return missing
 
     def _claim_bindings_for_text(
         self,
