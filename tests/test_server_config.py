@@ -48,3 +48,41 @@ def test_config_api_saves_local_json_and_masks_secrets(tmp_path) -> None:
     assert body["llm"]["api_key_preview"] == "alue"
     assert "sk-secret-value" not in str(body)
     assert (tmp_path / "mcm_agent_config.local.json").exists()
+
+
+def test_config_api_tests_single_provider_without_running_all_smokes(tmp_path) -> None:
+    config_path = tmp_path / "mcm_agent_config.local.json"
+    client = TestClient(create_app(config_path=config_path, workspace_base=tmp_path / "workspaces"))
+    client.post(
+        "/api/config",
+        json={
+            "llm": {
+                "api_key": "",
+                "model": "gpt-4.1",
+                "base_url": "",
+                "timeout_seconds": 60,
+            },
+            "search": {"tavily_api_key": ""},
+            "official_data": {},
+            "mineru": {"mode": "fake", "api_key": ""},
+            "humanizer": {"api_key": ""},
+            "rag": {
+                "knowledge_base_dir": "knowledge_base",
+                "ingest_extensions": [".md", ".txt", ".pdf"],
+            },
+            "runtime": {
+                "default_language": "en",
+                "max_retries": 2,
+                "http_timeout_seconds": 60,
+                "code_timeout_seconds": 120,
+            },
+        },
+    )
+
+    response = client.post("/api/config/test-provider", json={"provider": "llm"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provider"] == "llm"
+    assert body["status"] == "skipped"
+    assert "not configured" in body["detail"]

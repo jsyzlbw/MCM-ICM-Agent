@@ -15,7 +15,12 @@ def create_app(
     app = FastAPI(title="MCM/ICM Agent GUI API")
     app.state.config_path = config_path or Path("mcm_agent_config.local.json")
     app.state.workspace_base = workspace_base or Path(".mcm_agent_workspaces")
-    app.include_router(create_config_router(app.state.config_path))
+    app.include_router(
+        create_config_router(
+            app.state.config_path,
+            workspace_base=app.state.workspace_base,
+        )
+    )
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
