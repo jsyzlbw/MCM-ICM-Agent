@@ -6,7 +6,18 @@ from httpx import Response
 from mcm_agent.agents.search_data import SearchDataAgent
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.academic import OpenAlexProvider
-from mcm_agent.providers.data_apis import OfficialDataApiRepairProvider, WorldBankProvider
+from mcm_agent.providers.data_apis import (
+    FredProvider,
+    NASAPowerProvider,
+    NOAAProvider,
+    OECDProvider,
+    OfficialDataApiRepairProvider,
+    OpenMeteoProvider,
+    OverpassProvider,
+    UNDataProvider,
+    USCensusProvider,
+    WorldBankProvider,
+)
 from mcm_agent.providers.search import (
     BraveSearchProvider,
     ExaSearchProvider,
@@ -156,6 +167,127 @@ def test_worldbank_provider_saves_raw_json(tmp_path: Path) -> None:
 
     assert source.source_rank == "official"
     assert (tmp_path / "raw" / "worldbank_US_SP.POP.TOTL.json").exists()
+
+
+@respx.mock
+def test_oecd_provider_saves_raw_json(tmp_path: Path) -> None:
+    respx.get("https://sdmx.example/DF_POP").mock(
+        return_value=Response(200, json={"data": {"sets": []}})
+    )
+
+    source = OECDProvider(tmp_path, base_url="https://sdmx.example").fetch_dataset(
+        "DF_POP",
+        {"REF_AREA": "USA"},
+    )
+
+    assert source.provider == "oecd_api"
+    assert source.source_rank == "official"
+    assert (tmp_path / "raw" / "oecd_DF_POP.json").exists()
+
+
+@respx.mock
+def test_undata_provider_saves_raw_json(tmp_path: Path) -> None:
+    respx.get("https://undata.example").mock(return_value=Response(200, text="value\n1\n"))
+
+    source = UNDataProvider(tmp_path, base_url="https://undata.example").fetch_dataset("POP")
+
+    assert source.provider == "undata_api"
+    assert source.source_rank == "official"
+    assert (tmp_path / "raw" / "undata_POP.json").exists()
+
+
+@respx.mock
+def test_fred_provider_saves_raw_json(tmp_path: Path) -> None:
+    respx.get("https://api.stlouisfed.org/fred/series/observations").mock(
+        return_value=Response(200, json={"observations": [{"date": "2024-01-01", "value": "1"}]})
+    )
+
+    source = FredProvider(tmp_path, api_key="key").fetch_series("GDP")
+
+    assert source.provider == "fred_api"
+    assert source.source_rank == "official"
+    assert (tmp_path / "raw" / "fred_GDP.json").exists()
+
+
+@respx.mock
+def test_us_census_provider_saves_raw_json(tmp_path: Path) -> None:
+    respx.get("https://census.example/2022/acs/acs5").mock(
+        return_value=Response(200, json=[["NAME", "B01003_001E"], ["Alabama", "1"]])
+    )
+
+    source = USCensusProvider(
+        tmp_path,
+        api_key="key",
+        base_url="https://census.example",
+    ).fetch_dataset(
+        "2022/acs/acs5",
+        {"get": "NAME,B01003_001E", "for": "state:*"},
+    )
+
+    assert source.provider == "us_census_api"
+    assert source.source_rank == "official"
+    assert (tmp_path / "raw" / "us_census_2022_acs_acs5.json").exists()
+
+
+@respx.mock
+def test_noaa_provider_saves_raw_json(tmp_path: Path) -> None:
+    respx.get("https://noaa.example/data").mock(
+        return_value=Response(200, json={"results": [{"id": "GHCND"}]})
+    )
+
+    source = NOAAProvider(
+        tmp_path,
+        api_key="key",
+        base_url="https://noaa.example",
+    ).fetch_data({"datasetid": "GHCND"})
+
+    assert source.provider == "noaa_api"
+    assert source.source_rank == "official"
+    assert (tmp_path / "raw" / "noaa_GHCND.json").exists()
+
+
+@respx.mock
+def test_nasa_power_provider_saves_raw_json(tmp_path: Path) -> None:
+    respx.get("https://nasa.example").mock(return_value=Response(200, json={"properties": {}}))
+
+    source = NASAPowerProvider(tmp_path, base_url="https://nasa.example").fetch_point(
+        {"latitude": "39", "longitude": "-77", "parameters": "PRECTOTCORR"}
+    )
+
+    assert source.provider == "nasa_power_api"
+    assert source.source_rank == "official"
+    assert (tmp_path / "raw" / "nasa_power_PRECTOTCORR.json").exists()
+
+
+@respx.mock
+def test_open_meteo_provider_saves_raw_json(tmp_path: Path) -> None:
+    respx.get("https://weather.example/archive").mock(
+        return_value=Response(200, json={"daily": {"temperature_2m_max": [1]}})
+    )
+
+    source = OpenMeteoProvider(
+        tmp_path,
+        base_url="https://weather.example/archive",
+    ).fetch_archive({"latitude": "39", "longitude": "-77", "daily": "temperature_2m_max"})
+
+    assert source.provider == "open_meteo_api"
+    assert source.source_rank == "official"
+    assert (tmp_path / "raw" / "open_meteo_temperature_2m_max.json").exists()
+
+
+@respx.mock
+def test_overpass_provider_saves_raw_json(tmp_path: Path) -> None:
+    respx.post("https://overpass.example").mock(
+        return_value=Response(200, json={"elements": [{"type": "node"}]})
+    )
+
+    source = OverpassProvider(tmp_path, base_url="https://overpass.example").fetch_query(
+        "[out:json];node(0,0,1,1);out;"
+    )
+
+    assert source.provider == "overpass_api"
+    assert source.source_rank == "official"
+    assert (tmp_path / "raw" / "overpass_query.json").exists()
 
 
 @respx.mock
