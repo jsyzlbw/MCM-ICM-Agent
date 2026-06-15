@@ -10,6 +10,26 @@ from mcm_agent.utils.json_io import read_json
 from mcm_agent.utils.json_io import write_json
 
 
+def _write_complete_paper_sections(workspace_root: Path) -> None:
+    section_dir = workspace_root / "paper" / "sections"
+    section_dir.mkdir(parents=True, exist_ok=True)
+    for name in [
+        "abstract.tex",
+        "introduction.tex",
+        "assumptions.tex",
+        "model.tex",
+        "results.tex",
+        "sensitivity.tex",
+        "conclusion.tex",
+    ]:
+        (section_dir / name).write_text(
+            "\\section{X}\n"
+            "Claim text.\n"
+            "% claim_id=claim_x evidence_id=ev_001 figure_id=missing source_id=missing\n",
+            encoding="utf-8",
+        )
+
+
 def test_reviewer_writes_reports_and_passes_clean_workspace(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     (workspace.root / "paper" / "main.tex").write_text("\\begin{document}x\\end{document}")
@@ -19,7 +39,8 @@ def test_reviewer_writes_reports_and_passes_clean_workspace(tmp_path: Path) -> N
         encoding="utf-8",
     )
     write_json(workspace.root / "figures" / "figure_registry.json", [])
-    write_json(workspace.root / "results" / "evidence_registry.json", [])
+    write_json(workspace.root / "results" / "evidence_registry.json", [{"evidence_id": "ev_001"}])
+    _write_complete_paper_sections(workspace.root)
 
     ReviewerAgent().run(workspace.root)
 
@@ -27,6 +48,36 @@ def test_reviewer_writes_reports_and_passes_clean_workspace(tmp_path: Path) -> N
     assert (workspace.root / "review" / "reviewer_report.md").exists()
     assert (workspace.root / "review" / "source_audit_report.md").exists()
     assert events[-1].event_type == "paper.review.passed"
+
+
+def test_reviewer_writes_paper_quality_scores(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    _write_complete_paper_sections(workspace.root)
+    write_json(workspace.root / "results" / "evidence_registry.json", [{"evidence_id": "ev_001"}])
+    write_json(workspace.root / "review" / "paper_evidence_bindings.json", [])
+
+    ReviewerAgent().run(workspace.root)
+
+    scores = read_json(workspace.root / "review" / "paper_quality_scores.json", {})
+    assert scores["section_completeness"] == 1.0
+    assert scores["claim_trace_density"] > 0
+    assert scores["status"] == "pass"
+
+
+def test_reviewer_blocks_incomplete_paper_sections(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    section_dir = workspace.root / "paper" / "sections"
+    section_dir.mkdir(parents=True, exist_ok=True)
+    (section_dir / "results.tex").write_text("\\section{Results}\nOnly results.\n", encoding="utf-8")
+
+    ReviewerAgent().run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "final_gate.json", {})
+    scores = read_json(workspace.root / "review" / "paper_quality_scores.json", {})
+    assert scores["status"] == "fail"
+    assert gate["status"] == "fail"
+    assert gate["repair_stage"] == "paper_writer"
+    assert "Paper section completeness is too low." in gate["blocking_findings"]
 
 
 def test_reviewer_fails_with_unresolved_placeholder(tmp_path: Path) -> None:

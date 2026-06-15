@@ -8,11 +8,20 @@ from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.lineage import find_unbound_external_data
 from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.providers.base import TextGenerationProvider
-from mcm_agent.utils.json_io import read_json
+from mcm_agent.utils.json_io import read_json, write_json
 
 
 SOURCE_ID_PATTERN = re.compile(r"source_id=([A-Za-z0-9_-]+)")
 PLACEHOLDER_SOURCE_IDS = {"missing", "none", "unknown"}
+REQUIRED_PAPER_SECTIONS = {
+    "abstract.tex",
+    "introduction.tex",
+    "assumptions.tex",
+    "model.tex",
+    "results.tex",
+    "sensitivity.tex",
+    "conclusion.tex",
+}
 
 
 class ReviewerAgent:
@@ -54,6 +63,10 @@ class ReviewerAgent:
                 + ", ".join(f"`{claim_id}`" for claim_id in unresolved_critical_claims)
                 + "."
             )
+        quality_scores = self._score_paper_quality(workspace_root)
+        write_json(workspace_root / "review" / "paper_quality_scores.json", quality_scores)
+        if quality_scores["status"] == "fail":
+            blocking.append("Paper section completeness is too low.")
         self._write_source_audit_report(workspace_root, unbound_sources)
 
         reviewer_report = self._generate_review(blocking) or self._fallback_review(blocking)
@@ -102,6 +115,9 @@ class ReviewerAgent:
         elif missing_paper_bindings:
             failure_reason = "bad_writing"
             repair_stage = "paper_writer"
+        elif quality_scores["status"] == "fail":
+            failure_reason = "bad_writing"
+            repair_stage = "paper_writer"
         elif blocking:
             failure_reason = "bad_writing"
             repair_stage = "paper_writer"
@@ -120,6 +136,29 @@ class ReviewerAgent:
             "paper.review.failed" if blocking else "paper.review.passed",
             source="ReviewerAgent",
         )
+
+    def _score_paper_quality(self, workspace_root: Path) -> dict[str, object]:
+        section_dir = workspace_root / "paper" / "sections"
+        present = set()
+        trace_lines = 0
+        total_lines = 0
+        if section_dir.exists():
+            for section in section_dir.glob("*.tex"):
+                text = section.read_text(encoding="utf-8")
+                if text.strip():
+                    present.add(section.name)
+                lines = [line for line in text.splitlines() if line.strip()]
+                total_lines += len(lines)
+                trace_lines += sum(1 for line in lines if "claim_id=" in line)
+        completeness = len(present & REQUIRED_PAPER_SECTIONS) / len(REQUIRED_PAPER_SECTIONS)
+        trace_density = trace_lines / total_lines if total_lines else 0.0
+        status = "pass" if completeness >= 0.85 and trace_density > 0 else "fail"
+        return {
+            "section_completeness": round(completeness, 3),
+            "claim_trace_density": round(trace_density, 3),
+            "status": status,
+            "missing_sections": sorted(REQUIRED_PAPER_SECTIONS - present),
+        }
 
     def _write_source_audit_report(self, workspace_root: Path, unbound_sources: list[str]) -> None:
         sources = read_json(workspace_root / "data" / "source_registry.json", [])
