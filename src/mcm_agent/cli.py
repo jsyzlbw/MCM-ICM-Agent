@@ -11,6 +11,11 @@ from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import TaskInput
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.factory import build_provider_bundle
+from mcm_agent.providers.smoke import (
+    DEFAULT_SMOKE_PROVIDERS,
+    ProviderSmokeTester,
+    SmokeStatus,
+)
 from mcm_agent.utils.json_io import read_json
 from mcm_agent.workflows.mvp import resume_mvp_workflow, run_demo_workflow, run_mvp_workflow
 
@@ -241,6 +246,29 @@ def provider_status(
     typer.echo(f"Official Data APIs: {' + '.join(official_data_stack)}")
     typer.echo(f"MinerU: {mineru_status}")
     typer.echo(f"Humanizer: {humanizer_status}")
+
+
+@app.command("provider-smoke")
+def provider_smoke(
+    env_file: str | None = typer.Option(None, "--env-file"),
+    config_file: str | None = typer.Option(None, "--config-file"),
+    workspace: Path = typer.Option(Path(".smoke"), "--workspace"),
+    providers: str = typer.Option(",".join(DEFAULT_SMOKE_PROVIDERS), "--providers"),
+    mineru_file: Path | None = typer.Option(None, "--mineru-file"),
+) -> None:
+    """Smoke test configured live providers without printing secrets."""
+    settings = load_settings(env_file, config_file)
+    provider_names = [item.strip() for item in providers.split(",") if item.strip()]
+    tester = ProviderSmokeTester(
+        settings,
+        workspace_root=workspace,
+        mineru_file=mineru_file,
+    )
+    results = tester.run(provider_names)
+    for result in results:
+        typer.echo(f"{result.status.value.upper():7} {result.provider:10} {result.detail}")
+    if any(result.status == SmokeStatus.FAILED for result in results):
+        raise typer.Exit(code=1)
 
 
 def _latest_failed_gate(workspace_path: Path) -> dict[str, object] | None:

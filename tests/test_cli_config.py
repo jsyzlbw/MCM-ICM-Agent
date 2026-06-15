@@ -61,6 +61,25 @@ def test_provider_status_reads_json_config_file(tmp_path: Path) -> None:
     assert "Humanizer: UShallPass API" in result.output
 
 
+def test_provider_smoke_command_reports_skipped_providers(tmp_path: Path) -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "provider-smoke",
+            "--workspace",
+            str(tmp_path / "smoke"),
+            "--providers",
+            "llm,mineru",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "SKIPPED llm" in result.output
+    assert "SKIPPED mineru" in result.output
+
+
 def test_run_command_creates_workspace_from_problem_and_attachment(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     problem = tmp_path / "problem.md"
