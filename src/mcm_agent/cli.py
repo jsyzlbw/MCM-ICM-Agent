@@ -271,6 +271,18 @@ def provider_smoke(
         raise typer.Exit(code=1)
 
 
+@app.command("gui")
+def gui(
+    host: str = typer.Option("127.0.0.1", "--host"),
+    port: int = typer.Option(8787, "--port"),
+) -> None:
+    """Start the local GUI API server."""
+    import uvicorn
+
+    typer.echo(f"Starting MCM Agent GUI API at http://{host}:{port}")
+    uvicorn.run("mcm_agent.server.app:create_app", factory=True, host=host, port=port)
+
+
 def _latest_failed_gate(workspace_path: Path) -> dict[str, object] | None:
     for relative_path in [
         "review/final_gate.json",
