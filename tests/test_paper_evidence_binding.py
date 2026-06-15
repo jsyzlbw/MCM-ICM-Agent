@@ -162,6 +162,7 @@ def test_paper_evidence_binding_records_claim_level_bindings(tmp_path: Path) -> 
             "evidence_ids": ["ev_001"],
             "figure_ids": ["fig_001"],
             "source_ids": ["web_001"],
+            "citation_keys": ["web_001"],
             "missing_bindings": [],
             "status": "pass",
         }
@@ -171,6 +172,40 @@ def test_paper_evidence_binding_records_claim_level_bindings(tmp_path: Path) -> 
     )
     assert "## Claim Bindings" in report
     assert "`claim_results_primary`: pass" in report
+
+
+def test_paper_evidence_binding_records_latex_citations_for_sources(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    section_dir = workspace.root / "paper" / "sections"
+    section_dir.mkdir(parents=True, exist_ok=True)
+    (section_dir / "results.tex").write_text(
+        "\\section{Results}\n"
+        "The result uses official data \\cite{official_data_2026}.\n"
+        "% claim_id=claim_result evidence_id=ev_001 figure_id=fig_001 source_id=web_001\n",
+        encoding="utf-8",
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [{"evidence_id": "ev_001"}])
+    write_json(workspace.root / "figures" / "figure_registry.json", [{"figure_id": "fig_001"}])
+    write_json(workspace.root / "data" / "source_registry.json", [{"source_id": "web_001"}])
+    write_json(
+        workspace.root / "data" / "citation_candidates.json",
+        [
+            {
+                "citation_id": "cite_web_001",
+                "source_id": "web_001",
+                "title": "Official data",
+                "url": "https://data.gov/example",
+                "accessed_at": "2026-06-13T12:00:00Z",
+                "bibtex_key": "official_data_2026",
+            }
+        ],
+    )
+
+    PaperEvidenceBindingAgent().run(workspace.root)
+
+    bindings = read_json(workspace.root / "review" / "paper_evidence_bindings.json", [])
+    assert bindings[0]["citation_keys"] == ["official_data_2026"]
+    assert bindings[0]["claim_bindings"][0]["citation_keys"] == ["official_data_2026"]
 
 
 def test_paper_evidence_binding_fails_unbound_claim_level_marker(tmp_path: Path) -> None:

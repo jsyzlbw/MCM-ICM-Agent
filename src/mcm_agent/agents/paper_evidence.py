@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from mcm_agent.core.citations import CitationContext, build_citation_context
 from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.utils.json_io import read_json, write_json
 
@@ -30,6 +31,7 @@ class PaperEvidenceBindingAgent:
             "source_id",
         )
         claim_plan = self._read_claim_plan(workspace_root)
+        citation_context = build_citation_context(workspace_root)
         bindings = []
         section_dir = workspace_root / "paper" / "sections"
         if section_dir.exists():
@@ -42,6 +44,7 @@ class PaperEvidenceBindingAgent:
                         figure_ids,
                         source_ids,
                         claim_plan,
+                        citation_context,
                     )
                 )
         write_json(workspace_root / "review" / "paper_evidence_bindings.json", bindings)
@@ -55,6 +58,7 @@ class PaperEvidenceBindingAgent:
         figure_ids: set[str],
         source_ids: set[str],
         claim_plan: dict[str, PaperClaimPlanItem],
+        citation_context: CitationContext,
     ) -> dict[str, object]:
         text = section.read_text(encoding="utf-8")
         found_evidence = self._valid_ids(EVIDENCE_PATTERN.findall(text))
@@ -65,6 +69,7 @@ class PaperEvidenceBindingAgent:
             evidence_ids,
             figure_ids,
             source_ids,
+            citation_context,
         )
         missing = []
         unknown_evidence = sorted(set(found_evidence) - evidence_ids)
@@ -98,6 +103,7 @@ class PaperEvidenceBindingAgent:
             "evidence_ids": found_evidence,
             "figure_ids": found_figures,
             "source_ids": found_sources,
+            "citation_keys": citation_context.citation_keys_for_sources(found_sources),
             "claim_bindings": claim_bindings,
             "missing_bindings": missing,
             "status": "fail" if missing else "pass",
@@ -174,6 +180,7 @@ class PaperEvidenceBindingAgent:
         evidence_ids: set[str],
         figure_ids: set[str],
         source_ids: set[str],
+        citation_context: CitationContext,
     ) -> list[dict[str, object]]:
         bindings = []
         for line in text.splitlines():
@@ -204,6 +211,9 @@ class PaperEvidenceBindingAgent:
                     "evidence_ids": found_evidence,
                     "figure_ids": found_figures,
                     "source_ids": found_sources,
+                    "citation_keys": citation_context.citation_keys_for_sources(
+                        found_sources
+                    ),
                     "missing_bindings": missing,
                     "status": "fail" if missing else "pass",
                 }
