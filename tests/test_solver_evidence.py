@@ -3,6 +3,7 @@ from pathlib import Path
 
 from mcm_agent.agents.eda import DataEDAAgent
 from mcm_agent.agents.solver import SolverCoderAgent
+from mcm_agent.core.experiment_spec import build_experiment_spec
 from mcm_agent.core.models import DataLineageRecord
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.utils.json_io import read_json
@@ -222,3 +223,33 @@ def test_solver_runs_forecasting_simulation_and_network_modules(tmp_path: Path) 
     assert "simulation_p95" in summary["route_metrics"]
     assert "shortest_path_cost" in summary["route_metrics"]
     assert any(item["evidence_id"] == "metric_shortest_path_cost" for item in evidence)
+
+
+def test_solver_records_route_execution_status_for_hybrid_specs(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text(
+        "district,risk,exposure,budget,period,demand\nA,9,5,10,1,10\nB,2,8,6,2,12\n",
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "experiment_spec.json").write_text(
+        build_experiment_spec(
+            [
+                "multi_criteria_evaluation",
+                "constrained_optimization",
+                "forecasting_model",
+                "monte_carlo_simulation",
+            ]
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    summary = read_json(workspace.root / "results" / "model_route_summary.json", {})
+    status = summary["route_execution_status"]
+    assert status["multi_criteria_evaluation"] == "executed"
+    assert status["constrained_optimization"] == "executed"
+    assert status["forecasting_model"] == "executed"
+    assert status["monte_carlo_simulation"] == "executed"

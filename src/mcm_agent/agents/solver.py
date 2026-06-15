@@ -163,6 +163,11 @@ class SolverCoderAgent:
                 "experiment_spec_used": bool(experiment_spec.experiments),
                 "column_bindings": column_bindings,
                 "binding_status": binding_report["status"],
+                "route_execution_status": self._route_execution_status(
+                    selected_routes,
+                    route_metrics,
+                    binding_report,
+                ),
                 "route_metrics": route_metrics,
                 "source_result": str(result_path.relative_to(workspace_root)),
             },
@@ -341,6 +346,24 @@ class SolverCoderAgent:
             "\n".join(lines),
             encoding="utf-8",
         )
+
+    def _route_execution_status(
+        self,
+        selected_routes: list[str],
+        route_metrics: dict[str, dict[str, object]],
+        binding_report: dict[str, object],
+    ) -> dict[str, str]:
+        missing_payload = binding_report.get("missing_bindings", [])
+        missing = set(missing_payload) if isinstance(missing_payload, list) else set()
+        status: dict[str, str] = {}
+        for route_id in selected_routes:
+            if any(str(item).startswith(route_id + ".") for item in missing):
+                status[route_id] = "blocked_missing_binding"
+            elif any(payload.get("route_id") == route_id for payload in route_metrics.values()):
+                status[route_id] = "executed"
+            else:
+                status[route_id] = "attempted_no_metric"
+        return status
 
     def _semantic_columns(self, workspace_root: Path, processed_relative: str) -> dict[str, object]:
         profile = read_json(workspace_root / "results" / "schema_profile.json", {})
