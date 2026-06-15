@@ -84,3 +84,45 @@ def test_typesetting_qa_does_not_block_when_latex_tool_is_unavailable(tmp_path: 
     assert report["status"] == "pass"
     assert "latex_tool_unavailable" in report["issue_types"]
     assert report["blocking_findings"] == []
+
+
+def test_typesetting_repair_agent_wraps_wide_tables_and_scales_graphics(
+    tmp_path: Path,
+) -> None:
+    from mcm_agent.agents.typesetting_repair import TypesettingRepairAgent
+
+    workspace = create_workspace(tmp_path / "run_001")
+    paper = workspace.root / "paper"
+    paper.mkdir(exist_ok=True)
+    (paper / "main.tex").write_text(
+        "\\begin{document}\n"
+        "\\includegraphics{figures/missing.png}\n"
+        "\\begin{tabular}{llllllllllll}\n"
+        "a & b & c & d & e & f & g & h & i & j & k & l\\\\\n"
+        "\\end{tabular}\n"
+        "\\end{document}\n",
+        encoding="utf-8",
+    )
+    from mcm_agent.utils.json_io import write_json
+
+    write_json(
+        workspace.root / "review" / "typesetting_quality.json",
+        {
+            "status": "fail",
+            "issue_types": ["table_overflow_risk", "figure_file_missing"],
+            "blocking_findings": [
+                "Wide table has 12 declared columns.",
+                "Included figure file is missing: figures/missing.png",
+            ],
+            "repair_stage": "typesetting",
+            "issues": [],
+        },
+    )
+
+    report = TypesettingRepairAgent().run(workspace.root)
+
+    tex = (paper / "main.tex").read_text(encoding="utf-8")
+    assert report.status == "repaired"
+    assert "\\resizebox{\\textwidth}{!}{%" in tex
+    assert "\\includegraphics[width=0.9\\linewidth]{figures/missing.png}" in tex
+    assert (workspace.root / "review" / "typesetting_repair_report.md").exists()
