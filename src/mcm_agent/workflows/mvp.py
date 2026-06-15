@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mcm_agent.agents.claim_planning import ClaimPlanningAgent
 from mcm_agent.agents.compliance import ComplianceOriginalityAgent
 from mcm_agent.agents.data_feasibility import DataFeasibilityScoutAgent
 from mcm_agent.agents.discussion import UserDiscussionAgent
@@ -294,6 +295,10 @@ def _mvp_stage_handlers(
         FigureQualityAgent().run(workspace_root)
         return ["review/figure_quality_report.md", "review/figure_gate.json"]
 
+    def claim_planning(workspace_root: Path) -> list[str]:
+        ClaimPlanningAgent().run(workspace_root)
+        return ["paper/claim_plan.json", "review/claim_plan_report.md"]
+
     def paper_writer(workspace_root: Path) -> list[str]:
         PaperWriterAgent(provider_bundle.llm).run(workspace_root)
         return ["paper/main.tex", "paper/sections"]
@@ -352,6 +357,7 @@ def _mvp_stage_handlers(
         "figure_planning": figure_planning,
         "visualization": visualization,
         "figure_quality_gate": figure_quality_gate,
+        "claim_planning": claim_planning,
         "paper_writer": paper_writer,
         "paper_evidence_binding": paper_evidence_binding,
         "typesetting": typesetting,

@@ -95,6 +95,8 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
         "figures/figure_registry.json",
         "review/figure_quality_report.md",
         "review/figure_gate.json",
+        "paper/claim_plan.json",
+        "review/claim_plan_report.md",
         "paper/main.tex",
         "review/paper_evidence_bindings.json",
         "review/paper_evidence_report.md",
@@ -128,6 +130,8 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
     ]
     assert "validation_gate" in stage_ids
     assert "figure_quality_gate" in stage_ids
+    assert stage_ids.index("figure_quality_gate") < stage_ids.index("claim_planning")
+    assert stage_ids.index("claim_planning") < stage_ids.index("paper_writer")
     assert "final_gatekeeper" in stage_ids
     assert stage_ids[-1] == "submission_packager"
 

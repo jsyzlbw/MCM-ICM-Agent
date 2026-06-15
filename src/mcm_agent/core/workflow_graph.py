@@ -224,11 +224,36 @@ def build_default_workflow_graph() -> WorkflowGraph:
             output_artifacts=["review/figure_quality_report.md"],
             pass_criteria=["Figures are readable, cited near use, and fit contest-paper aesthetics."],
         ),
+        "claim_planning": AgentNode(
+            node_id="claim_planning",
+            label="Claim Planning Agent",
+            responsibility=(
+                "Plan paper claims, target sections, priorities, and supporting artifacts "
+                "before drafting."
+            ),
+            input_artifacts=[
+                "results/model_route_summary.json",
+                "results/evidence_registry.json",
+                "figures/figure_registry.json",
+                "data/source_registry.json",
+                "reports/validation_report.md",
+            ],
+            output_artifacts=["paper/claim_plan.json", "review/claim_plan_report.md"],
+            pass_criteria=[
+                "Every critical paper claim is supported or explicitly unresolved.",
+                "The writer has an authoritative claim list before drafting.",
+            ],
+        ),
         "paper_writer": AgentNode(
             node_id="paper_writer",
             label="Paper Writer Agent",
             responsibility="Write paper sections using only registered evidence, figures, and sources.",
-            input_artifacts=["reports", "figures/figure_registry.json", "results/evidence_registry.json"],
+            input_artifacts=[
+                "paper/claim_plan.json",
+                "reports",
+                "figures/figure_registry.json",
+                "results/evidence_registry.json",
+            ],
             output_artifacts=["paper/sections"],
             pass_criteria=["No unsupported claims or unresolved placeholders in section drafts."],
         ),
@@ -321,7 +346,8 @@ def build_default_workflow_graph() -> WorkflowGraph:
         WorkflowEdge("validation_gate", "figure_planning"),
         WorkflowEdge("figure_planning", "visualization"),
         WorkflowEdge("visualization", "figure_quality_gate"),
-        WorkflowEdge("figure_quality_gate", "paper_writer"),
+        WorkflowEdge("figure_quality_gate", "claim_planning"),
+        WorkflowEdge("claim_planning", "paper_writer"),
         WorkflowEdge("paper_writer", "paper_evidence_binding"),
         WorkflowEdge("paper_evidence_binding", "typesetting"),
         WorkflowEdge("typesetting", "pre_submission_review"),
