@@ -3,7 +3,10 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from mcm_agent.agents.claim_planning import ClaimPlanningAgent
 from mcm_agent.core.models import PaperClaimPlanItem
+from mcm_agent.core.workspace import create_workspace
+from mcm_agent.utils.json_io import read_json, write_json
 
 
 def test_paper_claim_plan_item_accepts_supported_critical_claim() -> None:
@@ -64,3 +67,79 @@ def test_paper_claim_plan_item_requires_paper_section_path() -> None:
             evidence_ids=["metric_001"],
             priority="major",
         )
+
+
+def test_claim_planning_agent_writes_model_result_and_conclusion_claims(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {
+            "selected_routes": ["multi_criteria_evaluation"],
+            "route_metrics": {
+                "priority_score_mean": {
+                    "route_id": "multi_criteria_evaluation",
+                    "value": 0.6,
+                },
+            },
+        },
+    )
+    write_json(
+        workspace.root / "results" / "evidence_registry.json",
+        [
+            {
+                "evidence_id": "metric_priority_score_mean",
+                "claim": "Route metric priority_score_mean equals 0.6.",
+                "verified": True,
+            }
+        ],
+    )
+    write_json(
+        workspace.root / "figures" / "figure_registry.json",
+        [
+            {
+                "figure_id": "fig_priority_ranking",
+                "status": "approved",
+                "claim_supported": "Priority ranking supports the main result.",
+                "evidence_ids": ["metric_priority_score_mean"],
+                "source_ids": ["web_001"],
+            }
+        ],
+    )
+    write_json(workspace.root / "data" / "source_registry.json", [{"source_id": "web_001"}])
+    (workspace.root / "reports" / "validation_report.md").write_text(
+        "# Validation Report\n\nAll validation checks passed.\n",
+        encoding="utf-8",
+    )
+
+    ClaimPlanningAgent().run(workspace.root)
+
+    plan = read_json(workspace.root / "paper" / "claim_plan.json", [])
+    claim_ids = {item["claim_id"] for item in plan}
+    assert "claim_model_route" in claim_ids
+    assert "claim_metric_priority_score_mean" in claim_ids
+    assert "claim_conclusion_traceability" in claim_ids
+    assert all(item["status"] == "planned" for item in plan)
+    assert (workspace.root / "review" / "claim_plan_report.md").exists()
+
+
+def test_claim_planning_agent_marks_missing_evidence_as_unresolved(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {"selected_routes": ["forecasting_baseline"], "route_metrics": {}},
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [])
+    write_json(workspace.root / "figures" / "figure_registry.json", [])
+    write_json(workspace.root / "data" / "source_registry.json", [])
+
+    ClaimPlanningAgent().run(workspace.root)
+
+    plan = read_json(workspace.root / "paper" / "claim_plan.json", [])
+    unresolved = [item for item in plan if item["status"] == "unresolved"]
+    assert unresolved
+    assert any(item["priority"] == "critical" for item in unresolved)
+    assert "Missing verified evidence" in unresolved[0]["unresolved_reason"]
