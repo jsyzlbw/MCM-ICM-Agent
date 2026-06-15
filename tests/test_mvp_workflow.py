@@ -10,7 +10,7 @@ from mcm_agent.providers.llm import FakeLLMProvider
 from mcm_agent.providers.mineru import ParsedDocument
 from mcm_agent.providers.search import SearchResult
 from mcm_agent.utils.json_io import read_json
-from mcm_agent.workflows.mvp import run_demo_workflow, run_mvp_workflow
+from mcm_agent.workflows.mvp import _mvp_stage_handlers, run_demo_workflow, run_mvp_workflow
 
 
 class InjectedMinerUProvider:
@@ -247,6 +247,65 @@ def test_run_mvp_workflow_uses_configured_mineru_for_rag_pdf(tmp_path: Path) -> 
 
     notes = (workspace / "rag" / "retrieval_notes.md").read_text(encoding="utf-8")
     assert "Parsed PDF knowledge-base document via MinerU: paper_example.pdf" in notes
+
+
+def test_typesetting_stage_records_repair_artifacts(tmp_path: Path) -> None:
+    workspace = tmp_path / "task"
+    problem = tmp_path / "problem.md"
+    problem.write_text("# Problem\n\nUse references and produce a paper.", encoding="utf-8")
+    created = __import__(
+        "mcm_agent.core.workspace",
+        fromlist=["create_workspace"],
+    ).create_workspace(workspace)
+    paper = created.root / "paper"
+    (paper / "main.tex").write_text(
+        "\\begin{document}\n"
+        "\\begin{tabular}{llllllllllll}\n"
+        "a & b & c & d & e & f & g & h & i & j & k & l\\\\\n"
+        "\\end{tabular}\n"
+        "\\end{document}\n",
+        encoding="utf-8",
+    )
+
+    class RepairLatexProvider(InjectedLatexProvider):
+        calls = 0
+
+        def compile(self, paper_dir: Path) -> LatexCompileResult:
+            self.calls += 1
+            result = super().compile(paper_dir)
+            text = (paper_dir / "main.tex").read_text(encoding="utf-8")
+            log = "Latexmk: All targets are up-to-date\n"
+            if "\\resizebox{\\textwidth}{!}{%" not in text:
+                log = "Overfull \\hbox\n"
+            (paper_dir / "compile_log.txt").write_text(log, encoding="utf-8")
+            return result
+
+    latex = RepairLatexProvider()
+    providers = ProviderBundle(
+        llm=FakeLLMProvider({"default": ""}),
+        mineru=InjectedMinerUProvider(),
+        search=InjectedSearchProvider(),
+        extractor=InjectedExtractProvider(),
+        official_data=None,
+        humanizer=FakeHumanizerProvider({}),
+        latex=latex,
+    )
+    handlers = _mvp_stage_handlers(
+        TaskInput(problem_file=problem, attachments=[]),
+        providers,
+        settings=Settings(),
+        supervisor_skills_dir=None,
+        auto_approve=True,
+    )
+
+    outputs = handlers["typesetting"](created.root)
+
+    tex = (paper / "main.tex").read_text(encoding="utf-8")
+    assert latex.calls == 2
+    assert "\\resizebox{\\textwidth}{!}{%" in tex
+    assert "review/typesetting_repair.json" in outputs
+    assert "review/typesetting_repair_report.md" in outputs
+    assert (workspace / "review" / "typesetting_repair.json").exists()
 
 
 def test_run_mvp_workflow_selects_forecast_simulation_network_routes(
