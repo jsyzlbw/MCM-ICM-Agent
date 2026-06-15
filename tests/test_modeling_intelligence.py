@@ -58,6 +58,84 @@ def test_modeling_council_fallback_includes_problem_type_diagnosis(tmp_path: Pat
     assert "constrained_optimization" in content
 
 
+def test_modeling_council_ignores_problem_understanding_boilerplate_for_diagnosis(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    problem_report = workspace.root / "reports" / "problem_understanding.md"
+    direction = workspace.root / "discussion" / "confirmed_direction.md"
+    problem_report.write_text(
+        "\n".join(
+            [
+                "# 题意理解报告",
+                "",
+                "## 题目背景",
+                "Forecast evacuation demand, simulate uncertainty, and route traffic through a network.",
+                "",
+                "## 子问题拆解",
+                "- Separate prediction, evaluation, and optimization objectives when present.",
+                "",
+                "## 评价指标",
+                "- Use task-specific predictive, optimization, or evaluation metrics.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    direction.parent.mkdir(parents=True, exist_ok=True)
+    direction.write_text("# Confirmed Direction\nBalanced contest-paper route.", encoding="utf-8")
+
+    ModelingCouncil().run(workspace.root, problem_report, direction)
+
+    content = (workspace.root / "reports" / "model_candidates.md").read_text(encoding="utf-8")
+    assert "forecasting_model" in content
+    assert "monte_carlo_simulation" in content
+    assert "network_flow_graph" in content
+    assert "constrained_optimization" not in content
+    assert "multi_criteria_evaluation" not in content
+
+
+def test_modeling_council_ignores_direction_boilerplate_for_diagnosis(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    problem_report = workspace.root / "reports" / "problem_understanding.md"
+    direction = workspace.root / "discussion" / "confirmed_direction.md"
+    problem_report.write_text(
+        "\n".join(
+            [
+                "# 题意理解报告",
+                "",
+                "## 题目背景",
+                "Use the injected provider.",
+                "",
+                "## 初步建模方向",
+                "- Start with interpretable baselines, then add complexity only when supported.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    direction.parent.mkdir(parents=True, exist_ok=True)
+    direction.write_text(
+        "\n".join(
+            [
+                "# Confirmed Direction",
+                "## Selected Modeling Route",
+                "Balanced contest-paper route.",
+                "## Decisions To Preserve",
+                "- Use vector-first figures.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    ModelingCouncil().run(workspace.root, problem_report, direction)
+
+    content = (workspace.root / "reports" / "model_candidates.md").read_text(encoding="utf-8")
+    assert "multi_criteria_evaluation" in content
+    assert "network_flow_graph" not in content
+    assert "multi_objective_decision" not in content
+
+
 def test_model_judge_fallback_selects_diagnosed_route(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     candidates = workspace.root / "reports" / "model_candidates.md"

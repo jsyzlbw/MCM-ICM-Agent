@@ -38,7 +38,8 @@ class ModelingCouncil:
         problem_report_path: Path,
         confirmed_direction_path: Path,
     ) -> None:
-        problem_excerpt = problem_report_path.read_text(encoding="utf-8")[:600]
+        problem_text = problem_report_path.read_text(encoding="utf-8")
+        problem_excerpt = self._diagnosis_excerpt(problem_text)
         direction_excerpt = confirmed_direction_path.read_text(encoding="utf-8")[:600]
         llm_output = self._generate_candidates(problem_excerpt, direction_excerpt)
         if llm_output is not None:
@@ -69,7 +70,7 @@ class ModelingCouncil:
         )
 
     def _fallback_candidates(self, problem_excerpt: str, direction_excerpt: str) -> list[str]:
-        diagnosis = ModelingIntelligence().diagnose(f"{problem_excerpt}\n{direction_excerpt}")
+        diagnosis = ModelingIntelligence().diagnose(problem_excerpt)
         lines = [
             "# Model Candidates",
             "",
@@ -151,6 +152,28 @@ class ModelingCouncil:
             ]
         )
         return lines
+
+    def _diagnosis_excerpt(self, problem_text: str) -> str:
+        sections = [
+            self._markdown_section(problem_text, "## 题目背景"),
+            self._markdown_section(problem_text, "## 初步建模方向"),
+        ]
+        focused = "\n\n".join(section for section in sections if section.strip()).strip()
+        return (focused or problem_text)[:600]
+
+    def _markdown_section(self, text: str, heading: str) -> str:
+        lines = text.splitlines()
+        capture = False
+        captured: list[str] = []
+        for line in lines:
+            if line.strip() == heading:
+                capture = True
+                continue
+            if capture and line.startswith("## "):
+                break
+            if capture:
+                captured.append(line)
+        return "\n".join(captured).strip()
 
     def _generate_candidates(self, problem_excerpt: str, direction_excerpt: str) -> str | None:
         if self.llm_provider is None:
@@ -281,7 +304,7 @@ class ModelJudge:
         )
 
     def _fallback_decision(self, diagnosis: ProblemDiagnosis | None = None) -> str:
-        route_ids = [route.route_id for route in diagnosis.routes[:2]] if diagnosis else []
+        route_ids = build_route_plan(diagnosis).route_ids if diagnosis else []
         selected_route = " + ".join(route_ids) if route_ids else "Balanced contest-paper route"
         scores = {
             selected_route: {

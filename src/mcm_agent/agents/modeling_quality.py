@@ -17,7 +17,7 @@ class ModelingPlanQualityAgent:
         direction_lock = read_json(workspace_root / "discussion" / "direction_lock.json", {})
         feasibility_matrix = read_json(workspace_root / "data" / "data_feasibility_matrix.json", [])
         blocking_findings = []
-        blocking_findings.extend(self._experiment_spec_issues(experiment_spec))
+        blocking_findings.extend(self._experiment_spec_issues(workspace_root, experiment_spec))
         blocking_findings.extend(
             self._data_alignment_issues(workspace_root, feasibility_matrix, direction_lock)
         )
@@ -35,7 +35,7 @@ class ModelingPlanQualityAgent:
             ),
         )
 
-    def _experiment_spec_issues(self, experiment_spec: object) -> list[str]:
+    def _experiment_spec_issues(self, workspace_root: Path, experiment_spec: object) -> list[str]:
         if not isinstance(experiment_spec, dict):
             return ["Experiment spec is missing or invalid."]
         experiments = experiment_spec.get("experiments", [])
@@ -57,6 +57,8 @@ class ModelingPlanQualityAgent:
                 bindings = {}
             for binding in self.REQUIRED_BINDINGS.get(route_id, []):
                 if not bindings.get(binding):
+                    if self._has_attachments(workspace_root):
+                        continue
                     issues.append(f"Missing required model data binding `{route_id}.{binding}`.")
         return issues
 

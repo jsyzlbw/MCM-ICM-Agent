@@ -153,3 +153,50 @@ def test_modeling_quality_gate_allows_unknown_data_when_attachment_exists(
 
     gate = read_json(workspace.root / "review" / "modeling_gate.json", {})
     assert gate["status"] == "pass"
+
+
+def test_modeling_quality_gate_allows_required_bindings_when_attachment_can_be_profiled(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    attachment = workspace.root / "input" / "attachments" / "network_demand.csv"
+    attachment.parent.mkdir(parents=True, exist_ok=True)
+    attachment.write_text(
+        "source,target,cost,period,demand\nA,B,1,1,10\nB,C,2,2,12\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "reports" / "experiment_spec.json",
+        {
+            "version": 1,
+            "experiments": [
+                {
+                    "route_id": "forecasting_model",
+                    "solver_module": "mcm_agent.solver_modules.forecasting",
+                    "method": "linear_trend_forecast",
+                    "input_requirements": ["time column", "target numeric column"],
+                    "expected_outputs": ["results/forecast_results.csv"],
+                    "metrics": ["forecast_training_mae"],
+                    "column_bindings": {"time_column": "", "target_column": ""},
+                },
+                {
+                    "route_id": "network_flow_graph",
+                    "solver_module": "mcm_agent.solver_modules.network",
+                    "method": "shortest_path_table",
+                    "input_requirements": ["source column", "target column", "cost column"],
+                    "expected_outputs": ["results/network_paths.csv"],
+                    "metrics": ["shortest_path_cost"],
+                    "column_bindings": {
+                        "source_column": "",
+                        "target_column": "",
+                        "cost_column": "",
+                    },
+                },
+            ],
+        },
+    )
+
+    ModelingPlanQualityAgent().run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "modeling_gate.json", {})
+    assert gate["status"] == "pass"

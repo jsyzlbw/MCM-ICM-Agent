@@ -284,10 +284,28 @@ class SolverCoderAgent:
                     semantic.get("capacity", self._first_existing(frame, ["budget", "capacity"])),
                 )
             elif route_id == "forecasting_model":
-                current.setdefault("time_column", semantic.get("time", self._first_existing(frame, ["period", "year", "time", "month"]) or (numeric_columns[0] if numeric_columns else "")))
-                current.setdefault("target_column", semantic.get("target", self._first_existing(frame, ["demand", "sales", "target", "value"]) or (numeric_columns[-1] if numeric_columns else "")))
+                time_column = str(current.get("time_column", ""))
+                if not self._is_numeric_column(frame, time_column):
+                    time_column = self._forecast_time_column(frame, semantic, numeric_columns)
+                current["time_column"] = time_column
+                target_column = str(current.get("target_column", ""))
+                if not self._is_numeric_column(frame, target_column) or target_column == time_column:
+                    target_column = self._numeric_target_column(
+                        frame,
+                        semantic,
+                        numeric_columns,
+                        excluded={time_column},
+                    )
+                current["target_column"] = target_column
             elif route_id == "monte_carlo_simulation":
-                current.setdefault("base_value_column", semantic.get("target", numeric_columns[-1] if numeric_columns else ""))
+                base_value_column = str(current.get("base_value_column", ""))
+                if not self._is_numeric_column(frame, base_value_column):
+                    base_value_column = self._numeric_target_column(
+                        frame,
+                        semantic,
+                        numeric_columns,
+                    )
+                current["base_value_column"] = base_value_column
             elif route_id == "network_flow_graph":
                 current.setdefault("source_column", semantic.get("source_node", self._first_existing(frame, ["source", "origin", "from"])))
                 current.setdefault("target_column", semantic.get("target_node", self._first_existing(frame, ["target", "destination", "to"])))
@@ -399,6 +417,66 @@ class SolverCoderAgent:
             if candidate in lower_to_original:
                 return lower_to_original[candidate]
         return ""
+
+    def _is_numeric_column(self, frame: pd.DataFrame, column: str) -> bool:
+        return bool(column) and column in frame.columns and pd.api.types.is_numeric_dtype(frame[column])
+
+    def _semantic_candidates(self, semantic: dict[str, object], tag: str) -> list[str]:
+        value = semantic.get(tag)
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        if isinstance(value, str):
+            return [value]
+        return []
+
+    def _first_numeric_candidate(
+        self,
+        frame: pd.DataFrame,
+        candidates: list[str],
+        *,
+        excluded: set[str] | None = None,
+    ) -> str:
+        excluded = excluded or set()
+        for candidate in candidates:
+            column = self._first_existing(frame, [candidate])
+            if column and column not in excluded and self._is_numeric_column(frame, column):
+                return column
+        return ""
+
+    def _forecast_time_column(
+        self,
+        frame: pd.DataFrame,
+        semantic: dict[str, object],
+        numeric_columns: list[str],
+    ) -> str:
+        candidates = [
+            *self._semantic_candidates(semantic, "time"),
+            "period",
+            "year",
+            "time",
+            "month",
+            *numeric_columns,
+        ]
+        return self._first_numeric_candidate(frame, candidates)
+
+    def _numeric_target_column(
+        self,
+        frame: pd.DataFrame,
+        semantic: dict[str, object],
+        numeric_columns: list[str],
+        *,
+        excluded: set[str] | None = None,
+    ) -> str:
+        candidates = [
+            *self._semantic_candidates(semantic, "target"),
+            "demand",
+            "sales",
+            "target",
+            "value",
+            "outcome",
+            *numeric_columns,
+        ]
+        return self._first_numeric_candidate(frame, candidates, excluded=excluded)
 
     def _route_metrics(
         self,

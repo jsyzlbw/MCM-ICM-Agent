@@ -18,7 +18,8 @@ class InjectedMinerUProvider:
         output_dir.mkdir(parents=True, exist_ok=True)
         markdown_path = output_dir / "problem.md"
         json_path = output_dir / "problem.json"
-        markdown_path.write_text(f"# Injected Parse\n\n{input_path.name}", encoding="utf-8")
+        source = input_path.read_text(encoding="utf-8")
+        markdown_path.write_text(f"# Injected Parse\n\n{source}", encoding="utf-8")
         json_path.write_text("{}", encoding="utf-8")
         return ParsedDocument(markdown_path=str(markdown_path), json_path=str(json_path))
 
@@ -213,3 +214,41 @@ def test_run_mvp_workflow_uses_configured_rag_knowledge_base(tmp_path: Path) -> 
 
     hits = read_json(workspace / "rag" / "methodology_hits.json", [])
     assert any(hit["title"] == "method_note.md" for hit in hits)
+
+
+def test_run_mvp_workflow_selects_forecast_simulation_network_routes(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "task"
+    problem = tmp_path / "problem.md"
+    attachment = tmp_path / "network_demand.csv"
+    problem.write_text(
+        "# Problem\n\nForecast evacuation demand, simulate uncertainty, and route traffic through a network.",
+        encoding="utf-8",
+    )
+    attachment.write_text(
+        "source,target,cost,period,demand\nA,B,1,1,10\nB,C,2,2,12\nA,C,5,3,14\n",
+        encoding="utf-8",
+    )
+    providers = ProviderBundle(
+        llm=FakeLLMProvider({"default": ""}),
+        mineru=InjectedMinerUProvider(),
+        search=InjectedSearchProvider(),
+        extractor=InjectedExtractProvider(),
+        official_data=None,
+        humanizer=FakeHumanizerProvider({}),
+        latex=InjectedLatexProvider(),
+    )
+
+    run_mvp_workflow(
+        workspace,
+        TaskInput(problem_file=problem, attachments=[attachment]),
+        providers=providers,
+        auto_approve=True,
+    )
+
+    summary = read_json(workspace / "results" / "model_route_summary.json", {})
+    assert "forecasting_model" in summary["selected_routes"]
+    assert "monte_carlo_simulation" in summary["selected_routes"]
+    assert "network_flow_graph" in summary["selected_routes"]
+    assert summary["route_execution_status"]["forecasting_model"] == "executed"

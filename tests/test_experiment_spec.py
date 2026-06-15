@@ -62,7 +62,12 @@ def test_model_judge_experiment_spec_matches_selected_fallback_routes(tmp_path: 
     spec = read_json(workspace.root / "reports" / "experiment_spec.json", {})
     route_ids = [item["route_id"] for item in spec["experiments"]]
     assert "multi_criteria_evaluation + constrained_optimization" in decision
-    assert route_ids == ["multi_criteria_evaluation", "constrained_optimization"]
+    assert route_ids == [
+        "multi_criteria_evaluation",
+        "constrained_optimization",
+        "network_flow_graph",
+    ]
+    assert spec["route_plan"]["route_roles"]["network_flow_graph"] == "structure"
 
 
 def test_solver_prefers_experiment_spec_over_markdown_route_detection(tmp_path: Path) -> None:
@@ -248,6 +253,50 @@ def test_solver_uses_schema_profile_semantic_tags_for_column_bindings(tmp_path: 
     assert summary["column_bindings"]["network_flow_graph"]["source_column"] == "a"
     assert summary["column_bindings"]["network_flow_graph"]["target_column"] == "b"
     assert summary["column_bindings"]["network_flow_graph"]["cost_column"] == "c"
+
+
+def test_solver_prefers_numeric_forecast_target_over_text_network_target(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    processed = workspace.root / "data" / "processed" / "sample.csv"
+    processed.parent.mkdir(parents=True, exist_ok=True)
+    processed.write_text(
+        "source,target,cost,period,demand\nA,B,1,1,10\nB,C,2,2,12\nA,C,5,3,14\n",
+        encoding="utf-8",
+    )
+    (workspace.root / "results" / "schema_profile.json").write_text(
+        """
+{
+  "datasets": [
+    {
+      "file": "data/processed/sample.csv",
+      "columns": [
+        {"name": "source", "semantic_tags": ["source_node"]},
+        {"name": "target", "semantic_tags": ["target", "target_node"]},
+        {"name": "cost", "semantic_tags": ["cost", "numeric_indicator"]},
+        {"name": "period", "semantic_tags": ["time"]},
+        {"name": "demand", "semantic_tags": ["target", "numeric_indicator"]}
+      ]
+    }
+  ]
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    (workspace.root / "reports" / "experiment_spec.json").write_text(
+        build_experiment_spec(["forecasting_model", "network_flow_graph"]).model_dump_json(
+            indent=2
+        ),
+        encoding="utf-8",
+    )
+
+    SolverCoderAgent().run(workspace.root)
+
+    summary = read_json(workspace.root / "results" / "model_route_summary.json", {})
+    assert summary["column_bindings"]["forecasting_model"]["time_column"] == "period"
+    assert summary["column_bindings"]["forecasting_model"]["target_column"] == "demand"
+    assert summary["route_execution_status"]["forecasting_model"] == "executed"
 
 
 def test_solver_writes_binding_report_when_required_columns_are_missing(tmp_path: Path) -> None:
