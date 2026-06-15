@@ -71,6 +71,35 @@ def test_citation_context_maps_sources_to_bibtex_keys(tmp_path: Path) -> None:
     assert context.source_title("web_001") == "Official data"
 
 
+def test_reference_audit_reports_source_to_bibkey_mapping(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    _write_registered_source(workspace.root)
+    write_json(
+        workspace.root / "data" / "citation_candidates.json",
+        [
+            {
+                "citation_id": "cite_web_001",
+                "source_id": "web_001",
+                "title": "Official data",
+                "url": "https://data.gov/example",
+                "accessed_at": "2026-06-13T12:00:00Z",
+                "bibtex_key": "official_data_2026",
+            }
+        ],
+    )
+    section = workspace.root / "paper" / "sections" / "results.tex"
+    section.parent.mkdir(parents=True, exist_ok=True)
+    section.write_text("\\section{Results}\nUses source_id=web_001.\n", encoding="utf-8")
+
+    ReferenceManager().run(workspace.root)
+
+    report = (workspace.root / "review" / "reference_audit_report.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Source To Bibliography Mapping" in report
+    assert "- `web_001` -> `official_data_2026`" in report
+
+
 def test_reviewer_blocks_used_source_missing_from_references(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     _write_registered_source(workspace.root)

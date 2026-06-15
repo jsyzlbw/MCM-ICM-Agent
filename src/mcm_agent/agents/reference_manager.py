@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.citations import CitationContext, build_citation_context
 from mcm_agent.core.models import CitationCandidate
 from mcm_agent.utils.json_io import read_json
 
@@ -17,13 +18,24 @@ class ReferenceManager:
     def run(self, workspace_root: Path) -> None:
         registered_source_ids = self._registered_source_ids(workspace_root)
         candidates = self._registered_candidates(workspace_root, registered_source_ids)
+        citation_context = build_citation_context(workspace_root)
         used_source_ids = self._used_source_ids(workspace_root)
         referenced_source_ids = {candidate.source_id for candidate in candidates}
         missing_references = sorted(used_source_ids - referenced_source_ids)
 
         self._write_bibtex(workspace_root, candidates)
-        self._insert_section_citations(workspace_root, referenced_source_ids)
-        self._write_audit_report(workspace_root, candidates, used_source_ids, missing_references)
+        self._insert_section_citations(
+            workspace_root,
+            referenced_source_ids,
+            citation_context,
+        )
+        self._write_audit_report(
+            workspace_root,
+            candidates,
+            used_source_ids,
+            missing_references,
+            citation_context,
+        )
         Coordinator(workspace_root).emit(
             "references.failed" if missing_references else "references.ready",
             source="ReferenceManager",
@@ -79,7 +91,12 @@ class ReferenceManager:
             encoding="utf-8",
         )
 
-    def _insert_section_citations(self, workspace_root: Path, referenced_source_ids: set[str]) -> None:
+    def _insert_section_citations(
+        self,
+        workspace_root: Path,
+        referenced_source_ids: set[str],
+        citation_context: CitationContext,
+    ) -> None:
         section_dir = workspace_root / "paper" / "sections"
         if not section_dir.exists():
             return
@@ -88,7 +105,7 @@ class ReferenceManager:
             updated = text
             for source_id in sorted(referenced_source_ids):
                 token = f"source_id={source_id}"
-                cite = f"\\cite{{{source_id}}}"
+                cite = citation_context.cite_command([source_id]) or f"\\cite{{{source_id}}}"
                 if token in updated and cite not in updated:
                     updated = updated.replace(token, f"{token} {cite}")
             if updated != text:
@@ -100,6 +117,7 @@ class ReferenceManager:
         candidates: list[CitationCandidate],
         used_source_ids: set[str],
         missing_references: list[str],
+        citation_context: CitationContext,
     ) -> None:
         lines = [
             "# Reference Audit Report",
@@ -112,11 +130,29 @@ class ReferenceManager:
             *(f"- `{source_id}`" for source_id in missing_references),
             "" if missing_references else "- None.",
             "",
+            "## Source To Bibliography Mapping",
+            *self._source_mapping_lines(candidates, citation_context),
+            "",
         ]
         (workspace_root / "review" / "reference_audit_report.md").write_text(
             "\n".join(lines),
             encoding="utf-8",
         )
+
+    def _source_mapping_lines(
+        self,
+        candidates: list[CitationCandidate],
+        citation_context: CitationContext,
+    ) -> list[str]:
+        if not candidates:
+            return ["- None."]
+        lines = []
+        for candidate in candidates:
+            title = citation_context.source_title(candidate.source_id) or candidate.title
+            key = citation_context.bibtex_key_for_source(candidate.source_id) or candidate.source_id
+            suffix = f" ({title})" if title else ""
+            lines.append(f"- `{candidate.source_id}` -> `{key}`{suffix}")
+        return lines
 
     def _string_list(self, value: Any) -> set[str]:
         if not isinstance(value, list):
