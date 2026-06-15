@@ -14,6 +14,25 @@ class MethodologyHit(BaseModel):
     content: str
     rank: int
     query: str = ""
+    source_type: str = "method_note"
+    relative_path: str = ""
+    usage: str = "Use as methodology guidance only; do not cite as external factual data."
+    chunk_id: str = ""
+    chunk_index: int = 1
+    page_hint: str = ""
+
+
+EXPECTED_DOC_COLUMNS = [
+    "source",
+    "title",
+    "content",
+    "source_type",
+    "relative_path",
+    "usage",
+    "chunk_id",
+    "chunk_index",
+    "page_hint",
+]
 
 
 class MethodologyStore:
@@ -23,25 +42,96 @@ class MethodologyStore:
     def initialize(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
+            table_exists = conn.execute(
+                """
+                SELECT 1
+                FROM sqlite_master
+                WHERE type = 'table' AND name = 'methodology_docs'
+                """
+            ).fetchone()
+            if table_exists:
+                columns = [
+                    row[1]
+                    for row in conn.execute("PRAGMA table_info(methodology_docs)").fetchall()
+                ]
+                if columns != EXPECTED_DOC_COLUMNS:
+                    conn.execute("DROP TABLE methodology_docs")
             conn.execute(
                 """
                 CREATE VIRTUAL TABLE IF NOT EXISTS methodology_docs
-                USING fts5(source, title, content)
+                USING fts5(
+                    source,
+                    title,
+                    content,
+                    source_type,
+                    relative_path,
+                    usage,
+                    chunk_id,
+                    chunk_index,
+                    page_hint
+                )
                 """
             )
 
-    def add_document(self, source: str, title: str, content: str) -> None:
+    def add_document(
+        self,
+        source: str,
+        title: str,
+        content: str,
+        *,
+        source_type: str = "method_note",
+        relative_path: str = "",
+        usage: str | None = None,
+        chunk_id: str = "",
+        chunk_index: int = 1,
+        page_hint: str = "",
+    ) -> None:
+        relative_path = relative_path or Path(source).name or source
+        usage = usage or usage_restriction(source_type)
+        chunk_id = chunk_id or f"{relative_path}#chunk-{chunk_index:03d}"
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
-                "INSERT INTO methodology_docs(source, title, content) VALUES (?, ?, ?)",
-                (source, title, content),
+                """
+                INSERT INTO methodology_docs(
+                    source,
+                    title,
+                    content,
+                    source_type,
+                    relative_path,
+                    usage,
+                    chunk_id,
+                    chunk_index,
+                    page_hint
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    source,
+                    title,
+                    content,
+                    source_type,
+                    relative_path,
+                    usage,
+                    chunk_id,
+                    chunk_index,
+                    page_hint,
+                ),
             )
 
     def search(self, query: str, limit: int = 5) -> list[MethodologyHit]:
         with sqlite3.connect(self.db_path) as conn:
             rows = conn.execute(
                 """
-                SELECT source, title, content
+                SELECT
+                    source,
+                    title,
+                    content,
+                    source_type,
+                    relative_path,
+                    usage,
+                    chunk_id,
+                    chunk_index,
+                    page_hint
                 FROM methodology_docs
                 WHERE methodology_docs MATCH ?
                 LIMIT ?
@@ -49,7 +139,18 @@ class MethodologyStore:
                 (query, limit),
             ).fetchall()
         return [
-            MethodologyHit(source=row[0], title=row[1], content=row[2], rank=index)
+            MethodologyHit(
+                source=row[0],
+                title=row[1],
+                content=row[2],
+                rank=index,
+                source_type=row[3],
+                relative_path=row[4],
+                usage=row[5],
+                chunk_id=row[6],
+                chunk_index=_int_or_default(row[7], 1),
+                page_hint=row[8],
+            )
             for index, row in enumerate(rows, 1)
         ]
 
@@ -69,6 +170,42 @@ PAPER_QUALITY_QUERIES = [
     "figure design",
     "pre submission review",
 ]
+
+
+def infer_source_type(relative_path: str) -> str:
+    lowered = relative_path.lower()
+    if "rule" in lowered or "contest" in lowered or "format" in lowered:
+        return "contest_rule"
+    if "paper" in lowered or "solution" in lowered or "winner" in lowered:
+        return "paper_example"
+    if "checklist" in lowered or "review" in lowered:
+        return "checklist"
+    return "method_note"
+
+
+def usage_restriction(source_type: str) -> str:
+    restrictions = {
+        "contest_rule": (
+            "Use as contest or formatting guidance only; do not cite as external factual data."
+        ),
+        "paper_example": (
+            "Use as writing and modeling pattern guidance only; do not copy claims or cite as "
+            "external factual data."
+        ),
+        "checklist": "Use as internal review guidance only; do not cite as external factual data.",
+        "method_note": "Use as methodology guidance only; do not cite as external factual data.",
+        "supervisor_skill": (
+            "Use as internal agent methodology guidance only; do not cite as external factual data."
+        ),
+    }
+    return restrictions.get(source_type, restrictions["method_note"])
+
+
+def _int_or_default(value: object, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def ingest_knowledge_base(
@@ -94,10 +231,16 @@ def ingest_knowledge_base(
             notes.append(f"Pending PDF ingestion via MinerU: {relative_path}")
             continue
         if suffix in {".md", ".txt"}:
+            source_type = infer_source_type(relative_path)
             store.add_document(
                 source=str(path),
                 title=path.name,
                 content=path.read_text(encoding="utf-8"),
+                source_type=source_type,
+                relative_path=relative_path,
+                usage=usage_restriction(source_type),
+                chunk_id=f"{relative_path}#chunk-001",
+                chunk_index=1,
             )
             ingested_count += 1
             notes.append(f"Ingested user knowledge-base document: {relative_path}")
@@ -117,10 +260,16 @@ def import_supervisor_skills(source_dir: Path, store: MethodologyStore) -> list[
             warnings.append(f"Missing methodology source: {pattern}")
             continue
         for path in matches:
+            relative_path = path.relative_to(source_dir).as_posix()
             store.add_document(
                 source=str(path),
                 title=path.parent.name,
                 content=path.read_text(encoding="utf-8"),
+                source_type="supervisor_skill",
+                relative_path=relative_path,
+                usage=usage_restriction("supervisor_skill"),
+                chunk_id=f"{relative_path}#chunk-001",
+                chunk_index=1,
             )
     return warnings
 

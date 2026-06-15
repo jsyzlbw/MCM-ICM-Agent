@@ -146,3 +146,28 @@ def test_methodology_rag_agent_retrieves_multiple_paper_quality_queries(
         "limitation discussion",
         "figure design",
     } <= queries
+
+
+def test_methodology_hits_include_provenance_and_usage_restrictions(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    knowledge_base = tmp_path / "knowledge_base"
+    (knowledge_base / "contest_rules").mkdir(parents=True)
+    (knowledge_base / "contest_rules" / "rules.txt").write_text(
+        "Figure design must keep every chart tied to an explicit paper claim.",
+        encoding="utf-8",
+    )
+
+    MethodologyRAGAgent().run(
+        workspace.root,
+        supervisor_skills_dir=None,
+        knowledge_base_dir=knowledge_base,
+    )
+
+    hits = read_json(workspace.root / "rag" / "methodology_hits.json", [])
+    rule_hit = next(hit for hit in hits if hit["title"] == "rules.txt")
+    assert rule_hit["source_type"] == "contest_rule"
+    assert rule_hit["relative_path"] == "contest_rules/rules.txt"
+    assert rule_hit["chunk_id"] == "contest_rules/rules.txt#chunk-001"
+    assert rule_hit["usage"] == (
+        "Use as contest or formatting guidance only; do not cite as external factual data."
+    )
