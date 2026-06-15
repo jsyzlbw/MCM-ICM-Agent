@@ -13,6 +13,7 @@ class MethodologyHit(BaseModel):
     title: str
     content: str
     rank: int
+    query: str = ""
 
 
 class MethodologyStore:
@@ -59,6 +60,14 @@ PATTERNS = [
     "**/pre-submission-reviewer*/SKILL.md",
     "**/intro-drafter*/SKILL.md",
     "**/tech-paper-template*/SKILL.md",
+]
+
+PAPER_QUALITY_QUERIES = [
+    "assumption writing",
+    "model formulation",
+    "limitation discussion",
+    "figure design",
+    "pre submission review",
 ]
 
 
@@ -116,6 +125,17 @@ def import_supervisor_skills(source_dir: Path, store: MethodologyStore) -> list[
     return warnings
 
 
+def search_methodology_queries(
+    store: MethodologyStore,
+    queries: list[str],
+) -> list[MethodologyHit]:
+    hits: list[MethodologyHit] = []
+    for query in queries:
+        for hit in store.search(query, limit=3):
+            hits.append(hit.model_copy(update={"query": query}))
+    return hits
+
+
 class MethodologyRAGAgent:
     def run(
         self,
@@ -136,7 +156,7 @@ class MethodologyRAGAgent:
         if knowledge_base_dir is not None:
             warnings.extend(ingest_knowledge_base(knowledge_base_dir, store, ingest_extensions))
 
-        hits = store.search("figure design", limit=5)
+        hits = search_methodology_queries(store, PAPER_QUALITY_QUERIES)
         write_json(rag_dir / "methodology_hits.json", [hit.model_dump() for hit in hits])
 
         notes = ["# RAG Retrieval Notes", ""]

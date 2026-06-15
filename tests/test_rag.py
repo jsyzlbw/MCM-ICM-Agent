@@ -117,3 +117,32 @@ def test_methodology_rag_agent_reports_unsupported_files_as_skipped(
 
     notes = (workspace.root / "rag" / "retrieval_notes.md").read_text(encoding="utf-8")
     assert "Skipped unsupported knowledge-base file: raw_data.csv" in notes
+
+
+def test_methodology_rag_agent_retrieves_multiple_paper_quality_queries(
+    tmp_path: Path,
+) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    knowledge_base = tmp_path / "knowledge_base"
+    knowledge_base.mkdir()
+    (knowledge_base / "writing_notes.md").write_text(
+        "Assumption writing should precede model formulation. "
+        "Limitation discussion should connect validation to interpretation. "
+        "Figure design should support the main claim.",
+        encoding="utf-8",
+    )
+
+    MethodologyRAGAgent().run(
+        workspace.root,
+        supervisor_skills_dir=None,
+        knowledge_base_dir=knowledge_base,
+    )
+
+    hits = read_json(workspace.root / "rag" / "methodology_hits.json", [])
+    queries = {item["query"] for item in hits}
+    assert {
+        "assumption writing",
+        "model formulation",
+        "limitation discussion",
+        "figure design",
+    } <= queries
