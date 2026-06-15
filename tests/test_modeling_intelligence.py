@@ -39,6 +39,17 @@ def test_modeling_intelligence_detects_graph_route() -> None:
     assert "network_flow_graph" in route_ids
 
 
+def test_modeling_intelligence_does_not_match_graph_keywords_inside_other_words() -> None:
+    diagnosis = ModelingIntelligence().diagnose(
+        "Build a modeling workflow for flood response priority scoring and resource allocation."
+    )
+
+    route_ids = [route.route_id for route in diagnosis.routes]
+    assert "network_flow_graph" not in route_ids
+    assert "multi_criteria_evaluation" in route_ids
+    assert "constrained_optimization" in route_ids
+
+
 def test_modeling_council_fallback_includes_problem_type_diagnosis(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     problem_report = workspace.root / "reports" / "problem_understanding.md"

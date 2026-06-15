@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel, Field
 
 
@@ -134,7 +136,11 @@ class ModelingIntelligence:
         return [problem_type for problem_type, score in ranked if score > 0]
 
     def _score(self, lowered: str, keywords: list[str]) -> int:
-        return sum(1 for keyword in keywords if keyword in lowered)
+        return sum(1 for keyword in keywords if self._contains_keyword(lowered, keyword))
+
+    def _contains_keyword(self, lowered: str, keyword: str) -> bool:
+        pattern = r"(?<![a-z0-9])" + re.escape(keyword) + r"(?![a-z0-9])"
+        return re.search(pattern, lowered) is not None
 
     def _route_for(self, problem_type: str) -> ModelRoute:
         routes = {
