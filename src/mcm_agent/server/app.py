@@ -4,7 +4,9 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+from mcm_agent.server.routes_artifacts import create_artifact_router
 from mcm_agent.server.routes_config import create_config_router
+from mcm_agent.server.routes_workspace import create_workspace_router
 
 
 def create_app(
@@ -21,6 +23,8 @@ def create_app(
             workspace_base=app.state.workspace_base,
         )
     )
+    app.include_router(create_workspace_router(app.state.workspace_base))
+    app.include_router(create_artifact_router(app.state.workspace_base))
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
