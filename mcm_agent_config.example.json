@@ -1,0 +1,40 @@
+{
+  "llm": {
+    "provider": "openai_compatible",
+    "api_key": "",
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-4.1",
+    "timeout_seconds": 60
+  },
+  "search": {
+    "tavily_api_key": "",
+    "firecrawl_api_key": "",
+    "brave_search_api_key": "",
+    "exa_api_key": ""
+  },
+  "official_data": {
+    "fred_api_key": "",
+    "open_meteo_base_url": "https://archive-api.open-meteo.com/v1/archive"
+  },
+  "mineru": {
+    "mode": "fake",
+    "cli": "mineru",
+    "api_base_url": "https://mineru.net",
+    "api_key": ""
+  },
+  "humanizer": {
+    "provider": "fake",
+    "api_key": "",
+    "api_base_url": "https://leahloveswriting.xyz"
+  },
+  "rag": {
+    "knowledge_base_dir": "knowledge_base",
+    "ingest_extensions": [".md", ".txt", ".pdf"]
+  },
+  "runtime": {
+    "default_language": "en",
+    "max_retries": 2,
+    "http_timeout_seconds": 60,
+    "code_timeout_seconds": 120
+  }
+}

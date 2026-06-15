@@ -20,12 +20,15 @@ build/
 .env
 .env.*
 !.env.example
+mcm_agent_config.local.json
 
 # Runtime workspaces and generated contest artifacts
 workspace/
 workspaces/
 runs/
 final_submission/
+knowledge_base/*
+!knowledge_base/.gitkeep
 *.aux
 *.bbl
 *.blg
