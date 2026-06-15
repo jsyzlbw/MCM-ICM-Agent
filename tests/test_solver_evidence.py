@@ -105,6 +105,62 @@ def test_solver_writes_results_metrics_and_evidence(tmp_path: Path) -> None:
     assert any(item["source_path"] == "results/model_metrics.json" for item in evidence)
 
 
+def test_classification_solver_module_returns_metrics() -> None:
+    import pandas as pd
+
+    from mcm_agent.solver_modules.classification import logistic_regression_baseline
+
+    frame = pd.DataFrame(
+        {
+            "feature_a": [0, 1, 2, 3, 4, 5],
+            "feature_b": [0, 1, 1, 2, 2, 3],
+            "risk_label": [0, 0, 0, 1, 1, 1],
+        }
+    )
+
+    predictions, metrics = logistic_regression_baseline(
+        frame,
+        feature_columns=["feature_a", "feature_b"],
+        label_column="risk_label",
+    )
+
+    assert "predicted_label" in predictions.columns
+    assert metrics["classification_accuracy"] >= 0.5
+
+
+def test_clustering_solver_module_returns_segments() -> None:
+    import pandas as pd
+
+    from mcm_agent.solver_modules.clustering import kmeans_segmentation
+
+    frame = pd.DataFrame({"x": [0, 0.1, 8, 8.2], "y": [0, 0.2, 8, 8.1]})
+
+    segments, metrics = kmeans_segmentation(frame, feature_columns=["x", "y"], n_clusters=2)
+
+    assert "cluster_id" in segments.columns
+    assert metrics["cluster_count"] == 2
+
+
+def test_queuing_solver_module_returns_service_metrics() -> None:
+    import pandas as pd
+
+    from mcm_agent.solver_modules.queuing import mmc_queue_summary
+
+    frame = pd.DataFrame(
+        {"arrival_rate": [2.0, 2.2], "service_rate": [3.0, 3.1], "servers": [2, 2]}
+    )
+
+    summary, metrics = mmc_queue_summary(
+        frame,
+        arrival_rate_column="arrival_rate",
+        service_rate_column="service_rate",
+        server_count_column="servers",
+    )
+
+    assert "utilization" in summary.columns
+    assert metrics["queue_utilization"] < 1
+
+
 def test_solver_binds_outputs_to_selected_model_routes(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     processed = workspace.root / "data" / "processed" / "sample.csv"
