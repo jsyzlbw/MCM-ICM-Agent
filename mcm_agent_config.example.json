@@ -14,7 +14,15 @@
   },
   "official_data": {
     "fred_api_key": "",
-    "open_meteo_base_url": "https://archive-api.open-meteo.com/v1/archive"
+    "open_meteo_base_url": "https://archive-api.open-meteo.com/v1/archive",
+    "oecd_base_url": "https://sdmx.oecd.org/public/rest/v1/data",
+    "undata_base_url": "https://data.un.org/Handlers/DownloadHandler.ashx",
+    "us_census_api_key": "",
+    "us_census_base_url": "https://api.census.gov/data",
+    "noaa_api_key": "",
+    "noaa_base_url": "https://www.ncei.noaa.gov/cdo-web/api/v2",
+    "nasa_power_base_url": "https://power.larc.nasa.gov/api/temporal/daily/point",
+    "overpass_base_url": "https://overpass-api.de/api/interpreter"
   },
   "mineru": {
     "mode": "fake",

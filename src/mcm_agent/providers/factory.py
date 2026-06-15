@@ -72,6 +72,14 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
     official_data = OfficialDataApiRepairProvider(
         fred_api_key=settings.fred_api_key,
         open_meteo_base_url=settings.open_meteo_base_url,
+        oecd_base_url=settings.oecd_base_url,
+        undata_base_url=settings.undata_base_url,
+        us_census_api_key=settings.us_census_api_key,
+        us_census_base_url=settings.us_census_base_url,
+        noaa_api_key=settings.noaa_api_key,
+        noaa_base_url=settings.noaa_base_url,
+        nasa_power_base_url=settings.nasa_power_base_url,
+        overpass_base_url=settings.overpass_base_url,
     )
 
     humanizer = (

@@ -45,9 +45,25 @@ class OfficialDataApiRepairProvider:
         *,
         fred_api_key: str = "",
         open_meteo_base_url: str = "https://archive-api.open-meteo.com/v1/archive",
+        oecd_base_url: str = "https://sdmx.oecd.org/public/rest/v1/data",
+        undata_base_url: str = "https://data.un.org/Handlers/DownloadHandler.ashx",
+        us_census_api_key: str = "",
+        us_census_base_url: str = "https://api.census.gov/data",
+        noaa_api_key: str = "",
+        noaa_base_url: str = "https://www.ncei.noaa.gov/cdo-web/api/v2",
+        nasa_power_base_url: str = "https://power.larc.nasa.gov/api/temporal/daily/point",
+        overpass_base_url: str = "https://overpass-api.de/api/interpreter",
     ) -> None:
         self.fred_api_key = fred_api_key
         self.open_meteo_base_url = open_meteo_base_url
+        self.oecd_base_url = oecd_base_url
+        self.undata_base_url = undata_base_url
+        self.us_census_api_key = us_census_api_key
+        self.us_census_base_url = us_census_base_url
+        self.noaa_api_key = noaa_api_key
+        self.noaa_base_url = noaa_base_url
+        self.nasa_power_base_url = nasa_power_base_url
+        self.overpass_base_url = overpass_base_url
 
     def repair(self, workspace_root: Path, need: dict[str, str]) -> list[dict[str, str]]:
         target = need.get("target_dataset", "").lower()

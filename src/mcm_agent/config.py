@@ -19,6 +19,14 @@ class Settings(BaseSettings):
 
     fred_api_key: str = ""
     open_meteo_base_url: str = "https://archive-api.open-meteo.com/v1/archive"
+    oecd_base_url: str = "https://sdmx.oecd.org/public/rest/v1/data"
+    undata_base_url: str = "https://data.un.org/Handlers/DownloadHandler.ashx"
+    us_census_api_key: str = ""
+    us_census_base_url: str = "https://api.census.gov/data"
+    noaa_api_key: str = ""
+    noaa_base_url: str = "https://www.ncei.noaa.gov/cdo-web/api/v2"
+    nasa_power_base_url: str = "https://power.larc.nasa.gov/api/temporal/daily/point"
+    overpass_base_url: str = "https://overpass-api.de/api/interpreter"
 
     humanizer_api_key: str = ""
     humanizer_api_base_url: str = "https://leahloveswriting.xyz"
@@ -69,6 +77,14 @@ def _settings_overrides_from_json(payload: dict[str, Any]) -> dict[str, Any]:
         ("search", "exa_api_key"): "exa_api_key",
         ("official_data", "fred_api_key"): "fred_api_key",
         ("official_data", "open_meteo_base_url"): "open_meteo_base_url",
+        ("official_data", "oecd_base_url"): "oecd_base_url",
+        ("official_data", "undata_base_url"): "undata_base_url",
+        ("official_data", "us_census_api_key"): "us_census_api_key",
+        ("official_data", "us_census_base_url"): "us_census_base_url",
+        ("official_data", "noaa_api_key"): "noaa_api_key",
+        ("official_data", "noaa_base_url"): "noaa_base_url",
+        ("official_data", "nasa_power_base_url"): "nasa_power_base_url",
+        ("official_data", "overpass_base_url"): "overpass_base_url",
         ("mineru", "mode"): "mineru_mode",
         ("mineru", "cli"): "mineru_cli",
         ("mineru", "api_base_url"): "mineru_api_base_url",

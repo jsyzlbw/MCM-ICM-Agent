@@ -68,6 +68,14 @@ def test_load_settings_overlays_json_values_over_env_file(tmp_path: Path) -> Non
                 "official_data": {
                     "fred_api_key": "json-fred",
                     "open_meteo_base_url": "https://weather.example/archive",
+                    "oecd_base_url": "https://oecd.example",
+                    "undata_base_url": "https://undata.example",
+                    "us_census_api_key": "json-census",
+                    "us_census_base_url": "https://census.example",
+                    "noaa_api_key": "json-noaa",
+                    "noaa_base_url": "https://noaa.example",
+                    "nasa_power_base_url": "https://nasa.example",
+                    "overpass_base_url": "https://overpass.example",
                 },
                 "mineru": {
                     "mode": "rest",
@@ -105,6 +113,14 @@ def test_load_settings_overlays_json_values_over_env_file(tmp_path: Path) -> Non
     assert settings.exa_api_key == "json-exa"
     assert settings.fred_api_key == "json-fred"
     assert settings.open_meteo_base_url == "https://weather.example/archive"
+    assert settings.oecd_base_url == "https://oecd.example"
+    assert settings.undata_base_url == "https://undata.example"
+    assert settings.us_census_api_key == "json-census"
+    assert settings.us_census_base_url == "https://census.example"
+    assert settings.noaa_api_key == "json-noaa"
+    assert settings.noaa_base_url == "https://noaa.example"
+    assert settings.nasa_power_base_url == "https://nasa.example"
+    assert settings.overpass_base_url == "https://overpass.example"
     assert settings.mineru_mode == "rest"
     assert settings.mineru_cli == "mineru-json"
     assert settings.mineru_api_base_url == "https://mineru.example"

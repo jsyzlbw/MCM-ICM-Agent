@@ -216,16 +216,29 @@ def provider_status(
         search_stack.append("Exa API")
     search_status = " + ".join(search_stack) if search_stack else "disabled/fake"
     extract_status = "Firecrawl API" if settings.firecrawl_api_key else "disabled/fake"
-    official_data_status = "World Bank/Open-Meteo"
+    official_data_stack = [
+        "World Bank",
+        "OECD",
+        "UNData",
+        "NASA POWER",
+        "Open-Meteo",
+        "Overpass",
+    ]
     if settings.fred_api_key:
-        official_data_status += " + FRED"
+        official_data_stack.append("FRED")
+    if settings.us_census_api_key:
+        official_data_stack.append("US Census")
+    else:
+        official_data_stack.append("US Census (no key)")
+    if settings.noaa_api_key:
+        official_data_stack.append("NOAA")
     mineru_status = settings.mineru_mode
     humanizer_status = "UShallPass API" if settings.humanizer_api_key else "fake"
 
     typer.echo(f"LLM: {llm_status}")
     typer.echo(f"Search: {search_status}")
     typer.echo(f"Extract: {extract_status}")
-    typer.echo(f"Official Data APIs: {official_data_status}")
+    typer.echo(f"Official Data APIs: {' + '.join(official_data_stack)}")
     typer.echo(f"MinerU: {mineru_status}")
     typer.echo(f"Humanizer: {humanizer_status}")
 
