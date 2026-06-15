@@ -27,7 +27,7 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 196 passed
+# 207 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -40,6 +40,9 @@ MCM-ICM-Agent/
 ├── README.md
 ├── pyproject.toml
 ├── .env.example
+├── mcm_agent_config.example.json
+├── knowledge_base/
+│   └── .gitkeep
 ├── docs/
 │   ├── DESIGN.md
 │   ├── IMPLEMENTATION_PLAN.md
@@ -66,41 +69,24 @@ Runtime workspaces are created outside the source tree and contain task artifact
 
 ## 2. Configuration Contract
 
-`.env.example` remains the public configuration contract. Provider keys are optional at startup
-and should fail only when the matching provider is invoked.
+`mcm_agent_config.example.json` is the preferred public runtime configuration contract.
+Copy it to `mcm_agent_config.local.json`, fill only the providers you want to use, and pass
+it with `--config-file`. The local JSON file is ignored by git and may contain plaintext
+API keys for local use.
 
 ```bash
-# LLM provider
-OPENAI_API_KEY=
-OPENAI_BASE_URL=
-OPENAI_MODEL=
-
-# Search providers
-TAVILY_API_KEY=
-FIRECRAWL_API_KEY=
-BRAVE_SEARCH_API_KEY=
-EXA_API_KEY=
-
-# Humanization provider
-HUMANIZER_API_KEY=
-HUMANIZER_API_BASE_URL=https://leahloveswriting.xyz
-
-# MinerU provider
-MINERU_MODE=fake
-MINERU_CLI=mineru
-MINERU_API_BASE_URL=https://mineru.net
-MINERU_API_KEY=
-
-# Runtime
-MCM_AGENT_DEFAULT_LANGUAGE=en
-MCM_AGENT_MAX_RETRIES=2
-MCM_AGENT_HTTP_TIMEOUT_SECONDS=60
-MCM_AGENT_CODE_TIMEOUT_SECONDS=120
+cp mcm_agent_config.example.json mcm_agent_config.local.json
+mcm-agent provider-status --config-file mcm_agent_config.local.json
 ```
+
+The config sections are `llm`, `search`, `official_data`, `mineru`, `humanizer`, `rag`,
+and `runtime`. `.env.example` and `--env-file` remain backward compatible, but JSON values
+override env-file values when both are supplied.
 
 Rules:
 
-- Do not commit `.env` or real secrets.
+- Do not commit `.env`, `mcm_agent_config.local.json`, or real secrets.
+- Do not commit user-filled `knowledge_base/*`; only `knowledge_base/.gitkeep` is tracked.
 - Unit tests must use fake providers or HTTP mocks.
 - Live provider checks belong in explicit smoke commands.
 - MCP is optional for local development and is not a core runtime dependency.
@@ -127,6 +113,8 @@ Rules:
 | P7 Vector-first figure system | Complete as MVP |
 | P8 Paper, references, and final review | Complete as MVP |
 | P9 Claim planning and claim-plan enforcement | Complete as MVP |
+| A1 Unified JSON runtime config | Complete |
+| A2 User-fillable RAG knowledge base base | Complete as MVP |
 
 ## 4. Active Next Phase
 
@@ -221,20 +209,20 @@ After the current claim-planning MVP, continue with these quality phases:
    - Detect compile errors, table overflow, equation overflow, figure placement issues, and page-limit violations.
    - Route layout failures back to writer, visualization, or typesetting.
 
-5. **Provider Smoke Command**
-   - Add a CLI command that checks configured live API providers without running a full workflow.
-   - Report missing keys, auth failures, rate limits, and endpoint availability.
+5. **Provider Smoke Expansion**
+   - The manual smoke script now reads `--config-file` and checks configured live providers.
+   - Later work can broaden it into a first-class CLI command and include additional official-data providers.
 
-6. **RAG Ingestion**
-   - Import user-uploaded excellent papers, method notes, and competition rules.
-   - Store retrieval hits with source provenance and usage restrictions.
+6. **RAG Ingestion Expansion**
+   - The base local `knowledge_base/` flow ingests `.md` and `.txt` and reports `.pdf` as pending.
+   - Later work should add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions.
 
 ## 7. Operating Rules
 
 - Use TDD for behavior changes.
 - Keep commits small and independently useful.
 - Do not call paid or live APIs in unit tests.
-- Never commit `.env` or secrets.
+- Never commit `.env`, `mcm_agent_config.local.json`, or secrets.
 - Every external datum needs a `source_id`.
 - Every modeled result needs an `evidence_id`.
 - Every final data figure needs a `figure_id`, source data, and PDF/SVG output.

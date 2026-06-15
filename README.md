@@ -10,6 +10,7 @@ to a task workspace.
 
 ```bash
 python -m pip install -e ".[dev]"
+cp mcm_agent_config.example.json mcm_agent_config.local.json
 mcm-agent version
 mcm-agent run-demo /tmp/mcm_agent_demo --auto-approve
 mcm-agent status /tmp/mcm_agent_demo
@@ -19,7 +20,7 @@ Run a real task input with the configured providers:
 
 ```bash
 mcm-agent run /tmp/mcm_agent_task \
-  --env-file .env \
+  --config-file mcm_agent_config.local.json \
   --problem-file /path/to/problem.pdf \
   --attachment /path/to/data.csv \
   --auto-approve
@@ -34,7 +35,7 @@ Inspect or resume an existing workspace:
 mcm-agent inspect /tmp/mcm_agent_task
 
 mcm-agent resume /tmp/mcm_agent_task \
-  --env-file .env \
+  --config-file mcm_agent_config.local.json \
   --problem-file /path/to/problem.pdf \
   --attachment /path/to/data.csv \
   --from-stage validation_gate \
@@ -67,9 +68,17 @@ artifacts. Agents communicate through typed artifact records, event logs, and ha
 For the full operational guide, including workspace folders, agent stages, gate repair
 flow, and common failure modes, see [Workflow guide](docs/WORKFLOW.md).
 
-## API Configuration
+## Runtime Configuration
 
-Copy `.env.example` to `.env` and fill in only the providers you want to use.
+The preferred runtime contract is one local JSON file:
+
+```bash
+cp mcm_agent_config.example.json mcm_agent_config.local.json
+```
+
+Fill `mcm_agent_config.local.json` with the LLM model, provider API keys, MinerU mode,
+humanizer settings, runtime limits, and RAG settings you want to use. This local file is
+ignored by git; the repository commits only `mcm_agent_config.example.json`.
 
 The recommended MVP stack is:
 
@@ -79,29 +88,10 @@ The recommended MVP stack is:
 - MinerU local mode or official REST precision API for PDF parsing.
 - UShallPass for academic humanization, guarded by fact regression checks.
 
-MCP adapters can be added later, but the core runtime is designed to work through API
-provider adapters so it remains testable, deployable, and auditable.
-
-### Required For The Next Development Phase
-
-Start with these keys:
-
-```env
-OPENAI_API_KEY=
-OPENAI_BASE_URL=
-OPENAI_MODEL=gpt-4.1
-
-TAVILY_API_KEY=
-FIRECRAWL_API_KEY=
-```
-
-`OPENAI_BASE_URL` can stay empty when using the default OpenAI endpoint. Set it only when
-using an OpenAI-compatible provider.
-
 Then check the active provider selection:
 
 ```bash
-mcm-agent provider-status --env-file .env
+mcm-agent provider-status --config-file mcm_agent_config.local.json
 ```
 
 Expected once the first three providers are configured:
@@ -114,35 +104,35 @@ MinerU: fake
 Humanizer: fake
 ```
 
-Later optional keys:
+When multiple search keys are configured, the runtime tries Tavily first, then Brave,
+then Exa. World Bank and Open-Meteo are available as no-key official data repair sources
+when search coverage fails. FRED requires registration; leave `official_data.fred_api_key`
+empty to disable FRED repair.
 
-```env
-HUMANIZER_API_KEY=
-HUMANIZER_API_BASE_URL=https://leahloveswriting.xyz
+`.env` loading remains supported for compatibility through `--env-file`, but JSON values
+win when both `--env-file` and `--config-file` are passed.
 
-MINERU_MODE=rest
-MINERU_CLI=mineru
-MINERU_API_BASE_URL=https://mineru.net
-MINERU_API_KEY=
+## RAG Knowledge Base
 
-BRAVE_SEARCH_API_KEY=
-EXA_API_KEY=
+The repository includes an empty `knowledge_base/` folder. Only `knowledge_base/.gitkeep`
+is tracked; user-added papers, notes, and rules are ignored by git.
 
-OPEN_METEO_BASE_URL=https://archive-api.open-meteo.com/v1/archive
-FRED_API_KEY=
+You can add local files such as:
+
+```text
+knowledge_base/methods/network_flow.md
+knowledge_base/methods/topsis_notes.txt
+knowledge_base/rules/contest_rules.pdf
 ```
 
-When multiple search keys are configured, the runtime tries Tavily first, then Brave,
-then Exa. `mcm-agent provider-status --env-file .env` prints the active search stack.
+During the `methodology_rag` stage, `.md` and `.txt` files are inserted into the SQLite FTS
+methodology store. `.pdf` files are discovered and reported in `rag/retrieval_notes.md` as
+pending MinerU-backed ingestion. Unsupported suffixes are reported as skipped.
 
-World Bank and Open-Meteo are used as no-key official data repair sources when search
-coverage fails. FRED requires registration; leave `FRED_API_KEY` empty to disable FRED
-repair.
-
-`MINERU_MODE=rest` uses MinerU's precision API flow: create an upload batch,
-upload the local PDF to the returned URL, poll the batch result, download the
-result zip, and persist `problem.md`, `problem.json`, `problem_layout.json`, and
-`formulas.json` into the task workspace.
+Setting `mineru.mode` to `rest` uses MinerU's precision API flow: create an upload batch,
+upload the local PDF to the returned URL, poll the batch result, download the result zip,
+and persist `problem.md`, `problem.json`, `problem_layout.json`, and `formulas.json` into
+the task workspace.
 
 ### Provider Smoke Tests
 
@@ -150,14 +140,16 @@ Smoke tests are manual checks for real API connectivity. They are intentionally 
 of the normal pytest suite.
 
 ```bash
-python scripts/smoke_providers.py --env-file .env --workspace .smoke
+python scripts/smoke_providers.py \
+  --config-file mcm_agent_config.local.json \
+  --workspace .smoke
 ```
 
 To include a real MinerU parse check, provide a small local PDF:
 
 ```bash
 python scripts/smoke_providers.py \
-  --env-file .env \
+  --config-file mcm_agent_config.local.json \
   --workspace .smoke \
   --mineru-file /path/to/sample.pdf
 ```

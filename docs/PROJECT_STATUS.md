@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 196 passed
+# 207 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -22,14 +22,14 @@ ruff check src tests scripts
 Latest implementation commit at the time this status was written:
 
 ```text
-26c63e3 fix: plan sensitivity claim for paper drafts
+d4e0885 feat: ingest configured rag knowledge base
 ```
 
 ## Implemented
 
 | Area | Status |
 | --- | --- |
-| Python package, CLI, configuration, tests, ruff | Implemented |
+| Python package, CLI, JSON configuration, tests, ruff | Implemented |
 | Workspace initialization and runtime registries | Implemented |
 | Artifact registry, event log, handoff packets | Implemented |
 | Workflow topology and graph-aware stage executor | Implemented |
@@ -47,6 +47,7 @@ Latest implementation commit at the time this status was written:
 | Modeling Plan Quality Agent | Implemented |
 | Search & Data Agent with source registry, retrieval log, lineage, citation candidates | Implemented |
 | Supervisor-Skills methodology RAG import skeleton | Implemented |
+| Local `knowledge_base/` RAG ingestion for `.md` and `.txt` with PDF pending notes | Implemented as MVP |
 | Data/EDA Agent | Implemented |
 | Solver/Coder Agent, experiment runner, evidence registry | Implemented |
 | Validation Agent and validation gate | Implemented |
@@ -66,19 +67,19 @@ Latest implementation commit at the time this status was written:
 | Real automatic modeling | Runs deterministic solver modules and records evidence | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
 | Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, and planned critical/major claim coverage | Improve claim taxonomy and richer repair routing for ambiguous missing support |
 | Paper writing | Produces traceable LaTeX sections from `paper/claim_plan.json` when present | Improve full-paper quality, narrative structure, abstract, assumptions, and citations |
-| RAG | Imports selected Supervisor-Skills documents into SQLite FTS | Add ingestion for user-uploaded excellent papers, method notes, and competition rules |
+| RAG | Imports selected Supervisor-Skills documents plus local `.md` and `.txt` files from `knowledge_base/` into SQLite FTS; reports `.pdf` as pending | Add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions |
 | Official data APIs | Includes provider pattern and World Bank example | Expand to OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, OSM/Overpass |
 | Visualization | Generates vector-first data figures and QA reports | Add richer concept-diagram generation via Mermaid, Graphviz, TikZ, and Draw.io |
 | LaTeX | Generates and compiles through provider abstraction | Add robust compile-error repair, page-limit checks, and layout QA |
 | Humanization | Calls UShallPass or fake provider and performs fact-lock regression | Add privacy policy switches, batch job logs, retry reports, and user approval gates |
 | User interaction | File/CLI-oriented checkpoints | Add a smoother interactive conversation loop or UI later |
-| Provider smoke tests | Basic provider smoke infrastructure exists | Add one command that checks all configured live APIs and reports missing keys clearly |
+| Provider smoke tests | Manual smoke script reads `--config-file`, checks live LLM/Tavily/Firecrawl/UShallPass/MinerU connectivity, and reports skipped missing keys | Broaden to official-data providers and expose as a first-class CLI command if useful |
 
 ## Not Yet Built
 
 - Full high-quality MCM/ICM paper generation from a claim plan.
 - Live, comprehensive official-data API coverage.
-- Full paper-method RAG ingestion from user-uploaded优秀论文 and modeling-method files.
+- MinerU-backed PDF RAG ingestion for user-uploaded优秀论文 and modeling-method files.
 - Advanced LaTeX layout repair for page limits, figure placement, table overflow, and equation overflow.
 - Production UI or hosted service.
 - Persistent multi-user authentication, billing, or SaaS deployment.
@@ -118,6 +119,9 @@ The most important implemented safety property is evidence governance:
 - Figures enter `figures/figure_registry.json`.
 - Planned paper claims enter `paper/claim_plan.json`.
 - Paper claims are checked through `review/paper_evidence_bindings.json`.
+- Runtime configuration is loaded from `mcm_agent_config.local.json` when passed with
+  `--config-file`; `.env` remains backward compatible.
+- Local methodology notes in `knowledge_base/` are ingested during `methodology_rag`.
 
 ## Recommended Next Build Phase
 

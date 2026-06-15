@@ -10,6 +10,7 @@ Install the project in editable mode:
 
 ```bash
 python -m pip install -e ".[dev]"
+cp mcm_agent_config.example.json mcm_agent_config.local.json
 ```
 
 Run the bundled demo task:
@@ -22,7 +23,7 @@ Run your own task:
 
 ```bash
 mcm-agent run /tmp/mcm_agent_task \
-  --env-file .env \
+  --config-file mcm_agent_config.local.json \
   --problem-file /path/to/problem.pdf \
   --attachment /path/to/data.csv \
   --user-idea-file /path/to/user_idea.md \
@@ -40,7 +41,7 @@ Resume from a specific stage:
 
 ```bash
 mcm-agent resume /tmp/mcm_agent_task \
-  --env-file .env \
+  --config-file mcm_agent_config.local.json \
   --problem-file /path/to/problem.pdf \
   --attachment /path/to/data.csv \
   --from-stage validation_gate \
@@ -61,8 +62,13 @@ The normal `run` and `resume` workflows continue through `submission_packager`. 
 Check configured provider connectivity manually:
 
 ```bash
-python scripts/smoke_providers.py --env-file .env --workspace .smoke
+python scripts/smoke_providers.py \
+  --config-file mcm_agent_config.local.json \
+  --workspace .smoke
 ```
+
+`--env-file` is still accepted for older setups. When both are supplied, values from
+`--config-file` override `.env` values.
 
 ## Workspace Structure
 
@@ -83,6 +89,28 @@ Each run writes to a workspace directory. Important files and folders:
 | `workflow_topology.json` | Snapshot of graph nodes, edges, and failure routes. |
 | `stage_runs.jsonl` | Append-only stage execution log. |
 | `task_state.json` | Current phase, checkpoints, and blocked repair metadata. |
+
+## Runtime Config And Knowledge Base
+
+`mcm_agent_config.example.json` is the committed template. Copy it to
+`mcm_agent_config.local.json`, fill the providers you want to use, and pass it with
+`--config-file`. The local JSON may contain API keys and is ignored by git.
+
+The top-level config sections are:
+
+- `llm`
+- `search`
+- `official_data`
+- `mineru`
+- `humanizer`
+- `rag`
+- `runtime`
+
+`rag.knowledge_base_dir` defaults to `knowledge_base`. The folder is intentionally empty
+in git except for `.gitkeep`; local user files are ignored. During `methodology_rag`,
+the agent recursively scans that folder. `.md` and `.txt` files are ingested into
+`rag/methodology.db`, `.pdf` files are listed in `rag/retrieval_notes.md` as pending
+MinerU-backed ingestion, and unsupported suffixes are listed as skipped.
 
 ## Agent Stages
 
@@ -129,6 +157,11 @@ Some edges are conditional:
 `paper/claim_plan.json`, which lists each planned paper claim, target section, claim type,
 priority, support IDs, and unresolved reason when support is missing. `paper_writer`
 uses this file as the authoritative list of important claims when it exists.
+
+`methodology_rag` imports two optional methodology sources: the configured local
+`knowledge_base/` folder and any `--supervisor-skills-dir` passed on the command line.
+Both sources are additive, so a user can keep contest rules and method notes locally while
+still using supervisor skill excerpts.
 
 ## Gate Repair Flow
 
@@ -210,8 +243,8 @@ When coverage fails, `reports/search_repair_report.md` and
 untrusted sources, candidate official APIs, and whether the next move is another query,
 an official API call, user-provided data, or reframing.
 The first official API repair adapter can automatically register World Bank population
-data without a key. Open-Meteo is configured through `OPEN_METEO_BASE_URL`; FRED repair is
-only enabled when the user supplies `FRED_API_KEY`.
+data without a key. Open-Meteo is configured through `official_data.open_meteo_base_url`;
+FRED repair is only enabled when the user supplies `official_data.fred_api_key`.
 
 Every reported metric should be traceable through:
 
