@@ -5,6 +5,28 @@ from mcm_agent.core.workspace import create_workspace
 from mcm_agent.utils.json_io import read_json
 
 
+class KnowledgeBaseMinerUProvider:
+    def parse_document(self, input_path: Path, output_dir: Path):
+        output_dir.mkdir(parents=True, exist_ok=True)
+        markdown_path = output_dir / "problem.md"
+        json_path = output_dir / "problem.json"
+        markdown_path.write_text(
+            "# Parsed Paper\n\nFigure design should explain the validation claim.",
+            encoding="utf-8",
+        )
+        json_path.write_text("{}", encoding="utf-8")
+        return type(
+            "Parsed",
+            (),
+            {
+                "markdown_path": str(markdown_path),
+                "json_path": str(json_path),
+                "page_count": 3,
+                "warnings": ["low confidence table"],
+            },
+        )()
+
+
 def test_methodology_store_searches_figure_design(tmp_path: Path) -> None:
     store = MethodologyStore(tmp_path / "rag.db")
     store.initialize()
@@ -191,3 +213,27 @@ def test_methodology_rag_agent_chunks_large_knowledge_base_documents(tmp_path: P
     chunk_ids = {hit["chunk_id"] for hit in hits if hit["title"] == "method_note.md"}
     assert "method_note.md#chunk-001" in chunk_ids
     assert "method_note.md#chunk-002" in chunk_ids
+
+
+def test_methodology_rag_agent_ingests_pdf_knowledge_base_with_mineru(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    knowledge_base = tmp_path / "knowledge_base"
+    (knowledge_base / "winning_papers").mkdir(parents=True)
+    (knowledge_base / "winning_papers" / "solution.pdf").write_bytes(b"%PDF")
+
+    MethodologyRAGAgent().run(
+        workspace.root,
+        supervisor_skills_dir=None,
+        knowledge_base_dir=knowledge_base,
+        mineru_provider=KnowledgeBaseMinerUProvider(),
+    )
+
+    hits = read_json(workspace.root / "rag" / "methodology_hits.json", [])
+    parsed_hit = next(hit for hit in hits if hit["title"] == "solution.pdf")
+    assert parsed_hit["source_type"] == "paper_example"
+    assert parsed_hit["relative_path"] == "winning_papers/solution.pdf"
+    assert parsed_hit["page_hint"] == "pages=3"
+    assert "validation claim" in parsed_hit["content"]
+    notes = (workspace.root / "rag" / "retrieval_notes.md").read_text(encoding="utf-8")
+    assert "Parsed PDF knowledge-base document via MinerU: winning_papers/solution.pdf" in notes
+    assert "MinerU warning for winning_papers/solution.pdf: low confidence table" in notes

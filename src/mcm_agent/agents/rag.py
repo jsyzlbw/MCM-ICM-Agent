@@ -242,7 +242,7 @@ def chunk_text(content: str, *, max_chars: int = 2400) -> list[str]:
 def _add_chunked_document(
     store: MethodologyStore,
     *,
-    source: Path,
+    source: Path | str,
     title: str,
     content: str,
     source_type: str,
@@ -270,6 +270,9 @@ def ingest_knowledge_base(
     knowledge_base_dir: Path,
     store: MethodologyStore,
     ingest_extensions: list[str] | None = None,
+    *,
+    mineru_provider: object | None = None,
+    parsed_knowledge_dir: Path | None = None,
 ) -> list[str]:
     notes: list[str] = []
     allowed_extensions = {
@@ -286,7 +289,15 @@ def ingest_knowledge_base(
             notes.append(f"Skipped unsupported knowledge-base file: {relative_path}")
             continue
         if suffix == ".pdf":
-            notes.append(f"Pending PDF ingestion via MinerU: {relative_path}")
+            parsed_chunks, pdf_notes = _ingest_pdf_document(
+                path,
+                relative_path=relative_path,
+                store=store,
+                mineru_provider=mineru_provider,
+                parsed_knowledge_dir=parsed_knowledge_dir,
+            )
+            ingested_count += parsed_chunks
+            notes.extend(pdf_notes)
             continue
         if suffix in {".md", ".txt"}:
             source_type = infer_source_type(relative_path)
@@ -303,9 +314,55 @@ def ingest_knowledge_base(
             continue
         notes.append(f"Skipped unsupported knowledge-base file: {relative_path}")
 
-    if ingested_count == 0 and not any(note.startswith("Pending PDF") for note in notes):
+    if ingested_count == 0 and not notes:
         notes.append("No user knowledge-base documents were ingested.")
     return notes
+
+
+def _ingest_pdf_document(
+    path: Path,
+    *,
+    relative_path: str,
+    store: MethodologyStore,
+    mineru_provider: object | None,
+    parsed_knowledge_dir: Path | None,
+) -> tuple[int, list[str]]:
+    parse_document = getattr(mineru_provider, "parse_document", None)
+    if not callable(parse_document):
+        return 0, [f"Pending PDF ingestion via MinerU: {relative_path}"]
+    output_dir = (parsed_knowledge_dir or path.parent / ".parsed_knowledge") / _safe_parse_dir_name(
+        relative_path
+    )
+    try:
+        parsed = parse_document(path, output_dir)
+        markdown_path = Path(str(getattr(parsed, "markdown_path")))
+        content = markdown_path.read_text(encoding="utf-8")
+        source_type = infer_source_type(relative_path)
+        page_count = getattr(parsed, "page_count", None)
+        page_hint = f"pages={page_count}" if page_count else ""
+        ingested_chunks = _add_chunked_document(
+            store,
+            source=path,
+            title=path.name,
+            content=content,
+            source_type=source_type,
+            relative_path=relative_path,
+            page_hint=page_hint,
+        )
+        notes = [f"Parsed PDF knowledge-base document via MinerU: {relative_path}"]
+        warnings = getattr(parsed, "warnings", [])
+        if isinstance(warnings, list):
+            notes.extend(
+                f"MinerU warning for {relative_path}: {warning}" for warning in warnings
+            )
+        return ingested_chunks, notes
+    except Exception as exc:
+        return 0, [f"Failed PDF ingestion via MinerU: {relative_path} ({exc})"]
+
+
+def _safe_parse_dir_name(relative_path: str) -> str:
+    stem = Path(relative_path).with_suffix("").as_posix().replace("/", "__")
+    return "".join(char if char.isalnum() or char in {"-", "_", "."} else "_" for char in stem)
 
 
 def import_supervisor_skills(source_dir: Path, store: MethodologyStore) -> list[str]:
@@ -346,6 +403,7 @@ class MethodologyRAGAgent:
         supervisor_skills_dir: Path | None,
         knowledge_base_dir: Path | None = None,
         ingest_extensions: list[str] | None = None,
+        mineru_provider: object | None = None,
     ) -> None:
         rag_dir = workspace_root / "rag"
         checklist_dir = rag_dir / "review_checklists"
@@ -357,7 +415,15 @@ class MethodologyRAGAgent:
         if supervisor_skills_dir is not None:
             warnings = import_supervisor_skills(supervisor_skills_dir, store)
         if knowledge_base_dir is not None:
-            warnings.extend(ingest_knowledge_base(knowledge_base_dir, store, ingest_extensions))
+            warnings.extend(
+                ingest_knowledge_base(
+                    knowledge_base_dir,
+                    store,
+                    ingest_extensions,
+                    mineru_provider=mineru_provider,
+                    parsed_knowledge_dir=rag_dir / "parsed_knowledge",
+                )
+            )
 
         hits = search_methodology_queries(store, PAPER_QUALITY_QUERIES)
         write_json(rag_dir / "methodology_hits.json", [hit.model_dump() for hit in hits])
