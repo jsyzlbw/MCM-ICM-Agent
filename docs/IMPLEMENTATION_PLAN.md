@@ -118,71 +118,78 @@ Rules:
 | B1 High-quality claim-aware paper generation | Complete as MVP |
 | C1 Real modeling capability expansion | Complete as MVP |
 | D1 Official data API expansion | Complete as MVP |
+| E1 RAG ingestion expansion | Complete |
 
 ## 4. Active Next Phase
 
-The active next phase is **RAG Ingestion Expansion**.
+The active next phase is **LaTeX Layout QA and Provider Smoke Expansion**.
 
 Purpose:
 
 The system now stores sources, data lineage, evidence, figures, references, claim plans,
 contextual paper sections, claim-level paper bindings, paper-quality scores, hybrid route
-plans, route-aware experiment specs, route execution status, and official-data repair
-records across the main provider families. The remaining work is to let user-filled
-knowledge bases guide modeling and writing with richer provenance.
+plans, route-aware experiment specs, route execution status, official-data repair
+records, and provenance-aware local RAG entries across the main provider families. The
+remaining work is to harden final paper production and make live provider readiness easy
+to check.
 
 Current core artifact:
 
 ```text
-rag/methodology.db
-rag/methodology_hits.json
+review/typesetting_report.md
+review/final_gate.json
+provider smoke output
 ```
 
 Current implemented flow:
 
 ```text
-knowledge_base/
+paper/main.tex + figures + references
         ↓
-MethodologyRAGAgent
+LaTeX compile provider
         ↓
-rag/methodology.db with local notes and rules
+typesetting and layout QA
         ↓
-modeling and writing stages retrieve relevant method context
+repair routing notes for writer / visualization / typesetting
         ↓
-paper and model artifacts cite retrieved method context where appropriate
+final gate and submission package
 ```
 
 ## 5. Next Phase Tasks
 
-### Task 1: Add PDF Knowledge-Base Ingestion
+### Task 1: Add LaTeX Layout QA
 
 Inputs:
 
-- `knowledge_base/**/*.pdf`
-- MinerU provider abstraction
-- existing RAG ingestion settings
+- `paper/main.tex`
+- `paper/main.pdf` when available
+- `paper/compile_log.txt` or provider compile logs
+- contest page-limit and formatting assumptions
 
 Target behavior:
 
-- Parse user-uploaded PDF papers, rules, and method notes through MinerU when available.
-- Store chunks with file path, title, page or section hint, source type, and usage restrictions.
-- Keep local user files ignored by git.
+- Detect compile errors, missing PDF output, page-limit issues, table overflow, equation
+  overflow, and figure placement risks.
+- Write a machine-readable layout QA report that the final gate can inspect.
+- Preserve the current provider abstraction so fake tests do not require a real LaTeX
+  installation.
 
-### Task 2: Add RAG Provenance And Retrieval Controls
-
-Target behavior:
-
-- Add chunk-level provenance to `rag/methodology_hits.json`.
-- Separate paper examples, method notes, contest rules, and checklists.
-- Let modeling and writing query the knowledge base without treating local notes as external data facts.
-
-### Task 3: Expand RAG Tests And Docs
+### Task 2: Add Repair Routing For Typesetting Issues
 
 Target behavior:
 
-- Test `.md`, `.txt`, `.pdf`, unsupported suffix handling, and empty-folder behavior.
-- Document how users should fill `knowledge_base/`.
-- Keep `mcm_agent_config.example.json` free of secrets and keep local knowledge-base content ignored.
+- Route compile and equation issues back to typesetting or writer repair.
+- Route figure placement and figure file issues back to visualization or figure quality.
+- Keep user-facing reports concise enough to act on during a contest.
+
+### Task 3: Expand Provider Smoke
+
+Target behavior:
+
+- Provide one CLI command for configured provider smoke checks.
+- Report configured, skipped, passed, and failed providers without exposing secrets.
+- Include LLM, Tavily, Firecrawl, Brave, Exa, MinerU, UShallPass, and official-data
+  providers where a low-cost smoke check is available.
 
 ## 6. Later Build Phases
 

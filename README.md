@@ -127,9 +127,16 @@ knowledge_base/methods/topsis_notes.txt
 knowledge_base/rules/contest_rules.pdf
 ```
 
-During the `methodology_rag` stage, `.md` and `.txt` files are inserted into the SQLite FTS
-methodology store. `.pdf` files are discovered and reported in `rag/retrieval_notes.md` as
-pending MinerU-backed ingestion. Unsupported suffixes are reported as skipped.
+During the `methodology_rag` stage, `.md` and `.txt` files are chunked into the SQLite
+FTS methodology store. `.pdf` files are parsed through the configured MinerU provider
+when available; if MinerU is not configured or parsing fails, the PDF is reported in
+`rag/retrieval_notes.md` without blocking the workflow. Unsupported suffixes are
+reported as skipped.
+
+Each retrieved row in `rag/methodology_hits.json` includes `source_type`,
+`relative_path`, `chunk_id`, `page_hint`, and `usage`. These local knowledge-base
+documents guide modeling and writing patterns; they are not treated as external factual
+data sources.
 
 ## Claim-Aware Paper Quality
 

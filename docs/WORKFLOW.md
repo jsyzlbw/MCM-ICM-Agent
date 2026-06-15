@@ -108,9 +108,16 @@ The top-level config sections are:
 
 `rag.knowledge_base_dir` defaults to `knowledge_base`. The folder is intentionally empty
 in git except for `.gitkeep`; local user files are ignored. During `methodology_rag`,
-the agent recursively scans that folder. `.md` and `.txt` files are ingested into
-`rag/methodology.db`, `.pdf` files are listed in `rag/retrieval_notes.md` as pending
-MinerU-backed ingestion, and unsupported suffixes are listed as skipped.
+the agent recursively scans that folder. `.md` and `.txt` files are chunked into
+`rag/methodology.db`. `.pdf` files are parsed through the configured MinerU provider
+when available, then chunked with the original PDF path as provenance. If MinerU is not
+available or parsing fails, the PDF is listed in `rag/retrieval_notes.md` and the
+workflow continues. Unsupported suffixes are listed as skipped.
+
+`rag/methodology_hits.json` records `source_type`, `relative_path`, `chunk_id`,
+`page_hint`, and `usage` for each retrieved chunk. Local RAG materials guide modeling
+choices, paper structure, rule compliance, and review checklists; they are not registered
+as external factual data unless the data pipeline separately verifies them as sources.
 
 ## Agent Stages
 

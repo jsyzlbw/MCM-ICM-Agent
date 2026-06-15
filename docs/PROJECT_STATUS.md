@@ -48,7 +48,7 @@ Latest implementation commit at the time this status was written:
 | Modeling Plan Quality Agent | Implemented |
 | Search & Data Agent with source registry, retrieval log, lineage, citation candidates | Implemented |
 | Supervisor-Skills methodology RAG import skeleton | Implemented |
-| Local `knowledge_base/` RAG ingestion for `.md` and `.txt` with PDF pending notes | Implemented as MVP |
+| Local `knowledge_base/` RAG ingestion for `.md`, `.txt`, and MinerU-parsed `.pdf` with chunk provenance and usage restrictions | Implemented |
 | Multi-query methodology RAG for paper quality | Implemented |
 | Data/EDA Agent | Implemented |
 | Solver/Coder Agent, experiment runner, evidence registry | Implemented |
@@ -69,7 +69,7 @@ Latest implementation commit at the time this status was written:
 | Real automatic modeling | Selects bounded hybrid route plans, writes route-aware experiment specs, executes deterministic route modules, records route execution status, and routes binding-driven weak-model failures to modeling repair | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
 | Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
 | Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` when present | Add richer citation insertion and optional style variants |
-| RAG | Imports selected Supervisor-Skills documents plus local `.md` and `.txt` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types; reports `.pdf` as pending | Add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions |
+| RAG | Imports selected Supervisor-Skills documents plus local `.md`, `.txt`, and MinerU-parsed `.pdf` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types with source type, relative path, chunk id, page hint, and usage restrictions | Add richer source-specific query planning and citation-style guidance for local method libraries |
 | Official data APIs | Provider pattern plus World Bank, OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass repair adapters with mocked tests | Add richer provider-specific query planning and live smoke coverage |
 | Visualization | Generates vector-first data figures and QA reports | Add richer concept-diagram generation via Mermaid, Graphviz, TikZ, and Draw.io |
 | LaTeX | Generates and compiles through provider abstraction | Add robust compile-error repair, page-limit checks, and layout QA |
@@ -80,7 +80,6 @@ Latest implementation commit at the time this status was written:
 ## Not Yet Built
 
 - Live, comprehensive official-data API coverage.
-- MinerU-backed PDF RAG ingestion for user-uploaded优秀论文 and modeling-method files.
 - Advanced LaTeX layout repair for page limits, figure placement, table overflow, and equation overflow.
 - Production UI or hosted service.
 - Persistent multi-user authentication, billing, or SaaS deployment.
@@ -123,20 +122,23 @@ The most important implemented safety property is evidence governance:
 - Paper quality scores enter `review/paper_quality_scores.json`.
 - Runtime configuration is loaded from `mcm_agent_config.local.json` when passed with
   `--config-file`; `.env` remains backward compatible.
-- Local methodology notes in `knowledge_base/` are ingested during `methodology_rag`.
+- Local methodology notes, rules, paper examples, and MinerU-parsed PDFs in
+  `knowledge_base/` are ingested during `methodology_rag` with chunk-level provenance.
 
 ## Recommended Next Build Phase
 
-The next phase should focus on `RAG Ingestion Expansion`.
+The next phase should focus on `LaTeX Layout QA` and provider smoke expansion.
 
 Build order:
 
-1. Add MinerU-backed PDF ingestion for user-filled `knowledge_base/` files.
-2. Add chunk metadata, provenance, source type, and usage restrictions for RAG entries.
-3. Let writing and modeling retrieve from user paper notes, method notes, and contest rules.
-4. Keep user knowledge-base files ignored by git.
-5. Add tests for `.md`, `.txt`, `.pdf`, skipped files, and retrieval provenance.
+1. Detect LaTeX compile errors, page-limit issues, table overflow, equation overflow, and
+   figure placement risks.
+2. Route typesetting failures back to writer, visualization, or typesetting repair notes.
+3. Broaden provider smoke checks into a first-class CLI command that covers configured
+   LLM, search, extraction, MinerU, humanizer, and official-data providers.
+4. Keep all API keys in `mcm_agent_config.local.json`, with only the example template
+   committed.
 
-This is the right next step because official data repair now covers the main provider
-families; the next quality bottleneck is whether local excellent papers, method notes,
-and rules can reliably guide modeling and writing.
+This is the right next step because local method knowledge can now guide modeling and
+writing; the next quality bottleneck is whether the generated paper compiles, fits the
+contest constraints, and all configured live providers can be checked quickly.
