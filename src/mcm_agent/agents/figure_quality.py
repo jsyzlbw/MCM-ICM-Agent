@@ -97,6 +97,12 @@ class FigureQualityAgent:
             has_vector = any(output.endswith((".pdf", ".svg")) for output in outputs)
             if not has_vector:
                 issues.append(f"Data figure `{figure_id}` has no PDF/SVG output.")
+        if plan_item.get("figure_type") == "concept_diagram":
+            if source_file and not source_file.endswith(".mmd"):
+                issues.append(f"Concept diagram `{figure_id}` source is not Mermaid `.mmd`.")
+            has_vector = any(output.endswith((".eps", ".pdf", ".svg")) for output in outputs)
+            if not has_vector:
+                issues.append(f"Concept diagram `{figure_id}` has no SVG/PDF output.")
         return issues
 
     def _write_report(self, workspace_root: Path, issues: list[str]) -> None:

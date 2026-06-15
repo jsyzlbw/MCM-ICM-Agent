@@ -101,6 +101,102 @@ def test_figure_quality_agent_fails_missing_trace_and_vector_outputs(tmp_path: P
     assert any("missing evidence_ids" in issue for issue in gate["blocking_findings"])
 
 
+def test_figure_quality_fails_concept_diagram_without_vector_output(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "figures" / "figure_plan.json",
+        [
+            FigurePlanItem(
+                figure_id="fig_method_overview",
+                purpose="show method",
+                figure_type="concept_diagram",
+                source_data=[],
+                generation_script="figures/source/fig_method_overview.mmd",
+                output_formats=["svg"],
+                target_section="paper/sections/model.tex",
+                caption_intent="Method overview.",
+                claim_supported="The method is traceable.",
+            ).model_dump(mode="json")
+        ],
+    )
+    mermaid = workspace.root / "figures" / "source" / "fig_method_overview.mmd"
+    mermaid.parent.mkdir(parents=True, exist_ok=True)
+    mermaid.write_text("flowchart LR\nA-->B\n", encoding="utf-8")
+    write_json(
+        workspace.root / "figures" / "figure_registry.json",
+        [
+            {
+                "figure_id": "fig_method_overview",
+                "type": "concept_diagram",
+                "tool": "mermaid",
+                "source_file": "figures/source/fig_method_overview.mmd",
+                "outputs": ["figures/source/fig_method_overview.mmd"],
+                "used_in": ["paper/sections/model.tex"],
+                "status": "approved",
+            }
+        ],
+    )
+
+    FigureQualityAgent().run(workspace.root)
+
+    report = (workspace.root / "review" / "figure_quality_report.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Concept diagram `fig_method_overview` has no SVG/PDF output." in report
+
+
+def test_figure_quality_passes_complete_concept_diagram(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "figures" / "figure_plan.json",
+        [
+            FigurePlanItem(
+                figure_id="fig_method_overview",
+                purpose="show method",
+                figure_type="concept_diagram",
+                source_data=[],
+                generation_script="figures/source/fig_method_overview.mmd",
+                output_formats=["svg"],
+                target_section="paper/sections/model.tex",
+                caption_intent="Method overview.",
+                claim_supported="The method is traceable.",
+            ).model_dump(mode="json")
+        ],
+    )
+    source_dir = workspace.root / "figures" / "source"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    (source_dir / "fig_method_overview.mmd").write_text(
+        "flowchart LR\nA-->B\n",
+        encoding="utf-8",
+    )
+    (workspace.root / "figures" / "fig_method_overview.svg").write_text(
+        "<svg></svg>",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "figures" / "figure_registry.json",
+        [
+            {
+                "figure_id": "fig_method_overview",
+                "type": "concept_diagram",
+                "tool": "mermaid+svg",
+                "source_file": "figures/source/fig_method_overview.mmd",
+                "outputs": [
+                    "figures/source/fig_method_overview.mmd",
+                    "figures/fig_method_overview.svg",
+                ],
+                "used_in": ["paper/sections/model.tex"],
+                "status": "approved",
+            }
+        ],
+    )
+
+    FigureQualityAgent().run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "figure_gate.json", {})
+    assert gate["status"] == "pass"
+
+
 def _write_complete_figure_workspace(workspace_root: Path) -> None:
     result = workspace_root / "results" / "problem1_results.csv"
     result.parent.mkdir(parents=True, exist_ok=True)
