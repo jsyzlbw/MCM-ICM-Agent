@@ -13,7 +13,7 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 214 passed
+# 225 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -22,7 +22,7 @@ ruff check src tests scripts
 Latest implementation commit at the time this status was written:
 
 ```text
-98a4384 test: assert paper quality artifacts in workflow
+60696ed fix: avoid route keyword substring matches
 ```
 
 ## Implemented
@@ -44,6 +44,7 @@ Latest implementation commit at the time this status was written:
 | User Discussion Agent with data feasibility feedback | Implemented |
 | Research Reframing Agent for unavailable/private data | Implemented |
 | Modeling Council and Model Judge | Implemented |
+| Hybrid model route planning for evaluation, optimization, forecasting, simulation, network, and multi-objective tasks | Implemented |
 | Modeling Plan Quality Agent | Implemented |
 | Search & Data Agent with source registry, retrieval log, lineage, citation candidates | Implemented |
 | Supervisor-Skills methodology RAG import skeleton | Implemented |
@@ -65,7 +66,7 @@ Latest implementation commit at the time this status was written:
 
 | Area | Current capability | Remaining work |
 | --- | --- | --- |
-| Real automatic modeling | Runs deterministic solver modules and records evidence | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
+| Real automatic modeling | Selects bounded hybrid route plans, writes route-aware experiment specs, executes deterministic route modules, records route execution status, and routes binding-driven weak-model failures to modeling repair | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
 | Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
 | Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` when present | Add richer citation insertion and optional style variants |
 | RAG | Imports selected Supervisor-Skills documents plus local `.md` and `.txt` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types; reports `.pdf` as pending | Add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions |
@@ -126,15 +127,16 @@ The most important implemented safety property is evidence governance:
 
 ## Recommended Next Build Phase
 
-The next phase should focus on `Real Modeling Capability Expansion`.
+The next phase should focus on `Official Data API Expansion`.
 
 Build order:
 
-1. Expand model route selection for common MCM/ICM task types.
-2. Add stronger solver module orchestration and generated-code contracts.
-3. Keep deterministic fallback modules for tests and demos.
-4. Strengthen validation so model-specific failures route to the right repair stage.
-5. Add tests proving different task archetypes choose different model structures.
+1. Add provider adapters for OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, and OSM/Overpass where practical.
+2. Normalize source and lineage records across official-data providers.
+3. Keep all live API calls out of unit tests through fakes or HTTP mocks.
+4. Extend search repair so provider-specific datasets can satisfy feasibility-matrix needs.
+5. Document which providers require API keys and which can run without keys.
 
-This is the right next step because the paper argument chain is now stronger; the next
-quality bottleneck is whether the selected model and solver structure fit the problem type.
+This is the right next step because route selection and deterministic solver orchestration
+are now stronger; the next quality bottleneck is whether the agent can reliably fetch
+official data for the selected modeling route.

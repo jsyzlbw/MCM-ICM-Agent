@@ -171,6 +171,19 @@ still using supervisor skill excerpts. It retrieves multiple paper-quality query
 including assumption writing, model formulation, limitation discussion, figure design, and
 pre-submission review.
 
+`modeling_council` and `model_judge` diagnose common MCM/ICM archetypes and emit a
+bounded hybrid route plan. The current route IDs are `multi_criteria_evaluation`,
+`constrained_optimization`, `forecasting_model`, `monte_carlo_simulation`,
+`network_flow_graph`, and `multi_objective_decision`. Fallback diagnosis focuses on the
+problem-background section and avoids keyword substring matches, so workflow boilerplate
+does not trigger spurious models.
+
+`reports/experiment_spec.json` contains `route_plan` metadata plus per-route solver
+modules, roles, input requirements, expected outputs, metrics, and column-binding
+contracts. `solver_coder` writes `results/model_route_summary.json` with inferred
+`column_bindings`, `binding_status`, and `route_execution_status` for each selected
+route.
+
 ## Gate Repair Flow
 
 Gate outputs are machine-readable JSON files. They have:
@@ -276,10 +289,12 @@ falling back to column-name heuristics.
 `solver_binding_report.json` records whether required solver columns were successfully
 bound. Missing required bindings, such as a network route without source/target/cost
 columns, fail validation with `failure_reason=weak_model` and route repair to
-`solver_coder`.
+`modeling_council`.
 
 `model_route_summary.json` binds the selected model route to route-specific metrics,
-figure planning, and the paper model section.
+figure planning, and the paper model section. Its `route_execution_status` values show
+whether each selected route was `executed`, `blocked_missing_binding`, or
+`attempted_no_metric`.
 
 `modeling_quality_gate` runs after `model_judge` and before deep search. It writes
 `reports/modeling_quality_report.md` and `review/modeling_gate.json`, blocking model

@@ -27,7 +27,7 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 214 passed
+# 225 passed
 
 ruff check src tests scripts
 # All checks passed
@@ -116,84 +116,83 @@ Rules:
 | A1 Unified JSON runtime config | Complete |
 | A2 User-fillable RAG knowledge base base | Complete as MVP |
 | B1 High-quality claim-aware paper generation | Complete as MVP |
+| C1 Real modeling capability expansion | Complete as MVP |
 
 ## 4. Active Next Phase
 
-The active next phase is **Real Modeling Capability Expansion**.
+The active next phase is **Official Data API Expansion**.
 
 Purpose:
 
 The system now stores sources, data lineage, evidence, figures, references, claim plans,
-contextual paper sections, claim-level paper bindings, and paper-quality scores. The
-remaining work is to improve whether the selected model and solver structure fit more
-MCM/ICM problem types.
+contextual paper sections, claim-level paper bindings, paper-quality scores, hybrid route
+plans, route-aware experiment specs, and route execution status. The remaining work is to
+improve whether official data can be fetched automatically for the selected modeling route.
 
 Current core artifact:
 
 ```text
-paper/claim_plan.json
+reports/experiment_spec.json
+results/model_route_summary.json
 ```
 
 Current implemented flow:
 
 ```text
-model_route_summary.json
-evidence_registry.json
-figure_registry.json
-source_registry.json
+problem_understanding.md
+discussion/confirmed_direction.md
         ↓
-ClaimPlanningAgent
+ModelingCouncil / ModelJudge
         ↓
-paper/claim_plan.json
+reports/experiment_spec.json with route_plan
         ↓
-PaperWriterAgent writes sections from planned claims
+SolverCoderAgent executes compatible route modules
         ↓
-PaperEvidenceBindingAgent checks planned claim coverage
+results/model_route_summary.json with route_execution_status
         ↓
-ReviewerAgent blocks omitted or unsupported critical claims and incomplete papers
+ValidationAgent routes missing-binding weak models to modeling_council
 ```
 
 ## 5. Next Phase Tasks
 
-### Task 1: Expand Problem-Type Route Selection
+### Task 1: Add Official Data Provider Adapters
 
 Inputs:
 
-- `reports/problem_understanding.md`
-- `discussion/confirmed_direction.md`
-- `reports/model_decision.md`
-- `reports/experiment_spec.json`
-- `data/schema_profile.json`
+- `mcm_agent_config.local.json`
+- `data/data_feasibility_matrix.json`
+- `data/search_plan.json`
+- provider-specific query parameters
 
 Target behavior:
 
-- Distinguish evaluation, optimization, forecasting, simulation, network, and hybrid tasks.
-- Emit selected routes with explicit solver module contracts.
-- Preserve deterministic fallbacks for incomplete or ambiguous inputs.
+- Add adapters for priority official data sources, starting with no-key providers when possible.
+- Normalize provider outputs into source registry and lineage records.
+- Keep provider-specific API keys optional and configured through the local JSON file.
 
-### Task 2: Strengthen Solver Orchestration
-
-Target behavior:
-
-- Build route-specific experiment specs with input requirements, expected metrics, and evidence IDs.
-- Execute multiple compatible solver modules when the selected task is hybrid.
-- Record solver binding decisions for validation and paper writing.
-
-### Task 3: Improve Model-Specific Validation
+### Task 2: Integrate Official Data Into Search Repair
 
 Target behavior:
 
-- Validate route-specific metrics, missing bindings, and weak-model conditions.
-- Route model failures to `modeling_council`, `model_judge`, or `solver_coder` based on cause.
-- Add fixture tests for several MCM/ICM archetypes.
+- When searchable needs lack reliable web sources, try matching official-data providers.
+- Record attempted provider queries and skipped providers in repair reports.
+- Avoid live provider calls in unit tests by using fakes or mocked HTTP responses.
+
+### Task 3: Document Provider Requirements
+
+Target behavior:
+
+- Document which official-data providers require API keys.
+- Document no-key providers and their rate-limit caveats.
+- Keep `mcm_agent_config.example.json` free of secrets and complete enough for user setup.
 
 ## 6. Later Build Phases
 
-After the current modeling expansion phase, continue with these quality phases:
+After the official data API phase, continue with these quality phases:
 
-1. **Official Data API Expansion**
-   - Add OECD, UNData, FRED, US Census, NOAA/NASA/Open-Meteo, and OSM/Overpass providers.
-   - Add provider-specific source and lineage records.
+1. **RAG Ingestion Expansion**
+   - The base local `knowledge_base/` flow ingests `.md` and `.txt` and reports `.pdf` as pending.
+   - Later work should add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions.
 
 2. **Concept Diagram System**
    - Add Mermaid, Graphviz, and TikZ concept figure generation.
@@ -206,10 +205,6 @@ After the current modeling expansion phase, continue with these quality phases:
 4. **Provider Smoke Expansion**
    - The manual smoke script now reads `--config-file` and checks configured live providers.
    - Later work can broaden it into a first-class CLI command and include additional official-data providers.
-
-5. **RAG Ingestion Expansion**
-   - The base local `knowledge_base/` flow ingests `.md` and `.txt` and reports `.pdf` as pending.
-   - Later work should add MinerU-backed PDF ingestion, chunking, provenance metadata, and usage restrictions.
 
 ## 7. Operating Rules
 

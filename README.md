@@ -141,6 +141,22 @@ assumptions, model, results, sensitivity, and conclusion sections. `ReviewerAgen
 `review/paper_quality_scores.json` with section completeness and claim trace density, and
 routes incomplete papers back to `paper_writer`.
 
+## Real Modeling Capability
+
+Model selection now builds a bounded hybrid route plan for common MCM/ICM archetypes:
+multi-criteria evaluation, constrained optimization, forecasting, Monte Carlo simulation,
+network flow/graph structure, and multi-objective decision support.
+
+`reports/experiment_spec.json` records `route_plan` metadata, execution order, route
+roles, solver modules, input requirements, expected outputs, metrics, and column-binding
+contracts. `SolverCoderAgent` executes compatible deterministic solver modules and writes
+`results/model_route_summary.json`, including `route_execution_status` values such as
+`executed`, `blocked_missing_binding`, and `attempted_no_metric`.
+
+Validation treats binding-driven weak-model failures as modeling-spec problems and routes
+them back to `modeling_council`, while solver execution failures still route to the solver
+stage. The workflow test suite includes a forecast + simulation + network archetype.
+
 Setting `mineru.mode` to `rest` uses MinerU's precision API flow: create an upload batch,
 upload the local PDF to the returned URL, poll the batch result, download the result zip,
 and persist `problem.md`, `problem.json`, `problem_layout.json`, and `formulas.json` into
