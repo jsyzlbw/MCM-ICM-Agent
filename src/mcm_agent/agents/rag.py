@@ -62,6 +62,44 @@ PATTERNS = [
 ]
 
 
+def ingest_knowledge_base(
+    knowledge_base_dir: Path,
+    store: MethodologyStore,
+    ingest_extensions: list[str] | None = None,
+) -> list[str]:
+    notes: list[str] = []
+    allowed_extensions = {
+        suffix if suffix.startswith(".") else f".{suffix}"
+        for suffix in (ingest_extensions or [".md", ".txt", ".pdf"])
+    }
+    knowledge_base_dir.mkdir(parents=True, exist_ok=True)
+    ingested_count = 0
+
+    for path in sorted(item for item in knowledge_base_dir.rglob("*") if item.is_file()):
+        relative_path = path.relative_to(knowledge_base_dir).as_posix()
+        suffix = path.suffix.lower()
+        if suffix not in allowed_extensions:
+            notes.append(f"Skipped unsupported knowledge-base file: {relative_path}")
+            continue
+        if suffix == ".pdf":
+            notes.append(f"Pending PDF ingestion via MinerU: {relative_path}")
+            continue
+        if suffix in {".md", ".txt"}:
+            store.add_document(
+                source=str(path),
+                title=path.name,
+                content=path.read_text(encoding="utf-8"),
+            )
+            ingested_count += 1
+            notes.append(f"Ingested user knowledge-base document: {relative_path}")
+            continue
+        notes.append(f"Skipped unsupported knowledge-base file: {relative_path}")
+
+    if ingested_count == 0 and not any(note.startswith("Pending PDF") for note in notes):
+        notes.append("No user knowledge-base documents were ingested.")
+    return notes
+
+
 def import_supervisor_skills(source_dir: Path, store: MethodologyStore) -> list[str]:
     warnings: list[str] = []
     for pattern in PATTERNS:
@@ -79,7 +117,13 @@ def import_supervisor_skills(source_dir: Path, store: MethodologyStore) -> list[
 
 
 class MethodologyRAGAgent:
-    def run(self, workspace_root: Path, supervisor_skills_dir: Path | None) -> None:
+    def run(
+        self,
+        workspace_root: Path,
+        supervisor_skills_dir: Path | None,
+        knowledge_base_dir: Path | None = None,
+        ingest_extensions: list[str] | None = None,
+    ) -> None:
         rag_dir = workspace_root / "rag"
         checklist_dir = rag_dir / "review_checklists"
         checklist_dir.mkdir(parents=True, exist_ok=True)
@@ -89,6 +133,8 @@ class MethodologyRAGAgent:
         warnings: list[str] = []
         if supervisor_skills_dir is not None:
             warnings = import_supervisor_skills(supervisor_skills_dir, store)
+        if knowledge_base_dir is not None:
+            warnings.extend(ingest_knowledge_base(knowledge_base_dir, store, ingest_extensions))
 
         hits = store.search("figure design", limit=5)
         write_json(rag_dir / "methodology_hits.json", [hit.model_dump() for hit in hits])

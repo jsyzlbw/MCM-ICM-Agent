@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from mcm_agent.config import Settings
 from mcm_agent.core.models import TaskInput
 from mcm_agent.providers.base import ProviderBundle
 from mcm_agent.providers.humanizer import FakeHumanizerProvider
@@ -163,3 +164,37 @@ def test_run_mvp_workflow_uses_injected_provider_bundle(tmp_path: Path) -> None:
     source_registry = read_json(workspace / "data/source_registry.json", [])
     assert source_registry[0]["title"] == "Injected official source"
     assert (workspace / "final_submission" / "submission_package.zip").exists()
+
+
+def test_run_mvp_workflow_uses_configured_rag_knowledge_base(tmp_path: Path) -> None:
+    workspace = tmp_path / "task"
+    problem = tmp_path / "problem.md"
+    attachment = tmp_path / "data.csv"
+    problem.write_text("# Problem\n\nUse a local knowledge base.", encoding="utf-8")
+    attachment.write_text("x,y\n1,2\n2,3\n", encoding="utf-8")
+    knowledge_base = tmp_path / "knowledge_base"
+    knowledge_base.mkdir()
+    (knowledge_base / "method_note.md").write_text(
+        "Figure design should map every result plot to the claim it supports.",
+        encoding="utf-8",
+    )
+    providers = ProviderBundle(
+        llm=FakeLLMProvider({"default": ""}),
+        mineru=InjectedMinerUProvider(),
+        search=InjectedSearchProvider(),
+        extractor=InjectedExtractProvider(),
+        official_data=None,
+        humanizer=FakeHumanizerProvider({}),
+        latex=InjectedLatexProvider(),
+    )
+
+    run_mvp_workflow(
+        workspace,
+        TaskInput(problem_file=problem, attachments=[attachment]),
+        providers=providers,
+        settings=Settings(rag_knowledge_base_dir=str(knowledge_base)),
+        auto_approve=True,
+    )
+
+    hits = read_json(workspace / "rag" / "methodology_hits.json", [])
+    assert any(hit["title"] == "method_note.md" for hit in hits)

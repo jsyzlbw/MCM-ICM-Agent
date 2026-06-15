@@ -137,6 +137,7 @@ def run_workflow(
             template_dir=template_dir,
         ),
         providers=providers,
+        settings=settings,
         supervisor_skills_dir=supervisor_skills_dir,
         auto_approve=auto_approve,
     )
@@ -170,6 +171,7 @@ def resume_workflow(
             template_dir=template_dir,
         ),
         providers=providers,
+        settings=settings,
         supervisor_skills_dir=supervisor_skills_dir,
         auto_approve=auto_approve,
         from_stage=from_stage,

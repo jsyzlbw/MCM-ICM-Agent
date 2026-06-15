@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mcm_agent.config import Settings
 from mcm_agent.agents.claim_planning import ClaimPlanningAgent
 from mcm_agent.agents.compliance import ComplianceOriginalityAgent
 from mcm_agent.agents.data_feasibility import DataFeasibilityScoutAgent
@@ -81,16 +82,19 @@ def run_mvp_workflow(
     inputs: TaskInput,
     *,
     providers: ProviderBundle | None = None,
+    settings: Settings | None = None,
     supervisor_skills_dir: Path | None = None,
     auto_approve: bool = False,
 ) -> None:
     workspace = create_workspace(workspace_root)
     provider_bundle = providers or _default_demo_providers()
+    runtime_settings = settings or Settings()
     executor = StageExecutor(
         workspace.root,
         handlers=_mvp_stage_handlers(
             inputs,
             provider_bundle,
+            settings=runtime_settings,
             supervisor_skills_dir=supervisor_skills_dir,
             auto_approve=auto_approve,
         ),
@@ -106,6 +110,7 @@ def resume_mvp_workflow(
     inputs: TaskInput,
     *,
     providers: ProviderBundle | None = None,
+    settings: Settings | None = None,
     supervisor_skills_dir: Path | None = None,
     auto_approve: bool = False,
     from_stage: str | None = None,
@@ -113,12 +118,14 @@ def resume_mvp_workflow(
 ) -> None:
     workspace = create_workspace(workspace_root)
     provider_bundle = providers or _default_demo_providers()
+    runtime_settings = settings or Settings()
     start_stage = from_stage or _resume_stage_from_state(workspace.root)
     executor = StageExecutor(
         workspace.root,
         handlers=_mvp_stage_handlers(
             inputs,
             provider_bundle,
+            settings=runtime_settings,
             supervisor_skills_dir=supervisor_skills_dir,
             auto_approve=auto_approve,
         ),
@@ -168,6 +175,7 @@ def _mvp_stage_handlers(
     inputs: TaskInput,
     provider_bundle: ProviderBundle,
     *,
+    settings: Settings,
     supervisor_skills_dir: Path | None,
     auto_approve: bool,
 ) -> dict[str, StageHandler]:
@@ -220,7 +228,15 @@ def _mvp_stage_handlers(
         return StageResult(outputs=["discussion/confirmed_direction.md"], condition=condition)
 
     def methodology_rag(workspace_root: Path) -> list[str]:
-        MethodologyRAGAgent().run(workspace_root, supervisor_skills_dir)
+        knowledge_base_dir = Path(settings.rag_knowledge_base_dir)
+        if not knowledge_base_dir.is_absolute():
+            knowledge_base_dir = Path.cwd() / knowledge_base_dir
+        MethodologyRAGAgent().run(
+            workspace_root,
+            supervisor_skills_dir,
+            knowledge_base_dir=knowledge_base_dir,
+            ingest_extensions=settings.rag_ingest_extensions,
+        )
         return ["rag/methodology_hits.json", "review/methodology_checklist_report.md"]
 
     def modeling_council(workspace_root: Path) -> list[str]:
