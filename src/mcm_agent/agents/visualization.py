@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from mcm_agent.agents.figure_quality import FigureQualityAgent
+from mcm_agent.core.concept_diagrams import build_concept_diagram_specs
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import ArtifactStatus, FigurePlanItem, FigureRecord
 from mcm_agent.utils.json_io import read_json, write_json
@@ -39,23 +40,29 @@ class FigurePlanningAgent:
                     source_ids=self._source_ids(workspace_root),
                 )
             ]
-        plan.append(
-            FigurePlanItem(
-                figure_id="fig_framework",
-                purpose="show the modeling workflow",
-                figure_type="concept_diagram",
-                source_data=[],
-                generation_script="figures/source/fig_framework.mmd",
-                output_formats=["svg", "pdf"],
-                target_section="paper/sections/model.tex",
-                caption_intent="Overview of the modeling workflow.",
-                claim_supported="The paper follows a reproducible modeling workflow.",
-            )
-        )
+        plan.extend(self._concept_diagram_figures(workspace_root))
         write_json(
             workspace_root / "figures" / "figure_plan.json",
             [item.model_dump(mode="json") for item in plan],
         )
+
+    def _concept_diagram_figures(self, workspace_root: Path) -> list[FigurePlanItem]:
+        return [
+            FigurePlanItem(
+                figure_id=spec.diagram_id,
+                purpose=spec.title,
+                figure_type="concept_diagram",
+                source_data=[],
+                source_ids=spec.source_ids,
+                evidence_ids=spec.evidence_ids,
+                generation_script=f"figures/source/{spec.diagram_id}.mmd",
+                output_formats=["svg"],
+                target_section=spec.target_section,
+                caption_intent=spec.caption_intent,
+                claim_supported=spec.claim_supported,
+            )
+            for spec in build_concept_diagram_specs(workspace_root)
+        ]
 
     def _route_data_figures(self, workspace_root: Path, source_data: list[str]) -> list[FigurePlanItem]:
         route_summary = read_json(workspace_root / "results" / "model_route_summary.json", {})

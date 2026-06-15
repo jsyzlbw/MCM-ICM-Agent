@@ -36,8 +36,8 @@ def test_visualization_agent_renders_registry_outputs(tmp_path: Path) -> None:
     registry = read_json(workspace.root / "figures" / "figure_registry.json", [])
     assert (workspace.root / "figures" / "fig_q1_prediction.pdf").exists()
     assert (workspace.root / "figures" / "fig_q1_prediction.svg").exists()
-    assert (workspace.root / "figures" / "source" / "fig_framework.mmd").exists()
-    assert any(item["figure_id"] == "fig_framework" for item in registry)
+    assert (workspace.root / "figures" / "source" / "fig_method_overview.mmd").exists()
+    assert any(item["figure_id"] == "fig_method_overview" for item in registry)
 
 
 def test_figure_planning_uses_selected_model_routes(tmp_path: Path) -> None:
@@ -110,3 +110,41 @@ def test_concept_diagram_builder_uses_routes_claims_and_sources(tmp_path: Path) 
     assert any(node.label == "queuing_service_model" for node in method.nodes)
     claim_map = spec_by_id["fig_claim_evidence_map"]
     assert any("claim_model_route" in node.label for node in claim_map.nodes)
+
+
+def test_figure_planning_adds_method_and_claim_concept_diagrams(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {"selected_routes": ["classification_model"], "route_metrics": {}},
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [])
+    write_json(
+        workspace.root / "paper" / "claim_plan.json",
+        [
+            {
+                "claim_id": "claim_model_route",
+                "section": "paper/sections/model.tex",
+                "claim_text": "The selected model is classification.",
+                "claim_type": "model_choice",
+                "evidence_ids": [],
+                "figure_ids": [],
+                "source_ids": [],
+                "priority": "critical",
+                "status": "unresolved",
+                "unresolved_reason": "test unresolved claim",
+            }
+        ],
+    )
+    (workspace.root / "results" / "problem1_results.csv").write_text(
+        "x,y\n1,2\n2,4\n",
+        encoding="utf-8",
+    )
+
+    FigurePlanningAgent().run(workspace.root)
+
+    plan = read_json(workspace.root / "figures" / "figure_plan.json", [])
+    by_id = {item["figure_id"]: item for item in plan}
+    assert by_id["fig_method_overview"]["figure_type"] == "concept_diagram"
+    assert by_id["fig_claim_evidence_map"]["target_section"] == "paper/sections/model.tex"
+    assert "svg" in by_id["fig_method_overview"]["output_formats"]
