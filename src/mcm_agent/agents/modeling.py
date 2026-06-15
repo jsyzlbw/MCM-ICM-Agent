@@ -5,6 +5,7 @@ from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.experiment_spec import build_experiment_spec
+from mcm_agent.core.model_route_plan import build_route_plan
 from mcm_agent.core.modeling_intelligence import ModelingIntelligence, ProblemDiagnosis
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
 from mcm_agent.core.registry import ArtifactRegistry
@@ -221,9 +222,9 @@ class ModelJudge:
             diagnosis if diagnosis.routes else None
         )
         experiment_plan = self._fallback_experiment_plan(diagnosis)
-        experiment_spec = build_experiment_spec(
-            self._selected_route_ids_for_spec(decision, diagnosis)
-        )
+        route_plan = build_route_plan(diagnosis)
+        selected_route_ids = self._selected_route_ids_for_spec(decision, diagnosis)
+        experiment_spec = build_experiment_spec(selected_route_ids or route_plan.route_ids)
 
         (workspace_root / "reports" / "model_decision.md").write_text(decision, encoding="utf-8")
         (workspace_root / "reports" / "experiment_plan.md").write_text(

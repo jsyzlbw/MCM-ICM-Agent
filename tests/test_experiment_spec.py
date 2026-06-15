@@ -114,6 +114,20 @@ def test_experiment_spec_includes_column_binding_contract() -> None:
     }
 
 
+def test_experiment_spec_records_hybrid_route_metadata() -> None:
+    spec = build_experiment_spec(
+        ["multi_criteria_evaluation", "constrained_optimization", "forecasting_model"]
+    )
+
+    assert spec.route_plan["is_hybrid"] is True
+    assert spec.route_plan["execution_order"] == [
+        "multi_criteria_evaluation",
+        "constrained_optimization",
+        "forecasting_model",
+    ]
+    assert spec.experiments[1].role == "decision"
+
+
 def test_solver_records_inferred_column_bindings_in_route_summary(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     processed = workspace.root / "data" / "processed" / "sample.csv"
