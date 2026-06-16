@@ -76,6 +76,8 @@ document.addEventListener("alpine:init", () => {
     kbSubdir: "",
     kbPreview: null,
 
+    planning: { understanding: "", feasibility: "", direction: "" },
+
     // ---- lifecycle ----
     init() {
       this.applyRoute();
@@ -93,6 +95,7 @@ document.addEventListener("alpine:init", () => {
       this.route = r;
       if (r === "artifacts" && this.currentWorkspaceId) this.loadArtifacts();
       if (r === "knowledge") this.loadKnowledge();
+      if (r === "planning" && this.currentWorkspaceId) this.loadPlanning();
     },
     go(r) { location.hash = "#/" + r; },
 
@@ -335,6 +338,22 @@ document.addEventListener("alpine:init", () => {
       if (n < 1024) return `${n} B`;
       if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
       return `${(n / 1048576).toFixed(1)} MB`;
+    },
+
+    // ---- planning / discussion ----
+    async readDoc(path) {
+      try {
+        const r = await this.api(`/api/workspaces/${this.currentWorkspaceId}/artifacts/content?path=${encodeURIComponent(path)}`);
+        return r.content;
+      } catch (e) { return "(尚未生成)"; }
+    },
+    async loadPlanning() {
+      if (!this.currentWorkspaceId) return;
+      this.planning = {
+        understanding: await this.readDoc("reports/problem_understanding.md"),
+        feasibility: await this.readDoc("reports/data_feasibility_report.md"),
+        direction: await this.readDoc("discussion/confirmed_direction.md"),
+      };
     },
   }));
 });

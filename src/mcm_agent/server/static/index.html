@@ -171,11 +171,42 @@
       </template>
     </section>
 
-    <!-- PLANNING / DISCUSSION (Phase 4 placeholder) -->
+    <!-- PLANNING / DISCUSSION -->
     <section x-show="route==='planning'">
       <h1 class="page-title">讨论/规划</h1>
-      <p class="page-sub">执行前与 agent 讨论方向并确认。</p>
-      <div class="card"><div class="empty">💬 独立讨论/规划界面将在 Phase 4 接入。当前可在「运行监控」的 checkpoint 审批卡中批准/调整方向。</div></div>
+      <p class="page-sub" x-show="!currentWorkspaceId">先在「任务上传」选择或新建一个 workspace。</p>
+      <template x-if="currentWorkspaceId">
+        <div>
+          <div class="row spread">
+            <p class="page-sub">执行前与 agent 对齐方向。下面是当前 workspace 的理解与提议(运行产生后自动出现)。</p>
+            <button class="btn sm" @click="loadPlanning()">刷新</button>
+          </div>
+
+          <template x-if="run.state==='paused' && run.pending_checkpoint_id">
+            <div class="card">
+              <div class="checkpoint">
+                <div class="ttl">✋ 等你拍板 · 阶段已暂停</div>
+                <div class="muted">agent 在 <span x-text="run.resume_from || '?'"></span> 前暂停。批准以继续,或写下调整意见。</div>
+                <textarea x-model="approveMessage" placeholder="调整意见(可留空直接批准)…" style="margin-top:8px"></textarea>
+                <div class="row" style="margin-top:8px"><button class="btn primary" @click="approve()">批准并继续</button></div>
+              </div>
+            </div>
+          </template>
+
+          <div class="card">
+            <h3>题目理解</h3>
+            <div class="artifact-view" x-text="planning.understanding"></div>
+          </div>
+          <div class="card">
+            <h3>数据可行性</h3>
+            <div class="artifact-view" x-text="planning.feasibility"></div>
+          </div>
+          <div class="card">
+            <h3>确认的方向</h3>
+            <div class="artifact-view" x-text="planning.direction"></div>
+          </div>
+        </div>
+      </template>
     </section>
 
     <!-- RUN MONITOR -->
