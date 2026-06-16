@@ -16,6 +16,7 @@ def test_example_json_config_has_required_sections() -> None:
         "mineru",
         "humanizer",
         "rag",
+        "embedding",
         "runtime",
     }
     assert payload["llm"]["provider"] == "openai_compatible"
