@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
+import time
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
 from mcm_agent.config import load_settings
 from mcm_agent.core.models import TaskInput
@@ -97,6 +100,19 @@ def create_workflow_router(
         )
         return _start(registry, root, run_fn, auto_approve, until_stage=payload.get("until_stage") or until_stage)
 
+    @router.get("/{workspace_id}/logs")
+    def logs(workspace_id: str) -> dict[str, Any]:
+        root = _workspace_root(workspace_base, workspace_id)
+        return {"workspace_id": workspace_id, "stages": _read_stage_records(root)}
+
+    @router.get("/{workspace_id}/events")
+    def events(workspace_id: str) -> StreamingResponse:
+        root = _workspace_root(workspace_base, workspace_id)
+        return StreamingResponse(
+            _event_stream(root, workspace_id, registry),
+            media_type="text/event-stream",
+        )
+
     return router
 
 
@@ -155,3 +171,65 @@ def _task_input_from_workspace(root: Path) -> TaskInput:
     attach_dir = root / "input" / "attachments"
     attachments = sorted(p for p in attach_dir.glob("*") if p.is_file()) if attach_dir.exists() else []
     return TaskInput(problem_file=problem_files[0], attachments=attachments)
+
+
+def _sse(event: str, data: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _read_stage_records(root: Path) -> list[dict[str, Any]]:
+    path = root / "stage_runs.jsonl"
+    if not path.exists():
+        return []
+    records: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            records.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return records
+
+
+def _event_stream(root: Path, workspace_id: str, registry: RunRegistry):
+    emitted = 0
+    last_state: str | None = None
+    deadline = time.monotonic() + 900
+    while True:
+        records = _read_stage_records(root)
+        for record in records[emitted:]:
+            yield _sse("stage_completed", record)
+        emitted = len(records)
+
+        handle = registry.get(workspace_id)
+        if handle is not None:
+            for entry in handle.drain_logs():
+                yield _sse("log", entry)
+        state = handle.status if handle is not None else _state_from_files(root)
+        if state != last_state:
+            yield _sse("status", {"state": state})
+            last_state = state
+
+        if state == "paused" and handle is not None:
+            yield _sse(
+                "checkpoint_pending",
+                {"checkpoint_id": handle.pending_checkpoint_id, "resume_from": handle.resume_from},
+            )
+            break
+        if state in {"done", "failed", "stopped"}:
+            yield _sse("run_finished", {"state": state})
+            break
+        if time.monotonic() > deadline:
+            break
+        time.sleep(0.2)
+
+
+def _state_from_files(root: Path) -> str:
+    state = read_json(root / "task_state.json", {})
+    if isinstance(state, dict) and state.get("blocked_reason"):
+        return "failed"
+    manifest = root / "final_submission" / "submission_manifest.json"
+    return "done" if manifest.exists() else "idle"
+

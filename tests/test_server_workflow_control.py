@@ -92,3 +92,39 @@ def test_pause_then_approve_resumes(tmp_path, monkeypatch):
     )
     assert approve.status_code == 200
     assert _wait_run_state(client, "done")
+
+
+def test_events_stream_replays_after_completion(tmp_path):
+    client = _client(tmp_path)
+    _seed_workspace(client)
+    client.post(
+        "/api/workspaces/task_001/run",
+        json={"demo": True, "auto_approve": True, "until_stage": "problem_understanding"},
+    )
+    assert _wait_run_state(client, "done")
+
+    # After completion, a fresh SSE connection replays stage events from file and closes.
+    event_types = []
+    with client.stream("GET", "/api/workspaces/task_001/events") as response:
+        assert response.status_code == 200
+        for line in response.iter_lines():
+            if line.startswith("event:"):
+                event_types.append(line.split(":", 1)[1].strip())
+            if "run_finished" in line:
+                break
+
+    assert "stage_completed" in event_types
+    assert "run_finished" in event_types
+
+
+def test_logs_endpoint_returns_recent_lines(tmp_path):
+    client = _client(tmp_path)
+    _seed_workspace(client)
+    client.post(
+        "/api/workspaces/task_001/run",
+        json={"demo": True, "auto_approve": True, "until_stage": "problem_understanding"},
+    )
+    assert _wait_run_state(client, "done")
+    logs = client.get("/api/workspaces/task_001/logs").json()
+    assert "stages" in logs
+    assert any(s["stage_id"] == "problem_understanding" for s in logs["stages"])
