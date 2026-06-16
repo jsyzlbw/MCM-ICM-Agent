@@ -1,0 +1,46 @@
+import httpx
+import respx
+
+from mcm_agent.providers.embedding import (
+    FakeEmbeddingProvider,
+    FakeRerankProvider,
+    VoyageEmbeddingProvider,
+    VoyageRerankProvider,
+)
+
+
+def test_fake_embedding_is_deterministic_normalized_fixed_dim():
+    p = FakeEmbeddingProvider(dim=256)
+    a = p.embed(["weighted topsis evaluation"])
+    b = p.embed(["weighted topsis evaluation"])
+    assert len(a) == 1 and len(a[0]) == 256
+    assert a == b
+    norm = sum(x * x for x in a[0]) ** 0.5
+    assert abs(norm - 1.0) < 1e-6
+
+
+def test_fake_rerank_orders_by_overlap_and_caps_top_k():
+    r = FakeRerankProvider()
+    out = r.rerank("figure design claim", ["figure design supports the claim", "unrelated text", "claim about figure"], top_k=2)
+    assert len(out) == 2
+    assert out[0]["index"] == 0
+    assert out[0]["score"] >= out[1]["score"]
+
+
+@respx.mock
+def test_voyage_embedding_parses_response():
+    respx.post("https://api.voyageai.com/v1/embeddings").mock(
+        return_value=httpx.Response(200, json={"data": [{"embedding": [0.1, 0.2]}, {"embedding": [0.3, 0.4]}]})
+    )
+    p = VoyageEmbeddingProvider(api_key="k", model="voyage-3-large")
+    assert p.embed(["a", "b"]) == [[0.1, 0.2], [0.3, 0.4]]
+
+
+@respx.mock
+def test_voyage_rerank_parses_response():
+    respx.post("https://api.voyageai.com/v1/rerank").mock(
+        return_value=httpx.Response(200, json={"results": [{"index": 1, "relevance_score": 0.9}, {"index": 0, "relevance_score": 0.4}]})
+    )
+    r = VoyageRerankProvider(api_key="k", model="rerank-2")
+    out = r.rerank("q", ["d0", "d1"], top_k=2)
+    assert out == [{"index": 1, "score": 0.9}, {"index": 0, "score": 0.4}]

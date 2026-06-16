@@ -24,3 +24,5 @@ class ProviderBundle:
     official_data: object
     humanizer: object
     latex: object
+    embedding: object | None = None
+    reranker: object | None = None
