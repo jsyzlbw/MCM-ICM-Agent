@@ -1,6 +1,6 @@
 # MCM/ICM Agent Implementation Plan
 
-Status date: 2026-06-15
+Status date: 2026-06-17
 
 This plan reflects the current repository at `/Users/mac/Programming/MCM-ICM-Agent`.
 The earlier `MathModelAgentDesign/reference_implementation/` layout has been superseded:
@@ -27,9 +27,9 @@ Latest verified baseline:
 
 ```bash
 pytest -q
-# 271 passed
+# 310 passed
 
-ruff check src tests scripts
+ruff check src tests
 # All checks passed
 ```
 
@@ -124,10 +124,17 @@ Rules:
 | H1 Concept diagram system | Complete as Mermaid plus deterministic SVG concept diagrams |
 | I1 Citation and source writing enhancement | Complete |
 | J1 Automatic LaTeX repair | Complete as deterministic one-pass repair for safe table, graphic, and equation patterns |
+| K Workflow Control API | Complete — threaded run registry + run/resume/stop/run-status/approve/events(SSE)/logs + executor pause/stop hook |
+| L Local GUI | Complete — zero-build FastAPI static + Alpine + SSE, six screens |
+| R RAG v2 hybrid retrieval | Complete — FTS+vector candidates reranked; Voyage providers + fakes; content-hash cache; chroma index |
 
 ## 4. Active Next Phase
 
-The active next phase is **Smoother Interactive Checkpoints**.
+The earlier "Smoother Interactive Checkpoints" phase is now **delivered** by the
+local GUI + Workflow Control API (phases K and L): users approve/redirect
+checkpoints from the Run Monitor and Discussion screens without editing
+workspace files. The active next phase is now **Real-Provider Validation &
+Modeling Depth**.
 
 Purpose:
 
@@ -175,14 +182,20 @@ submission package
 
 ## 5. Next Phase Tasks
 
-### Task 1: Smoother Interactive Checkpoints
+### Task 1: Real-Provider Validation & Modeling Depth
 
 Target behavior:
 
-- Add a user-friendly checkpoint review loop beyond file-oriented CLI checkpoints.
-- Preserve current machine-readable `task_state.json` and gate artifacts.
-- Let users approve, revise, or redirect stage decisions without manually editing
-  workspace files.
+- Run a small real task (real LLM + Voyage embeddings/rerank + data providers)
+  end-to-end through the GUI; fix real-mode issues (cooperative stop only acts
+  between stages; missing-config currently falls back to demo providers).
+- Verify the GUI in a browser (six screens, live SSE, checkpoint approval).
+- Begin moving modeling beyond deterministic recipe baselines toward stronger
+  problem-specific model/code generation.
+
+The previously interactive-checkpoint goal is satisfied; current `task_state.json`
+and gate artifacts remain the machine-readable source of truth, now also driven
+through the Workflow Control API.
 
 ## 6. Later Build Phases
 

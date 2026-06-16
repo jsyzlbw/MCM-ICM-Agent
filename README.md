@@ -37,7 +37,7 @@ The central design idea is simple:
 Problem package -> Agent workflow -> Evidence-backed paper -> Review/repair loop -> Submission package
 ```
 
-The current implementation is CLI-first, with a local FastAPI backend foundation for a future GUI. The production-grade part today is the workflow and artifact contract, not a polished frontend.
+The implementation is CLI-first and now also ships a **zero-build local web GUI** (served by `mcm-agent gui`) backed by a Workflow Control API, so you can configure providers, upload a task, run/resume/stop the workflow, watch live progress, approve checkpoints, and browse artifacts from a browser. The production-grade part today is the workflow and artifact contract; the GUI is a working local single-user app, not a hosted multi-user service.
 
 ---
 
@@ -317,13 +317,13 @@ Use these when experimenting with checkpoint behavior or building UI controls ar
 
 ### `mcm-agent gui`
 
-Starts the local FastAPI GUI backend.
+Starts the local web GUI (static frontend + Workflow Control API) on FastAPI.
 
 ```bash
 mcm-agent gui --host 127.0.0.1 --port 8787
 ```
 
-This exposes config, provider-test, workspace, upload, status, artifact-list, artifact-read, and artifact-download endpoints. The repository does not yet ship a production frontend.
+Open `http://127.0.0.1:8787` in a browser. The GUI is zero-build (FastAPI-served HTML + Alpine.js + Server-Sent Events; no Node/build step) and has six screens: Settings, Knowledge Base, Task Upload, Discussion/Planning, Run Monitor (live stage timeline + log stream + checkpoint approval), and Artifacts. It drives the same workflow as the CLI via the Workflow Control API (run/resume/stop/approve/events/logs).
 
 ---
 
@@ -347,6 +347,7 @@ Top-level sections:
 | `mineru` | Fake, local CLI, or REST document parsing mode. |
 | `humanizer` | UShallPass-compatible humanization settings. |
 | `rag` | Local knowledge-base directory and ingest extensions. |
+| `embedding` | RAG v2 embedding/rerank: provider (`voyage`/`fake`), API key, base URL, embedding + rerank model names. Empty key falls back to deterministic fakes. |
 | `runtime` | Default language, retries, HTTP timeout, and code timeout. |
 
 Supported provider smoke IDs:
@@ -386,7 +387,7 @@ knowledge_base/
         └── excellent_paper.pdf
 ```
 
-During `methodology_rag`, `.md` and `.txt` files are chunked directly. `.pdf` files are parsed through MinerU when available. Retrieved chunks are written to `rag/methodology_hits.json` with provenance fields.
+During `methodology_rag`, `.md` and `.txt` files are chunked directly. `.pdf` files are parsed through MinerU when available. Retrieval is **hybrid**: keyword (SQLite FTS) and semantic (vector) candidates are merged and reranked to the top results. When an `embedding` provider key (Voyage) is configured, real embeddings + reranking are used and embeddings are cached by content hash; otherwise deterministic fake providers keep the full path working offline. Retrieved chunks are written to `rag/methodology_hits.json` with provenance fields and rerank scores.
 
 RAG materials guide modeling and writing patterns. They are not automatically treated as verified factual sources; factual claims still need registered sources and evidence.
 
@@ -426,21 +427,33 @@ Start the server:
 mcm-agent gui --host 127.0.0.1 --port 8787
 ```
 
-Endpoints:
+The browser app is served at `/` (static assets under `/static`). It talks to these endpoints:
 
 | Endpoint | Purpose |
 |---|---|
+| `GET /` | Serve the GUI shell (`/static/*` for assets). |
 | `GET /api/health` | Health check. |
 | `GET /api/config` | Read masked runtime config. |
-| `POST /api/config` | Save local runtime config. |
+| `POST /api/config` | Save local runtime config (merge-based; never clobbers stored secrets). |
 | `POST /api/config/test-provider` | Test one provider through the smoke layer. |
 | `POST /api/workspaces` | Create a workspace under `.mcm_agent_workspaces`. |
 | `GET /api/workspaces` | List local workspaces. |
-| `POST /api/workspaces/{workspace_id}/files` | Upload problem, attachment, template, or chat files. |
-| `GET /api/workspaces/{workspace_id}/status` | Read task state, failed gate, and recent stages. |
-| `GET /api/workspaces/{workspace_id}/artifacts` | List generated artifacts. |
-| `GET /api/workspaces/{workspace_id}/artifacts/content` | Read a text artifact. |
-| `GET /api/workspaces/{workspace_id}/artifacts/download` | Download an artifact. |
+| `POST /api/workspaces/{id}/files` | Upload problem, attachment, template, or chat files. |
+| `GET /api/workspaces/{id}/status` | Read task state, failed gate, and recent stages. |
+| `POST /api/workspaces/{id}/run` | Start a run (background thread; `demo`/`auto_approve`/`from_stage`/`until_stage`). |
+| `POST /api/workspaces/{id}/resume` | Resume a run from a stage or saved state. |
+| `POST /api/workspaces/{id}/stop` | Request a cooperative stop. |
+| `GET /api/workspaces/{id}/run` | Run status: state, duration, pending checkpoint, error. |
+| `POST /api/workspaces/{id}/checkpoints/{checkpoint_id}/approve` | Approve a paused checkpoint and resume. |
+| `GET /api/workspaces/{id}/events` | Server-Sent Events stream of stage/log/gate/checkpoint events. |
+| `GET /api/workspaces/{id}/logs` | Recent stage records (SSE backfill / polling). |
+| `GET /api/workspaces/{id}/artifacts` | List generated artifacts. |
+| `GET /api/workspaces/{id}/artifacts/content` | Read a text artifact. |
+| `GET /api/workspaces/{id}/artifacts/download` | Download an artifact. |
+| `GET /api/knowledge/files` | List knowledge-base files with ingest-eligibility. |
+| `POST /api/knowledge/files` | Upload files into `knowledge_base/`. |
+| `DELETE /api/knowledge/files` | Delete a knowledge-base file. |
+| `GET /api/knowledge/index-preview` | Offline dry-run of RAG ingestion (chunk counts). |
 
 ---
 

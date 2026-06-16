@@ -1,6 +1,6 @@
 # MCM/ICM Agent Project Status
 
-Status date: 2026-06-15
+Status date: 2026-06-17
 
 This document records the implementation state of the repository at
 `/Users/mac/Programming/MCM-ICM-Agent`. It is the source of truth for what has
@@ -13,17 +13,24 @@ Latest verified local commands:
 
 ```bash
 pytest -q
-# 271 passed
+# 310 passed
 
-ruff check src tests scripts
+ruff check src tests
 # All checks passed
 ```
 
 Latest implementation commit at the time this status was written:
 
 ```text
-cb42095 feat: summarize latex repairs in typesetting qa
+8f1da81 test: include embedding section in example-config assertion
 ```
+
+Since the 2026-06-15 snapshot, three major capabilities landed (all on `main`,
+fake-provider tested, no real keys required):
+
+- **Workflow Control API** — operate runs over HTTP, not just inspect files.
+- **Zero-build GUI** — a 6-screen local web app served by `mcm-agent gui`.
+- **RAG v2** — hybrid FTS + vector retrieval with reranking (Voyage + chromadb), fake-provider offline.
 
 ## Implemented
 
@@ -63,6 +70,11 @@ cb42095 feat: summarize latex repairs in typesetting qa
 | Reviewer, Revision, Submission Packager | Implemented with claim-plan blockers and paper-quality scoring |
 | Provider smoke CLI for LLM, search, extraction, MinerU, humanizer, and official-data checks | Implemented |
 | End-to-end fake-provider workflow tests | Implemented |
+| Workflow Control API: threaded run registry + `run`/`resume`/`stop`/`run-status`/checkpoint-`approve`/`events` (SSE)/`logs` endpoints, with a cooperative pause/stop hook in the stage executor | Implemented |
+| Zero-build local GUI (FastAPI static + Alpine.js + SSE): Settings, Knowledge Base, Task Upload, Discussion/Planning, Run Monitor, Artifacts | Implemented |
+| Secret-safe config round-trip (`merge_config`) so the masked Settings screen never clobbers stored keys | Implemented |
+| Knowledge-base file manager API (list/upload/delete + offline index preview) | Implemented |
+| RAG v2: hybrid FTS + vector retrieval with reranking; Voyage embedding/rerank providers + deterministic fakes; content-hash embedding cache; chroma vector index | Implemented |
 
 ## Partially Implemented
 
@@ -71,19 +83,19 @@ cb42095 feat: summarize latex repairs in typesetting qa
 | Real automatic modeling | Selects recipe-driven hybrid route plans, writes route-aware experiment specs, emits solver blueprints, executes deterministic route modules for evaluation, optimization, forecasting, simulation, classification, clustering, queueing, and network tasks, records route execution status, and routes binding-driven weak-model failures to modeling repair | Generate stronger problem-specific model code for arbitrary MCM/ICM tasks |
 | Claim-level paper evidence | Checks `claim_id`, `evidence_id`, `figure_id`, `source_id`, citation keys, planned critical/major claim coverage, and reviewer quality scores | Improve claim taxonomy and richer repair routing for ambiguous missing support |
 | Paper writing | Produces contextual traceable LaTeX sections from `paper/claim_plan.json` with source-specific citations when present | Add optional style variants |
-| RAG | Imports selected Supervisor-Skills documents plus local `.md`, `.txt`, and MinerU-parsed `.pdf` files from `knowledge_base/` into SQLite FTS; retrieves paper-quality query types with source type, relative path, chunk id, page hint, and usage restrictions | Add richer source-specific query planning and citation-style guidance for local method libraries |
+| RAG | Hybrid retrieval: FTS (keyword) ∪ vector (semantic) candidates reranked to top-K; Voyage embedding/rerank when an `embedding` key is configured, deterministic fakes otherwise; content-hash embedding cache; per-workspace chroma index built during `methodology_rag` | Real-provider (Voyage) end-to-end run; tuning `fts_n`/`vec_n`/`top_k`; optional structured "case" knowledge schema |
 | Official data APIs | Provider pattern plus World Bank, OECD, UNData, FRED, US Census, NOAA, NASA POWER, Open-Meteo, and OSM/Overpass repair adapters with mocked tests and smoke checks | Add richer provider-specific query planning |
 | Visualization | Generates vector-first data figures, Mermaid source concept diagrams, deterministic SVG concept outputs, and QA reports | Add richer diagram styling/export polish if needed |
 | LaTeX | Generates, compiles through provider abstraction, runs deterministic typesetting QA, applies one conservative source-repair pass for safe table, graphic, and equation patterns, recompiles, and records repair artifacts | Add richer repair coverage for complex page-limit and float-placement failures |
 | Humanization | Calls UShallPass or fake provider and performs fact-lock regression | Add privacy policy switches, batch job logs, retry reports, and user approval gates |
-| User interaction | File/CLI-oriented checkpoints | Add a smoother interactive conversation loop or UI later |
-| Provider smoke tests | `mcm-agent provider-smoke` and `scripts/smoke_providers.py` read `--config-file`, check configured live providers, and report skipped missing keys | Add richer paid-provider cost controls and batch smoke history |
+| User interaction | Local web GUI (6 screens) over the Workflow Control API: configure providers, manage the knowledge base, upload a task, run/resume/stop, watch live SSE progress, approve pause checkpoints, browse artifacts | In-browser visual/UX verification; richer human-in-the-loop (edit/regenerate/ask) and free-form discussion |
+| Provider smoke tests | `mcm-agent provider-smoke` and `scripts/smoke_providers.py` read `--config-file`, check configured live providers, and report skipped missing keys | Add an `embedding` (Voyage) smoke check; richer paid-provider cost controls and batch smoke history |
 
 ## Not Yet Built
 
 - Automatic LaTeX source repair for complex page-limit, float-placement, template-specific, and semantic compile issues.
-- Production UI or hosted service.
-- Persistent multi-user authentication, billing, or SaaS deployment.
+- Hosted/multi-user service: authentication, billing, or SaaS deployment (the GUI today is local single-user).
+- Verified real-provider end-to-end run (the workflow + GUI + RAG v2 are tested with fake/demo providers; a small real-key run is the next validation).
 - Any guarantee of contest award level.
 
 ## Current Architecture Reality
@@ -133,14 +145,19 @@ The most important implemented safety property is evidence governance:
 
 ## Recommended Next Build Phase
 
-The next phase should focus on smoother human-in-the-loop operation and contest-day
-readiness.
+The operable GUI, Workflow Control API, and hybrid RAG now exist and are
+fake-provider tested. The next steps shift toward real-world validation and
+depth:
 
-Build order:
+1. **Real-provider end-to-end** — run a small real task (real LLM + Voyage +
+   data providers) through the GUI; fix real-mode issues surfaced (cooperative
+   stop only acts between stages; missing-config currently falls back to demo).
+2. **In-browser GUI verification + polish** — click through the 6 screens,
+   confirm SSE live updates and checkpoint approval, refine layout.
+3. **Stronger problem-specific modeling/code generation** — move beyond
+   deterministic recipe baselines (the deepest remaining capability gap).
 
-1. Add a smoother interactive user loop or UI for checkpoint decisions.
-2. Add richer source-specific query planning.
-3. Persist live provider smoke histories, cost estimates, and rate-limit notes.
-
-This is the right next step because the main planning, modeling, RAG, official-data,
-paper, automatic typesetting repair, and provider-readiness foundations now exist.
+The planning, modeling, RAG (now hybrid), official-data, paper, automatic
+typesetting repair, provider-readiness, and operable-GUI foundations now exist.
+Design specs and task-by-task plans for the recent work live under
+`docs/superpowers/specs/` and `docs/superpowers/plans/`.
