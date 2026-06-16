@@ -195,15 +195,15 @@
 
           <div class="card">
             <h3>题目理解</h3>
-            <div class="artifact-view" x-text="planning.understanding"></div>
+            <div class="artifact-view md" x-html="renderMarkdown(planning.understanding)"></div>
           </div>
           <div class="card">
             <h3>数据可行性</h3>
-            <div class="artifact-view" x-text="planning.feasibility"></div>
+            <div class="artifact-view md" x-html="renderMarkdown(planning.feasibility)"></div>
           </div>
           <div class="card">
             <h3>确认的方向</h3>
-            <div class="artifact-view" x-text="planning.direction"></div>
+            <div class="artifact-view md" x-html="renderMarkdown(planning.direction)"></div>
           </div>
         </div>
       </template>
@@ -294,7 +294,8 @@
               <h3 x-text="artifactPath || '预览'"></h3>
               <a class="btn sm" x-show="artifactPath" :href="downloadUrl(artifactPath)" target="_blank">下载</a>
             </div>
-            <div class="artifact-view" x-show="artifactContent !== null" x-text="artifactContent"></div>
+            <div class="artifact-view md" x-show="artifactContent !== null && isMarkdown(artifactPath)" x-html="renderMarkdown(artifactContent)"></div>
+            <div class="artifact-view" x-show="artifactContent !== null && !isMarkdown(artifactPath)" x-text="artifactContent"></div>
             <template x-if="artifactContent === null"><div class="empty">点左侧文件预览(二进制文件请用下载)。</div></template>
           </div>
         </div>

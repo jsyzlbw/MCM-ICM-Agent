@@ -356,5 +356,51 @@ document.addEventListener("alpine:init", () => {
         direction: await this.readDoc("discussion/confirmed_direction.md"),
       };
     },
+
+    // ---- minimal, XSS-safe markdown rendering (escape-first) ----
+    isMarkdown(path) {
+      return typeof path === "string" && path.toLowerCase().endsWith(".md");
+    },
+    escapeHtml(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    },
+    _mdInline(s) {
+      let out = this.escapeHtml(s);
+      out = out.replace(/`([^`]+)`/g, (_m, c) => `<code>${c}</code>`);
+      out = out.replace(/\*\*([^*]+)\*\*/g, (_m, c) => `<strong>${c}</strong>`);
+      out = out.replace(/(^|[^*])\*([^*]+)\*/g, (_m, p, c) => `${p}<em>${c}</em>`);
+      out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, t, u) => {
+        const safe = /^(https?:\/\/|\/|#)/.test(u) ? u : "#";
+        return `<a href="${this.escapeHtml(safe)}" target="_blank" rel="noopener">${t}</a>`;
+      });
+      return out;
+    },
+    renderMarkdown(text) {
+      if (!text) return "";
+      const lines = String(text).replace(/\r\n/g, "\n").split("\n");
+      const html = [];
+      let inCode = false;
+      let codeBuf = [];
+      let inList = false;
+      const flushList = () => { if (inList) { html.push("</ul>"); inList = false; } };
+      for (const line of lines) {
+        if (line.trim().startsWith("```")) {
+          if (inCode) { html.push(`<pre><code>${this.escapeHtml(codeBuf.join("\n"))}</code></pre>`); codeBuf = []; inCode = false; }
+          else { flushList(); inCode = true; }
+          continue;
+        }
+        if (inCode) { codeBuf.push(line); continue; }
+        const h = line.match(/^(#{1,6})\s+(.*)$/);
+        if (h) { flushList(); const lvl = Math.min(h[1].length + 2, 6); html.push(`<h${lvl}>${this._mdInline(h[2])}</h${lvl}>`); continue; }
+        const li = line.match(/^\s*[-*]\s+(.*)$/);
+        if (li) { if (!inList) { html.push("<ul>"); inList = true; } html.push(`<li>${this._mdInline(li[1])}</li>`); continue; }
+        if (line.trim() === "") { flushList(); continue; }
+        flushList();
+        html.push(`<p>${this._mdInline(line)}</p>`);
+      }
+      if (inCode) html.push(`<pre><code>${this.escapeHtml(codeBuf.join("\n"))}</code></pre>`);
+      flushList();
+      return html.join("\n");
+    },
   }));
 });

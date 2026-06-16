@@ -118,6 +118,14 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--violet-soft
 .artifact-item { padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: var(--mono); font-size: 12px; }
 .artifact-item:hover { background: var(--surface-2); }
 .artifact-view { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px; white-space: pre-wrap; font-family: var(--mono); font-size: 12px; max-height: 460px; overflow: auto; }
+.artifact-view.md { white-space: normal; font-family: var(--font); font-size: 13px; line-height: 1.6; }
+.artifact-view.md h3, .artifact-view.md h4, .artifact-view.md h5, .artifact-view.md h6 { margin: 12px 0 6px; }
+.artifact-view.md p { margin: 6px 0; }
+.artifact-view.md ul { margin: 6px 0; padding-left: 20px; }
+.artifact-view.md code { background: rgba(0,0,0,.05); padding: 1px 4px; border-radius: 4px; font-family: var(--mono); font-size: 12px; }
+.artifact-view.md pre { background: #0D1117; color: #C9D1D9; padding: 10px 12px; border-radius: 8px; overflow: auto; }
+.artifact-view.md pre code { background: none; padding: 0; color: inherit; }
+.artifact-view.md a { color: var(--violet); }
 
 /* Toast */
 .toast { position: fixed; top: 18px; right: 18px; z-index: 50; max-width: 360px; }
