@@ -20,6 +20,7 @@ class MethodologyHit(BaseModel):
     chunk_id: str = ""
     chunk_index: int = 1
     page_hint: str = ""
+    rerank_score: float = 0.0
 
 
 EXPECTED_DOC_COLUMNS = [
@@ -394,6 +395,61 @@ def search_methodology_queries(
         for hit in store.search(query, limit=3):
             hits.append(hit.model_copy(update={"query": query}))
     return hits
+
+
+def hybrid_search(
+    store: MethodologyStore,
+    vector_index: object | None,
+    embedding_provider: object | None,
+    reranker: object | None,
+    query: str,
+    *,
+    fts_n: int = 10,
+    vec_n: int = 10,
+    top_k: int = 3,
+) -> list[MethodologyHit]:
+    candidates: dict[str, MethodologyHit] = {}
+    for hit in store.search(query, limit=fts_n):
+        key = hit.chunk_id or hit.relative_path or hit.title
+        candidates[key] = hit
+
+    if embedding_provider is not None and vector_index is not None:
+        query_vector = embedding_provider.embed([query])[0]
+        for item in vector_index.query(query_vector, vec_n):
+            key = item["chunk_id"]
+            if key in candidates:
+                continue
+            meta = item.get("metadata") or {}
+            candidates[key] = MethodologyHit(
+                source=str(meta.get("source", meta.get("relative_path", key))),
+                title=str(meta.get("title", key)),
+                content=item.get("content", ""),
+                rank=0,
+                source_type=str(meta.get("source_type", "method_note")),
+                relative_path=str(meta.get("relative_path", "")),
+                chunk_id=key,
+                chunk_index=int(meta.get("chunk_index", 1)),
+                page_hint=str(meta.get("page_hint", "")),
+            )
+
+    candidate_list = list(candidates.values())
+    if not candidate_list:
+        return []
+
+    if reranker is not None:
+        ranked = reranker.rerank(query, [c.content for c in candidate_list], top_k)
+        ordered: list[MethodologyHit] = []
+        for position, row in enumerate(ranked, 1):
+            base = candidate_list[row["index"]]
+            ordered.append(
+                base.model_copy(update={"rerank_score": float(row["score"]), "rank": position, "query": query})
+            )
+        return ordered
+
+    return [
+        candidate.model_copy(update={"rank": position, "query": query})
+        for position, candidate in enumerate(candidate_list[:top_k], 1)
+    ]
 
 
 class MethodologyRAGAgent:
