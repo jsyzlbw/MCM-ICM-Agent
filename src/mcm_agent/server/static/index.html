@@ -238,6 +238,14 @@
             </div>
           </div>
 
+          <!-- Run failure -->
+          <template x-if="run.state==='failed' && run.error">
+            <div class="card" style="border-left:4px solid var(--red)">
+              <div class="row spread"><strong style="color:var(--red)">运行失败</strong><button class="btn sm" @click="go('artifacts')">查看产物</button></div>
+              <div class="logbox" style="margin-top:8px" x-text="run.error"></div>
+            </div>
+          </template>
+
           <!-- Checkpoint approval -->
           <template x-if="run.state==='paused' && run.pending_checkpoint_id">
             <div class="card">
