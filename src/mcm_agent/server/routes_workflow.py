@@ -22,28 +22,30 @@ def create_workflow_router(
     @router.post("/{workspace_id}/run")
     def run(workspace_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         root = _workspace_root(workspace_base, workspace_id)
+        until_stage = payload.get("until_stage") or "submission_packager"
         run_fn = _build_run_fn(
             root,
             config_path,
             demo=bool(payload.get("demo")),
             auto_approve=bool(payload.get("auto_approve")),
             from_stage=payload.get("from_stage") or "intake",
-            until_stage=payload.get("until_stage") or "submission_packager",
+            until_stage=until_stage,
         )
-        return _start(registry, root, run_fn, bool(payload.get("auto_approve")))
+        return _start(registry, root, run_fn, bool(payload.get("auto_approve")), until_stage=until_stage)
 
     @router.post("/{workspace_id}/resume")
     def resume(workspace_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         root = _workspace_root(workspace_base, workspace_id)
+        until_stage = payload.get("until_stage") or "submission_packager"
         run_fn = _build_run_fn(
             root,
             config_path,
             demo=bool(payload.get("demo")),
             auto_approve=bool(payload.get("auto_approve")),
             from_stage=payload.get("from_stage"),
-            until_stage=payload.get("until_stage") or "submission_packager",
+            until_stage=until_stage,
         )
-        return _start(registry, root, run_fn, bool(payload.get("auto_approve")))
+        return _start(registry, root, run_fn, bool(payload.get("auto_approve")), until_stage=until_stage)
 
     @router.post("/{workspace_id}/stop")
     def stop(workspace_id: str) -> dict[str, Any]:
@@ -66,16 +68,46 @@ def create_workflow_router(
             "error": handle.error,
         }
 
+    @router.post("/{workspace_id}/checkpoints/{checkpoint_id}/approve")
+    def approve(workspace_id: str, checkpoint_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        root = _workspace_root(workspace_base, workspace_id)
+        handle = registry.get(workspace_id)
+        if handle is None or handle.status != "paused":
+            raise HTTPException(status_code=409, detail="no paused run to approve")
+        resume_from = handle.resume_from or "intake"
+        until_stage = handle.until_stage or "submission_packager"
+
+        from mcm_agent.core.coordinator import Coordinator
+
+        try:
+            Coordinator(root).approve_checkpoint(
+                checkpoint_id, user_message=str(payload.get("user_message", ""))
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="checkpoint not found") from exc
+
+        auto_approve = bool(payload.get("auto_approve"))
+        run_fn = _build_run_fn(
+            root,
+            config_path,
+            demo=bool(payload.get("demo", True)),
+            auto_approve=auto_approve,
+            from_stage=resume_from,
+            until_stage=payload.get("until_stage") or until_stage,
+        )
+        return _start(registry, root, run_fn, auto_approve, until_stage=payload.get("until_stage") or until_stage)
+
     return router
 
 
 def _start(
-    registry: RunRegistry, root: Path, run_fn: RunFn, auto_approve: bool
+    registry: RunRegistry, root: Path, run_fn: RunFn, auto_approve: bool, until_stage: str | None = None
 ) -> dict[str, Any]:
     try:
         handle = registry.start(
             root.name, root, run_fn=run_fn, auto_approve=auto_approve,
             pause_after=set() if auto_approve else PAUSE_AFTER_DEFAULT,
+            until_stage=until_stage,
         )
     except RunRegistry.AlreadyRunningError as exc:
         raise HTTPException(status_code=409, detail="run already in progress") from exc

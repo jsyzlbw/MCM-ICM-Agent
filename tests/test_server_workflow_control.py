@@ -65,3 +65,30 @@ def test_run_endpoint_requires_problem_file(tmp_path):
     client.post("/api/workspaces", json={"workspace_id": "task_001"})
     resp = client.post("/api/workspaces/task_001/run", json={"demo": True, "auto_approve": True})
     assert resp.status_code == 400
+
+
+def test_pause_then_approve_resumes(tmp_path, monkeypatch):
+    # Force a pause after "intake" so the bounded demo run pauses deterministically.
+    import mcm_agent.server.routes_workflow as rw
+    monkeypatch.setattr(rw, "PAUSE_AFTER_DEFAULT", {"intake"})
+
+    client = _client(tmp_path)
+    _seed_workspace(client)
+
+    run = client.post(
+        "/api/workspaces/task_001/run",
+        json={"demo": True, "auto_approve": False, "until_stage": "problem_understanding"},
+    )
+    assert run.status_code == 200
+    assert _wait_run_state(client, "paused")
+
+    status = client.get("/api/workspaces/task_001/run").json()
+    checkpoint_id = status["pending_checkpoint_id"]
+    assert checkpoint_id is not None
+
+    approve = client.post(
+        f"/api/workspaces/task_001/checkpoints/{checkpoint_id}/approve",
+        json={"user_message": "looks good"},
+    )
+    assert approve.status_code == 200
+    assert _wait_run_state(client, "done")

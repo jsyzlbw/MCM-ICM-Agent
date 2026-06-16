@@ -22,6 +22,7 @@ class RunHandle:
     control_signal: str | None = None
     resume_from: str | None = None
     pending_checkpoint_id: str | None = None
+    until_stage: str | None = None
     error: str | None = None
     thread: threading.Thread | None = None
     stop_event: threading.Event = field(default_factory=threading.Event)
@@ -69,11 +70,12 @@ class RunRegistry:
         run_fn: RunFn,
         auto_approve: bool,
         pause_after: set[str],
+        until_stage: str | None = None,
     ) -> RunHandle:
         with self._lock:
             if self.is_running(workspace_id):
                 raise self.AlreadyRunningError(workspace_id)
-            handle = RunHandle(workspace_id=workspace_id, workspace_root=workspace_root)
+            handle = RunHandle(workspace_id=workspace_id, workspace_root=workspace_root, until_stage=until_stage)
             self._runs[workspace_id] = handle
 
         def controller(record: object) -> str:
