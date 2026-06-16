@@ -72,6 +72,10 @@ document.addEventListener("alpine:init", () => {
     artifactPath: "",
     artifactContent: null,
 
+    kb: { files: [], extensions: [], ingestible_count: 0, knowledge_base_dir: "" },
+    kbSubdir: "",
+    kbPreview: null,
+
     // ---- lifecycle ----
     init() {
       this.applyRoute();
@@ -88,6 +92,7 @@ document.addEventListener("alpine:init", () => {
       const r = (location.hash || "#/settings").replace(/^#\/?/, "") || "settings";
       this.route = r;
       if (r === "artifacts" && this.currentWorkspaceId) this.loadArtifacts();
+      if (r === "knowledge") this.loadKnowledge();
     },
     go(r) { location.hash = "#/" + r; },
 
@@ -295,6 +300,41 @@ document.addEventListener("alpine:init", () => {
     },
     downloadUrl(path) {
       return `/api/workspaces/${this.currentWorkspaceId}/artifacts/download?path=${encodeURIComponent(path)}`;
+    },
+
+    // ---- knowledge base ----
+    async loadKnowledge() {
+      try { this.kb = await this.api("/api/knowledge/files"); }
+      catch (e) { this.showToast("加载知识库失败", e.message, true); }
+    },
+    async uploadKnowledge(event) {
+      const files = event.target.files;
+      if (!files || !files.length) return;
+      const fd = new FormData();
+      fd.append("subdir", this.kbSubdir || "");
+      for (const f of files) fd.append("files", f);
+      try {
+        const r = await this.api("/api/knowledge/files", { method: "POST", body: fd });
+        this.showToast("已上传", (r.saved || []).join(", "));
+        this.kbSubdir = "";
+        await this.loadKnowledge();
+      } catch (e) { this.showToast("上传失败", e.message, true); }
+    },
+    async deleteKnowledge(path) {
+      try {
+        await this.api(`/api/knowledge/files?path=${encodeURIComponent(path)}`, { method: "DELETE" });
+        await this.loadKnowledge();
+      } catch (e) { this.showToast("删除失败", e.message, true); }
+    },
+    async previewIndex() {
+      try { this.kbPreview = await this.api("/api/knowledge/index-preview"); this.showToast("索引预览完成", `${this.kbPreview.total_chunks} chunks`); }
+      catch (e) { this.showToast("索引预览失败", e.message, true); }
+    },
+    formatBytes(n) {
+      n = n || 0;
+      if (n < 1024) return `${n} B`;
+      if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+      return `${(n / 1048576).toFixed(1)} MB`;
     },
   }));
 });

@@ -76,11 +76,47 @@
       <button class="btn primary" @click="saveConfig()" x-show="config">保存配置</button>
     </section>
 
-    <!-- KNOWLEDGE BASE (Phase 3 placeholder) -->
+    <!-- KNOWLEDGE BASE -->
     <section x-show="route==='knowledge'">
       <h1 class="page-title">知识库</h1>
-      <p class="page-sub">按 case 组织的范文/方法库。</p>
-      <div class="card"><div class="empty">📚 知识库管理界面将在 Phase 3 接入(case 上传、完整度校验、ingest 状态)。</div></div>
+      <p class="page-sub">管理 <span class="mono" x-text="kb.knowledge_base_dir"></span> 下的方法/范文/规则文件。可索引扩展名:<span x-text="(kb.extensions||[]).join(' ')"></span>。运行任务时这些文件会被摄取进该任务的方法库。</p>
+
+      <div class="card">
+        <h3>上传文件</h3>
+        <div class="row wrap">
+          <input type="text" class="grow" placeholder="可选子目录,如 mcm2024_c" x-model="kbSubdir" />
+          <input type="file" multiple @change="uploadKnowledge($event)" />
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row spread">
+          <h3>文件(<span x-text="kb.ingestible_count || 0"></span> 可索引 / 共 <span x-text="(kb.files||[]).length"></span>)</h3>
+          <div class="row">
+            <button class="btn sm" @click="loadKnowledge()">刷新</button>
+            <button class="btn sm" @click="previewIndex()">索引预览</button>
+          </div>
+        </div>
+        <div class="artifact-list">
+          <template x-for="f in (kb.files||[])" :key="f.path">
+            <div class="row spread" style="padding:6px 8px; border-bottom:1px solid var(--border)">
+              <div class="row" style="gap:8px; min-width:0">
+                <span class="pill" :class="f.ingestible ? 'ok' : 'idle'" x-text="f.ingestible ? '可索引' : '跳过'"></span>
+                <span class="mono grow" x-text="f.path"></span>
+                <span class="muted" x-text="formatBytes(f.size)"></span>
+              </div>
+              <button class="btn sm danger" @click="deleteKnowledge(f.path)">删除</button>
+            </div>
+          </template>
+          <template x-if="(kb.files||[]).length===0"><div class="empty">知识库为空。上传 .md / .txt / .pdf 文件。</div></template>
+        </div>
+        <template x-if="kbPreview">
+          <div class="card" style="margin-top:12px; background:var(--surface-2)">
+            <div class="row spread"><strong>索引预览</strong><span class="pill ok" x-text="(kbPreview.total_chunks||0) + ' chunks'"></span></div>
+            <div class="logbox" style="margin-top:8px"><template x-for="(n,i) in (kbPreview.notes||[])" :key="i"><div x-text="n"></div></template></div>
+          </div>
+        </template>
+      </div>
     </section>
 
     <!-- TASK UPLOAD -->
