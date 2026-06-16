@@ -7,6 +7,8 @@ from fastapi import FastAPI
 from mcm_agent.server.routes_artifacts import create_artifact_router
 from mcm_agent.server.routes_config import create_config_router
 from mcm_agent.server.routes_workspace import create_workspace_router
+from mcm_agent.server.routes_workflow import create_workflow_router
+from mcm_agent.server.run_registry import RunRegistry
 
 
 def create_app(
@@ -25,6 +27,14 @@ def create_app(
     )
     app.include_router(create_workspace_router(app.state.workspace_base))
     app.include_router(create_artifact_router(app.state.workspace_base))
+    app.state.run_registry = RunRegistry()
+    app.include_router(
+        create_workflow_router(
+            app.state.workspace_base,
+            app.state.run_registry,
+            app.state.config_path,
+        )
+    )
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
