@@ -269,10 +269,12 @@ def provider_smoke(
         settings,
         workspace_root=workspace,
         mineru_file=mineru_file,
+        history_path=workspace / "provider_smoke_history.jsonl",
     )
     results = tester.run(provider_names)
     for result in results:
         typer.echo(f"{result.status.value.upper():7} {result.provider:10} {result.detail}")
+    typer.echo(f"History appended: {(workspace / 'provider_smoke_history.jsonl').resolve()}")
     if any(result.status == SmokeStatus.FAILED for result in results):
         raise typer.Exit(code=1)
 

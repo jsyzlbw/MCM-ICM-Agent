@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import shutil
 import time
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from mcm_agent.config import Settings
+from mcm_agent.utils.json_io import append_jsonl
 from mcm_agent.providers.data_apis import (
     FredProvider,
     NASAPowerProvider,
@@ -71,13 +73,31 @@ class ProviderSmokeTester:
         *,
         workspace_root: Path,
         mineru_file: Path | None = None,
+        history_path: Path | None = None,
     ) -> None:
         self.settings = settings
         self.workspace_root = workspace_root
         self.mineru_file = mineru_file
+        self.history_path = history_path
 
     def run(self, providers: list[str]) -> list[ProviderSmokeResult]:
-        return [self.check(provider) for provider in providers]
+        results = [self.check(provider) for provider in providers]
+        if self.history_path is not None:
+            self._append_history(results)
+        return results
+
+    def _append_history(self, results: list[ProviderSmokeResult]) -> None:
+        counts = {"passed": 0, "skipped": 0, "failed": 0}
+        for result in results:
+            counts[result.status.value] = counts.get(result.status.value, 0) + 1
+        append_jsonl(
+            self.history_path,
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "counts": counts,
+                "results": [result.model_dump(mode="json") for result in results],
+            },
+        )
 
     def check(self, provider: str) -> ProviderSmokeResult:
         checks = {
