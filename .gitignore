@@ -42,3 +42,6 @@ knowledge_base/*
 .DS_Store
 .idea/
 .vscode/
+
+# Brainstorming visual companion
+.superpowers/
