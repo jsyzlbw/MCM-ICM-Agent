@@ -101,6 +101,7 @@ class StageExecutor:
         terminal_stage: str | None = None,
         max_steps: int = 100,
         repeated_gate_limit: int = 3,
+        controller: Callable[[StageRunRecord], str] | None = None,
     ) -> list[StageRunRecord]:
         records: list[StageRunRecord] = []
         gate_failures: dict[tuple[str, str], int] = {}
@@ -123,6 +124,8 @@ class StageExecutor:
                         gate_decision.repair_stage,
                     )
             if terminal_stage is not None and current_stage == terminal_stage:
+                break
+            if controller is not None and controller(record) != "continue":
                 break
             current_stage = record.next_stage
         else:
