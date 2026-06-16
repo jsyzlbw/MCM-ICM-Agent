@@ -19,12 +19,28 @@ https://github.com/jihe520/MathModelAgent
 
 Earlier README work was accidentally done in `MathModelAgent`; that has since been corrected. The active project is `MCM-ICM-Agent`.
 
+## Update 2026-06-17 (read this first)
+
+Since the original 2026-06-16 handoff, the following shipped to `main` (all fake/demo-provider tested; `pytest -q` = 322 passed; `ruff` clean). Design specs + task plans are under `docs/superpowers/specs/` and `docs/superpowers/plans/`.
+
+- **Workflow Control API** — threaded run registry + a cooperative pause/stop hook in the stage executor; endpoints `POST .../run|resume|stop`, `GET .../run` (run-status, incl. a `stopping` state), `POST .../checkpoints/{id}/approve`, `GET .../events` (SSE), `GET .../logs`. Real runs without an LLM key are rejected (use `demo:true`).
+- **Zero-build GUI** — `mcm-agent gui` serves a static Alpine.js + SSE app at `/`; six screens: Settings, Knowledge Base, Task Upload, Discussion/Planning, Run Monitor (live timeline + log + checkpoint approval + error display), Artifacts. Markdown is rendered in artifact/planning views. Config saves merge-safely (never clobbers stored secrets). The "extra requirements" box is persisted as the workflow's user idea.
+- **Knowledge Base API** — list/upload/delete `knowledge_base/` files + offline index preview.
+- **RAG v2** — hybrid FTS + vector retrieval with reranking; Voyage embedding/rerank providers (+ deterministic fakes for offline), content-hash embedding cache, per-workspace chroma index. New `embedding` config section. `chromadb` is now a dependency. Embedding is in `provider-smoke`/`provider-status`.
+- **Provider smoke history** — `provider-smoke` appends results to `<workspace>/provider_smoke_history.jsonl`.
+
+**Highest-value next work — needs YOU (not done autonomously on purpose):**
+1. **Real-provider end-to-end** — needs your real keys (LLM + Voyage + data). Run a small task through the GUI; fix real-mode issues (cooperative stop only acts between stages).
+2. **In-browser GUI verification** — I cannot open a browser; click through the six screens (esp. SSE live updates + checkpoint approval + markdown rendering).
+3. **Stronger problem-specific modeling/code generation** — the deepest gap; needs a design pass with you (kept out of autonomous scope deliberately).
+4. Optional decision: structured "case" knowledge-base schema vs. the current flat-file model (see `docs/superpowers/plans/2026-06-16-phase3-knowledge.md`).
+
 ## Current Git State
 
-Latest known good commit on `main`:
+Latest commit on `main` at the time of this update:
 
 ```text
-e719989 docs: clear hero top-left area
+1bc42e7 feat: record provider-smoke run history (roadmap: live provider history)
 ```
 
 Remote:
