@@ -142,3 +142,34 @@ def test_run_endpoint_blocks_real_run_without_config(tmp_path):
     )
     resp = client.post("/api/workspaces/task_001/run", json={"demo": False, "auto_approve": True})
     assert resp.status_code == 400
+
+
+def test_task_input_picks_up_user_requirements(tmp_path):
+    from mcm_agent.core.workspace import create_workspace
+    from mcm_agent.server.routes_workflow import _task_input_from_workspace
+
+    root = create_workspace(tmp_path / "ws").root
+    (root / "input" / "problem").mkdir(parents=True, exist_ok=True)
+    (root / "input" / "problem" / "p.md").write_text("# P", encoding="utf-8")
+    (root / "input" / "user_requirements.md").write_text("prefer interpretable models", encoding="utf-8")
+
+    task_input = _task_input_from_workspace(root)
+    assert task_input.user_idea_file is not None
+    assert task_input.user_idea_file.name == "user_requirements.md"
+
+
+def test_run_persists_user_requirements(tmp_path):
+    client = _client(tmp_path)
+    _seed_workspace(client)
+    client.post(
+        "/api/workspaces/task_001/run",
+        json={
+            "demo": True,
+            "auto_approve": True,
+            "until_stage": "problem_understanding",
+            "user_requirements": "use vector-first figures",
+        },
+    )
+    req = tmp_path / "workspaces" / "task_001" / "input" / "user_requirements.md"
+    assert req.exists()
+    assert "vector-first" in req.read_text(encoding="utf-8")

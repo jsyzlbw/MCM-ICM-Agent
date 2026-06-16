@@ -26,6 +26,7 @@ def create_workflow_router(
     def run(workspace_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         root = _workspace_root(workspace_base, workspace_id)
         _require_runnable_config(config_path, bool(payload.get("demo")))
+        _persist_user_requirements(root, payload.get("user_requirements"))
         until_stage = payload.get("until_stage") or "submission_packager"
         run_fn = _build_run_fn(
             root,
@@ -184,7 +185,19 @@ def _task_input_from_workspace(root: Path) -> TaskInput:
         raise HTTPException(status_code=400, detail="no problem file uploaded")
     attach_dir = root / "input" / "attachments"
     attachments = sorted(p for p in attach_dir.glob("*") if p.is_file()) if attach_dir.exists() else []
-    return TaskInput(problem_file=problem_files[0], attachments=attachments)
+    requirements = root / "input" / "user_requirements.md"
+    user_idea_file = requirements if requirements.exists() else None
+    return TaskInput(
+        problem_file=problem_files[0], attachments=attachments, user_idea_file=user_idea_file
+    )
+
+
+def _persist_user_requirements(root: Path, text: str | None) -> None:
+    if not text or not text.strip():
+        return
+    input_dir = root / "input"
+    input_dir.mkdir(parents=True, exist_ok=True)
+    (input_dir / "user_requirements.md").write_text(text, encoding="utf-8")
 
 
 def _sse(event: str, data: dict[str, Any]) -> str:

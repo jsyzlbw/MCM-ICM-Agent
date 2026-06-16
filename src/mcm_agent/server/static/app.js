@@ -210,7 +210,7 @@ document.addEventListener("alpine:init", () => {
       try {
         await this.api(`/api/workspaces/${this.currentWorkspaceId}/run`, {
           method: "POST", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ demo: this.demoMode, auto_approve: this.autoApprove }),
+          body: JSON.stringify({ demo: this.demoMode, auto_approve: this.autoApprove, user_requirements: this.extraRequirements }),
         });
         this.connectEvents();
         this.go("monitor");
