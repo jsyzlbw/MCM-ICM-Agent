@@ -5,6 +5,12 @@ from pathlib import Path
 from mcm_agent.config import Settings
 from mcm_agent.providers.base import ProviderBundle
 from mcm_agent.providers.data_apis import OfficialDataApiRepairProvider
+from mcm_agent.providers.embedding import (
+    FakeEmbeddingProvider,
+    FakeRerankProvider,
+    VoyageEmbeddingProvider,
+    VoyageRerankProvider,
+)
 from mcm_agent.providers.humanizer import FakeHumanizerProvider, UShallPassHumanizerProvider
 from mcm_agent.providers.latex import LatexProvider
 from mcm_agent.providers.llm import FakeLLMProvider, OpenAICompatibleLLMProvider
@@ -91,6 +97,23 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
         else FakeHumanizerProvider({})
     )
 
+    if settings.embedding_provider == "voyage" and settings.voyage_api_key:
+        embedding = VoyageEmbeddingProvider(
+            settings.voyage_api_key,
+            model=settings.embedding_model,
+            base_url=settings.embedding_base_url,
+            timeout_seconds=settings.mcm_agent_http_timeout_seconds,
+        )
+        reranker = VoyageRerankProvider(
+            settings.voyage_api_key,
+            model=settings.rerank_model,
+            base_url=settings.embedding_base_url,
+            timeout_seconds=settings.mcm_agent_http_timeout_seconds,
+        )
+    else:
+        embedding = FakeEmbeddingProvider()
+        reranker = FakeRerankProvider()
+
     return ProviderBundle(
         llm=llm,
         mineru=mineru,
@@ -99,4 +122,6 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
         official_data=official_data,
         humanizer=humanizer,
         latex=LatexProvider(),
+        embedding=embedding,
+        reranker=reranker,
     )

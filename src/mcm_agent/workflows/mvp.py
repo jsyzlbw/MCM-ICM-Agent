@@ -32,6 +32,7 @@ from mcm_agent.core.models import TaskInput
 from mcm_agent.core.stage_executor import StageExecutor, StageHandler, StageResult
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.base import ProviderBundle
+from mcm_agent.providers.embedding import FakeEmbeddingProvider, FakeRerankProvider
 from mcm_agent.providers.humanizer import FakeHumanizerProvider
 from mcm_agent.providers.latex import LatexCompileResult
 from mcm_agent.providers.llm import FakeLLMProvider
@@ -167,6 +168,8 @@ def _default_demo_providers() -> ProviderBundle:
         official_data=None,
         humanizer=FakeHumanizerProvider({}),
         latex=DemoLatexProvider(),
+        embedding=FakeEmbeddingProvider(),
+        reranker=FakeRerankProvider(),
     )
 
 
@@ -242,12 +245,18 @@ def _mvp_stage_handlers(
         knowledge_base_dir = Path(settings.rag_knowledge_base_dir)
         if not knowledge_base_dir.is_absolute():
             knowledge_base_dir = Path.cwd() / knowledge_base_dir
+        from mcm_agent.core.embedding_cache import EmbeddingCache
+
         MethodologyRAGAgent().run(
             workspace_root,
             supervisor_skills_dir,
             knowledge_base_dir=knowledge_base_dir,
             ingest_extensions=settings.rag_ingest_extensions,
             mineru_provider=provider_bundle.mineru,
+            embedding_provider=provider_bundle.embedding,
+            reranker=provider_bundle.reranker,
+            embedding_cache=EmbeddingCache(Path(".mcm_agent_cache") / "embeddings.db"),
+            embedding_model=settings.embedding_model,
         )
         return ["rag/methodology_hits.json", "review/methodology_checklist_report.md"]
 

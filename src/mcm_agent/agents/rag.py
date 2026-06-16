@@ -397,6 +397,63 @@ def search_methodology_queries(
     return hits
 
 
+def _index_store_vectors(
+    store: MethodologyStore,
+    vector_index: object,
+    embedding_provider: object,
+    embedding_cache: object | None,
+    embedding_model: str,
+) -> list[str]:
+    with sqlite3.connect(store.db_path) as conn:
+        rows = conn.execute(
+            "SELECT source, title, content, source_type, relative_path, page_hint, chunk_id, chunk_index "
+            "FROM methodology_docs"
+        ).fetchall()
+    if not rows:
+        return []
+    ids, documents, metadatas, texts = [], [], [], []
+    for row in rows:
+        source, title, content, source_type, relative_path, page_hint, chunk_id, chunk_index = row
+        cid = chunk_id or f"{relative_path or title}#chunk-001"
+        ids.append(cid)
+        documents.append(content)
+        texts.append(content)
+        metadatas.append(
+            {
+                "source": source or "",
+                "title": title or "",
+                "source_type": source_type or "method_note",
+                "relative_path": relative_path or "",
+                "page_hint": page_hint or "",
+                "chunk_index": int(chunk_index) if str(chunk_index).isdigit() else 1,
+            }
+        )
+    try:
+        if embedding_cache is not None:
+            embeddings = embedding_cache.embed_with_cache(embedding_provider, embedding_model, texts)
+        else:
+            embeddings = embedding_provider.embed(texts)
+        vector_index.add_chunks(ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas)
+        return []
+    except Exception as exc:  # noqa: BLE001 - methodology RAG is non-critical guidance
+        return [f"Vector indexing degraded to FTS-only: {exc}"]
+
+
+def _write_default_checklists(checklist_dir: Path) -> None:
+    (checklist_dir / "modeling_checklist.md").write_text(
+        "\n".join(["# Modeling Checklist", "", "- Check problem fit.", "- Check data feasibility.", "- Check implementation risk.", ""]),
+        encoding="utf-8",
+    )
+    (checklist_dir / "figure_checklist.md").write_text(
+        "\n".join(["# Figure Checklist", "", "- Every data figure must have a data source.", "- Every concept figure must be vector-first.", "- Every result figure must support a paper claim.", ""]),
+        encoding="utf-8",
+    )
+    (checklist_dir / "pre_submission_checklist.md").write_text(
+        "\n".join(["# Pre Submission Checklist", "", "- Check macro logic.", "- Check writing details.", "- Check English expression.", "- Check LaTeX formatting.", "- Check figure quality.", ""]),
+        encoding="utf-8",
+    )
+
+
 def hybrid_search(
     store: MethodologyStore,
     vector_index: object | None,
@@ -460,6 +517,11 @@ class MethodologyRAGAgent:
         knowledge_base_dir: Path | None = None,
         ingest_extensions: list[str] | None = None,
         mineru_provider: object | None = None,
+        embedding_provider: object | None = None,
+        reranker: object | None = None,
+        vector_index: object | None = None,
+        embedding_cache: object | None = None,
+        embedding_model: str = "voyage-3-large",
     ) -> None:
         rag_dir = workspace_root / "rag"
         checklist_dir = rag_dir / "review_checklists"
@@ -481,51 +543,26 @@ class MethodologyRAGAgent:
                 )
             )
 
-        hits = search_methodology_queries(store, PAPER_QUALITY_QUERIES)
+        index = vector_index
+        if embedding_provider is not None and index is None:
+            from mcm_agent.core.vector_index import VectorIndex
+
+            index = VectorIndex(persist_dir=rag_dir / "chroma", collection_name="methodology")
+        if embedding_provider is not None and index is not None:
+            warnings.extend(
+                _index_store_vectors(store, index, embedding_provider, embedding_cache, embedding_model)
+            )
+
+        if embedding_provider is not None and reranker is not None and index is not None:
+            hits: list[MethodologyHit] = []
+            for query in PAPER_QUALITY_QUERIES:
+                hits.extend(hybrid_search(store, index, embedding_provider, reranker, query))
+        else:
+            hits = search_methodology_queries(store, PAPER_QUALITY_QUERIES)
         write_json(rag_dir / "methodology_hits.json", [hit.model_dump() for hit in hits])
 
         notes = ["# RAG Retrieval Notes", ""]
         notes.extend(f"- {warning}" for warning in warnings)
         (rag_dir / "retrieval_notes.md").write_text("\n".join(notes) + "\n", encoding="utf-8")
 
-        (checklist_dir / "modeling_checklist.md").write_text(
-            "\n".join(
-                [
-                    "# Modeling Checklist",
-                    "",
-                    "- Check problem fit.",
-                    "- Check data feasibility.",
-                    "- Check implementation risk.",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        (checklist_dir / "figure_checklist.md").write_text(
-            "\n".join(
-                [
-                    "# Figure Checklist",
-                    "",
-                    "- Every data figure must have a data source.",
-                    "- Every concept figure must be vector-first.",
-                    "- Every result figure must support a paper claim.",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        (checklist_dir / "pre_submission_checklist.md").write_text(
-            "\n".join(
-                [
-                    "# Pre Submission Checklist",
-                    "",
-                    "- Check macro logic.",
-                    "- Check writing details.",
-                    "- Check English expression.",
-                    "- Check LaTeX formatting.",
-                    "- Check figure quality.",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
+        _write_default_checklists(checklist_dir)

@@ -237,3 +237,32 @@ def test_methodology_rag_agent_ingests_pdf_knowledge_base_with_mineru(tmp_path: 
     notes = (workspace.root / "rag" / "retrieval_notes.md").read_text(encoding="utf-8")
     assert "Parsed PDF knowledge-base document via MinerU: winning_papers/solution.pdf" in notes
     assert "MinerU warning for winning_papers/solution.pdf: low confidence table" in notes
+
+
+def test_methodology_rag_agent_builds_vector_index_and_reranks(tmp_path: Path) -> None:
+    import chromadb
+
+    from mcm_agent.core.vector_index import VectorIndex
+    from mcm_agent.providers.embedding import FakeEmbeddingProvider, FakeRerankProvider
+
+    workspace = create_workspace(tmp_path / "run_001")
+    knowledge_base = tmp_path / "knowledge_base"
+    knowledge_base.mkdir()
+    (knowledge_base / "notes.md").write_text(
+        "Figure design should support the validation claim. "
+        "Model formulation should define variables and constraints.",
+        encoding="utf-8",
+    )
+
+    MethodologyRAGAgent().run(
+        workspace.root,
+        supervisor_skills_dir=None,
+        knowledge_base_dir=knowledge_base,
+        embedding_provider=FakeEmbeddingProvider(dim=64),
+        reranker=FakeRerankProvider(),
+        vector_index=VectorIndex(client=chromadb.EphemeralClient(), collection_name="run001"),
+    )
+
+    hits = read_json(workspace.root / "rag" / "methodology_hits.json", [])
+    assert hits
+    assert any("rerank_score" in hit for hit in hits)

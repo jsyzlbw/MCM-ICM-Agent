@@ -48,6 +48,13 @@ def default_config() -> dict[str, Any]:
             "knowledge_base_dir": "knowledge_base",
             "ingest_extensions": [".md", ".txt", ".pdf"],
         },
+        "embedding": {
+            "provider": "voyage",
+            "api_key": "",
+            "base_url": "https://api.voyageai.com/v1",
+            "embedding_model": "voyage-3-large",
+            "rerank_model": "rerank-2",
+        },
         "runtime": {
             "default_language": "en",
             "max_retries": 2,

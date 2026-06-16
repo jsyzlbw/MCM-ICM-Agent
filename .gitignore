@@ -45,3 +45,7 @@ knowledge_base/*
 
 # Brainstorming visual companion
 .superpowers/
+
+# Embedding cache
+.mcm_agent_cache/
+

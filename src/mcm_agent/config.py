@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     rag_knowledge_base_dir: str = "knowledge_base"
     rag_ingest_extensions: list[str] = [".md", ".txt", ".pdf"]
 
+    embedding_provider: str = "fake"
+    voyage_api_key: str = ""
+    embedding_base_url: str = "https://api.voyageai.com/v1"
+    embedding_model: str = "voyage-3-large"
+    rerank_model: str = "rerank-2"
+
     model_config = SettingsConfigDict(extra="ignore")
 
 
@@ -93,6 +99,11 @@ def _settings_overrides_from_json(payload: dict[str, Any]) -> dict[str, Any]:
         ("humanizer", "api_base_url"): "humanizer_api_base_url",
         ("rag", "knowledge_base_dir"): "rag_knowledge_base_dir",
         ("rag", "ingest_extensions"): "rag_ingest_extensions",
+        ("embedding", "provider"): "embedding_provider",
+        ("embedding", "api_key"): "voyage_api_key",
+        ("embedding", "base_url"): "embedding_base_url",
+        ("embedding", "embedding_model"): "embedding_model",
+        ("embedding", "rerank_model"): "rerank_model",
         ("runtime", "default_language"): "mcm_agent_default_language",
         ("runtime", "max_retries"): "mcm_agent_max_retries",
         ("runtime", "http_timeout_seconds"): "mcm_agent_http_timeout_seconds",
