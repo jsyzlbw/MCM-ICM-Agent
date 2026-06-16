@@ -1128,3 +1128,10 @@ git commit -m "chore: lint fixes for workflow control api"
 - Wiring real `Coordinator` checkpoint events to `PAUSE_AFTER_DEFAULT` stages so pauses reflect genuine human-decision points (currently pause is driven by a stage-name set; `user_discussion` is the default pause stage).
 - Per-stage-internal heartbeat logs (agents don't yet emit fine-grained logs; only stage-boundary events stream today).
 - `stage_started` and dedicated `gate` SSE events if the frontend needs them.
+
+**Final-review follow-ups (from holistic branch review 2026-06-16; non-blocking, real-mode polish):**
+- **Cooperative stop is between-stages only.** `stop()` sets `stop_event`, checked by the controller between stages. A long real (LLM) stage won't be interrupted mid-flight, so `/stop` can leave `run-status` at `running` until the stage finishes, blocking new runs. Demo stages are instant so this is invisible in tests. Fix later: in-stage cancellation or a force-timeout.
+- **`run-status` has no "stopping" state.** After a stop request the state still reads `running` until the boundary. Consider surfacing `control_signal == "stop"` as `"stopping"`.
+- **`approve` defaults `demo=True` while `run`/`resume` default `demo=False`.** Approving a real run silently resumes in demo mode unless the client re-passes `demo`. Fix: persist `demo` (and provider mode) on `RunHandle` and have `approve` reuse it.
+- **Missing config silently runs demo.** When `config_path` is absent, `settings=None` and providers fall back to demo even for `demo=false` requests. Add a 400/409 "no config" guard for real runs.
+- **`handle.error` surfaces `str(exc)`.** Low risk, but if a provider error message embedded a secret it would appear in `run-status`. Consider scrubbing known secret patterns from error strings.
