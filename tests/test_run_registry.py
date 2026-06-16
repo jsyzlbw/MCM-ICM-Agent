@@ -92,3 +92,14 @@ def test_registry_rejects_concurrent_run(tmp_path):
     except RunRegistry.AlreadyRunningError:
         raised = True
     assert raised
+
+
+def test_display_status_reports_stopping(tmp_path):
+    from mcm_agent.server.run_registry import RunHandle
+
+    root = create_workspace(tmp_path / "ws").root
+    handle = RunHandle(workspace_id="w", workspace_root=root)
+    handle.status = "running"
+    assert handle.display_status() == "running"
+    handle.stop_event.set()
+    assert handle.display_status() == "stopping"

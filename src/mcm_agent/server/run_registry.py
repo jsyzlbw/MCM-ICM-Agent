@@ -46,6 +46,11 @@ class RunHandle:
     def duration_seconds(self) -> float:
         return (datetime.now(UTC) - self.started_at).total_seconds()
 
+    def display_status(self) -> str:
+        if self.status == "running" and self.stop_event.is_set():
+            return "stopping"
+        return self.status
+
 
 class RunRegistry:
     class AlreadyRunningError(RuntimeError):

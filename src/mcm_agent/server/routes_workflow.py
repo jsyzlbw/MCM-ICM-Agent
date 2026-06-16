@@ -25,6 +25,7 @@ def create_workflow_router(
     @router.post("/{workspace_id}/run")
     def run(workspace_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         root = _workspace_root(workspace_base, workspace_id)
+        _require_runnable_config(config_path, bool(payload.get("demo")))
         until_stage = payload.get("until_stage") or "submission_packager"
         run_fn = _build_run_fn(
             root,
@@ -39,6 +40,7 @@ def create_workflow_router(
     @router.post("/{workspace_id}/resume")
     def resume(workspace_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         root = _workspace_root(workspace_base, workspace_id)
+        _require_runnable_config(config_path, bool(payload.get("demo")))
         until_stage = payload.get("until_stage") or "submission_packager"
         run_fn = _build_run_fn(
             root,
@@ -64,7 +66,7 @@ def create_workflow_router(
             return {"workspace_id": workspace_id, "state": "idle"}
         return {
             "workspace_id": workspace_id,
-            "state": handle.status,
+            "state": handle.display_status(),
             "duration_s": handle.duration_seconds(),
             "pending_checkpoint_id": handle.pending_checkpoint_id,
             "resume_from": handle.resume_from,
@@ -128,6 +130,18 @@ def _start(
     except RunRegistry.AlreadyRunningError as exc:
         raise HTTPException(status_code=409, detail="run already in progress") from exc
     return {"workspace_id": root.name, "state": handle.status}
+
+
+def _require_runnable_config(config_path: Path, demo: bool) -> None:
+    """For a real (non-demo) run, require an LLM key so we don't silently run fakes."""
+    if demo:
+        return
+    settings = load_settings(config_file=str(config_path)) if config_path.exists() else None
+    if settings is None or not settings.openai_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="real run requires an llm api_key in config; pass demo=true or configure the llm provider",
+        )
 
 
 def _build_run_fn(
@@ -207,7 +221,7 @@ def _event_stream(root: Path, workspace_id: str, registry: RunRegistry):
         if handle is not None:
             for entry in handle.drain_logs():
                 yield _sse("log", entry)
-        state = handle.status if handle is not None else _state_from_files(root)
+        state = handle.display_status() if handle is not None else _state_from_files(root)
         if state != last_state:
             yield _sse("status", {"state": state})
             last_state = state

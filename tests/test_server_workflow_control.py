@@ -128,3 +128,17 @@ def test_logs_endpoint_returns_recent_lines(tmp_path):
     logs = client.get("/api/workspaces/task_001/logs").json()
     assert "stages" in logs
     assert any(s["stage_id"] == "problem_understanding" for s in logs["stages"])
+
+
+def test_run_endpoint_blocks_real_run_without_config(tmp_path):
+    client = TestClient(
+        create_app(config_path=tmp_path / "missing.json", workspace_base=tmp_path / "workspaces")
+    )
+    client.post("/api/workspaces", json={"workspace_id": "task_001"})
+    client.post(
+        "/api/workspaces/task_001/files",
+        files={"files": ("problem.md", b"# Problem", "text/markdown")},
+        data={"kind": "problem"},
+    )
+    resp = client.post("/api/workspaces/task_001/run", json={"demo": False, "auto_approve": True})
+    assert resp.status_code == 400
