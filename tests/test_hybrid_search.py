@@ -36,3 +36,22 @@ def test_hybrid_search_without_reranker_returns_fts_candidates(tmp_path):
     store = _store(tmp_path)
     hits = hybrid_search(store, None, None, None, "model formulation", top_k=3)
     assert any(h.title == "Model" for h in hits)
+
+
+def test_index_store_vectors_degrades_on_embedding_failure(tmp_path):
+    import chromadb
+
+    from mcm_agent.agents.rag import MethodologyStore, _index_store_vectors
+    from mcm_agent.core.vector_index import VectorIndex
+
+    store = MethodologyStore(tmp_path / "rag.db")
+    store.initialize()
+    store.add_document("s", "T", "content here", relative_path="t.md", chunk_id="t.md#chunk-001")
+
+    class BoomEmbedding:
+        def embed(self, texts):
+            raise RuntimeError("voyage down")
+
+    index = VectorIndex(client=chromadb.EphemeralClient(), collection_name="degrade")
+    notes = _index_store_vectors(store, index, BoomEmbedding(), None, "voyage-3-large")
+    assert notes and "degraded" in notes[0].lower()

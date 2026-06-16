@@ -173,3 +173,19 @@ def test_run_persists_user_requirements(tmp_path):
     req = tmp_path / "workspaces" / "task_001" / "input" / "user_requirements.md"
     assert req.exists()
     assert "vector-first" in req.read_text(encoding="utf-8")
+
+
+def test_state_from_files_transitions(tmp_path):
+    from mcm_agent.core.workspace import create_workspace
+    from mcm_agent.server.routes_workflow import _state_from_files
+    from mcm_agent.utils.json_io import read_json, write_json
+
+    root = create_workspace(tmp_path / "ws").root
+    assert _state_from_files(root) == "idle"
+    (root / "final_submission").mkdir(parents=True, exist_ok=True)
+    write_json(root / "final_submission" / "submission_manifest.json", {})
+    assert _state_from_files(root) == "done"
+    state = read_json(root / "task_state.json", {})
+    state["blocked_reason"] = "gate/fail"
+    write_json(root / "task_state.json", state)
+    assert _state_from_files(root) == "failed"

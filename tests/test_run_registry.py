@@ -103,3 +103,15 @@ def test_display_status_reports_stopping(tmp_path):
     assert handle.display_status() == "running"
     handle.stop_event.set()
     assert handle.display_status() == "stopping"
+
+
+def test_registry_marks_failed_on_exception(tmp_path):
+    root = create_workspace(tmp_path / "ws").root
+    registry = RunRegistry()
+
+    def run_fn(controller):
+        raise RuntimeError("boom")
+
+    registry.start(root.name, root, run_fn=run_fn, auto_approve=True, pause_after=set())
+    assert _wait(lambda: registry.get(root.name).status == "failed")
+    assert "boom" in (registry.get(root.name).error or "")
