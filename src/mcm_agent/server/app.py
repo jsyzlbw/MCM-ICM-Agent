@@ -3,12 +3,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from mcm_agent.server.routes_artifacts import create_artifact_router
 from mcm_agent.server.routes_config import create_config_router
 from mcm_agent.server.routes_workspace import create_workspace_router
 from mcm_agent.server.routes_workflow import create_workflow_router
 from mcm_agent.server.run_registry import RunRegistry
+
+_STATIC_DIR = Path(__file__).parent / "static"
 
 
 def create_app(
@@ -39,5 +43,11 @@ def create_app(
     @app.get("/api/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
+    @app.get("/")
+    def index() -> FileResponse:
+        return FileResponse(_STATIC_DIR / "index.html")
 
     return app

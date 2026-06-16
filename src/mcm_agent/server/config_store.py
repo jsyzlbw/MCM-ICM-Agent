@@ -75,6 +75,28 @@ def mask_config(payload: dict[str, Any]) -> dict[str, Any]:
     return _mask_node(deepcopy(payload))
 
 
+def merge_config(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    """Deep-merge ``incoming`` into ``existing`` for safe round-trips from the masked GUI.
+
+    - Mask pseudo-fields (``*_configured`` / ``*_preview``) are dropped.
+    - Secret keys with an empty/blank incoming value are skipped so the stored
+      secret is preserved (the GUI never sees the real secret to send back).
+    - Everything else overwrites.
+    """
+    result = deepcopy(existing) if isinstance(existing, dict) else {}
+    for key, value in incoming.items():
+        if key.endswith("_configured") or key.endswith("_preview"):
+            continue
+        if isinstance(value, dict):
+            base = result.get(key)
+            result[key] = merge_config(base if isinstance(base, dict) else {}, value)
+            continue
+        if _is_secret_key(key) and (value is None or value == ""):
+            continue
+        result[key] = value
+    return result
+
+
 def _mask_node(value: Any) -> Any:
     if isinstance(value, dict):
         masked: dict[str, Any] = {}

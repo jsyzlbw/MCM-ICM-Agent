@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCM-ICM Agent</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script defer src="/static/app.js"></script>
+  <script defer src="/static/vendor/alpine.min.js"></script>
+</head>
+<body>
+<div class="app" x-data="app" x-init="init()" x-cloak>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">▶ MCM-ICM Agent</div>
+    <button class="nav-item" :class="{active: route==='settings'}" @click="go('settings')">⚙️ 设置</button>
+    <button class="nav-item" :class="{active: route==='knowledge'}" @click="go('knowledge')">📚 知识库</button>
+    <button class="nav-item" :class="{active: route==='upload'}" @click="go('upload')">📤 任务上传</button>
+    <button class="nav-item" :class="{active: route==='planning'}" @click="go('planning')">💬 讨论/规划</button>
+    <button class="nav-item" :class="{active: route==='monitor'}" @click="go('monitor')">▶️ 运行监控</button>
+    <button class="nav-item" :class="{active: route==='artifacts'}" @click="go('artifacts')">📦 产物浏览</button>
+    <div class="sidebar-foot">
+      <div>workspace:</div>
+      <strong x-text="currentWorkspaceId || '(未选择)'"></strong>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Toast -->
+    <template x-if="toast.show">
+      <div class="toast"><div class="card" :class="{err: toast.error}">
+        <strong x-text="toast.title"></strong>
+        <div class="muted" x-text="toast.body"></div>
+      </div></div>
+    </template>
+
+    <!-- SETTINGS -->
+    <section x-show="route==='settings'">
+      <h1 class="page-title">设置</h1>
+      <p class="page-sub">编辑本地 JSON 配置。密钥保存后只显示是否已配置 + 末 4 位,不回显明文。</p>
+      <template x-if="!config">
+        <div class="empty">加载配置中…</div>
+      </template>
+      <template x-for="(section, name) in (config || {})" :key="name">
+        <div class="card">
+          <h3 x-text="name"></h3>
+          <div class="col" style="gap:12px">
+            <template x-for="(val, key) in section" :key="key">
+              <div class="col">
+                <label class="label" x-text="key"></label>
+                <!-- secret status fields are read-only display -->
+                <template x-if="key.endsWith('_configured')">
+                  <div><span class="pill" :class="val ? 'ok' : 'idle'" x-text="val ? '已配置' : '未配置'"></span></div>
+                </template>
+                <template x-if="key.endsWith('_preview')">
+                  <input type="text" :value="val ? ('••••' + val) : ''" readonly />
+                </template>
+                <template x-if="!key.endsWith('_configured') && !key.endsWith('_preview')">
+                  <input :type="isSecretKey(key) ? 'password' : 'text'"
+                         :placeholder="isSecretKey(key) ? '输入以覆盖' : ''"
+                         x-model="section[key]" />
+                </template>
+              </div>
+            </template>
+            <div class="row wrap">
+              <button class="btn sm" @click="testProvider(name)">测试连接</button>
+              <span x-show="providerResults[name]" class="pill"
+                    :class="providerResults[name]?.status==='passed' ? 'ok' : (providerResults[name]?.status==='skipped' ? 'idle':'err')"
+                    x-text="providerResults[name]?.status + (providerResults[name]?.detail ? (' · ' + providerResults[name].detail) : '')"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+      <button class="btn primary" @click="saveConfig()" x-show="config">保存配置</button>
+    </section>
+
+    <!-- KNOWLEDGE BASE (Phase 3 placeholder) -->
+    <section x-show="route==='knowledge'">
+      <h1 class="page-title">知识库</h1>
+      <p class="page-sub">按 case 组织的范文/方法库。</p>
+      <div class="card"><div class="empty">📚 知识库管理界面将在 Phase 3 接入(case 上传、完整度校验、ingest 状态)。</div></div>
+    </section>
+
+    <!-- TASK UPLOAD -->
+    <section x-show="route==='upload'">
+      <h1 class="page-title">任务上传</h1>
+      <p class="page-sub">新建 workspace,上传题目、附件数据、模板、额外要求。</p>
+      <div class="card">
+        <h3>1 · 新建 / 选择 workspace</h3>
+        <div class="row wrap">
+          <input type="text" class="grow" placeholder="workspace id,如 2024_MCM_C" x-model="newWorkspaceId" />
+          <button class="btn primary" @click="createWorkspace()">新建</button>
+        </div>
+        <div class="row wrap" style="margin-top:10px">
+          <select x-model="currentWorkspaceId" @change="onSelectWorkspace()">
+            <option value="">(选择已有 workspace)</option>
+            <template x-for="w in workspaces" :key="w.workspace_id">
+              <option :value="w.workspace_id" x-text="w.workspace_id"></option>
+            </template>
+          </select>
+          <button class="btn sm" @click="refreshWorkspaces()">刷新</button>
+        </div>
+      </div>
+
+      <template x-if="currentWorkspaceId">
+        <div class="card">
+          <h3>2 · 上传文件到 <span x-text="currentWorkspaceId"></span></h3>
+          <div class="kv">
+            <div>题目 (problem)</div><div><input type="file" multiple @change="upload('problem', $event)" /></div>
+            <div>附件数据 (attachment)</div><div><input type="file" multiple @change="upload('attachment', $event)" /></div>
+            <div>模板 (template)</div><div><input type="file" multiple @change="upload('template', $event)" /></div>
+          </div>
+          <div class="col" style="margin-top:12px">
+            <label class="label">额外要求(可选,自然语言)</label>
+            <textarea x-model="extraRequirements" placeholder="例:优先可解释模型;论文用英文…"></textarea>
+          </div>
+          <div class="muted" style="margin-top:8px" x-show="uploadedSummary" x-text="uploadedSummary"></div>
+        </div>
+      </template>
+
+      <template x-if="currentWorkspaceId">
+        <div class="card">
+          <h3>3 · 启动</h3>
+          <div class="row wrap">
+            <label class="row" style="gap:6px"><input type="checkbox" x-model="autoApprove" style="width:auto" /> 自动批准(不在 checkpoint 暂停)</label>
+            <label class="row" style="gap:6px"><input type="checkbox" x-model="demoMode" style="width:auto" /> demo 模式(用 fake provider)</label>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn primary" @click="startRun()">▶ 开始运行</button>
+            <span class="muted">启动后会跳到运行监控。</span>
+          </div>
+        </div>
+      </template>
+    </section>
+
+    <!-- PLANNING / DISCUSSION (Phase 4 placeholder) -->
+    <section x-show="route==='planning'">
+      <h1 class="page-title">讨论/规划</h1>
+      <p class="page-sub">执行前与 agent 讨论方向并确认。</p>
+      <div class="card"><div class="empty">💬 独立讨论/规划界面将在 Phase 4 接入。当前可在「运行监控」的 checkpoint 审批卡中批准/调整方向。</div></div>
+    </section>
+
+    <!-- RUN MONITOR -->
+    <section x-show="route==='monitor'">
+      <h1 class="page-title">运行监控</h1>
+      <p class="page-sub" x-show="!currentWorkspaceId">先在「任务上传」选择或新建一个 workspace。</p>
+
+      <template x-if="currentWorkspaceId">
+        <div>
+          <div class="card">
+            <div class="row spread wrap">
+              <div class="row wrap">
+                <strong x-text="currentWorkspaceId"></strong>
+                <span class="pill" :class="runPillClass()">
+                  <span class="dot" :style="`background:${runDotColor()}`"></span>
+                  <span x-text="runStateLabel()"></span>
+                </span>
+                <span class="muted mono" x-show="run.duration_s" x-text="formatDuration(run.duration_s)"></span>
+              </div>
+              <div class="row">
+                <button class="btn sm" @click="refreshRun()">刷新</button>
+                <button class="btn sm danger" @click="stopRun()" x-show="run.state==='running'">■ 停止</button>
+              </div>
+            </div>
+            <div class="timeline" style="margin-top:14px">
+              <template x-for="s in stageList()" :key="s.id">
+                <span class="stage" :class="s.cls" x-text="s.label"></span>
+              </template>
+            </div>
+          </div>
+
+          <!-- Checkpoint approval -->
+          <template x-if="run.state==='paused' && run.pending_checkpoint_id">
+            <div class="card">
+              <div class="checkpoint">
+                <div class="ttl">✋ 等你拍板 · 阶段已暂停</div>
+                <div class="muted">agent 在 <span x-text="run.resume_from || '?'"></span> 前暂停,等待确认方向。</div>
+                <textarea x-model="approveMessage" placeholder="想调整就写在这里(可留空直接批准)…" style="margin-top:8px"></textarea>
+                <div class="row" style="margin-top:8px">
+                  <button class="btn primary" @click="approve()">批准并继续</button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <div class="row" style="align-items:flex-start; gap:16px">
+            <div class="card grow">
+              <h3>活动 / 阶段</h3>
+              <div class="feed">
+                <template x-for="(ev, i) in feed" :key="i">
+                  <div class="bubble">
+                    <strong x-text="ev.title"></strong>
+                    <div class="muted" x-text="ev.detail"></div>
+                  </div>
+                </template>
+                <template x-if="feed.length===0"><div class="empty">尚无事件。点击「开始运行」后这里会实时更新。</div></template>
+              </div>
+            </div>
+            <div class="card" style="width:340px">
+              <h3>实时日志</h3>
+              <div class="logbox"><template x-for="(l, i) in logs" :key="i"><div :class="l.level==='warn'?'log-warn':(l.level==='error'?'log-error':'')" x-text="l.line"></div></template><template x-if="logs.length===0"><span class="muted">…</span></template></div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </section>
+
+    <!-- ARTIFACTS -->
+    <section x-show="route==='artifacts'">
+      <h1 class="page-title">产物浏览</h1>
+      <p class="page-sub" x-show="!currentWorkspaceId">先选择一个 workspace。</p>
+      <template x-if="currentWorkspaceId">
+        <div class="row" style="align-items:flex-start; gap:16px">
+          <div class="card" style="width:340px">
+            <div class="row spread"><h3>文件</h3><button class="btn sm" @click="loadArtifacts()">刷新</button></div>
+            <div class="artifact-list">
+              <template x-for="p in artifacts" :key="p">
+                <div class="artifact-item" @click="viewArtifact(p)" x-text="p"></div>
+              </template>
+              <template x-if="artifacts.length===0"><div class="empty">无产物</div></template>
+            </div>
+          </div>
+          <div class="card grow">
+            <div class="row spread">
+              <h3 x-text="artifactPath || '预览'"></h3>
+              <a class="btn sm" x-show="artifactPath" :href="downloadUrl(artifactPath)" target="_blank">下载</a>
+            </div>
+            <div class="artifact-view" x-show="artifactContent !== null" x-text="artifactContent"></div>
+            <template x-if="artifactContent === null"><div class="empty">点左侧文件预览(二进制文件请用下载)。</div></template>
+          </div>
+        </div>
+      </template>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>
