@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from mcm_agent.config import Settings
@@ -87,6 +88,7 @@ def run_mvp_workflow(
     settings: Settings | None = None,
     supervisor_skills_dir: Path | None = None,
     auto_approve: bool = False,
+    controller: Callable[[object], str] | None = None,
 ) -> None:
     workspace = create_workspace(workspace_root)
     provider_bundle = providers or _default_demo_providers()
@@ -101,7 +103,9 @@ def run_mvp_workflow(
             auto_approve=auto_approve,
         ),
     )
-    executor.run_until_complete("intake", terminal_stage="submission_packager")
+    executor.run_until_complete(
+        "intake", terminal_stage="submission_packager", controller=controller
+    )
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
     _write_ai_use_report(workspace.root)
@@ -117,6 +121,7 @@ def resume_mvp_workflow(
     auto_approve: bool = False,
     from_stage: str | None = None,
     until_stage: str | None = None,
+    controller: Callable[[object], str] | None = None,
 ) -> None:
     workspace = create_workspace(workspace_root)
     provider_bundle = providers or _default_demo_providers()
@@ -132,7 +137,11 @@ def resume_mvp_workflow(
             auto_approve=auto_approve,
         ),
     )
-    executor.run_until_complete(start_stage, terminal_stage=until_stage or "submission_packager")
+    executor.run_until_complete(
+        start_stage,
+        terminal_stage=until_stage or "submission_packager",
+        controller=controller,
+    )
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
     _write_ai_use_report(workspace.root)
