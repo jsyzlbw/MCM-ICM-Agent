@@ -7,6 +7,7 @@ const PROVIDER_FOR_SECTION = {
   official_data: "fred",
   mineru: "mineru",
   humanizer: "humanizer",
+  embedding: "embedding",
 };
 
 const STAGE_LABELS = {

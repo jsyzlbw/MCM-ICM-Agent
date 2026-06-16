@@ -47,6 +47,7 @@ DEFAULT_SMOKE_PROVIDERS = [
     "nasa_power",
     "open_meteo",
     "overpass",
+    "embedding",
 ]
 
 
@@ -96,6 +97,7 @@ class ProviderSmokeTester:
             "nasa_power": self._check_nasa_power,
             "open_meteo": self._check_open_meteo,
             "overpass": self._check_overpass,
+            "embedding": self._check_embedding,
         }
         if provider not in checks:
             return ProviderSmokeResult(
@@ -176,6 +178,23 @@ class ProviderSmokeTester:
         if not page.markdown.strip():
             raise RuntimeError("Firecrawl returned empty markdown")
         return self._passed("firecrawl", f"Extracted {len(page.markdown)} markdown characters.")
+
+    def _check_embedding(self) -> ProviderSmokeResult:
+        if self.settings.embedding_provider != "voyage" or not self.settings.voyage_api_key:
+            return self._skipped(
+                "embedding", "Voyage embedding key is not configured (embedding provider)."
+            )
+        from mcm_agent.providers.embedding import VoyageEmbeddingProvider
+
+        vectors = VoyageEmbeddingProvider(
+            self.settings.voyage_api_key,
+            model=self.settings.embedding_model,
+            base_url=self.settings.embedding_base_url,
+            timeout_seconds=self.settings.mcm_agent_http_timeout_seconds,
+        ).embed(["provider connectivity test"])
+        if not vectors or not vectors[0]:
+            raise RuntimeError("Voyage returned no embedding")
+        return self._passed("embedding", f"Voyage embedding dim={len(vectors[0])}.")
 
     def _check_humanizer(self) -> ProviderSmokeResult:
         if not self.settings.humanizer_api_key:

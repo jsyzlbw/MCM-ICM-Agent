@@ -354,7 +354,7 @@ cp mcm_agent_config.example.json mcm_agent_config.local.json
 ```text
 llm, tavily, brave, exa, firecrawl, humanizer, mineru,
 world_bank, oecd, undata, fred, us_census, noaa,
-nasa_power, open_meteo, overpass
+nasa_power, open_meteo, overpass, embedding
 ```
 
 为了兼容旧用法，仍支持 `--env-file`。当 `.env` 与 JSON 同时提供时，JSON 优先。

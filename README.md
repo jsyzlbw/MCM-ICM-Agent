@@ -355,7 +355,7 @@ Supported provider smoke IDs:
 ```text
 llm, tavily, brave, exa, firecrawl, humanizer, mineru,
 world_bank, oecd, undata, fred, us_census, noaa,
-nasa_power, open_meteo, overpass
+nasa_power, open_meteo, overpass, embedding
 ```
 
 `.env` remains supported through `--env-file` for older setups. When both `.env` and JSON config are supplied, JSON values win.

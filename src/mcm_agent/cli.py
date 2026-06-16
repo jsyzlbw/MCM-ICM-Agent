@@ -239,6 +239,11 @@ def provider_status(
         official_data_stack.append("NOAA")
     mineru_status = settings.mineru_mode
     humanizer_status = "UShallPass API" if settings.humanizer_api_key else "fake"
+    embedding_status = (
+        f"Voyage ({settings.embedding_model} + {settings.rerank_model})"
+        if settings.embedding_provider == "voyage" and settings.voyage_api_key
+        else "fake"
+    )
 
     typer.echo(f"LLM: {llm_status}")
     typer.echo(f"Search: {search_status}")
@@ -246,6 +251,7 @@ def provider_status(
     typer.echo(f"Official Data APIs: {' + '.join(official_data_stack)}")
     typer.echo(f"MinerU: {mineru_status}")
     typer.echo(f"Humanizer: {humanizer_status}")
+    typer.echo(f"Embedding/Rerank: {embedding_status}")
 
 
 @app.command("provider-smoke")
