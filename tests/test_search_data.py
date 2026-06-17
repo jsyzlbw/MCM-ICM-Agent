@@ -840,3 +840,34 @@ def test_source_gate_allows_generic_feasibility_need_when_attachment_exists(
     assert gate["status"] == "pass"
     assert any(need["status"] == "covered_by_attachment" for need in plan["data_needs"])
     assert "problem-specific modeling data public dataset official" not in search.queries
+
+
+def test_search_data_agent_tolerates_extraction_failure(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- population data\n",
+        encoding="utf-8",
+    )
+
+    class FakeSearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    title="Official statistics",
+                    url="https://data.gov/example",
+                    snippet="official source",
+                    score=0.99,
+                )
+            ]
+
+    class FailingExtractor:
+        def extract(self, url: str):
+            raise RuntimeError("Firecrawl scrape failed: 403")
+
+    # One blocked URL must not crash the whole stage.
+    SearchDataAgent(FakeSearch(), FailingExtractor()).run(workspace.root)
+
+    retrieval_log = (workspace.root / "data" / "retrieval_log.jsonl").read_text(encoding="utf-8")
+    assert "extraction_failed" in retrieval_log
+    sources = read_json(workspace.root / "data" / "source_registry.json", [])
+    assert not any(s.get("url") == "https://data.gov/example" for s in sources)

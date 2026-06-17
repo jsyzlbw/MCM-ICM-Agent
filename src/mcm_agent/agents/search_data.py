@@ -74,7 +74,19 @@ class SearchDataAgent:
             for index, result in enumerate(results, 1):
                 if not result.title or not result.url:
                     continue
-                page = self.extract_provider.extract(result.url)
+                try:
+                    page = self.extract_provider.extract(result.url)
+                except Exception as exc:  # noqa: BLE001 - one blocked URL must not crash data collection
+                    append_jsonl(
+                        log_path,
+                        RetrievalLogEntry(
+                            time=datetime.now(UTC),
+                            provider=self.extract_provider.__class__.__name__,
+                            url=result.url,
+                            decision=f"extraction_failed: {str(exc)[:120]}",
+                        ).model_dump(mode="json"),
+                    )
+                    continue
                 extracted_path = workspace_root / "data" / "external" / f"source_{len(source_records)+1:03d}.md"
                 extracted_path.parent.mkdir(parents=True, exist_ok=True)
                 extracted_path.write_text(page.markdown, encoding="utf-8")
