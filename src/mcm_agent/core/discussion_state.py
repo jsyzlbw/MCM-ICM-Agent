@@ -12,6 +12,7 @@ class DiscussionDecision(BaseModel):
     requires_data_scout: bool = False
     adopted_reframing_strategy: str = ""
     adopted_reframing_option_id: str = ""
+    language: str = "en"
 
     @model_validator(mode="after")
     def sync_data_scout_flag(self) -> DiscussionDecision:

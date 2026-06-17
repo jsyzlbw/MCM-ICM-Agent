@@ -21,6 +21,7 @@ class UserDiscussionAgent:
         paper_outline: str,
         decisions_to_preserve: list[str],
         new_data_needs: list[str] | None = None,
+        language: str = "en",
     ) -> None:
         discussion_dir = workspace_root / "discussion"
         discussion_dir.mkdir(parents=True, exist_ok=True)
@@ -28,6 +29,12 @@ class UserDiscussionAgent:
         feasibility_snapshot = self._data_feasibility_snapshot(workspace_root)
         adopted_reframing = self._adopted_reframing_option(workspace_root)
         reframing_snapshot = self._reframing_snapshot(adopted_reframing)
+        adopted_strategy = str(adopted_reframing.get("strategy", ""))
+        assumptions_fallback = not adopted_strategy and self._needs_assumptions_fallback(
+            workspace_root
+        )
+        if assumptions_fallback:
+            adopted_strategy = "user_provided_assumptions"
 
         user_brief = "\n".join(
             [
@@ -46,8 +53,9 @@ class UserDiscussionAgent:
             status="needs_data_scout" if new_data_needs else "locked",
             selected_route=selected_route,
             new_data_needs=new_data_needs,
-            adopted_reframing_strategy=str(adopted_reframing.get("strategy", "")),
+            adopted_reframing_strategy=adopted_strategy,
             adopted_reframing_option_id=self._reframing_option_id(adopted_reframing),
+            language=language,
         )
         write_json(discussion_dir / "direction_lock.json", decision.model_dump(mode="json"))
         write_json(discussion_dir / "data_questions.json", new_data_needs)
@@ -66,6 +74,20 @@ class UserDiscussionAgent:
                 "",
                 "## User Mode",
                 mode,
+                "",
+                "## Output Language",
+                language,
+                "",
+                "## Data Strategy",
+                (
+                    "Proceed with user-provided assumptions for uncovered/unknown data needs."
+                    if adopted_strategy == "user_provided_assumptions"
+                    else (
+                        f"Adopted reframing strategy: {adopted_strategy}."
+                        if adopted_strategy
+                        else "Use registered/available data; no special data strategy adopted."
+                    )
+                ),
                 "",
                 "## User Idea Summary",
                 user_idea_summary,
@@ -159,3 +181,40 @@ class UserDiscussionAgent:
             lines.append("- Proxy variables: " + ", ".join(str(item) for item in proxy_variables))
         lines.append("")
         return "\n".join(lines)
+
+    def _has_attachments(self, workspace_root: Path) -> bool:
+        attachments = workspace_root / "input" / "attachments"
+        return attachments.exists() and any(p.is_file() for p in attachments.glob("*"))
+
+    def _needs_assumptions_fallback(self, workspace_root: Path) -> bool:
+        """True when only *unknown* (not private) data needs are uncovered and no data was uploaded.
+
+        In that case the team proceeds with stated assumptions; genuinely private/unavailable
+        data still routes through real research reframing instead.
+        """
+        matrix = read_json(workspace_root / "data" / "data_feasibility_matrix.json", [])
+        if not isinstance(matrix, list):
+            return False
+        has_private = False
+        has_uncovered_unknown = False
+        for row in matrix:
+            if not isinstance(row, dict):
+                continue
+            availability = row.get("availability")
+            proxies = row.get("proxy_variables", [])
+            if availability == "private_or_unavailable":
+                has_private = True
+            if availability == "unknown" and not proxies:
+                has_uncovered_unknown = True
+        if has_private:
+            return False
+        return has_uncovered_unknown and not self._has_attachments(workspace_root)
+
+
+def confirmed_language(workspace_root: Path, default: str = "en") -> str:
+    lock = read_json(workspace_root / "discussion" / "direction_lock.json", {})
+    if isinstance(lock, dict):
+        language = lock.get("language")
+        if isinstance(language, str) and language.strip():
+            return language.strip()
+    return default

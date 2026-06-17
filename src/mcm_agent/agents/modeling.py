@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
+from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.core.coordinator import Coordinator
-from mcm_agent.core.experiment_spec import build_experiment_spec
-from mcm_agent.core.model_route_plan import build_route_plan
+from mcm_agent.core.experiment_spec import ROUTE_EXPERIMENTS, build_experiment_spec
+from mcm_agent.core.model_route_plan import ROUTE_ORDER, build_route_plan
 from mcm_agent.core.modeling_intelligence import ModelingIntelligence, ProblemDiagnosis
 from mcm_agent.core.model_recipes import route_recipe
 from mcm_agent.core.models import ArtifactRecord, ArtifactStatus
@@ -42,7 +45,8 @@ class ModelingCouncil:
         problem_text = problem_report_path.read_text(encoding="utf-8")
         problem_excerpt = self._diagnosis_excerpt(problem_text)
         direction_excerpt = confirmed_direction_path.read_text(encoding="utf-8")[:600]
-        llm_output = self._generate_candidates(problem_excerpt, direction_excerpt)
+        language = confirmed_language(workspace_root)
+        llm_output = self._generate_candidates(problem_excerpt, direction_excerpt, language)
         if llm_output is not None:
             lines = llm_output.splitlines()
         else:
@@ -192,15 +196,18 @@ class ModelingCouncil:
                 captured.append(line)
         return "\n".join(captured).strip()
 
-    def _generate_candidates(self, problem_excerpt: str, direction_excerpt: str) -> str | None:
+    def _generate_candidates(
+        self, problem_excerpt: str, direction_excerpt: str, language: str = "en"
+    ) -> str | None:
         if self.llm_provider is None:
             return None
         prompt = "\n".join(
             [
                 "# Modeling Council",
                 "",
+                f"Write all prose in {language} (language code; 'en'=English, 'zh'=Chinese).",
                 "Generate model candidates for an MCM/ICM paper.",
-                "Required headings: # Model Candidates, ## Candidate Summary Table, "
+                "Required headings (keep these English): # Model Candidates, ## Candidate Summary Table, "
                 "## Data Limitations, ## Cross-Candidate Risks.",
                 "The plan must cite source_id-style data references or explicitly state "
                 "which source_id is missing.",
@@ -257,14 +264,20 @@ class ModelJudge:
 
         candidates_text = candidates_path.read_text(encoding="utf-8")
         candidates_excerpt = candidates_text[:1200]
+        language = confirmed_language(workspace_root)
         diagnosis = self._diagnosis_from_candidates(candidates_text)
-        decision = self._generate_decision(candidates_excerpt) or self._fallback_decision(
+        decision = self._generate_decision(candidates_excerpt, language) or self._fallback_decision(
             diagnosis if diagnosis.routes else None
         )
         experiment_plan = self._fallback_experiment_plan(diagnosis)
         route_plan = build_route_plan(diagnosis)
-        selected_route_ids = self._selected_route_ids_for_spec(decision, diagnosis)
-        experiment_spec = build_experiment_spec(selected_route_ids or route_plan.route_ids)
+        selected_route_ids = (
+            self._route_ids_from_tag(decision)
+            or self._selected_route_ids_for_spec(decision, diagnosis)
+            or route_plan.route_ids
+            or ["multi_criteria_evaluation"]
+        )
+        experiment_spec = build_experiment_spec(selected_route_ids)
 
         (workspace_root / "reports" / "model_decision.md").write_text(decision, encoding="utf-8")
         (workspace_root / "reports" / "experiment_plan.md").write_text(
@@ -422,16 +435,26 @@ class ModelJudge:
             ]
         )
 
-    def _generate_decision(self, candidates_excerpt: str) -> str | None:
+    def _generate_decision(self, candidates_excerpt: str, language: str = "en") -> str | None:
         if self.llm_provider is None:
             return None
+        route_vocab = ", ".join(ROUTE_ORDER)
         prompt = "\n".join(
             [
                 "# Model Judge",
                 "",
+                f"Write all prose in {language} (language code; 'en'=English, 'zh'=Chinese).",
                 "Select a contest-paper modeling route.",
-                "Required headings: # Model Decision, ## Selected Route, "
+                "Required headings (keep these English): # Model Decision, ## Selected Route, "
                 "## Data Requirements, ## Data Limitations, ## Figure Requirements.",
+                "",
+                "After the prose, append a fenced block tagged `routes` whose JSON lists the chosen "
+                "archetypes from this fixed vocabulary (use these exact ids):",
+                route_vocab + ".",
+                "Example:",
+                "```routes",
+                '{"route_ids": ["multi_objective_decision", "constrained_optimization"]}',
+                "```",
                 "",
                 candidates_excerpt,
             ]
@@ -448,6 +471,23 @@ class ModelJudge:
         if all(heading in content for heading in required):
             return content + "\n"
         return None
+
+    def _route_ids_from_tag(self, decision_text: str) -> list[str]:
+        match = re.search(r"```routes\s*(\{.*?\})\s*```", decision_text, re.DOTALL)
+        if not match:
+            return []
+        try:
+            payload = json.loads(match.group(1))
+        except (ValueError, TypeError):
+            return []
+        ids = payload.get("route_ids", []) if isinstance(payload, dict) else []
+        if not isinstance(ids, list):
+            return []
+        valid: list[str] = []
+        for route_id in ids:
+            if isinstance(route_id, str) and route_id in ROUTE_EXPERIMENTS and route_id not in valid:
+                valid.append(route_id)
+        return valid
 
     def _diagnosis_from_candidates(self, candidates_text: str) -> ProblemDiagnosis:
         route_order = [

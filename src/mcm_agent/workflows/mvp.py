@@ -236,6 +236,7 @@ def _mvp_stage_handlers(
             selected_route="Balanced contest-paper route.",
             paper_outline="Abstract, assumptions, model, results, sensitivity, conclusion.",
             decisions_to_preserve=["Use vector-first figures.", "Use registered evidence only."],
+            language=settings.mcm_agent_default_language,
         )
         lock = read_json(workspace_root / "discussion" / "direction_lock.json", {})
         condition = "new_data_need" if lock.get("status") == "needs_data_scout" else "direction_locked"
