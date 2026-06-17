@@ -225,7 +225,14 @@ class ProviderSmokeTester:
             poll_interval_seconds=0.25,
             max_poll_attempts=20,
         )
-        output = provider.humanize("This is a provider connectivity test.", language="en")
+        # UShallPass requires a minimum of ~30 words; keep this sample comfortably above it.
+        sample = (
+            "This is a provider connectivity test for the MCM ICM agent humanizer "
+            "integration, deliberately written with enough words to satisfy the rewrite "
+            "service minimum length requirement so that the submission is accepted and the "
+            "job completes successfully during the smoke check."
+        )
+        output = provider.humanize(sample, language="en")
         if not output.strip():
             raise RuntimeError("Humanizer returned empty output")
         return self._passed("humanizer", f"Humanizer returned {len(output)} characters.")
