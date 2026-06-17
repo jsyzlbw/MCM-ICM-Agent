@@ -49,3 +49,6 @@ knowledge_base/*
 # Embedding cache
 .mcm_agent_cache/
 
+# GUI workspaces
+.mcm_agent_workspaces/
+
