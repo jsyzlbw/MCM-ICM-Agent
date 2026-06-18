@@ -399,6 +399,15 @@ class SearchDataAgent:
             if record.source_rank in {"official", "academic", "reputable"}
         ]
         if not trusted:
+            # When the discussion stage locked user-provided assumptions, the team
+            # proceeds by stating assumptions for unobtainable data; a lack of
+            # trusted web sources must not then block a modeling-only paper.
+            direction_lock = read_json(workspace_root / "discussion" / "direction_lock.json", {})
+            if (
+                isinstance(direction_lock, dict)
+                and direction_lock.get("adopted_reframing_strategy") == "user_provided_assumptions"
+            ):
+                return []
             return ["No official, academic, or reputable source was retrieved."]
         return []
 
@@ -411,6 +420,11 @@ class SearchDataAgent:
         data_needs = search_plan.get("data_needs", []) if isinstance(search_plan, dict) else []
         if not isinstance(data_needs, list):
             return []
+        direction_lock = read_json(workspace_root / "discussion" / "direction_lock.json", {})
+        user_assumptions = (
+            isinstance(direction_lock, dict)
+            and direction_lock.get("adopted_reframing_strategy") == "user_provided_assumptions"
+        )
         trusted_need_ids = {
             record.data_need_id
             for record in source_records
@@ -427,6 +441,13 @@ class SearchDataAgent:
                 continue
             if need.get("status") == "covered_by_attachment":
                 continue
+            # When the discussion stage locked user-provided assumptions for an
+            # otherwise-uncovered/unknown data need, the team proceeds by stating
+            # assumptions, so that need is exempted (mirrors modeling_quality_gate).
+            if user_assumptions:
+                availability = need.get("availability")
+                if availability in {None, "unknown"} and not need.get("proxy_variables"):
+                    continue
             need_id = str(need.get("need_id", "")).strip()
             if not need_id or need_id in trusted_need_ids:
                 continue

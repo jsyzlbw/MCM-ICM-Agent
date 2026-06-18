@@ -871,3 +871,110 @@ def test_search_data_agent_tolerates_extraction_failure(tmp_path: Path) -> None:
     assert "extraction_failed" in retrieval_log
     sources = read_json(workspace.root / "data" / "source_registry.json", [])
     assert not any(s.get("url") == "https://data.gov/example" for s in sources)
+
+
+def test_source_gate_respects_user_provided_assumptions_strategy(
+    tmp_path: Path,
+) -> None:
+    """When the discussion stage locked user_provided_assumptions, an unknown/
+    uncovered feasibility-matrix data need is exempted (mirrors modeling_quality_gate)."""
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- problem-specific modeling data\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "problem-specific modeling data",
+                "query": "problem-specific modeling data public dataset official",
+                "availability": "unknown",
+                "confidence": 0.55,
+                "top_urls": [],
+                "proxy_variables": [],
+                "recommended_action": "Run deeper search.",
+            }
+        ],
+    )
+    (workspace.root / "discussion").mkdir(parents=True, exist_ok=True)
+    write_json(
+        workspace.root / "discussion" / "direction_lock.json",
+        {"adopted_reframing_strategy": "user_provided_assumptions", "language": "en"},
+    )
+
+    class BlogOnlySearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    title="Blog",
+                    url="https://blog.example/post",
+                    snippet="background",
+                    score=0.3,
+                )
+            ]
+
+    class FakeExtractor:
+        def extract(self, url: str):
+            return type(
+                "Extracted",
+                (),
+                {"url": url, "title": "P", "markdown": "# Page", "metadata": {}},
+            )()
+
+    SearchDataAgent(BlogOnlySearch(), FakeExtractor()).run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "source_gate.json", {})
+    assert gate["status"] == "pass", gate
+
+
+def test_source_gate_still_fails_when_no_user_strategy_and_unknown_need(
+    tmp_path: Path,
+) -> None:
+    """Without the user_provided_assumptions lock, the unknown need still blocks."""
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "experiment_plan.md").write_text(
+        "# Experiment Plan\n\n## Required Datasets\n- problem-specific modeling data\n",
+        encoding="utf-8",
+    )
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "problem-specific modeling data",
+                "query": "problem-specific modeling data public dataset official",
+                "availability": "unknown",
+                "confidence": 0.55,
+                "top_urls": [],
+                "proxy_variables": [],
+                "recommended_action": "Run deeper search.",
+            }
+        ],
+    )
+
+    class BlogOnlySearch:
+        def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    title="Blog",
+                    url="https://blog.example/post",
+                    snippet="background",
+                    score=0.3,
+                )
+            ]
+
+    class FakeExtractor:
+        def extract(self, url: str):
+            return type(
+                "Extracted",
+                (),
+                {"url": url, "title": "P", "markdown": "# Page", "metadata": {}},
+            )()
+
+    SearchDataAgent(BlogOnlySearch(), FakeExtractor()).run(workspace.root)
+
+    gate = read_json(workspace.root / "review" / "source_gate.json", {})
+    assert gate["status"] == "fail"
+    assert gate["failure_reason"] == "source_unreliable"
