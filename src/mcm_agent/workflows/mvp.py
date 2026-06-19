@@ -306,7 +306,7 @@ def _mvp_stage_handlers(
         return ["reports/data_profile.md", "data/processed"]
 
     def solver_coder(workspace_root: Path) -> list[str]:
-        SolverCoderAgent().run(workspace_root)
+        SolverCoderAgent(provider_bundle.llm).run(workspace_root)
         return [
             "code",
             "results/model_metrics.json",

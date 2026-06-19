@@ -13,7 +13,13 @@ from mcm_agent.utils.json_io import read_json, write_json
 
 
 class SolverCoderAgent:
+    def __init__(self, llm_provider: object | None = None) -> None:
+        self.llm_provider = llm_provider
+
     def run(self, workspace_root: Path) -> None:
+        self._run_templated_baseline(workspace_root)
+
+    def _run_templated_baseline(self, workspace_root: Path) -> None:
         processed_files = sorted((workspace_root / "data" / "processed").glob("*.csv"))
         if not processed_files:
             raise FileNotFoundError("missing processed CSV data")
