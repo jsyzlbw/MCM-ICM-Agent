@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -84,21 +85,30 @@ def _render_abstract(
         if claim.priority == "critical" and claim.status != "unresolved"
     ]
     routes = [route for route in context.selected_routes if route and route != "llm_generated"]
-    method_phrase = ", ".join(routes) or "a problem-specific model"
+    zh = context.language == "zh"
+    method_phrase = ", ".join(routes) or ("题目专属模型" if zh else "a problem-specific model")
+    problem = context.problem_summary or ("该竞赛问题" if zh else "the contest problem")
+    approach = _first_sentence(" ".join(critical[:2]), 240)
+    if zh:
+        lead = f"本文研究{_latex_escape(problem)}，采用{_latex_escape(method_phrase)}。"
+    else:
+        lead = f"This paper studies {_latex_escape(problem)} using {_latex_escape(method_phrase)}."
     return "\n".join(
         [
             SECTION_TITLES["abstract.tex"],
-            (
-                "This paper studies "
-                + _latex_escape(context.problem_summary or "the contest problem")
-                + " using "
-                + _latex_escape(method_phrase)
-                + "."
-            ),
-            _latex_escape(" ".join(critical[:2])),
+            lead,
+            _latex_escape(approach),
             "",
         ]
     )
+
+
+def _first_sentence(text: str, max_chars: int) -> str:
+    text = " ".join(text.split())
+    if not text:
+        return ""
+    sentence = re.split(r"(?<=[。.!?！？])\s*", text)[0]
+    return (sentence or text)[:max_chars]
 
 
 def _render_introduction(context: PaperContext) -> str:

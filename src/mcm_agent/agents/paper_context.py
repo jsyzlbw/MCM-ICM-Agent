@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.utils.json_io import read_json
 
 
@@ -13,6 +14,7 @@ class PaperContext(BaseModel):
     direction_summary: str = ""
     model_decision_summary: str = ""
     validation_summary: str = ""
+    language: str = "en"
     selected_routes: list[str] = Field(default_factory=list)
     route_metric_names: list[str] = Field(default_factory=list)
     primary_evidence_ids: list[str] = Field(default_factory=list)
@@ -42,6 +44,7 @@ def build_paper_context(workspace_root: Path) -> PaperContext:
         validation_summary=_summarize_markdown(
             workspace_root / "reports" / "validation_report.md"
         ),
+        language=confirmed_language(workspace_root),
         selected_routes=[str(item) for item in routes] if isinstance(routes, list) else [],
         route_metric_names=[str(key) for key in metrics.keys()] if isinstance(metrics, dict) else [],
         primary_evidence_ids=_ids(evidence_rows, "evidence_id", limit=3),
