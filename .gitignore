@@ -52,3 +52,6 @@ knowledge_base/*
 # GUI workspaces
 .mcm_agent_workspaces/
 
+# Diagnostic / contest copyright material (COMAP problem + data) — never commit
+assets/diagnostic_2026_mcm_c/
+
