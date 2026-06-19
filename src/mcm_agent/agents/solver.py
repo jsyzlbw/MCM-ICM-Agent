@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,7 +18,122 @@ class SolverCoderAgent:
         self.llm_provider = llm_provider
 
     def run(self, workspace_root: Path) -> None:
+        if self.llm_provider is not None and self._run_llm_codegen(workspace_root):
+            self._record_outputs(workspace_root)
+            return
         self._run_templated_baseline(workspace_root)
+
+    def _run_llm_codegen(self, workspace_root: Path, *, max_attempts: int = 3) -> bool:
+        processed = sorted((workspace_root / "data" / "processed").glob("*.csv"))
+        if not processed:
+            return False
+        understanding = self._read_text(workspace_root / "reports" / "problem_understanding.md", 4000)
+        direction = self._read_text(workspace_root / "discussion" / "confirmed_direction.md", 1500)
+        schema = self._schema_excerpt(processed[0])
+        code_dir = workspace_root / "code" / "experiments"
+        code_dir.mkdir(parents=True, exist_ok=True)
+        script_path = code_dir / "problem1.py"
+        system = (
+            "You write correct, self-contained Python for a math-modeling contest. "
+            "Output ONLY one ```python code block."
+        )
+        base_prompt = (
+            "Write a Python script that solves the contest sub-problems using the real data.\n"
+            f"PROBLEM UNDERSTANDING:\n{understanding}\n\nCONFIRMED DIRECTION:\n{direction}\n\n"
+            f"DATA SCHEMA (first rows):\n{schema}\n\n"
+            "CONTRACT:\n"
+            "- import pandas as pd; read data via "
+            "sorted((Path.cwd()/'data'/'processed').glob('*.csv'))[0]\n"
+            "- Use only pandas, numpy, scipy, sklearn, matplotlib.\n"
+            "- Write the main result table to results/problem1_results.csv\n"
+            "- Write a JSON dict of TASK-SPECIFIC metrics (keys named after the problem, e.g. "
+            "elimination_consistency_rate) to results/model_metrics.json\n"
+            "- Do not call the network or read files outside the workspace.\n"
+        )
+        last_err = ""
+        for attempt in range(max_attempts):
+            prompt = base_prompt if attempt == 0 else (
+                base_prompt
+                + f"\n\nThe previous script failed with:\n{last_err}\n"
+                + "Fix it and return the full corrected script."
+            )
+            result = self.llm_provider.generate(system, prompt)
+            code = self._extract_code(result.content)
+            if not code:
+                return False
+            script_path.write_text(code, encoding="utf-8")
+            record = run_experiment(
+                workspace_root,
+                ["python", str(script_path.relative_to(workspace_root))],
+                produced_files=["results/problem1_results.csv", "results/model_metrics.json"],
+                timeout_seconds=180,
+            )
+            if record.exit_code == 0 and not record.missing_outputs:
+                metrics = read_json(workspace_root / "results" / "model_metrics.json", {})
+                if isinstance(metrics, dict) and metrics:
+                    self._llm_script_rel = str(script_path.relative_to(workspace_root))
+                    return True
+                last_err = "model_metrics.json missing or not a non-empty dict"
+            else:
+                stderr_path = workspace_root / record.stderr_path
+                last_err = (
+                    stderr_path.read_text(encoding="utf-8")[-1500:]
+                    if stderr_path.exists()
+                    else f"missing outputs: {record.missing_outputs}"
+                )
+        return False
+
+    @staticmethod
+    def _extract_code(text: str) -> str:
+        match = re.search(r"```(?:python)?\n(.*?)```", text, re.DOTALL)
+        return (match.group(1) if match else text).strip()
+
+    @staticmethod
+    def _read_text(path: Path, limit: int) -> str:
+        return path.read_text(encoding="utf-8")[:limit] if path.exists() else ""
+
+    @staticmethod
+    def _schema_excerpt(csv_path: Path) -> str:
+        frame = pd.read_csv(csv_path, nrows=5)
+        return f"columns={list(frame.columns)}\n{frame.to_string(index=False)}"
+
+    def _record_outputs(self, workspace_root: Path) -> None:
+        results_dir = workspace_root / "results"
+        metrics = read_json(results_dir / "model_metrics.json", {})
+        script_rel = getattr(self, "_llm_script_rel", "code/experiments/problem1.py")
+        write_json(
+            results_dir / "model_route_summary.json",
+            {
+                "selected_routes": ["llm_generated"],
+                "route_metrics": {},
+                "source_result": "results/problem1_results.csv",
+                "generated_by": script_rel,
+            },
+        )
+        processed = sorted((workspace_root / "data" / "processed").glob("*.csv"))
+        lineage_ids = (
+            self._lineage_ids_for_processed_file(workspace_root, processed[0]) if processed else []
+        )
+        evidence = read_json(results_dir / "evidence_registry.json", [])
+        if isinstance(metrics, dict):
+            for key, value in metrics.items():
+                if not isinstance(value, (int, float, str)):
+                    continue
+                evidence.append(
+                    EvidenceItem(
+                        evidence_id=f"metric_{key}",
+                        claim=f"Metric {key} equals {value}.",
+                        value=value,
+                        source_type="code_output",
+                        source_path="results/model_metrics.json",
+                        generated_by=script_rel,
+                        used_in=[],
+                        verified=True,
+                        lineage_ids=lineage_ids,
+                    ).model_dump(mode="json")
+                )
+        write_json(results_dir / "evidence_registry.json", evidence)
+        Coordinator(workspace_root).emit("code.completed", source="SolverCoderAgent")
 
     def _run_templated_baseline(self, workspace_root: Path) -> None:
         processed_files = sorted((workspace_root / "data" / "processed").glob("*.csv"))
