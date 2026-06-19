@@ -111,7 +111,7 @@ class SolverCoderAgent:
         write_json(
             results_dir / "model_route_summary.json",
             {
-                "selected_routes": ["llm_generated"],
+                "selected_routes": ["LLM-generated problem-specific model"],
                 "route_metrics": {},
                 "source_result": "results/problem1_results.csv",
                 "generated_by": script_rel,

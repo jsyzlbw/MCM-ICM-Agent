@@ -30,8 +30,13 @@ def validate_required_headings(report: str) -> None:
 
 
 class ProblemUnderstandingAgent:
-    def __init__(self, llm_provider: TextGenerationProvider | None = None) -> None:
+    def __init__(
+        self,
+        llm_provider: TextGenerationProvider | None = None,
+        language: str = "en",
+    ) -> None:
         self.llm_provider = llm_provider
+        self.language = language
 
     def run(self, workspace_root: Path) -> None:
         parsed_problem = workspace_root / "parsed" / "problem.md"
@@ -71,12 +76,14 @@ class ProblemUnderstandingAgent:
         if self.llm_provider is None:
             return self._build_report(problem_text)
 
+        content_language = "Chinese" if self.language == "zh" else "English"
         prompt = "\n".join(
             [
                 "problem_understanding",
                 "",
-                "Write a structured MCM/ICM problem understanding report in Chinese headings.",
-                "Keep the following headings exactly and fill every section with concrete content:",
+                "Write a structured MCM/ICM problem understanding report.",
+                "Keep the following headings EXACTLY as given (do not translate the headings),",
+                f"and write all section CONTENT in {content_language}:",
                 *REQUIRED_HEADINGS,
                 "",
                 "Problem statement:",

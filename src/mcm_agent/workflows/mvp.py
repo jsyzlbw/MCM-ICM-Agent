@@ -211,7 +211,9 @@ def _mvp_stage_handlers(
         return ["review/extraction_gate.json"]
 
     def problem_understanding(workspace_root: Path) -> list[str]:
-        ProblemUnderstandingAgent(provider_bundle.llm).run(workspace_root)
+        ProblemUnderstandingAgent(
+            provider_bundle.llm, language=settings.mcm_agent_default_language
+        ).run(workspace_root)
         return ["reports/problem_understanding.md"]
 
     def data_feasibility_scout(workspace_root: Path) -> StageResult:
