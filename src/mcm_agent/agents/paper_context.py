@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -29,7 +30,7 @@ def build_paper_context(workspace_root: Path) -> PaperContext:
     routes = route_summary.get("selected_routes", []) if isinstance(route_summary, dict) else []
     metrics = route_summary.get("route_metrics", {}) if isinstance(route_summary, dict) else {}
     return PaperContext(
-        problem_summary=_summarize_markdown(
+        problem_summary=_summarize_problem(
             workspace_root / "reports" / "problem_understanding.md"
         ),
         direction_summary=_summarize_markdown(
@@ -48,6 +49,37 @@ def build_paper_context(workspace_root: Path) -> PaperContext:
         primary_source_ids=_ids(source_rows, "source_id", limit=3),
         methodology_notes=_methodology_notes(rag_rows, limit=5),
     )
+
+
+def _summarize_problem(path: Path, *, max_chars: int = 200) -> str:
+    """First sentence of the problem background — NOT a raw dump of the report.
+
+    Prefers the paragraph under a "背景"/"background" heading; otherwise the first
+    non-heading paragraph. Truncated to one sentence / ``max_chars``.
+    """
+    if not path.exists():
+        return ""
+    paragraph: list[str] = []
+    in_background = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            if paragraph:
+                break
+            heading = stripped.lstrip("# ").strip().lower()
+            in_background = ("背景" in stripped) or ("background" in heading)
+            continue
+        if not stripped:
+            if paragraph:
+                break
+            continue
+        if in_background or not paragraph:
+            paragraph.append(stripped)
+    text = " ".join(paragraph).strip()
+    if not text:
+        return ""
+    sentence = re.split(r"(?<=[。.!?！？])\s*", text)[0]
+    return (sentence or text)[:max_chars]
 
 
 def _summarize_markdown(path: Path, *, max_chars: int = 500) -> str:

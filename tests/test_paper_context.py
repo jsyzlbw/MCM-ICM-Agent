@@ -51,6 +51,20 @@ def test_build_paper_context_reads_core_paper_inputs(tmp_path: Path) -> None:
     assert context.primary_source_ids == ["web_001"]
 
 
+def test_problem_summary_is_short_and_not_raw_dump(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "problem_understanding.md").write_text(
+        "# 题意理解报告\n## 题目背景\n本题研究 DWTS 投票公平性。\n## 子问题拆解\n" + "细节 " * 400,
+        encoding="utf-8",
+    )
+
+    context = build_paper_context(workspace.root)
+
+    assert len(context.problem_summary) <= 200
+    assert "子问题拆解" not in context.problem_summary
+    assert "投票公平性" in context.problem_summary
+
+
 def test_build_paper_context_reads_rag_notes_and_limitations(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     (workspace.root / "reports" / "validation_report.md").write_text(
