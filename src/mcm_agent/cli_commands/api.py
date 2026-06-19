@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
+from mcm_agent.config import load_settings
 
 
 class ApiCommand:
@@ -11,21 +12,39 @@ class ApiCommand:
 
     def run(self, args: list[str], context: CommandContext) -> CommandResult:
         root = Path(context.workspace_root)
-        env_text = (root / ".env").read_text(encoding="utf-8") if (root / ".env").exists() else ""
-        has_llm = "MAG_LLM_API_KEY=" in env_text and "MAG_LLM_API_KEY=\n" not in env_text
+        settings = load_settings(workspace_root=root)
+        has_llm = bool(settings.openai_api_key) and settings.llm_provider != "fake"
+        has_search = any(
+            [
+                settings.tavily_api_key,
+                settings.brave_search_api_key,
+                settings.exa_api_key,
+                settings.firecrawl_api_key,
+            ]
+        )
+        has_mineru = settings.mineru_mode == "local" or (
+            settings.mineru_mode == "rest" and bool(settings.mineru_api_key)
+        )
+        has_embed = settings.embedding_provider == "voyage" and bool(settings.voyage_api_key)
+        has_humanizer = bool(settings.humanizer_api_key)
+
+        def row(ok: bool, name: str, detail: str) -> str:
+            return f"  [{'ok' if ok else 'missing'}] {name:<11}{detail}"
+
         lines = [
             "API status",
             "",
             "Required:",
-            f"  [{'ok' if has_llm else 'missing'}] LLM          required for reasoning",
+            row(has_llm, "LLM", settings.openai_model if has_llm else "required for reasoning"),
             "",
             "Recommended:",
-            "  [missing] Search       useful for public data",
-            "  [missing] arXiv        useful for academic methods",
+            row(has_search, "Search", "configured" if has_search else "useful for public data"),
             "",
             "Optional:",
-            "  [disabled] GitHub      local checkpoint only",
-            "  [missing] NOAA         not needed yet",
-            "  [missing] FRED         not needed yet",
+            row(has_mineru, "MinerU", "PDF parsing"),
+            row(has_embed, "Embedding", "RAG vector search"),
+            row(has_humanizer, "Humanizer", "style polish"),
+            "",
+            "Configure with: /init --llm-key <key> --llm-base-url <url> --llm-model <model>",
         ]
         return CommandResult("\n".join(lines))

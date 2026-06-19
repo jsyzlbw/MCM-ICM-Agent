@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 
+from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
+from mcm_agent.config import load_settings
 from mcm_agent.core.workspace import load_workspace_state
 from mcm_agent.core.workspace_safety import WorkspaceSafety
 
@@ -16,15 +18,18 @@ class StatusCommand:
         root = Path(context.workspace_root)
         state = load_workspace_state(root)
         git_status = WorkspaceSafety(root).status()
+        settings = load_settings(workspace_root=root)
+        llm_model = settings.openai_model if settings.openai_api_key else "not configured"
         lines = [
             "Workspace status",
             f"Phase: {state.phase}",
             f"Init completed: {state.init.completed}",
-            f"LLM configured: {state.init.llm_configured}",
+            f"LLM configured: {state.init.llm_configured} ({llm_model})",
             f"Problem imported: {state.init.problem_imported}",
             f"RAG documents: {state.init.rag_documents}",
             f"Data files: {state.init.data_files}",
             f"Layout imported: {state.init.layout_imported}",
+            f"Paper language: {confirmed_language(root)}",
             f"Last checkpoint: {git_status.last_commit or 'none'}",
         ]
         return CommandResult("\n".join(lines))
