@@ -7,6 +7,7 @@ import typer
 
 from mcm_agent.config import load_settings
 from mcm_agent.agents.submission import SubmissionPackager
+from mcm_agent.cli_session import InteractiveSession
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import TaskInput
 from mcm_agent.core.workspace import create_workspace
@@ -19,24 +20,46 @@ from mcm_agent.providers.smoke import (
 from mcm_agent.utils.json_io import read_json
 from mcm_agent.workflows.mvp import resume_mvp_workflow, run_demo_workflow, run_mvp_workflow
 
-app = typer.Typer(help="MCM/ICM math modeling agent CLI.")
+VERSION = "0.1.0"
+
+app = typer.Typer(help="MCM/ICM math modeling agent CLI.", invoke_without_command=True)
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"mag {VERSION}")
+        raise typer.Exit()
 
 
 @app.callback()
-def main() -> None:
+def main(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False,
+        "-v",
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="Print version and exit.",
+    ),
+) -> None:
     """MCM/ICM math modeling agent CLI."""
+    if ctx.invoked_subcommand is not None:
+        return
+    try:
+        InteractiveSession.prepare(Path.cwd()).run()
+    except ValueError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(code=1) from exc
 
 
-@app.command()
-def version() -> None:
-    """Print package version."""
-    typer.echo("mcm-agent 0.1.0")
-
-
-@app.command("init-workspace")
-def init_workspace(workspace: str) -> None:
-    """Initialize a task workspace."""
-    created = create_workspace(Path(workspace))
+@app.command("init")
+def init_current_workspace(force: bool = typer.Option(False, "--force")) -> None:
+    """Initialize the current directory as a workspace."""
+    workspace_path = Path.cwd()
+    if any(workspace_path.iterdir()) and not force:
+        typer.confirm("当前文件夹不为空，是否确定下一步？", abort=True)
+    created = create_workspace(workspace_path)
     typer.echo(f"Workspace initialized: {created.root}")
 
 

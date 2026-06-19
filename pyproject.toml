@@ -1,7 +1,7 @@
 [project]
-name = "mcm-agent"
+name = "mag"
 version = "0.1.0"
-description = "MCM/ICM math modeling agent MVP"
+description = "MCM/ICM math modeling agent"
 requires-python = ">=3.12"
 dependencies = [
   "typer>=0.12.5",
@@ -40,7 +40,7 @@ geo = [
 ]
 
 [project.scripts]
-mcm-agent = "mcm_agent.cli:app"
+mag = "mcm_agent.cli:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -49,6 +49,9 @@ pythonpath = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcm_agent"]
 
 [build-system]
 requires = ["hatchling"]

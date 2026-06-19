@@ -1,0 +1,95 @@
+from pathlib import Path
+
+from mcm_agent.cli_session import InteractiveSession
+from mcm_agent.core.workspace import create_workspace, load_workspace_state
+
+
+def test_init_requires_llm_key(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    session = InteractiveSession(workspace.root)
+
+    result = session.run_once("/init")
+
+    assert "LLM API 尚未配置" in result.message
+    assert load_workspace_state(workspace.root).init.completed is False
+
+
+def test_init_with_llm_key_marks_workspace_complete(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    session = InteractiveSession(workspace.root)
+
+    result = session.run_once("/init --llm-key test-key")
+
+    state = load_workspace_state(workspace.root)
+    assert "Init complete" in result.message
+    assert "MAG_LLM_API_KEY=test-key" in (workspace.root / ".env").read_text(encoding="utf-8")
+    assert state.init.llm_configured is True
+    assert state.init.completed is True
+    assert state.phase == "init_complete"
+
+
+def test_second_init_warns_and_offers_reset_options(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    session = InteractiveSession(workspace.root)
+    session.run_once("/init --llm-key test-key")
+
+    result = session.run_once("/init")
+
+    assert "already been initialized" in result.message
+    assert "/init rethink" in result.message
+    assert "/init full-reset RESET" in result.message
+
+
+def test_init_rethink_clears_work_and_output_but_keeps_inputs(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    (workspace.root / "input/problem/problem.md").write_text("problem", encoding="utf-8")
+    (workspace.root / "knowledge/papers/paper.md").write_text("paper", encoding="utf-8")
+    (workspace.root / "work/results/result.json").write_text("{}", encoding="utf-8")
+    (workspace.root / "output/draft/main.pdf").write_text("pdf", encoding="utf-8")
+    session = InteractiveSession(workspace.root)
+    session.run_once("/init --llm-key test-key")
+
+    result = session.run_once("/init rethink")
+
+    assert "Re-think complete" in result.message
+    assert (workspace.root / "input/problem/problem.md").exists()
+    assert (workspace.root / "knowledge/papers/paper.md").exists()
+    assert not (workspace.root / "work/results/result.json").exists()
+    assert not (workspace.root / "output/draft/main.pdf").exists()
+
+
+def test_reset_rethink_command_clears_generated_history(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    (workspace.root / "input/problem/problem.md").write_text("problem", encoding="utf-8")
+    (workspace.root / "work/results/result.json").write_text("{}", encoding="utf-8")
+    session = InteractiveSession(workspace.root)
+
+    result = session.run_once("/reset rethink")
+
+    assert "Re-think reset complete" in result.message
+    assert (workspace.root / "input/problem/problem.md").exists()
+    assert not (workspace.root / "work/results/result.json").exists()
+
+
+def test_init_full_reset_requires_reset_word(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    (workspace.root / "input/problem/problem.md").write_text("problem", encoding="utf-8")
+    session = InteractiveSession(workspace.root)
+
+    result = session.run_once("/init full-reset")
+
+    assert "Usage: /init --llm-key" in result.message
+    assert (workspace.root / "input/problem/problem.md").exists()
+
+
+def test_init_full_reset_recreates_workspace(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    (workspace.root / "input/problem/problem.md").write_text("problem", encoding="utf-8")
+    session = InteractiveSession(workspace.root)
+
+    result = session.run_once("/init full-reset RESET")
+
+    assert "Workspace fully reset" in result.message
+    assert not (workspace.root / "input/problem/problem.md").exists()
+    assert (workspace.root / ".mag/workspace.json").exists()
+    assert (workspace.root / ".git").exists()

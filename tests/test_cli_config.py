@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import tomllib
 
 from typer.testing import CliRunner
 
@@ -7,6 +8,73 @@ from mcm_agent.cli import app
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.utils.json_io import append_jsonl, read_json, write_json
+
+
+def test_root_version_flag_prints_mag_version() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["-v"])
+
+    assert result.exit_code == 0
+    assert result.output.strip() == "mag 0.1.0"
+
+
+def test_legacy_version_and_init_workspace_commands_are_removed() -> None:
+    runner = CliRunner()
+
+    version = runner.invoke(app, ["version"])
+    init_workspace = runner.invoke(app, ["init-workspace", "somewhere"])
+
+    assert version.exit_code != 0
+    assert init_workspace.exit_code != 0
+
+
+def test_init_command_initializes_current_empty_directory(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["init"])
+
+    assert result.exit_code == 0
+    assert "Workspace initialized" in result.output
+    assert (tmp_path / "task_state.json").exists()
+
+
+def test_init_command_aborts_when_current_directory_is_non_empty(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "notes.txt").write_text("keep me", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["init"], input="n\n")
+
+    assert result.exit_code == 1
+    assert "当前文件夹不为空" in result.output
+    assert not (tmp_path / "task_state.json").exists()
+
+
+def test_init_command_can_confirm_non_empty_current_directory(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "notes.txt").write_text("keep me", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["init"], input="y\n")
+
+    assert result.exit_code == 0
+    assert "当前文件夹不为空" in result.output
+    assert (tmp_path / "task_state.json").exists()
+
+
+def test_pyproject_exposes_mag_command_only() -> None:
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+
+    assert pyproject["project"]["name"] == "mag"
+    scripts = pyproject["project"]["scripts"]
+
+    assert scripts["mag"] == "mcm_agent.cli:app"
+    assert "mcm-agent" not in scripts
+    assert pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"] == [
+        "src/mcm_agent"
+    ]
 
 
 def test_provider_status_reports_fake_and_real_providers(tmp_path: Path) -> None:

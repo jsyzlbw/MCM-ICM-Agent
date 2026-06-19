@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import tomllib
 from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -53,8 +54,18 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
 
-def load_settings(env_file: str | None = None, config_file: str | None = None) -> Settings:
-    settings = Settings(_env_file=env_file)
+def load_settings(
+    env_file: str | None = None,
+    config_file: str | None = None,
+    workspace_root: str | Path | None = None,
+) -> Settings:
+    workspace = Path(workspace_root) if workspace_root is not None else None
+    effective_env = env_file
+    if effective_env is None and workspace is not None and (workspace / ".env").exists():
+        effective_env = str(workspace / ".env")
+    settings = Settings(_env_file=effective_env)
+    if workspace is not None:
+        settings = settings.model_copy(update=_settings_overrides_from_workspace(workspace))
     if config_file is None:
         return settings
 
@@ -69,6 +80,42 @@ def load_settings(env_file: str | None = None, config_file: str | None = None) -
     if not overrides:
         return settings
     return settings.model_copy(update=overrides)
+
+
+def _settings_overrides_from_workspace(workspace: Path) -> dict[str, Any]:
+    overrides: dict[str, Any] = {}
+    env_path = workspace / ".env"
+    if env_path.exists():
+        env_values = _read_env_file(env_path)
+        env_mapping = {
+            "MAG_LLM_API_KEY": "openai_api_key",
+            "MAG_LLM_BASE_URL": "openai_base_url",
+            "MAG_LLM_MODEL": "openai_model",
+            "MAG_SEARCH_API_KEY": "tavily_api_key",
+            "MAG_ARXIV_API_KEY": None,
+            "MAG_NOAA_API_KEY": "noaa_api_key",
+            "MAG_FRED_API_KEY": "fred_api_key",
+            "MAG_GITHUB_TOKEN": None,
+        }
+        for env_name, setting_name in env_mapping.items():
+            if setting_name and env_values.get(env_name):
+                overrides[setting_name] = env_values[env_name]
+    config_path = workspace / ".mag" / "config.toml"
+    if config_path.exists():
+        payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        overrides.update(_settings_overrides_from_json(payload))
+    return overrides
+
+
+def _read_env_file(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
 
 
 def _settings_overrides_from_json(payload: dict[str, Any]) -> dict[str, Any]:

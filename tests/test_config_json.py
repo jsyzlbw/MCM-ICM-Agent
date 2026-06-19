@@ -134,3 +134,40 @@ def test_load_settings_overlays_json_values_over_env_file(tmp_path: Path) -> Non
     assert settings.mcm_agent_max_retries == 5
     assert settings.mcm_agent_http_timeout_seconds == 33
     assert settings.mcm_agent_code_timeout_seconds == 44
+
+
+def test_load_settings_reads_workspace_env_and_toml(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    (workspace / ".mag").mkdir(parents=True)
+    (workspace / ".env").write_text(
+        "\n".join(
+            [
+                "MAG_LLM_API_KEY=workspace-key",
+                "MAG_SEARCH_API_KEY=workspace-search",
+                "MAG_NOAA_API_KEY=workspace-noaa",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (workspace / ".mag/config.toml").write_text(
+        "\n".join(
+            [
+                "[llm]",
+                'base_url = "https://workspace.example/v1"',
+                'model = "workspace-model"',
+                "",
+                "[runtime]",
+                'default_language = "zh"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    settings = load_settings(workspace_root=workspace)
+
+    assert settings.openai_api_key == "workspace-key"
+    assert settings.openai_base_url == "https://workspace.example/v1"
+    assert settings.openai_model == "workspace-model"
+    assert settings.tavily_api_key == "workspace-search"
+    assert settings.noaa_api_key == "workspace-noaa"
+    assert settings.mcm_agent_default_language == "zh"
