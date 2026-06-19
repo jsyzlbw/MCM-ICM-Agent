@@ -36,6 +36,11 @@ class InteractiveSession:
 
     def startup_text(self) -> str:
         state = load_workspace_state(self.workspace_root)
+        next_hint = (
+            "Type /start to analyze the problem, or just type to discuss."
+            if state.init.completed
+            else "Type /init to set up this workspace."
+        )
         return "\n".join(
             [
                 "Mag",
@@ -44,7 +49,7 @@ class InteractiveSession:
                 f"Workspace: {self.workspace_root.name}",
                 f"Status: {state.phase}",
                 "",
-                "Type /init to set up this workspace.",
+                next_hint,
                 "Type /help to see commands.",
             ]
         )
@@ -60,6 +65,8 @@ class InteractiveSession:
             for name in sorted(self.commands):
                 command = self.commands[name]
                 lines.append(f"  /{name} - {command.summary}")
+            lines.append("")
+            lines.append("直接输入自然语言即可与 Agent 讨论题目。")
             result = CommandResult("\n".join(lines))
             self.session_store.append_message("assistant", result.message)
             self.session_store.append_event("command.finished", {"command": "help"})
