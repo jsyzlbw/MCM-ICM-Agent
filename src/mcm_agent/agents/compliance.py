@@ -26,7 +26,13 @@ class ComplianceOriginalityAgent:
                     rewritten_lines.append(paragraph)
                     continue
                 before_locks = extract_fact_locks(paragraph)
-                candidate = self.humanizer_provider.humanize(paragraph, language="en")
+                try:
+                    candidate = self.humanizer_provider.humanize(paragraph, language="en")
+                except Exception as exc:  # humanizer is optional; degrade, don't crash
+                    candidate = paragraph
+                    note = f"- Humanizer unavailable; kept original text. Reason: {type(exc).__name__}."
+                    if note not in originality_lines:
+                        originality_lines.append(note)
                 after_locks = extract_fact_locks(candidate)
                 if before_locks != after_locks:
                     rewritten_lines.append(paragraph)
