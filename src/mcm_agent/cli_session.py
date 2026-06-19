@@ -6,6 +6,7 @@ from rich.console import Console
 
 from mcm_agent.cli_commands import build_command_registry
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
+from mcm_agent.core.chat import generate_chat_reply
 from mcm_agent.core.dialogue_guard import DialogueGuard
 from mcm_agent.core.revision_plan import create_revision_plan
 from mcm_agent.core.session_store import SessionStore
@@ -110,7 +111,18 @@ class InteractiveSession:
                 f"Revision plan created: work/revisions/{plan.revision_id}.md\n"
                 "请确认后再执行修订，当前论文尚未被修改。"
             )
-        return CommandResult("我已收到你的想法。正式分析请运行 /start。")
+        recent = self.session_store.read_recent_messages(limit=8)
+        reply = generate_chat_reply(self.workspace_root, text, self._chat_llm(), recent)
+        return CommandResult(reply)
+
+    def _chat_llm(self) -> object | None:
+        try:
+            from mcm_agent.core.workflow_adapter import WorkspaceWorkflowAdapter
+
+            _settings, bundle = WorkspaceWorkflowAdapter(self.workspace_root).build_providers()
+            return bundle.llm
+        except Exception:
+            return None
 
     def _has_draft(self) -> bool:
         return any(
