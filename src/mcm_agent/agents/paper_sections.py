@@ -83,6 +83,8 @@ def _render_abstract(
         for claim in claim_plan
         if claim.priority == "critical" and claim.status != "unresolved"
     ]
+    routes = [route for route in context.selected_routes if route and route != "llm_generated"]
+    method_phrase = ", ".join(routes) or "a problem-specific model"
     return "\n".join(
         [
             SECTION_TITLES["abstract.tex"],
@@ -90,9 +92,7 @@ def _render_abstract(
                 "This paper studies "
                 + _latex_escape(context.problem_summary or "the contest problem")
                 + " using "
-                + _latex_escape(
-                    ", ".join(context.selected_routes) or "a traceable modeling workflow"
-                )
+                + _latex_escape(method_phrase)
                 + "."
             ),
             _latex_escape(" ".join(critical[:2])),
