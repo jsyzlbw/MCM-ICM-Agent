@@ -362,29 +362,36 @@ class PaperWriterAgent:
             "@misc{registered_sources,\n  title={Registered data sources},\n  year={2026}\n}\n",
             encoding="utf-8",
         )
-        (paper_dir / "main.tex").write_text(
-            "\n".join(
-                [
-                    "\\documentclass[12pt]{article}",
-                    "\\usepackage{graphicx}",
-                    "\\usepackage{amsmath}",
-                    "\\usepackage{booktabs}",
-                    "\\begin{document}",
-                    "\\input{sections/abstract}",
-                    "\\input{sections/introduction}",
-                    "\\input{sections/assumptions}",
-                    "\\input{sections/model}",
-                    "\\input{sections/results}",
-                    "\\input{sections/sensitivity}",
-                    "\\input{sections/conclusion}",
-                    "\\bibliographystyle{plain}",
-                    "\\bibliography{references}",
-                    "\\end{document}",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
+        section_dir = paper_dir / "sections"
+        section_text = ""
+        if section_dir.exists():
+            for tex in sorted(section_dir.glob("*.tex")):
+                section_text += tex.read_text(encoding="utf-8")
+        # CJK content needs a XeTeX/CJK-capable class; tectonic auto-fetches the
+        # ctex Fandol fonts. English-only papers stay on plain article.
+        has_cjk = any("一" <= ch <= "鿿" for ch in section_text)
+        document_class = "ctexart" if has_cjk else "article"
+        preamble = [
+            f"\\documentclass[12pt]{{{document_class}}}",
+            "\\usepackage{graphicx}",
+            "\\usepackage{amsmath}",
+            "\\usepackage{booktabs}",
+        ]
+        body = [
+            "\\begin{document}",
+            "\\input{sections/abstract}",
+            "\\input{sections/introduction}",
+            "\\input{sections/assumptions}",
+            "\\input{sections/model}",
+            "\\input{sections/results}",
+            "\\input{sections/sensitivity}",
+            "\\input{sections/conclusion}",
+            "\\bibliographystyle{plain}",
+            "\\bibliography{references}",
+            "\\end{document}",
+            "",
+        ]
+        (paper_dir / "main.tex").write_text("\n".join(preamble + body), encoding="utf-8")
 
     def _with_trace_comments(
         self,
