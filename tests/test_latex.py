@@ -43,13 +43,38 @@ def test_paper_writer_generates_sections_and_main_tex(tmp_path: Path) -> None:
     )
 
 
-def test_latex_provider_returns_blocked_result_when_latexmk_missing(tmp_path: Path) -> None:
+def test_latex_provider_blocked_when_forced_command_missing(tmp_path: Path) -> None:
     paper_dir = tmp_path / "paper"
     paper_dir.mkdir()
     (paper_dir / "main.tex").write_text("\\documentclass{article}\\begin{document}x\\end{document}")
 
-    result = LatexProvider(command="definitely-missing-latexmk").compile(paper_dir)
+    result = LatexProvider(command="definitely-missing-engine").compile(paper_dir)
 
     assert result.success is False
-    assert result.reason == "latexmk not installed"
+    assert "definitely-missing-engine" in result.reason
     assert (paper_dir / "compile_log.txt").exists()
+
+
+def test_latex_provider_blocked_when_no_engine_available(tmp_path: Path, monkeypatch) -> None:
+    import mcm_agent.providers.latex as latex_mod
+
+    monkeypatch.setattr(latex_mod.shutil, "which", lambda name: None)
+    paper_dir = tmp_path / "paper"
+    paper_dir.mkdir()
+    (paper_dir / "main.tex").write_text("\\documentclass{article}\\begin{document}x\\end{document}")
+
+    result = LatexProvider().compile(paper_dir)
+
+    assert result.success is False
+    assert "no latex engine" in result.reason.lower()
+    assert (paper_dir / "compile_log.txt").exists()
+
+
+def test_latex_provider_prefers_tectonic_when_available(tmp_path: Path, monkeypatch) -> None:
+    import mcm_agent.providers.latex as latex_mod
+
+    monkeypatch.setattr(latex_mod.shutil, "which", lambda name: f"/usr/bin/{name}" if name == "tectonic" else None)
+    provider = LatexProvider()
+
+    assert provider._resolve_command() == "tectonic"
+    assert provider._invocation("tectonic") == ["tectonic", "main.tex"]
