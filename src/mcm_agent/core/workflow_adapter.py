@@ -32,6 +32,13 @@ STAGE_LABELS = {
     "typesetting": "正在排版与编译",
     "pre_submission_review": "正在终审",
     "submission_packager": "正在打包提交",
+    # gate / repair sub-stages
+    "mineru_extraction": "正在解析题目",
+    "extraction_quality_gate": "正在校验题目解析",
+    "modeling_quality_gate": "正在校验模型计划",
+    "source_verifier": "正在核验数据来源",
+    "figure_quality_gate": "正在校验图表质量",
+    "final_gatekeeper": "正在终检",
 }
 
 
