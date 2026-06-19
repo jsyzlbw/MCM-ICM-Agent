@@ -32,6 +32,8 @@ class ClaimPlanningAgent:
         claims.append(self._conclusion_claim(evidence, figures, sources, context))
 
         deduped = self._dedupe_claims(claims)
+        for item in deduped:
+            item.source_ids = self._cap_sources(item.source_ids)
         write_json(
             workspace_root / "paper" / "claim_plan.json",
             [item.model_dump() for item in deduped],
@@ -42,6 +44,17 @@ class ClaimPlanningAgent:
             payload={"artifact_ids": ["paper_claim_plan_v1"]},
             source="ClaimPlanningAgent",
         )
+
+    @staticmethod
+    def _cap_sources(source_ids: list[str], *, limit: int = 3) -> list[str]:
+        # Each claim cites at most a few most-relevant sources (no citation spam).
+        capped: list[str] = []
+        for source_id in source_ids:
+            if source_id not in capped:
+                capped.append(source_id)
+            if len(capped) >= limit:
+                break
+        return capped
 
     def _assumption_claims(
         self,

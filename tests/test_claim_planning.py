@@ -9,6 +9,29 @@ from mcm_agent.core.workspace import create_workspace
 from mcm_agent.utils.json_io import read_json, write_json
 
 
+def test_claim_source_ids_are_capped(tmp_path: Path) -> None:
+    root = create_workspace(tmp_path / "ws").root
+    write_json(
+        root / "figures" / "figure_registry.json",
+        [
+            {
+                "figure_id": "fig_1",
+                "claim_supported": "The estimated fan votes match eliminations.",
+                "source_ids": [f"web_{i:03d}" for i in range(1, 11)],
+                "status": "approved",
+            }
+        ],
+    )
+
+    ClaimPlanningAgent().run(root)
+
+    plan = read_json(root / "paper" / "claim_plan.json", [])
+    assert plan
+    assert all(len(item.get("source_ids", [])) <= 3 for item in plan)
+    fig_claim = next(item for item in plan if item.get("claim_id") == "claim_fig_1")
+    assert len(fig_claim["source_ids"]) == 3
+
+
 def test_paper_claim_plan_item_accepts_supported_critical_claim() -> None:
     item = PaperClaimPlanItem(
         claim_id="claim_model_route",
