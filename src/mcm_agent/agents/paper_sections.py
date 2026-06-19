@@ -87,17 +87,21 @@ def _render_abstract(
     routes = [route for route in context.selected_routes if route and route != "llm_generated"]
     zh = context.language == "zh"
     method_phrase = ", ".join(routes) or ("题目专属模型" if zh else "a problem-specific model")
-    problem = context.problem_summary or ("该竞赛问题" if zh else "the contest problem")
-    approach = _first_sentence(" ".join(critical[:2]), 240)
+    problem = _latex_escape(_first_sentence(context.problem_summary, 240))
+    method = _latex_escape(method_phrase)
+    approach = _latex_escape(_first_sentence(" ".join(critical[:2]), 240))
     if zh:
-        lead = f"本文研究{_latex_escape(problem)}，采用{_latex_escape(method_phrase)}。"
+        lead = f"本文采用{method}求解该数学建模问题。" + (f" {problem}" if problem else "")
     else:
-        lead = f"This paper studies {_latex_escape(problem)} using {_latex_escape(method_phrase)}."
+        lead = (
+            f"This paper develops {method} for the contest problem."
+            + (f" {problem}" if problem else "")
+        )
     return "\n".join(
         [
             SECTION_TITLES["abstract.tex"],
             lead,
-            _latex_escape(approach),
+            approach,
             "",
         ]
     )

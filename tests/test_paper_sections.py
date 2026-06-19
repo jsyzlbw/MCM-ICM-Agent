@@ -30,9 +30,9 @@ def test_abstract_is_language_aware() -> None:
     en = render_claim_plan_sections([], PaperContext(problem_summary="DWTS fairness", language="en"), None)
     zh = render_claim_plan_sections([], PaperContext(problem_summary="DWTS 公平性", language="zh"), None)
 
-    assert "This paper studies" in en["abstract.tex"]
-    assert "本文研究" in zh["abstract.tex"]
-    assert "This paper studies" not in zh["abstract.tex"]
+    assert "This paper develops" in en["abstract.tex"]
+    assert "本文采用" in zh["abstract.tex"]
+    assert "This paper develops" not in zh["abstract.tex"]
 
 
 def test_abstract_bounds_long_approach_text() -> None:
