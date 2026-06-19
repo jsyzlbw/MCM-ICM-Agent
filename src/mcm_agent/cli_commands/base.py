@@ -7,6 +7,7 @@ from typing import Protocol
 @dataclass(frozen=True)
 class CommandContext:
     workspace_root: object
+    printer: object | None = None  # optional callable(str) for live progress output
 
 
 @dataclass

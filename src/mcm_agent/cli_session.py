@@ -73,7 +73,10 @@ class InteractiveSession:
                 self.session_store.append_message("assistant", result.message)
                 return result
             self.session_store.append_event("command.started", {"command": name})
-            result = command.run(args, CommandContext(workspace_root=self.workspace_root))
+            result = command.run(
+                args,
+                CommandContext(workspace_root=self.workspace_root, printer=self.console.print),
+            )
             if result.message:
                 self.session_store.append_message("assistant", result.message)
             self.session_store.append_event("command.finished", {"command": name})

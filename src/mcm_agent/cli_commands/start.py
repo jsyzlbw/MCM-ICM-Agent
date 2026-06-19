@@ -34,7 +34,11 @@ class StartCommand:
         )
         if lock:
             if "--run" in args:
-                WorkspaceWorkflowAdapter(root).run_default_workflow(auto_approve=True)
+                printer = context.printer
+                progress = (lambda text: printer(f"… {text}")) if callable(printer) else None
+                WorkspaceWorkflowAdapter(root).run_default_workflow(
+                    auto_approve=True, progress=progress
+                )
                 return CommandResult(
                     "Research script locked and workflow completed. See output/draft and output/package."
                 )

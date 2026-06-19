@@ -11,6 +11,30 @@ from mcm_agent.providers.factory import build_provider_bundle
 from mcm_agent.workflows.mvp import run_mvp_workflow
 
 
+STAGE_LABELS = {
+    "intake": "正在读取输入",
+    "document_extraction": "正在解析题目",
+    "problem_understanding": "正在理解题目",
+    "data_feasibility_scout": "正在检查数据可得性",
+    "user_discussion": "正在确认研究方向",
+    "methodology_rag": "正在检索方法",
+    "modeling_council": "正在提出候选模型",
+    "model_judge": "正在裁决模型路线",
+    "search_data": "正在搜索并注册数据来源",
+    "data_eda": "正在清洗与画像数据",
+    "solver_coder": "正在写代码求解",
+    "validation_gate": "正在验证结果",
+    "figure_planning": "正在规划图表",
+    "visualization": "正在生成图表",
+    "claim_planning": "正在规划论文论断",
+    "paper_writer": "正在撰写论文",
+    "paper_evidence_binding": "正在绑定论文证据",
+    "typesetting": "正在排版与编译",
+    "pre_submission_review": "正在终审",
+    "submission_packager": "正在打包提交",
+}
+
+
 class WorkspaceWorkflowAdapter:
     def __init__(self, root: Path):
         self.root = root.resolve()
@@ -36,7 +60,7 @@ class WorkspaceWorkflowAdapter:
         bundle = build_provider_bundle(settings, workspace_root=self.root)
         return settings, bundle
 
-    def run_default_workflow(self, *, auto_approve: bool = True) -> None:
+    def run_default_workflow(self, *, auto_approve: bool = True, progress=None) -> None:
         settings, providers = self.build_providers()
         language = self._locked_language()
         if language:
@@ -47,9 +71,21 @@ class WorkspaceWorkflowAdapter:
             providers=providers,
             settings=settings,
             auto_approve=auto_approve,
+            controller=self._progress_controller(progress),
         )
         self.sync_outputs()
         WorkspaceSafety(self.root).checkpoint("mag: run workflow")
+
+    @staticmethod
+    def _progress_controller(progress):
+        if progress is None:
+            return None
+
+        def _controller(record) -> str:
+            progress(STAGE_LABELS.get(record.stage_id, record.stage_id))
+            return "continue"
+
+        return _controller
 
     def _locked_language(self) -> str:
         from mcm_agent.utils.json_io import read_json
