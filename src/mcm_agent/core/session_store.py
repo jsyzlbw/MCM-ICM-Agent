@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
+from mcm_agent.core.redaction import redact_secrets
 from mcm_agent.utils.json_io import append_jsonl
 
 
@@ -18,7 +19,7 @@ class SessionStore:
             self.chat_path,
             {
                 "role": role,
-                "content": content,
+                "content": redact_secrets(content),
                 "created_at": datetime.now(UTC).isoformat(),
             },
         )
