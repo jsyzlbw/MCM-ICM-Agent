@@ -86,10 +86,22 @@ class ReferenceManager:
 
     def _write_bibtex(self, workspace_root: Path, candidates: list[CitationCandidate]) -> None:
         bibtex = "\n\n".join(candidate.bibtex or "" for candidate in candidates if candidate.bibtex)
+        bibtex = self._escape_bibtex_specials(bibtex)
         (workspace_root / "paper" / "references.bib").write_text(
             bibtex + ("\n" if bibtex else ""),
             encoding="utf-8",
         )
+
+    @staticmethod
+    def _escape_bibtex_specials(text: str) -> str:
+        # Escape LaTeX specials that are hard compile errors but never appear in
+        # BibTeX structural syntax (keys/field names). Field values from real
+        # search results often contain these (e.g. "Storage & Attachment").
+        # `_` and `$` are intentionally left alone: they appear in citation keys
+        # (web_001) and URLs, where escaping would corrupt them.
+        for char in ("&", "%", "#"):
+            text = re.sub(r"(?<!\\)" + re.escape(char), "\\" + char, text)
+        return text
 
     def _insert_section_citations(
         self,
