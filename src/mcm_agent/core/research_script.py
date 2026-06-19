@@ -25,11 +25,12 @@ class ResearchScript(BaseModel):
     problem_path: str
     goals: list[str]
     data_availability: DataAvailabilityMatrix
+    language: str = "en"
     locked: bool = False
     created_at: datetime
 
 
-def build_initial_research_script(root: Path) -> ResearchScript:
+def build_initial_research_script(root: Path, language: str = "en") -> ResearchScript:
     problem_files = sorted((root / "input/problem").glob("*"))
     problem_path = str(problem_files[0].relative_to(root)) if problem_files else ""
     uploaded_data = sorted((root / "input/data").glob("*"))
@@ -57,6 +58,7 @@ def build_initial_research_script(root: Path) -> ResearchScript:
                 )
             ]
         ),
+        language=language,
         created_at=datetime.now(UTC),
     )
 
@@ -71,6 +73,7 @@ def write_research_script(root: Path, script: ResearchScript, locked: bool = Fal
         f"# {script.title}",
         "",
         f"Problem: `{script.problem_path}`",
+        f"Paper language: `{script.language}`",
         "",
         "## Goals",
         *[f"- {goal}" for goal in script.goals],

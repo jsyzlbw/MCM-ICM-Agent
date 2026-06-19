@@ -38,6 +38,9 @@ class WorkspaceWorkflowAdapter:
 
     def run_default_workflow(self, *, auto_approve: bool = True) -> None:
         settings, providers = self.build_providers()
+        language = self._locked_language()
+        if language:
+            settings = settings.model_copy(update={"mcm_agent_default_language": language})
         run_mvp_workflow(
             self.root,
             self.to_task_input(),
@@ -47,6 +50,16 @@ class WorkspaceWorkflowAdapter:
         )
         self.sync_outputs()
         WorkspaceSafety(self.root).checkpoint("mag: run workflow")
+
+    def _locked_language(self) -> str:
+        from mcm_agent.utils.json_io import read_json
+
+        script = read_json(self.root / "work" / "discussion" / "locked_research_script.json", {})
+        if isinstance(script, dict):
+            language = script.get("language")
+            if isinstance(language, str) and language.strip():
+                return language.strip()
+        return ""
 
     def sync_outputs(self) -> None:
         draft_dir = self.root / "output" / "draft"

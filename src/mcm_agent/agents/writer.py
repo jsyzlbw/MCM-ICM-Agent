@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.agents.paper_context import PaperContext, build_paper_context
 from mcm_agent.agents.paper_sections import render_claim_paragraph, render_claim_plan_sections
 from mcm_agent.core.coordinator import Coordinator
@@ -25,8 +26,10 @@ SECTION_CONTENT = {
 class PaperWriterAgent:
     def __init__(self, llm_provider: TextGenerationProvider | None = None) -> None:
         self.llm_provider = llm_provider
+        self._language = "en"
 
     def run(self, workspace_root: Path) -> None:
+        self._language = confirmed_language(workspace_root)
         paper_dir = workspace_root / "paper"
         section_dir = paper_dir / "sections"
         section_dir.mkdir(parents=True, exist_ok=True)
@@ -275,6 +278,14 @@ class PaperWriterAgent:
             claim_id="claim_conclusion_traceability",
         )
 
+    def _results_system_prompt(self) -> str:
+        if self._language == "zh":
+            return (
+                "你撰写简洁、可溯源的数学建模竞赛论文。"
+                "用中文撰写正文，但保留 LaTeX 命令、变量名与英文缩写。"
+            )
+        return "You write concise, source-traceable contest papers."
+
     def _generate_results_section(
         self,
         evidence: list[dict[str, object]],
@@ -297,7 +308,7 @@ class PaperWriterAgent:
                 f"source_id={source_id}",
             ]
         )
-        result = self.llm_provider.generate("You write concise, source-traceable contest papers.", prompt)
+        result = self.llm_provider.generate(self._results_system_prompt(), prompt)
         content = result.content.strip()
         if (
             "\\section{Results}" in content
