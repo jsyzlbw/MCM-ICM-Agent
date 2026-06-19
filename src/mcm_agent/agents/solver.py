@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,6 +34,10 @@ class SolverCoderAgent:
         code_dir = workspace_root / "code" / "experiments"
         code_dir.mkdir(parents=True, exist_ok=True)
         script_path = code_dir / "problem1.py"
+        # Snapshot the run log so failed self-repair attempts can be pruned on success;
+        # they are internal codegen iterations, not pipeline failures the gate should flag.
+        runs_path = workspace_root / "results" / "experiment_runs.jsonl"
+        prior_runs = runs_path.read_text(encoding="utf-8") if runs_path.exists() else ""
         system = (
             "You write correct, self-contained Python for a math-modeling contest. "
             "Output ONLY one ```python code block."
@@ -71,6 +76,8 @@ class SolverCoderAgent:
             if record.exit_code == 0 and not record.missing_outputs:
                 metrics = read_json(workspace_root / "results" / "model_metrics.json", {})
                 if isinstance(metrics, dict) and metrics:
+                    success_line = json.dumps(record.model_dump(mode="json"), ensure_ascii=False)
+                    runs_path.write_text(prior_runs + success_line + "\n", encoding="utf-8")
                     self._llm_script_rel = str(script_path.relative_to(workspace_root))
                     return True
                 last_err = "model_metrics.json missing or not a non-empty dict"

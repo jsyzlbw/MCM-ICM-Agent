@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from mcm_agent.agents.solver import SolverCoderAgent
@@ -65,6 +66,12 @@ def test_llm_codegen_self_repairs_then_succeeds(tmp_path: Path) -> None:
     assert llm.calls >= 2  # repaired after the first failing attempt
     metrics = read_json(root / "results" / "model_metrics.json", {})
     assert metrics.get("elimination_consistency_rate") == 0.91
+    # Failed repair attempts must be pruned from the run log so the validation
+    # gate does not flag them as pipeline failures.
+    runs_path = root / "results" / "experiment_runs.jsonl"
+    lines = [line for line in runs_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert lines
+    assert all(json.loads(line)["exit_code"] == 0 for line in lines)
 
 
 def test_llm_codegen_falls_back_to_baseline_when_unfixable(tmp_path: Path) -> None:
