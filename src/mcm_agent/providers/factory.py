@@ -39,6 +39,15 @@ class NullExtractProvider:
 
 
 def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> ProviderBundle:
+    # Offline/demo mode: a fully self-contained bundle (fake LLM + demo
+    # search/extract/latex) that needs no network or TeX engine. Used by the CLI
+    # smoke and offline tests via `[llm] provider = "fake"` / MAG_LLM_PROVIDER=fake.
+    if settings.llm_provider == "fake":
+        from mcm_agent.workflows.mvp import _default_demo_providers
+
+        return _default_demo_providers()
+
+    use_real_llm = bool(settings.openai_api_key)
     llm = (
         OpenAICompatibleLLMProvider(
             api_key=settings.openai_api_key,
@@ -46,7 +55,7 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
             base_url=settings.openai_base_url or "https://api.openai.com/v1",
             timeout_seconds=settings.mcm_agent_http_timeout_seconds,
         )
-        if settings.openai_api_key
+        if use_real_llm
         else FakeLLMProvider({"default": ""})
     )
 

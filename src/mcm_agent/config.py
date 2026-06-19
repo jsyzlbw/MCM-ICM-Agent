@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = ""
     openai_model: str = "gpt-4.1"
+    llm_provider: str = "openai_compatible"
 
     tavily_api_key: str = ""
     firecrawl_api_key: str = ""
@@ -83,7 +84,14 @@ def load_settings(
 
 
 def _settings_overrides_from_workspace(workspace: Path) -> dict[str, Any]:
+    # Precedence: defaults < .mag/config.toml < .env. The workspace's default
+    # config.toml carries placeholder LLM values, so an explicit .env (written by
+    # /init or /api) must win over it.
     overrides: dict[str, Any] = {}
+    config_path = workspace / ".mag" / "config.toml"
+    if config_path.exists():
+        payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        overrides.update(_settings_overrides_from_json(payload))
     env_path = workspace / ".env"
     if env_path.exists():
         env_values = _read_env_file(env_path)
@@ -91,6 +99,7 @@ def _settings_overrides_from_workspace(workspace: Path) -> dict[str, Any]:
             "MAG_LLM_API_KEY": "openai_api_key",
             "MAG_LLM_BASE_URL": "openai_base_url",
             "MAG_LLM_MODEL": "openai_model",
+            "MAG_LLM_PROVIDER": "llm_provider",
             "MAG_SEARCH_API_KEY": "tavily_api_key",
             "MAG_ARXIV_API_KEY": None,
             "MAG_NOAA_API_KEY": "noaa_api_key",
@@ -100,10 +109,6 @@ def _settings_overrides_from_workspace(workspace: Path) -> dict[str, Any]:
         for env_name, setting_name in env_mapping.items():
             if setting_name and env_values.get(env_name):
                 overrides[setting_name] = env_values[env_name]
-    config_path = workspace / ".mag" / "config.toml"
-    if config_path.exists():
-        payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
-        overrides.update(_settings_overrides_from_json(payload))
     return overrides
 
 
@@ -123,6 +128,7 @@ def _settings_overrides_from_json(payload: dict[str, Any]) -> dict[str, Any]:
         ("llm", "api_key"): "openai_api_key",
         ("llm", "base_url"): "openai_base_url",
         ("llm", "model"): "openai_model",
+        ("llm", "provider"): "llm_provider",
         ("llm", "timeout_seconds"): "mcm_agent_http_timeout_seconds",
         ("search", "tavily_api_key"): "tavily_api_key",
         ("search", "firecrawl_api_key"): "firecrawl_api_key",

@@ -14,6 +14,9 @@ def run_smoke(workspace: Path) -> Path:
     if workspace.exists():
         shutil.rmtree(workspace)
     create_workspace(workspace)
+    # Keep the smoke fully offline: force the fake LLM provider. /init preserves
+    # this line (it only manages MAG_LLM_API_KEY/BASE_URL/MODEL).
+    (workspace / ".env").write_text("MAG_LLM_PROVIDER=fake\n", encoding="utf-8")
     session = InteractiveSession(workspace)
     root = Path(__file__).resolve().parents[1]
     problem = root / "examples" / "demo_problem" / "problem.md"

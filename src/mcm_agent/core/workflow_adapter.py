@@ -3,8 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 
+from mcm_agent.config import Settings, load_settings
 from mcm_agent.core.models import TaskInput
 from mcm_agent.core.workspace_safety import WorkspaceSafety
+from mcm_agent.providers.base import ProviderBundle
+from mcm_agent.providers.factory import build_provider_bundle
 from mcm_agent.workflows.mvp import run_mvp_workflow
 
 
@@ -28,8 +31,20 @@ class WorkspaceWorkflowAdapter:
             template_dir=template_dir,
         )
 
+    def build_providers(self) -> tuple[Settings, ProviderBundle]:
+        settings = load_settings(workspace_root=self.root)
+        bundle = build_provider_bundle(settings, workspace_root=self.root)
+        return settings, bundle
+
     def run_default_workflow(self, *, auto_approve: bool = True) -> None:
-        run_mvp_workflow(self.root, self.to_task_input(), auto_approve=auto_approve)
+        settings, providers = self.build_providers()
+        run_mvp_workflow(
+            self.root,
+            self.to_task_input(),
+            providers=providers,
+            settings=settings,
+            auto_approve=auto_approve,
+        )
         self.sync_outputs()
         WorkspaceSafety(self.root).checkpoint("mag: run workflow")
 
