@@ -86,3 +86,17 @@ def test_llm_codegen_falls_back_to_baseline_when_unfixable(tmp_path: Path) -> No
     # baseline still produced the standard outputs
     assert (root / "results" / "problem1_results.csv").exists()
     assert (root / "results" / "model_metrics.json").exists()
+
+
+def test_llm_codegen_falls_back_when_generation_errors(tmp_path: Path) -> None:
+    root = _prepare(tmp_path)
+
+    class _TimeoutLLM:
+        def generate(self, system: str, prompt: str) -> ProviderResult:
+            raise TimeoutError("read operation timed out")
+
+    # An LLM timeout during codegen must NOT crash the workflow; fall back to baseline.
+    SolverCoderAgent(_TimeoutLLM()).run(root)
+
+    assert (root / "results" / "problem1_results.csv").exists()
+    assert (root / "results" / "model_metrics.json").exists()

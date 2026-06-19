@@ -62,10 +62,15 @@ class SolverCoderAgent:
                 + f"\n\nThe previous script failed with:\n{last_err}\n"
                 + "Fix it and return the full corrected script."
             )
-            result = self.llm_provider.generate(system, prompt)
+            try:
+                result = self.llm_provider.generate(system, prompt)
+            except Exception as exc:  # transient LLM error (timeout/network): retry, then baseline
+                last_err = f"LLM generation failed: {type(exc).__name__}: {exc}"
+                continue
             code = self._extract_code(result.content)
             if not code:
-                return False
+                last_err = "LLM returned no code"
+                continue
             script_path.write_text(code, encoding="utf-8")
             record = run_experiment(
                 workspace_root,
