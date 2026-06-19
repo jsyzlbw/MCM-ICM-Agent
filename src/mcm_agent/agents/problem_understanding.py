@@ -89,11 +89,30 @@ class ProblemUnderstandingAgent:
                 prompt,
                 temperature=0.2,
             ).content.strip()
+            report = self._strip_preamble(report)
             validate_required_headings(report)
             return report
         except Exception as exc:
             fallback = self._build_report(problem_text)
             return fallback + f"\n<!-- LLM fallback reason: {type(exc).__name__} -->\n"
+
+    @staticmethod
+    def _strip_preamble(report: str) -> str:
+        """Drop conversational preamble / code fences before the first markdown heading.
+
+        LLMs often prefix reports with "好的，作为一名..." chatter that then pollutes the
+        abstract/introduction summaries. Keep only from the first heading onward.
+        """
+        text = report.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else ""
+            if text.rstrip().endswith("```"):
+                text = text.rstrip()[:-3].rstrip()
+        lines = text.splitlines()
+        for index, line in enumerate(lines):
+            if line.lstrip().startswith("#"):
+                return "\n".join(lines[index:]).strip()
+        return text.strip()
 
     def _build_report(self, problem_text: str) -> str:
         excerpt = problem_text[:800] if problem_text else "No parsed problem text available."
