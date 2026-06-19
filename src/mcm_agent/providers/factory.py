@@ -54,6 +54,7 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
             model=settings.openai_model,
             base_url=settings.openai_base_url or "https://api.openai.com/v1",
             timeout_seconds=settings.mcm_agent_http_timeout_seconds,
+            max_retries=settings.mcm_agent_max_retries,
         )
         if use_real_llm
         else FakeLLMProvider({"default": ""})
