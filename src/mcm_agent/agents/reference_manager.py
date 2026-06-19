@@ -94,14 +94,20 @@ class ReferenceManager:
 
     @staticmethod
     def _escape_bibtex_specials(text: str) -> str:
-        # Escape LaTeX specials that are hard compile errors but never appear in
-        # BibTeX structural syntax (keys/field names). Field values from real
-        # search results often contain these (e.g. "Storage & Attachment").
-        # `_` and `$` are intentionally left alone: they appear in citation keys
-        # (web_001) and URLs, where escaping would corrupt them.
-        for char in ("&", "%", "#"):
-            text = re.sub(r"(?<!\\)" + re.escape(char), "\\" + char, text)
-        return text
+        # Escape LaTeX specials inside field VALUES only (the inner `{...}` of
+        # title/url/note/...). Real search-derived values contain `&`, `_`, `%`,
+        # etc. which are hard LaTeX errors ("Misplaced alignment tab",
+        # "Missing $ inserted"). Citation keys live outside these braces
+        # (`@misc{web_001,`) so they are never matched and stay intact.
+        specials = ("&", "%", "#", "_", "$")
+
+        def _escape_value(match: re.Match[str]) -> str:
+            value = match.group(1)
+            for char in specials:
+                value = re.sub(r"(?<!\\)" + re.escape(char), "\\" + char, value)
+            return "{" + value + "}"
+
+        return re.sub(r"\{([^{}]*)\}", _escape_value, text)
 
     def _insert_section_citations(
         self,

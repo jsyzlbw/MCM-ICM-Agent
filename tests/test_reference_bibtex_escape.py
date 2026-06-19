@@ -12,8 +12,8 @@ def test_write_bibtex_escapes_latex_specials(tmp_path: Path) -> None:
     candidate = CitationCandidate(
         citation_id="c1",
         source_id="web_001",
-        title="File Storage & Attachment 100% Guide #1",
-        url="https://example.com/x",
+        title="Fan_Vote & Attachment 100% Guide #1",
+        url="https://example.com/a_b",
         accessed_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
@@ -23,7 +23,8 @@ def test_write_bibtex_escapes_latex_specials(tmp_path: Path) -> None:
     assert "\\&" in bib
     assert "\\%" in bib
     assert "\\#" in bib
+    assert "Fan\\_Vote" in bib  # underscore inside a value is escaped
     # No bare (unescaped) alignment-tab characters remain — they break LaTeX.
     assert not re.search(r"(?<!\\)&", bib)
-    # The bibtex key must stay intact (no spurious escaping of structural chars).
+    # The bibtex key must stay intact (underscore in the KEY is NOT escaped).
     assert "@misc{web_001," in bib
