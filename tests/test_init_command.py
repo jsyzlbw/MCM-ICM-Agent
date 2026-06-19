@@ -28,6 +28,22 @@ def test_init_with_llm_key_marks_workspace_complete(tmp_path: Path) -> None:
     assert state.phase == "init_complete"
 
 
+def test_init_writes_full_llm_config(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    session = InteractiveSession(workspace.root)
+
+    session.run_once(
+        "/init --llm-key sk-deepseek "
+        "--llm-base-url https://api.deepseek.com/v1 "
+        "--llm-model deepseek-v4-flash"
+    )
+
+    env_text = (workspace.root / ".env").read_text(encoding="utf-8")
+    assert "MAG_LLM_API_KEY=sk-deepseek" in env_text
+    assert "MAG_LLM_BASE_URL=https://api.deepseek.com/v1" in env_text
+    assert "MAG_LLM_MODEL=deepseek-v4-flash" in env_text
+
+
 def test_second_init_warns_and_offers_reset_options(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "workspace")
     session = InteractiveSession(workspace.root)

@@ -35,8 +35,13 @@ class InitCommand:
             )
         llm_key = self._extract_option(args, "--llm-key")
         if not llm_key:
-            return CommandResult("LLM API 尚未配置。Usage: /init --llm-key <key>")
-        self._write_llm_key(root, llm_key)
+            return CommandResult(
+                "LLM API 尚未配置。Usage: /init --llm-key <key> "
+                "[--llm-base-url <url>] [--llm-model <model>]"
+            )
+        base_url = self._extract_option(args, "--llm-base-url")
+        model = self._extract_option(args, "--llm-model")
+        self._write_llm_config(root, llm_key, base_url, model)
         state.init.llm_configured = True
         state.init.completed = True
         state.phase = "init_complete"
@@ -52,16 +57,23 @@ class InitCommand:
             return None
         return args[index + 1]
 
-    def _write_llm_key(self, root: Path, key: str) -> None:
+    def _write_llm_config(
+        self, root: Path, key: str, base_url: str | None, model: str | None
+    ) -> None:
         env_path = root / ".env"
+        managed = {"MAG_LLM_API_KEY", "MAG_LLM_BASE_URL", "MAG_LLM_MODEL"}
         lines = []
         if env_path.exists():
             lines = [
                 line
                 for line in env_path.read_text(encoding="utf-8").splitlines()
-                if not line.startswith("MAG_LLM_API_KEY=")
+                if line.split("=", 1)[0] not in managed
             ]
         lines.append(f"MAG_LLM_API_KEY={key}")
+        if base_url:
+            lines.append(f"MAG_LLM_BASE_URL={base_url}")
+        if model:
+            lines.append(f"MAG_LLM_MODEL={model}")
         env_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
     def _rethink(self, root: Path) -> None:
