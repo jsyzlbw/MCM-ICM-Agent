@@ -310,10 +310,14 @@ def _mvp_stage_handlers(
         return ["reports/data_profile.md", "data/processed"]
 
     def solver_coder(workspace_root: Path) -> list[str]:
-        ModelDesignAgent(
+        designer = ModelDesignAgent(
             provider_bundle.llm, language=settings.mcm_agent_default_language
-        ).run(workspace_root)
+        )
+        designer.run(workspace_root)
         SolverCoderAgent(provider_bundle.llm).run(workspace_root)
+        # Re-derive the spec from the code that actually ran, so the paper's model
+        # section is rich AND coherent with the computation (not a generic fallback).
+        designer.refine_from_code(workspace_root)
         return [
             "code",
             "results/model_metrics.json",

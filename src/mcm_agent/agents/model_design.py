@@ -8,6 +8,7 @@ from mcm_agent.core.model_spec import (
     ModelSpec,
     ModelVariable,
     SubproblemModel,
+    read_model_spec,
     write_model_spec,
 )
 from mcm_agent.providers.base import TextGenerationProvider
@@ -103,6 +104,45 @@ class ModelDesignAgent:
         spec = designed or self._fallback(understanding)
         write_model_spec(workspace_root, spec)
         self._write_md(workspace_root, spec, source=source)
+        return spec
+
+    def refine_from_code(self, workspace_root: Path) -> ModelSpec | None:
+        """After solving, derive the ModelSpec from the code that ACTUALLY ran, so the
+        paper's model section is both rich and guaranteed coherent with the computation.
+        No-op (keeps the existing spec) when there is no code or no LLM."""
+        if self.llm is None:
+            return None
+        code_path = workspace_root / "code" / "experiments" / "problem1.py"
+        if not code_path.exists():
+            return None
+        code = code_path.read_text(encoding="utf-8")[:8000]
+        metrics = self._read(workspace_root / "results" / "model_metrics.json", 1500)
+        understanding = self._read(workspace_root / "reports" / "problem_understanding.md", 1500)
+        lang = "Chinese" if self.language == "zh" else "English"
+        system = (
+            "You are a mathematical-modeling writer. Describe the model THIS code actually "
+            "implements (variables, assumptions, equations in LaTeX, algorithm steps, metrics) "
+            "as JSON: {\"subproblems\": [{\"subproblem_id\", \"title\", \"approach\", "
+            "\"variables\":[{\"symbol\",\"meaning\"}], \"assumptions\":[str], \"equations\":[str], "
+            "\"algorithm_steps\":[str], \"metrics\":[str]}]}. "
+            f"Write prose fields in {lang}; keep symbols/equations in LaTeX. Be faithful to the code."
+        )
+        prompt = f"PROBLEM (context):\n{understanding}\n\nCODE THAT RAN:\n{code}\n\nMETRICS PRODUCED:\n{metrics}"
+        try:
+            data = self._parse(self.llm.generate(system, prompt).content)
+        except Exception as exc:
+            self.last_reason = f"refine call failed: {type(exc).__name__}: {exc}"
+            return None
+        spec = _normalize_spec(data)
+        if not spec or not spec.subproblems:
+            self.last_reason = "refine output had no usable subproblems"
+            return None
+        if not spec.problem_restatement:
+            existing = read_model_spec(workspace_root)
+            if existing is not None:
+                spec.problem_restatement = existing.problem_restatement
+        write_model_spec(workspace_root, spec)
+        self._write_md(workspace_root, spec, source="llm")
         return spec
 
     def _design(self, understanding: str, direction: str, schema: str) -> ModelSpec | None:

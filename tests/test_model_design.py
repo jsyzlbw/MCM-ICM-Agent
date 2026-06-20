@@ -76,3 +76,43 @@ def test_model_design_agent_fallback_without_llm(tmp_path: Path) -> None:
 
     spec = read_model_spec(root)
     assert spec is not None and spec.subproblems  # deterministic fallback spec exists
+
+
+class _CodeSpecLLM:
+    def generate(self, system: str, prompt: str) -> ProviderResult:
+        # Describes the ACTUAL code it was shown.
+        spec = {
+            "subproblems": [
+                {
+                    "subproblem_id": "q1",
+                    "title": "Fan-vote estimation via constrained least squares",
+                    "approach": "Constrained least squares from elimination order",
+                    "algorithm_steps": ["Reshape weekly scores", "Solve least squares"],
+                    "metrics": ["elimination_consistency_rate"],
+                }
+            ]
+        }
+        return ProviderResult(content=json.dumps(spec), metadata={})
+
+
+def test_refine_from_code_overwrites_spec_from_real_code(tmp_path: Path) -> None:
+    root = _prep(tmp_path)
+    code_dir = root / "code" / "experiments"
+    code_dir.mkdir(parents=True, exist_ok=True)
+    (code_dir / "problem1.py").write_text(
+        "import pandas as pd\n# constrained least squares fan-vote estimation\n", encoding="utf-8"
+    )
+    (root / "results" / "model_metrics.json").write_text(
+        '{"elimination_consistency_rate": 0.81}', encoding="utf-8"
+    )
+
+    spec = ModelDesignAgent(_CodeSpecLLM(), language="en").refine_from_code(root)
+
+    assert spec is not None and spec.subproblems
+    assert "least squares" in spec.subproblems[0].approach.lower()
+    assert read_model_spec(root).subproblems[0].approach == spec.subproblems[0].approach
+
+
+def test_refine_from_code_noop_without_code(tmp_path: Path) -> None:
+    root = _prep(tmp_path)
+    assert ModelDesignAgent(_CodeSpecLLM()).refine_from_code(root) is None
