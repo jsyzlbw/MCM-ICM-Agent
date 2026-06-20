@@ -197,17 +197,20 @@ class InteractiveSession:
                 f"Revision plan created: work/revisions/{plan.revision_id}.md\n"
                 "请确认后再执行修订，当前论文尚未被修改。"
             )
-        from mcm_agent.tui.runner import run_with_spinner
+        from mcm_agent.tui.runner import Interrupted, run_with_spinner
 
         recent = self.session_store.read_recent_messages(limit=8)
         attachments = self._collect_attachments(text)
-        reply = run_with_spinner(
-            lambda: generate_chat_reply(
-                self.workspace_root, text, self._chat_llm(), recent, attachments=attachments
-            ),
-            "正在思考",
-            console=self.console,
-        )
+        try:
+            reply = run_with_spinner(
+                lambda: generate_chat_reply(
+                    self.workspace_root, text, self._chat_llm(), recent, attachments=attachments
+                ),
+                "正在思考",
+                console=self.console,
+            )
+        except Interrupted:
+            return CommandResult("（已中断当前回复。）")
         return CommandResult(reply, markdown=True)
 
     def _chat_llm(self) -> object | None:
