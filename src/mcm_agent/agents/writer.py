@@ -110,7 +110,8 @@ class PaperWriterAgent:
         )
 
         for filename, content in section_content.items():
-            (section_dir / filename).write_text(content, encoding="utf-8")
+            figure_floats = self._embed_figures_for_section(workspace_root, filename)
+            (section_dir / filename).write_text(content + figure_floats, encoding="utf-8")
 
         self._write_main_files(paper_dir)
         Coordinator(workspace_root).emit(
@@ -389,7 +390,8 @@ class PaperWriterAgent:
             extras = self._section_extras(
                 filename, name, metrics, claims, zh, citation_context, sensitivity
             )
-            (section_dir / filename).write_text(body + extras, encoding="utf-8")
+            figure_floats = self._embed_figures_for_section(workspace_root, filename)
+            (section_dir / filename).write_text(body + extras + figure_floats, encoding="utf-8")
 
     def _model_facts_from_spec(self, model_spec: object, claim_texts: list[str]) -> dict[str, object]:
         """Model-section facts straight from the designed ModelSpec, so the narrative
@@ -594,6 +596,79 @@ class PaperWriterAgent:
             encoding="utf-8",
         )
 
+    def _figure_float(self, figure_id: str, caption: str, output_path: str) -> str:
+        """Return a LaTeX figure float string for a given figure id and caption.
+
+        *output_path* is the workspace-relative path to the rendered file
+        (e.g. 'figures/fig_q1.pdf').  We strip the 'figures/' prefix so that
+        with \\graphicspath{{../figures/}{figures/}} the path resolves both when
+        compiling from paper/ and from the workspace root.
+        """
+        escaped_caption = caption.replace("_", "\\_")
+        # Strip any leading 'figures/' prefix — graphicspath handles the directory.
+        include_path = output_path
+        for prefix in ("figures/", "../figures/"):
+            if include_path.startswith(prefix):
+                include_path = include_path[len(prefix):]
+                break
+        return (
+            "\n\\begin{figure}[htbp]\n"
+            "\\centering\n"
+            f"\\includegraphics[width=0.85\\linewidth]{{{include_path}}}\n"
+            f"\\caption{{{escaped_caption}}}\n"
+            f"\\label{{fig:{figure_id}}}\n"
+            "\\end{figure}\n"
+        )
+
+    def _best_output(self, outputs: list[str], workspace_root: Path) -> str | None:
+        """Return the best output path for pdflatex/tectonic includegraphics.
+
+        Only PDF and PNG are reliably includable without extra packages; we
+        prefer PDF, then PNG.  SVG and .mmd are skipped because tectonic does
+        not natively include SVG via \\includegraphics.
+        """
+        for ext in (".pdf", ".png"):
+            for o in outputs:
+                if o.endswith(ext) and (workspace_root / o).exists():
+                    return o
+        return None
+
+    def _embed_figures_for_section(
+        self, workspace_root: Path, section_filename: str
+    ) -> str:
+        """Return LaTeX figure floats for all registry figures whose used_in
+        matches *section_filename*.  Returns empty string if no registry or no match."""
+        figures = read_json(workspace_root / "figures" / "figure_registry.json", [])
+        if not isinstance(figures, list):
+            return ""
+        floats: list[str] = []
+        for record in figures:
+            if not isinstance(record, dict):
+                continue
+            figure_id = str(record.get("figure_id", "")).strip()
+            if not figure_id:
+                continue
+            used_in = record.get("used_in", [])
+            if not isinstance(used_in, list):
+                continue
+            # used_in entries look like "paper/sections/results.tex"
+            # section_filename looks like "results.tex"
+            matches = any(
+                Path(u).name == section_filename for u in used_in
+            )
+            if not matches:
+                continue
+            outputs = record.get("outputs", [])
+            if not isinstance(outputs, list):
+                outputs = []
+            output_path = self._best_output(outputs, workspace_root)
+            if output_path is None:
+                # No includable file on disk (e.g. SVG/mmd-only) — skip gracefully.
+                continue
+            caption = str(record.get("caption_intent", "")).strip() or figure_id
+            floats.append(self._figure_float(figure_id, caption, output_path))
+        return "".join(floats)
+
     def _write_main_files(self, paper_dir: Path) -> None:
         # Empty by default; ReferenceManager fills real entries (and prunes the
         # bibliography from main.tex when there are no registered sources).
@@ -614,6 +689,7 @@ class PaperWriterAgent:
             "\\usepackage{graphicx}",
             "\\usepackage{amsmath}",
             "\\usepackage{booktabs}",
+            "\\graphicspath{{../figures/}{figures/}}",
         ]
         body = [
             "\\begin{document}",

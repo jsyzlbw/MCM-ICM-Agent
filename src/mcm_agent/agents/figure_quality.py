@@ -33,6 +33,8 @@ class FigureQualityAgent:
         if not plan_items:
             issues.append("Figure plan is empty.")
 
+        issues.extend(self._embedding_issues(workspace_root, registry_items))
+
         self._write_report(workspace_root, issues)
         record_gate_decision(
             workspace_root,
@@ -120,6 +122,47 @@ class FigureQualityAgent:
             "\n".join(lines),
             encoding="utf-8",
         )
+
+    def _embedding_issues(
+        self, workspace_root: Path, registry_items: list[dict[str, Any]]
+    ) -> list[str]:
+        """Return a blocking finding for each registered figure that is NOT
+        embedded (no \\includegraphics referencing its id) in any written .tex file."""
+        if not registry_items:
+            return []
+
+        # Collect all .tex content from paper/sections/ and paper/main.tex.
+        tex_content = ""
+        sections_dir = workspace_root / "paper" / "sections"
+        if sections_dir.exists():
+            for tex_file in sections_dir.glob("*.tex"):
+                tex_content += tex_file.read_text(encoding="utf-8")
+        main_tex = workspace_root / "paper" / "main.tex"
+        if main_tex.exists():
+            tex_content += main_tex.read_text(encoding="utf-8")
+
+        if not tex_content:
+            # Paper not written yet — skip embedding check.
+            return []
+
+        issues: list[str] = []
+        for record in registry_items:
+            if not isinstance(record, dict):
+                continue
+            figure_id = str(record.get("figure_id", "")).strip()
+            if not figure_id:
+                continue
+            if f"\\includegraphics" not in tex_content:
+                issues.append(
+                    f"Figure `{figure_id}` is not embedded in the paper "
+                    "(no \\includegraphics found in any written .tex file)."
+                )
+            elif figure_id not in tex_content:
+                issues.append(
+                    f"Figure `{figure_id}` is not embedded in the paper "
+                    f"(\\includegraphics present but `{figure_id}` not referenced)."
+                )
+        return issues
 
     def _string_list(self, value: object) -> list[str]:
         if not isinstance(value, list):
