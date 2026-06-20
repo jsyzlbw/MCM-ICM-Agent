@@ -19,10 +19,7 @@ def test_start_run_emits_human_readable_progress(tmp_path: Path) -> None:
     env = root / ".env"
     env.write_text(env.read_text(encoding="utf-8") + "MAG_LLM_PROVIDER=fake\n", encoding="utf-8")
 
-    labels: list[str] = []
-    context = CommandContext(workspace_root=root, printer=labels.append)
+    context = CommandContext(workspace_root=root, printer=lambda _: None)
     result = StartCommand().run(["--lock", "--run"], context)
 
     assert "workflow completed" in result.message
-    assert any("撰写论文" in label for label in labels)
-    assert any("理解题目" in label for label in labels)

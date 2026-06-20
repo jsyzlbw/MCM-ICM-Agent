@@ -89,3 +89,8 @@ def run_with_spinner(
     if "error" in box:
         raise box["error"]  # type: ignore[misc]
     return box["result"]  # type: ignore[return-value]
+
+
+def format_stage(text: str) -> str:
+    """Status-line text for a workflow stage, with the ∑ brand in accent color."""
+    return f"[{ACCENT}]∑[/] {text}"

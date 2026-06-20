@@ -21,3 +21,11 @@ def test_run_with_spinner_cancel_raises_interrupted() -> None:
 
     with pytest.raises(Interrupted):
         run_with_spinner(lambda: time.sleep(1) or 1, "X", cancel_check=lambda: True)
+
+
+def test_format_stage_prefixes_accent_sigma() -> None:
+    from mcm_agent.tui.runner import format_stage
+
+    out = format_stage("正在写代码求解")
+    assert "正在写代码求解" in out
+    assert "∑" in out

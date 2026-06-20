@@ -38,11 +38,17 @@ class StartCommand:
         )
         if lock:
             if "--run" in args:
-                printer = context.printer
-                progress = (lambda text: printer(f"… {text}")) if callable(printer) else None
-                WorkspaceWorkflowAdapter(root).run_default_workflow(
-                    auto_approve=True, progress=progress
-                )
+                from rich.console import Console as _Console
+
+                from mcm_agent.tui.runner import format_stage
+                from mcm_agent.tui.theme import MAG_THEME
+
+                console = _Console(theme=MAG_THEME)
+                with console.status(format_stage("正在求解…"), spinner="dots") as status:
+                    WorkspaceWorkflowAdapter(root).run_default_workflow(
+                        auto_approve=True,
+                        progress=lambda text: status.update(format_stage(text)),
+                    )
                 return CommandResult(
                     "Research script locked and workflow completed. See output/draft and output/package."
                 )
