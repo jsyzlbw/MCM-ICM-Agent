@@ -80,4 +80,6 @@ def test_validation_fails_when_experiment_run_failed(tmp_path: Path) -> None:
 
     gate = read_json(workspace.root / "review" / "validation_gate.json", {})
     assert gate["status"] == "fail"
-    assert any("Experiment run `run_failed` failed" in item for item in gate["blocking_findings"])
+    assert any(
+        "run_failed" in item and "missing outputs" in item for item in gate["blocking_findings"]
+    )
