@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import threading
 from typing import TYPE_CHECKING
 
 from prompt_toolkit.application import Application
@@ -96,6 +97,18 @@ class MagFullScreenApp:
         # Determine render width (capped at 100, min terminal minus borders)
         self._width: int = self._calc_width()
 
+        # Ask/printer bridge — allows executor-thread commands to prompt the user
+        # through the app instead of raw stdin/stdout.
+        self._awaiting_ask: bool = False
+        self._ask_event: threading.Event | None = None
+        self._ask_answer: str = ""
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thinking_frag: ANSI | None = None
+        # Input queue: Enter presses that arrive while a task is in-flight are
+        # buffered here so _thread_ask can consume them instead of starting a
+        # new top-level submission (fixes the pipe-input race condition).
+        self._input_queue: list[str] = []
+
         # Build the layout components
         self._transcript_window = Window(
             content=FormattedTextControl(self._get_transcript, focusable=False),
@@ -168,14 +181,21 @@ class MagFullScreenApp:
         self._append_welcome()
 
         old_suppress = getattr(self._session, "suppress_live_output", False)
+        old_io_printer = getattr(self._session, "_io_printer", None)
+        old_io_ask = getattr(self._session, "_io_ask", None)
         self._session.suppress_live_output = True
+        self._session._io_printer = self._thread_printer
+        self._session._io_ask = self._thread_ask
         try:
             asyncio.run(self._run_async_and_drain())
         finally:
             self._session.suppress_live_output = old_suppress
+            self._session._io_printer = old_io_printer
+            self._session._io_ask = old_io_ask
 
     async def _run_async_and_drain(self) -> None:
         """Run the app, then wait for any in-flight submit tasks to finish."""
+        self._loop = asyncio.get_running_loop()
         await self._app.run_async()
         # Drain any executor tasks that were submitted but not yet complete
         # (e.g. when Ctrl-D arrives while a run_once call is in-flight).
@@ -258,6 +278,69 @@ class MagFullScreenApp:
         except Exception:
             pass  # welcome is non-critical
 
+    # ------------------------------------------------------------------
+    # Ask/printer bridge — called from executor thread, bridges to UI loop
+    # ------------------------------------------------------------------
+
+    def _thread_printer(self, text: str) -> None:
+        """Printer called from a command running in the executor thread.
+        Routes output into the transcript via call_soon_threadsafe."""
+        from rich.text import Text
+
+        def _do() -> None:
+            self._append(render_to_ansi(Text(str(text)), width=self._width))
+            if self._app.is_running:
+                self._app.invalidate()
+
+        if self._loop:
+            self._loop.call_soon_threadsafe(_do)
+
+    def _thread_ask(self, prompt: str = "") -> str:
+        """Ask function called from the executor thread.
+        Shows the prompt in the transcript and blocks until the user answers.
+
+        If a queued input was already buffered (pipe input / fast typing), it is
+        consumed immediately without waiting for a new keypress.
+        """
+        ev = threading.Event()
+        self._ask_event = ev
+        self._ask_answer = ""
+
+        def _begin() -> None:
+            # Remove the transient "正在处理…" indicator while waiting for input
+            if self._thinking_frag is not None:
+                try:
+                    self._fragments.remove(self._thinking_frag)
+                except ValueError:
+                    pass
+                self._thinking_frag = None
+            if prompt:
+                from rich.text import Text
+
+                self._append(render_to_ansi(Text(str(prompt)), width=self._width))
+            # If a queued input is already available (e.g. from pipe), consume it
+            # immediately rather than waiting for a new keypress.
+            if self._input_queue:
+                answer = self._input_queue.pop(0)
+                from rich.text import Text as _T
+
+                from mcm_agent.tui.theme import ACCENT
+
+                self._append(render_to_ansi(_T(f"> {answer}", style=ACCENT), width=self._width))
+                self._ask_answer = answer
+                ev.set()
+                if self._app.is_running:
+                    self._app.invalidate()
+            else:
+                self._awaiting_ask = True
+                if self._app.is_running:
+                    self._app.invalidate()
+
+        if self._loop:
+            self._loop.call_soon_threadsafe(_begin)
+        ev.wait()
+        return self._ask_answer
+
     def _build_keybindings(self) -> KeyBindings:
         kb = KeyBindings()
         input_area = self._input_area
@@ -267,6 +350,12 @@ class MagFullScreenApp:
 
         @kb.add("c-d")
         def _exit(event):
+            # Release any blocked _thread_ask before exiting to prevent deadlock
+            if self._awaiting_ask:
+                self._ask_answer = ""
+                self._awaiting_ask = False
+                if self._ask_event is not None:
+                    self._ask_event.set()
             event.app.exit()
 
         @kb.add("c-c")
@@ -279,6 +368,12 @@ class MagFullScreenApp:
             else:
                 _ctrl_c_count[0] += 1
                 if _ctrl_c_count[0] >= 2:
+                    # Release any blocked _thread_ask before exiting
+                    if self._awaiting_ask:
+                        self._ask_answer = ""
+                        self._awaiting_ask = False
+                        if self._ask_event is not None:
+                            self._ask_event.set()
                     event.app.exit()
 
         @kb.add("escape", "enter")
@@ -290,11 +385,35 @@ class MagFullScreenApp:
         def _submit(event):
             """Enter submits the current input; work runs off the UI thread."""
             buf = input_area.buffer
+
+            # If a command thread is waiting for an answer via _thread_ask,
+            # treat this Enter as the answer — do NOT start a new submission.
+            if self._awaiting_ask:
+                answer = buf.text
+                buf.reset()
+                self._awaiting_ask = False
+                from rich.text import Text as _T
+
+                from mcm_agent.tui.theme import ACCENT
+
+                self._append(render_to_ansi(_T(f"> {answer}", style=ACCENT), width=self._width))
+                self._ask_answer = answer
+                if self._ask_event is not None:
+                    self._ask_event.set()
+                event.app.invalidate()
+                return
+
             text = buf.text
             if not text.strip():
                 return
             buf.reset()
             _ctrl_c_count[0] = 0
+
+            # If a task is already in-flight, queue this input so it can be
+            # consumed by _thread_ask (handles pipe input / fast typing races).
+            if self._pending_tasks:
+                self._input_queue.append(text)
+                return
 
             # Schedule actual async work as a task so it can be tracked/drained
             task = asyncio.ensure_future(self._do_submit(event.app, text))
@@ -320,8 +439,9 @@ class MagFullScreenApp:
             render_to_ansi(RText(f"> {text}", style=ACCENT), width=self._width)
         )
 
-        # Show a transient "processing" indicator
+        # Show a transient "processing" indicator (stored on self so _thread_ask can remove it)
         thinking_frag = ANSI("∑ 正在处理…\n")
+        self._thinking_frag = thinking_frag
         self._fragments.append(thinking_frag)
         app.invalidate()
 
@@ -337,7 +457,8 @@ class MagFullScreenApp:
                 None, self._session.run_once, text
             )
 
-        # Remove the transient fragment
+        # Remove the transient fragment (may have been removed by _thread_ask already)
+        self._thinking_frag = None
         try:
             self._fragments.remove(thinking_frag)
         except ValueError:

@@ -237,3 +237,27 @@ def test_fullscreen_bang_runs_shell_async(tmp_path: Path) -> None:
 
     joined = "".join(frag.value for frag in app._fragments)
     assert "fs-async-ok" in joined
+
+
+# ---------------------------------------------------------------------------
+# NEW: ask/printer bridge — interactive commands (/init /api) must not freeze
+# ---------------------------------------------------------------------------
+
+
+def test_fullscreen_interactive_command_via_ask_bridge(tmp_path: Path) -> None:
+    """Interactive /init must prompt in-app and complete without freezing.
+
+    /init on a fresh workspace enters _interactive_config which calls ask("…请选择 [1/2/3]: ").
+    Answering "3" (skip) must complete with "已跳过" in the transcript.
+    Without the bridge this test hangs or exits with no output.
+    """
+    root = create_workspace(tmp_path / "ws").root
+    session = InteractiveSession(root)
+    with create_pipe_input() as inp:
+        inp.send_text("/init\r")   # /init asks "请选择 [1/2/3]:"
+        inp.send_text("3\r")       # answer: 3 = skip
+        inp.send_text("\x04")      # Ctrl-D exit
+        app = MagFullScreenApp(session, input=inp, output=DummyOutput())
+        app.run()
+    joined = "".join(f.value for f in app._fragments)
+    assert "已跳过" in joined  # /init choice 3 completed via the bridge

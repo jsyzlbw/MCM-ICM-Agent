@@ -26,6 +26,10 @@ class InteractiveSession:
         # streaming / spinner / console printing).  Used by MagFullScreenApp so the
         # full-screen TUI can render into the transcript instead of raw stdout.
         self.suppress_live_output: bool = False
+        # I/O overrides set by MagFullScreenApp to route command output/input
+        # through the in-app bridge instead of raw stdin/stdout.
+        self._io_printer = None
+        self._io_ask = None
 
     @classmethod
     def prepare(cls, cwd: Path, console: Console | None = None) -> "InteractiveSession":
@@ -93,12 +97,14 @@ class InteractiveSession:
                 self.session_store.append_message("assistant", result.message)
                 return result
             self.session_store.append_event("command.started", {"command": name})
+            printer = self._io_printer if self._io_printer is not None else self._print
+            ask = self._io_ask if self._io_ask is not None else self._make_ask()
             result = command.run(
                 args,
                 CommandContext(
                     workspace_root=self.workspace_root,
-                    printer=self._print,
-                    ask=self._make_ask(),
+                    printer=printer,
+                    ask=ask,
                 ),
             )
             if result.message:
