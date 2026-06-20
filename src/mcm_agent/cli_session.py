@@ -16,8 +16,10 @@ from mcm_agent.core.workspace_safety import WorkspaceSafety
 
 class InteractiveSession:
     def __init__(self, workspace_root: Path, console: Console | None = None):
+        from mcm_agent.tui.theme import MAG_THEME
+
         self.workspace_root = workspace_root.resolve()
-        self.console = console or Console()
+        self.console = console or Console(theme=MAG_THEME)
         self.commands = build_command_registry()
         self.session_store = SessionStore(self.workspace_root)
 
@@ -120,7 +122,21 @@ class InteractiveSession:
         return lambda prompt="": self.console.input(prompt, markup=False)
 
     def run(self) -> None:
-        self._print(self.startup_text())
+        self._run_plain()
+
+    def _print_welcome(self) -> None:
+        from mcm_agent.config import load_settings
+        from mcm_agent.tui.theme import BOTTOM_HINT
+        from mcm_agent.tui.welcome import render_welcome_panel
+        from mcm_agent.version import __version__
+
+        state = load_workspace_state(self.workspace_root)
+        settings = load_settings(workspace_root=self.workspace_root)
+        self.console.print(render_welcome_panel(state, settings, __version__, self.workspace_root))
+        self.console.print(BOTTOM_HINT, style="dim")
+
+    def _run_plain(self) -> None:
+        self._print_welcome()
         while True:
             try:
                 text = self.console.input("> ", markup=False)

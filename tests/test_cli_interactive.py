@@ -39,8 +39,8 @@ def test_bare_mag_recovers_existing_workspace(tmp_path: Path, monkeypatch) -> No
     result = runner.invoke(app, [], input="\n")
 
     assert result.exit_code == 0
-    assert "Workspace:" in result.output
-    assert "Status: initialized" in result.output
+    assert "Workspace" in result.output
+    assert "initialized" in result.output
 
 
 def test_interactive_help_lists_core_commands(tmp_path: Path) -> None:
