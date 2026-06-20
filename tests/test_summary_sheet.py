@@ -317,3 +317,27 @@ def test_summary_sheet_no_crash_without_model_spec(tmp_path: Path) -> None:
     SummarySheetAgent().run(root)
     content = (root / "paper" / "summary_sheet.tex").read_text(encoding="utf-8")
     assert "XXXXXXX" in content
+
+
+def test_summary_sheet_no_bare_linebreak_in_prose(tmp_path: Path) -> None:
+    """Summary sheet prose body must not contain bare \\\\ line breaks (compile safety).
+
+    Bare \\\\ outside tabular/align/center is unsafe in LaTeX. Instead use \\par.
+    This test uses a working LLM so _render_tex wraps plain prose and appends
+    the metrics block. That metrics block should NOT have bare \\\\.
+    """
+    root = _make_en_workspace(tmp_path, metrics={"accuracy": 0.92})
+    agent = SummarySheetAgent(llm_provider=_GoodLLM())
+    agent.run(root)
+    content = (root / "paper" / "summary_sheet.tex").read_text(encoding="utf-8")
+    # When LLM prose is wrapped, _render_tex appends metrics block.
+    # Lines 297-305 in source currently have: }\\\\ which is bare \\\\ after }
+    # We want to catch that pattern in the generated prose output.
+    # Look for the problematic pattern: }\\\\  (closing brace followed by bare newline-break)
+    # The actual line is: \\textbf{...}\\\\  which is the error
+    if "\\textbf{Key Quantitative Results:}" in content:
+        # Check that it's not followed by bare \\\\
+        assert "\\textbf{Key Quantitative Results:}\\\\\n" not in content, (
+            "Bare \\\\\\\\ found after metric label. Use \\\\par instead.\n"
+            f"Content excerpt:\n{content}"
+        )

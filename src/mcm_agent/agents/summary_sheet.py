@@ -295,12 +295,12 @@ class SummarySheetAgent:
                     metric_lines_display.append(f"\\quad {safe_k} = {safe_v};")
                 if language == "zh":
                     body_tex += (
-                        "\n\n\\noindent \\textbf{主要定量结果：}\\\\\n"
+                        "\n\n\\noindent \\textbf{主要定量结果：}\n\\par\n"
                         + "\n".join(metric_lines_display)
                     )
                 else:
                     body_tex += (
-                        "\n\n\\noindent \\textbf{Key Quantitative Results:}\\\\\n"
+                        "\n\n\\noindent \\textbf{Key Quantitative Results:}\n\\par\n"
                         + "\n".join(metric_lines_display)
                     )
         else:
