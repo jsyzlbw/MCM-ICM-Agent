@@ -84,7 +84,7 @@ class InteractiveSession:
                 args,
                 CommandContext(
                     workspace_root=self.workspace_root,
-                    printer=self.console.print,
+                    printer=self._print,
                     ask=self._make_ask(),
                 ),
             )
@@ -97,6 +97,11 @@ class InteractiveSession:
             self.session_store.append_message("assistant", result.message)
         return result
 
+    def _print(self, message: str) -> None:
+        # Command output is plain text — disable rich markup/highlight so tokens like
+        # "[ok]" / "[missing]" are shown literally instead of parsed as style tags.
+        self.console.print(message, markup=False, highlight=False)
+
     def _make_ask(self):
         """A line-prompt callable for interactive commands, or None when there is no
         TTY (tests / pipes) so commands fall back to non-interactive behavior."""
@@ -107,19 +112,19 @@ class InteractiveSession:
                 return None
         except Exception:
             return None
-        return lambda prompt="": self.console.input(prompt)
+        return lambda prompt="": self.console.input(prompt, markup=False)
 
     def run(self) -> None:
-        self.console.print(self.startup_text())
+        self._print(self.startup_text())
         while True:
             try:
-                text = self.console.input("> ")
+                text = self.console.input("> ", markup=False)
             except (EOFError, KeyboardInterrupt):
                 self.console.print()
                 return
             result = self.run_once(text)
             if result.message:
-                self.console.print(result.message)
+                self._print(result.message)
             if result.exit_session:
                 return
 
