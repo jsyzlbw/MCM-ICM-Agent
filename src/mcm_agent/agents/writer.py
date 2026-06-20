@@ -7,6 +7,7 @@ from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.agents.paper_context import PaperContext, build_paper_context
 from mcm_agent.agents.paper_sections import render_claim_paragraph
 from mcm_agent.agents.section_writer import PaperSectionWriter
+from mcm_agent.agents.summary_sheet import SummarySheetAgent
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.citations import build_citation_context
 from mcm_agent.core.latex_text import render_metrics_table
@@ -49,6 +50,11 @@ class PaperWriterAgent:
         paper_dir = workspace_root / "paper"
         section_dir = paper_dir / "sections"
         section_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate the judge-facing summary sheet first so that _write_main_files
+        # finds summary_sheet.tex and includes it via \input{summary_sheet}.
+        # SummarySheetAgent has its own deterministic fallback when no LLM is given.
+        SummarySheetAgent(self.llm_provider).run(workspace_root)
 
         claim_plan = self._read_claim_plan(workspace_root)
         if claim_plan:

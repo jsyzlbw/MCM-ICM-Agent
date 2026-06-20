@@ -86,9 +86,14 @@ _SYSTEM_PROMPT = {
 
 
 def _latex_escape(text: str) -> str:
-    """Minimal LaTeX escaping for user-visible text in the summary sheet."""
+    """Minimal LaTeX escaping for user-visible text in the summary sheet.
+
+    Backslash must be replaced FIRST; all other replacements introduce backslash
+    sequences that must not be re-escaped.
+    """
     return (
-        text.replace("&", "\\&")
+        text.replace("\\", "\\textbackslash{}")  # must be first
+        .replace("&", "\\&")
         .replace("%", "\\%")
         .replace("$", "\\$")
         .replace("#", "\\#")
@@ -97,7 +102,6 @@ def _latex_escape(text: str) -> str:
         .replace("}", "\\}")
         .replace("~", "\\textasciitilde{}")
         .replace("^", "\\textasciicircum{}")
-        .replace("\\", "\\textbackslash{}")  # must be last
     )
 
 
