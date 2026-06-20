@@ -72,6 +72,10 @@ class SolverCoderAgent:
             "- Write the main result table to results/problem1_results.csv\n"
             "- Write a JSON dict of TASK-SPECIFIC metrics (keys named after the problem, e.g. "
             "elimination_consistency_rate) to results/model_metrics.json\n"
+            "- Perform a real sensitivity analysis: vary ONE key parameter/assumption over >=3 "
+            "values, recompute your primary metric for each, and write "
+            "results/sensitivity_analysis.csv with columns parameter,value,<primary_metric> "
+            "(one row per value).\n"
             "- Do not call the network or read files outside the workspace.\n"
         )
         last_err = ""

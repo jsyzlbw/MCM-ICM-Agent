@@ -377,14 +377,17 @@ class PaperWriterAgent:
         from mcm_agent.core.model_spec import read_model_spec
 
         model_spec = read_model_spec(workspace_root)
+        sensitivity = self._read_sensitivity(workspace_root)
         citation_context = build_citation_context(workspace_root)
         writer = PaperSectionWriter(self.llm_provider, self._language)
         for filename, name, (en_title, zh_title) in SECTION_SPEC:
             title = zh_title if zh else en_title
             claims = by_section.get(filename, [])
-            facts = self._facts_for_section(name, context, metrics, claims, model_spec)
+            facts = self._facts_for_section(name, context, metrics, claims, model_spec, sensitivity)
             body = writer.write_section(name, title, facts)
-            extras = self._section_extras(filename, name, metrics, claims, zh, citation_context)
+            extras = self._section_extras(
+                filename, name, metrics, claims, zh, citation_context, sensitivity
+            )
             (section_dir / filename).write_text(body + extras, encoding="utf-8")
 
     def _model_facts_from_spec(self, model_spec: object, claim_texts: list[str]) -> dict[str, object]:
@@ -416,6 +419,7 @@ class PaperWriterAgent:
         metrics: dict[str, object],
         claims: list[PaperClaimPlanItem],
         model_spec: object = None,
+        sensitivity: dict | None = None,
     ) -> dict[str, object]:
         top_metrics = dict(list(metrics.items())[:6])
         claim_texts = [c.claim_text for c in claims if c.status != "unresolved" and c.claim_text]
@@ -456,7 +460,16 @@ class PaperWriterAgent:
                 "instruction": "Interpret each metric and whether it indicates a good fit.",
             }
         if name == "sensitivity":
-            return {"validation": context.validation_summary[:600], "claims": claim_texts}
+            facts: dict[str, object] = {
+                "validation": context.validation_summary[:600],
+                "claims": claim_texts,
+            }
+            if sensitivity and sensitivity.get("rows"):
+                facts["sensitivity_table"] = {
+                    "header": sensitivity["header"],
+                    "rows": sensitivity["rows"][:8],
+                }
+            return facts
         if name == "conclusion":
             return {
                 "problem": context.problem_summary,
@@ -474,6 +487,7 @@ class PaperWriterAgent:
         claims: list[PaperClaimPlanItem],
         zh: bool,
         citation_context: object,
+        sensitivity: dict | None = None,
     ) -> str:
         parts: list[str] = []
         if name == "results" and metrics:
@@ -481,6 +495,13 @@ class PaperWriterAgent:
             parts.append(
                 "\n\\begin{table}[h]\n\\centering\n"
                 + render_metrics_table(metrics, self._language)
+                + f"\n\\caption{{{caption}}}\n\\end{{table}}"
+            )
+        if name == "sensitivity" and sensitivity and sensitivity.get("rows"):
+            caption = "敏感性分析" if zh else "Sensitivity analysis"
+            parts.append(
+                "\n\\begin{table}[h]\n\\centering\n"
+                + self._render_sensitivity_table(sensitivity)
                 + f"\n\\caption{{{caption}}}\n\\end{{table}}"
             )
         # Visible citation anchor so referenced sources appear in the bibliography.
@@ -496,6 +517,35 @@ class PaperWriterAgent:
         if trace:
             parts.append(trace)
         return ("\n" + "\n".join(parts) + "\n") if parts else "\n"
+
+    def _read_sensitivity(self, workspace_root: Path) -> dict | None:
+        path = workspace_root / "results" / "sensitivity_analysis.csv"
+        if not path.exists():
+            return None
+        lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if len(lines) < 2:
+            return None
+        header = [cell.strip() for cell in lines[0].split(",")]
+        rows = [
+            [cell.strip() for cell in line.split(",")]
+            for line in lines[1:]
+            if line.split(",")[0].strip().lower() != "baseline"
+        ]
+        return {"header": header, "rows": rows} if rows else None
+
+    def _render_sensitivity_table(self, sensitivity: dict) -> str:
+        from mcm_agent.core.latex_text import latex_escape_text
+
+        header = sensitivity["header"]
+        cols = "l" * len(header)
+        head_row = " & ".join(latex_escape_text(str(h)) for h in header) + " \\\\"
+        body_rows = [
+            " & ".join(latex_escape_text(str(c)) for c in row) + " \\\\"
+            for row in sensitivity["rows"][:10]
+        ]
+        return "\n".join(
+            ["\\begin{tabular}{" + cols + "}", "\\toprule", head_row, "\\midrule", *body_rows, "\\bottomrule", "\\end{tabular}"]
+        )
 
     def _section_trace(self, claims: list[PaperClaimPlanItem]) -> str:
         lines = []

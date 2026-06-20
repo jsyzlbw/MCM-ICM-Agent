@@ -66,6 +66,36 @@ def test_validation_fails_on_solver_binding_report_failure(tmp_path: Path) -> No
     assert "network_flow_graph.source_column" in decision["blocking_findings"][0]
 
 
+def test_validation_preserves_and_reports_real_sensitivity(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_sens")
+    write_json(workspace.root / "results" / "model_metrics.json", {})
+    write_json(workspace.root / "results" / "evidence_registry.json", [])
+    (workspace.root / "results" / "sensitivity_analysis.csv").write_text(
+        "parameter,value,elimination_consistency_rate\n"
+        "judge_weight,0.4,0.71\njudge_weight,0.6,0.66\n",
+        encoding="utf-8",
+    )
+
+    ValidationAgent().run(workspace.root)
+
+    sens = (workspace.root / "results" / "sensitivity_analysis.csv").read_text(encoding="utf-8")
+    assert "judge_weight" in sens  # solver-produced sensitivity is NOT clobbered
+    report = (workspace.root / "reports" / "validation_report.md").read_text(encoding="utf-8")
+    assert "judge_weight" in report  # real sensitivity is reported
+    assert "Baseline sensitivity file generated" not in report
+
+
+def test_validation_notes_missing_sensitivity_without_fake_row(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_nosens")
+    write_json(workspace.root / "results" / "model_metrics.json", {})
+    write_json(workspace.root / "results" / "evidence_registry.json", [])
+
+    ValidationAgent().run(workspace.root)
+
+    sens = (workspace.root / "results" / "sensitivity_analysis.csv").read_text(encoding="utf-8")
+    assert "baseline,0,0" not in sens  # no fabricated sensitivity row
+
+
 def test_validation_routes_missing_solver_bindings_to_modeling_when_spec_is_wrong(
     tmp_path: Path,
 ) -> None:

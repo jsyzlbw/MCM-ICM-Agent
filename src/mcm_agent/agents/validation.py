@@ -51,13 +51,31 @@ class ValidationAgent:
                     + "."
                 )
 
+        sensitivity_rows = self._read_sensitivity_rows(
+            workspace_root / "results" / "sensitivity_analysis.csv"
+        )
+        if not sensitivity_rows:
+            # Honest empty file (header only) — never fabricate a baseline row.
+            (workspace_root / "results" / "sensitivity_analysis.csv").write_text(
+                "parameter,value,result\n", encoding="utf-8"
+            )
+        # Missing sensitivity is reported (and scored by MockJudge) but does NOT block,
+        # so the baseline/offline path still completes.
+        sensitivity_params = sorted({row[0] for row in sensitivity_rows})
         write_json(
             workspace_root / "results" / "robustness_checks.json",
-            {"blocking_issue_count": len(blocking_issues)},
+            {
+                "blocking_issue_count": len(blocking_issues),
+                "sensitivity_row_count": len(sensitivity_rows),
+                "sensitivity_parameters": sensitivity_params,
+            },
         )
-        (workspace_root / "results" / "sensitivity_analysis.csv").write_text(
-            "parameter,delta,result_change\nbaseline,0,0\n",
-            encoding="utf-8",
+        sensitivity_summary = (
+            f"Recorded {len(sensitivity_rows)} sensitivity rows over parameters: "
+            + ", ".join(sensitivity_params)
+            + "."
+            if sensitivity_rows
+            else "No sensitivity rows were produced by the solver."
         )
 
         report = "\n".join(
@@ -74,10 +92,10 @@ class ValidationAgent:
                 f"Checked {len(evidence)} evidence items.",
                 "",
                 "## Sensitivity Analysis",
-                "Baseline sensitivity file generated.",
+                sensitivity_summary,
                 "",
                 "## Robustness Checks",
-                "Baseline robustness metadata generated.",
+                f"{len(blocking_issues)} blocking issue(s) detected during validation.",
                 "",
                 "## Blocking Issues",
                 *(f"- {issue}" for issue in blocking_issues),
@@ -120,6 +138,19 @@ class ValidationAgent:
         if binding_failure:
             return "modeling_council"
         return "solver_coder"
+
+    def _read_sensitivity_rows(self, path: Path) -> list[tuple[str, ...]]:
+        """Real solver-produced sensitivity rows (header skipped; legacy 'baseline'
+        placeholder ignored)."""
+        if not path.exists():
+            return []
+        rows: list[tuple[str, ...]] = []
+        lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        for line in lines[1:]:  # skip header
+            cells = tuple(cell.strip() for cell in line.split(","))
+            if cells and cells[0] and cells[0].lower() != "baseline":
+                rows.append(cells)
+        return rows
 
     def _read_experiment_runs(self, path: Path) -> list[dict[str, object]]:
         if not path.exists():
