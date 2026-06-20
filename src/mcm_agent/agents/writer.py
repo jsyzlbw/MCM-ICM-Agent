@@ -1,15 +1,31 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 
 from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.agents.paper_context import PaperContext, build_paper_context
-from mcm_agent.agents.paper_sections import render_claim_paragraph, render_claim_plan_sections
+from mcm_agent.agents.paper_sections import render_claim_paragraph
+from mcm_agent.agents.section_writer import PaperSectionWriter
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.citations import build_citation_context
+from mcm_agent.core.latex_text import render_metrics_table
 from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
+
+
+# (filename, section name, (English title, Chinese title))
+SECTION_SPEC = [
+    ("abstract.tex", "abstract", ("Abstract", "摘要")),
+    ("introduction.tex", "introduction", ("Introduction", "引言")),
+    ("assumptions.tex", "assumptions", ("Assumptions", "模型假设")),
+    ("model.tex", "model", ("Model", "模型建立")),
+    ("results.tex", "results", ("Results", "结果与分析")),
+    ("sensitivity.tex", "sensitivity", ("Sensitivity Analysis", "敏感性分析")),
+    ("conclusion.tex", "conclusion", ("Conclusion", "结论")),
+]
+CLAIM_BEARING = {"model.tex", "results.tex", "sensitivity.tex", "conclusion.tex"}
 
 
 SECTION_CONTENT = {
@@ -342,13 +358,120 @@ class PaperWriterAgent:
         claim_plan: list[PaperClaimPlanItem],
         context: PaperContext,
     ) -> None:
+        """Write each section as LLM-authored LaTeX prose in the paper language.
+
+        Visible prose comes from PaperSectionWriter; claim/evidence trace comments
+        are appended (invisible) so the evidence-binding and reference stages still
+        find their tokens. Results also gets a real metrics table.
+        """
+        zh = self._language == "zh"
+        metrics = read_json(workspace_root / "results" / "model_metrics.json", {})
+        if not isinstance(metrics, dict):
+            metrics = {}
+        by_section: dict[str, list[PaperClaimPlanItem]] = defaultdict(list)
         for claim in claim_plan:
+            by_section[Path(claim.section).name].append(claim)
             if claim.status == "unresolved":
                 self._append_unresolved_claim(workspace_root, claim)
+
         citation_context = build_citation_context(workspace_root)
-        section_content = render_claim_plan_sections(claim_plan, context, citation_context)
-        for filename, content in section_content.items():
-            (section_dir / filename).write_text(content, encoding="utf-8")
+        writer = PaperSectionWriter(self.llm_provider, self._language)
+        for filename, name, (en_title, zh_title) in SECTION_SPEC:
+            title = zh_title if zh else en_title
+            claims = by_section.get(filename, [])
+            facts = self._facts_for_section(name, context, metrics, claims)
+            body = writer.write_section(name, title, facts)
+            extras = self._section_extras(filename, name, metrics, claims, zh, citation_context)
+            (section_dir / filename).write_text(body + extras, encoding="utf-8")
+
+    def _facts_for_section(
+        self,
+        name: str,
+        context: PaperContext,
+        metrics: dict[str, object],
+        claims: list[PaperClaimPlanItem],
+    ) -> dict[str, object]:
+        top_metrics = dict(list(metrics.items())[:6])
+        claim_texts = [c.claim_text for c in claims if c.status != "unresolved" and c.claim_text]
+        if name == "abstract":
+            return {
+                "problem": context.problem_summary,
+                "approach": context.model_decision_summary[:600],
+                "key_metrics": top_metrics,
+            }
+        if name == "introduction":
+            return {
+                "problem": context.problem_summary,
+                "research_direction": context.direction_summary[:400],
+                "claims": claim_texts,
+            }
+        if name == "assumptions":
+            return {"problem": context.problem_summary, "claims": claim_texts}
+        if name == "model":
+            return {
+                "model_decision": context.model_decision_summary,
+                "routes": context.selected_routes,
+                "claims": claim_texts,
+            }
+        if name == "results":
+            # Results is table-driven (real metrics); claim texts excluded to avoid
+            # leaking underscored metric names / robotic per-metric sentences.
+            return {
+                "metrics": metrics,
+                "instruction": "Interpret each metric and whether it indicates a good fit.",
+            }
+        if name == "sensitivity":
+            return {"validation": context.validation_summary[:600], "claims": claim_texts}
+        if name == "conclusion":
+            return {
+                "problem": context.problem_summary,
+                "key_metrics": dict(list(metrics.items())[:4]),
+                "routes": context.selected_routes,
+                "claims": claim_texts,
+            }
+        return {}
+
+    def _section_extras(
+        self,
+        filename: str,
+        name: str,
+        metrics: dict[str, object],
+        claims: list[PaperClaimPlanItem],
+        zh: bool,
+        citation_context: object,
+    ) -> str:
+        parts: list[str] = []
+        if name == "results" and metrics:
+            caption = "模型指标" if zh else "Model metrics"
+            parts.append(
+                "\n\\begin{table}[h]\n\\centering\n"
+                + render_metrics_table(metrics, self._language)
+                + f"\n\\caption{{{caption}}}\n\\end{{table}}"
+            )
+        # Visible citation anchor so referenced sources appear in the bibliography.
+        source_ids: list[str] = []
+        for claim in claims:
+            source_ids.extend(claim.source_ids)
+        cite = citation_context.cite_command(source_ids) if source_ids else ""
+        if cite:
+            parts.append((f"（来源：{cite}）" if zh else f"(Sources: {cite})"))
+        trace = self._section_trace(claims)
+        if not trace and filename in CLAIM_BEARING:
+            trace = "% claim_id=section_baseline evidence_id=missing figure_id=missing source_id=missing"
+        if trace:
+            parts.append(trace)
+        return ("\n" + "\n".join(parts) + "\n") if parts else "\n"
+
+    def _section_trace(self, claims: list[PaperClaimPlanItem]) -> str:
+        lines = []
+        for claim in claims:
+            evidence_id = claim.evidence_ids[0] if claim.evidence_ids else "missing"
+            figure_id = claim.figure_ids[0] if claim.figure_ids else "missing"
+            source_id = claim.source_ids[0] if claim.source_ids else "missing"
+            lines.append(
+                self._claim_trace_comment(claim.claim_id, evidence_id, figure_id, source_id)
+            )
+        return "\n".join(lines)
 
     def _claim_plan_paragraph(self, workspace_root: Path, claim: PaperClaimPlanItem) -> str:
         if claim.status == "unresolved":
@@ -369,10 +492,11 @@ class PaperWriterAgent:
         )
 
     def _write_main_files(self, paper_dir: Path) -> None:
-        (paper_dir / "references.bib").write_text(
-            "@misc{registered_sources,\n  title={Registered data sources},\n  year={2026}\n}\n",
-            encoding="utf-8",
-        )
+        # Empty by default; ReferenceManager fills real entries (and prunes the
+        # bibliography from main.tex when there are no registered sources).
+        references = paper_dir / "references.bib"
+        if not references.exists():
+            references.write_text("", encoding="utf-8")
         section_dir = paper_dir / "sections"
         section_text = ""
         if section_dir.exists():

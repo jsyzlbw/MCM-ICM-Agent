@@ -235,6 +235,6 @@ def test_paper_writer_renders_contextual_abstract_intro_and_assumptions(
         encoding="utf-8"
     )
     assert "evacuation allocation" in abstract
-    assert "interpretable optimization" in introduction
+    assert "evacuation allocation" in introduction  # intro now carries the problem summary
     assert "Capacity assumptions define feasible allocation" in assumptions
     assert "% claim_id=claim_assumption_problem_context evidence_id=ev_capacity" in assumptions

@@ -306,7 +306,7 @@ def test_paper_writer_uses_claim_plan_when_available(tmp_path: Path) -> None:
     results = (workspace.root / "paper" / "sections" / "results.tex").read_text(
         encoding="utf-8"
     )
-    assert "The planned result is supported by the registered metric." in results
+    assert "\\section{Results}" in results  # LLM/fallback prose section header
     assert (
         "% claim_id=claim_planned_result evidence_id=ev_001 "
         "figure_id=fig_001 source_id=web_001"

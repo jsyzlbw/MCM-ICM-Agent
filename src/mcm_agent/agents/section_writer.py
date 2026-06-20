@@ -49,15 +49,15 @@ class PaperSectionWriter:
 
     def write_section(self, name: str, title: str, facts: dict[str, object]) -> str:
         if self.llm is None:
-            return self._fallback(name, title)
+            return self._fallback(name, title, facts)
         try:
             raw = self.llm.generate(self._system(), self._prompt(name, title, facts)).content.strip()
         except Exception:
-            return self._fallback(name, title)
+            return self._fallback(name, title, facts)
         content = markdown_to_latex(raw)
         content = self._ensure_header(content, name, title)
         if "\\section" not in content or len(content.strip()) < len(self._header(name, title)) + 5:
-            return self._fallback(name, title)
+            return self._fallback(name, title, facts)
         return content + "\n"
 
     def _system(self) -> str:
@@ -94,8 +94,20 @@ class PaperSectionWriter:
             return content
         return self._header(name, title) + "\n" + content
 
-    def _fallback(self, name: str, title: str) -> str:
-        en, zh = _FALLBACK.get(name, (f"Section {title}.", f"{title}。"))
-        body = zh if self.language == "zh" else en
-        summary = ""
-        return f"{self._header(name, title)}\n{latex_escape_text(body)}\n{summary}".rstrip() + "\n"
+    def _fallback(self, name: str, title: str, facts: dict[str, object] | None = None) -> str:
+        """Deterministic, compile-safe section (no LLM). Renders only safe fields
+        (problem summary + claim texts), fully LaTeX-escaped so it never breaks
+        compilation; falls back to a generic sentence when nothing is available.
+        """
+        facts = facts or {}
+        pieces = [self._header(name, title)]
+        problem = facts.get("problem")
+        if isinstance(problem, str) and problem.strip():
+            pieces.append(latex_escape_text(problem.strip()))
+        claims = facts.get("claims")
+        if isinstance(claims, list):
+            pieces.extend(latex_escape_text(str(c).strip()) for c in claims if str(c).strip())
+        if len(pieces) == 1:
+            en, zh = _FALLBACK.get(name, (f"Section {title}.", f"{title}。"))
+            pieces.append(latex_escape_text(zh if self.language == "zh" else en))
+        return "\n".join(pieces) + "\n"

@@ -150,8 +150,8 @@ def test_run_demo_workflow_creates_required_artifacts(tmp_path: Path) -> None:
     assumptions = (workspace / "paper" / "sections" / "assumptions.tex").read_text(
         encoding="utf-8"
     )
-    assert "traceable" in abstract.lower() or "model" in abstract.lower()
-    assert "planned claim chain" in introduction
+    assert "\\section*{Abstract}" in abstract and len(abstract.strip()) > len("\\section*{Abstract}")
+    assert "\\section{Introduction}" in introduction
     assert "assumption" in assumptions.lower()
 
 
