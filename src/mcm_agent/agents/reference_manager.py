@@ -24,6 +24,7 @@ class ReferenceManager:
         missing_references = sorted(used_source_ids - referenced_source_ids)
 
         self._write_bibtex(workspace_root, candidates)
+        self._update_main_bibliography(workspace_root, has_entries=bool(candidates))
         self._insert_section_citations(
             workspace_root,
             referenced_source_ids,
@@ -108,6 +109,22 @@ class ReferenceManager:
             return "{" + value + "}"
 
         return re.sub(r"\{([^{}]*)\}", _escape_value, text)
+
+    def _update_main_bibliography(self, workspace_root: Path, *, has_entries: bool) -> None:
+        """Remove the orphan ``\\bibliography`` block from main.tex when there are no
+        registered sources, so the paper does not show an empty references section."""
+        if has_entries:
+            return
+        main = workspace_root / "paper" / "main.tex"
+        if not main.exists():
+            return
+        text = main.read_text(encoding="utf-8")
+        kept = [
+            line
+            for line in text.splitlines()
+            if "\\bibliography{references}" not in line and "\\bibliographystyle" not in line
+        ]
+        main.write_text("\n".join(kept) + ("\n" if text.endswith("\n") else ""), encoding="utf-8")
 
     def _insert_section_citations(
         self,

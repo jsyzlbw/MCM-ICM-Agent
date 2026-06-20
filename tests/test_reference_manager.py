@@ -8,6 +8,22 @@ from mcm_agent.core.workspace import create_workspace
 from mcm_agent.utils.json_io import read_json, write_json
 
 
+def test_reference_manager_prunes_bibliography_when_no_sources(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "run_empty")
+    main = workspace.root / "paper" / "main.tex"
+    main.parent.mkdir(parents=True, exist_ok=True)
+    main.write_text(
+        "\\begin{document}\n\\bibliographystyle{plain}\n\\bibliography{references}\n\\end{document}\n",
+        encoding="utf-8",
+    )
+
+    ReferenceManager().run(workspace.root)  # no source_registry / citation_candidates
+
+    text = main.read_text(encoding="utf-8")
+    assert "\\bibliography{references}" not in text  # no orphan empty bibliography
+    assert "\\bibliographystyle" not in text
+
+
 def test_reference_manager_writes_bibtex_and_registered_citations(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     _write_registered_source(workspace.root)
