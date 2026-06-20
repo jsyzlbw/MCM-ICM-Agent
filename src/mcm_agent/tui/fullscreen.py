@@ -90,6 +90,9 @@ class MagFullScreenApp:
         # Transcript: list of ANSI fragments rendered by rich
         self._fragments: list[ANSI] = []
 
+        # Track in-flight async submit tasks so run() can await them on exit
+        self._pending_tasks: list[asyncio.Task] = []  # type: ignore[type-arg]
+
         # Determine render width (capped at 100, min terminal minus borders)
         self._width: int = self._calc_width()
 
@@ -149,11 +152,36 @@ class MagFullScreenApp:
     # Public API
     # ------------------------------------------------------------------
 
+    @property
+    def session(self) -> "InteractiveSession":
+        return self._session
+
     def run(self) -> None:
-        """Start the event loop; blocks until the app exits."""
+        """Start the event loop; blocks until the app exits.
+
+        Sets ``session.suppress_live_output = True`` for the duration so that
+        LLM replies are returned (not streamed to raw stdout underneath
+        prompt_toolkit's alternate screen).  The Enter handler dispatches work
+        via ``run_in_executor`` so the UI thread stays responsive.
+        """
         # Prepend welcome panel
         self._append_welcome()
-        self._app.run()
+
+        old_suppress = getattr(self._session, "suppress_live_output", False)
+        self._session.suppress_live_output = True
+        try:
+            asyncio.run(self._run_async_and_drain())
+        finally:
+            self._session.suppress_live_output = old_suppress
+
+    async def _run_async_and_drain(self) -> None:
+        """Run the app, then wait for any in-flight submit tasks to finish."""
+        await self._app.run_async()
+        # Drain any executor tasks that were submitted but not yet complete
+        # (e.g. when Ctrl-D arrives while a run_once call is in-flight).
+        if self._pending_tasks:
+            await asyncio.gather(*self._pending_tasks, return_exceptions=True)
+            self._pending_tasks.clear()
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -260,7 +288,7 @@ class MagFullScreenApp:
 
         @kb.add("enter")
         def _submit(event):
-            """Enter submits the current input synchronously."""
+            """Enter submits the current input; work runs off the UI thread."""
             buf = input_area.buffer
             text = buf.text
             if not text.strip():
@@ -268,40 +296,63 @@ class MagFullScreenApp:
             buf.reset()
             _ctrl_c_count[0] = 0
 
-            # Echo user input
-            from rich.text import Text as RText
-            from mcm_agent.tui.theme import ACCENT
+            # Schedule actual async work as a task so it can be tracked/drained
+            task = asyncio.ensure_future(self._do_submit(event.app, text))
+            self._pending_tasks.append(task)
 
-            self._append(
-                render_to_ansi(RText(f"> {text}", style=ACCENT), width=self._width)
-            )
+            def _on_done(t: asyncio.Task) -> None:  # type: ignore[type-arg]
+                try:
+                    self._pending_tasks.remove(t)
+                except ValueError:
+                    pass
 
-            # Route the input
-            if text.startswith("!"):
-                shell_cmd = text[1:].strip()
-                result = self._session._run_shell(shell_cmd)
-                self._append(
-                    render_to_ansi(
-                        self._rich_result(result), width=self._width
-                    )
-                )
-                if result.exit_session:
-                    event.app.exit()
-            else:
-                result = self._session.run_once(text)
-                if result.message:
-                    self._append(
-                        render_to_ansi(
-                            self._rich_result(result), width=self._width
-                        )
-                    )
-                if result.exit_session:
-                    event.app.exit()
-
-            self._pin_bottom()
-            event.app.invalidate()
+            task.add_done_callback(_on_done)
 
         return kb
+
+    async def _do_submit(self, app: Application, text: str) -> None:  # type: ignore[type-arg]
+        """Async body for the Enter handler — runs executor work off the UI thread."""
+        from rich.text import Text as RText
+
+        from mcm_agent.tui.theme import ACCENT
+
+        self._append(
+            render_to_ansi(RText(f"> {text}", style=ACCENT), width=self._width)
+        )
+
+        # Show a transient "processing" indicator
+        thinking_frag = ANSI("∑ 正在处理…\n")
+        self._fragments.append(thinking_frag)
+        app.invalidate()
+
+        # Run the blocking work off the UI event loop
+        loop = asyncio.get_event_loop()
+        if text.startswith("!"):
+            shell_cmd = text[1:].strip()
+            result = await loop.run_in_executor(
+                None, self._session._run_shell, shell_cmd
+            )
+        else:
+            result = await loop.run_in_executor(
+                None, self._session.run_once, text
+            )
+
+        # Remove the transient fragment
+        try:
+            self._fragments.remove(thinking_frag)
+        except ValueError:
+            pass
+
+        # Append rendered result to transcript
+        if result.message:
+            self._append(
+                render_to_ansi(self._rich_result(result), width=self._width)
+            )
+
+        if result.exit_session:
+            app.exit()
+
+        app.invalidate()
 
     def _rich_result(self, result: object) -> object:
         """Convert a CommandResult to a Rich renderable."""

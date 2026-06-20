@@ -22,6 +22,10 @@ class InteractiveSession:
         self.console = console or Console(theme=MAG_THEME)
         self.commands = build_command_registry()
         self.session_store = SessionStore(self.workspace_root)
+        # When True, _handle_natural_language returns the reply directly (no live
+        # streaming / spinner / console printing).  Used by MagFullScreenApp so the
+        # full-screen TUI can render into the transcript instead of raw stdout.
+        self.suppress_live_output: bool = False
 
     @classmethod
     def prepare(cls, cwd: Path, console: Console | None = None) -> "InteractiveSession":
@@ -203,6 +207,17 @@ class InteractiveSession:
                 f"Revision plan created: work/revisions/{plan.revision_id}.md\n"
                 "请确认后再执行修订，当前论文尚未被修改。"
             )
+
+        # Suppressed path: used by MagFullScreenApp to avoid writing ANSI to raw
+        # stdout underneath prompt_toolkit's alternate screen.
+        if self.suppress_live_output:
+            attachments = self._collect_attachments(text)
+            recent = self.session_store.read_recent_messages(limit=8)
+            reply = generate_chat_reply(
+                self.workspace_root, text, self._chat_llm(), recent, attachments=attachments
+            )
+            return CommandResult(reply, markdown=True)
+
         import sys
 
         from mcm_agent.tui.runner import Interrupted, run_with_spinner
