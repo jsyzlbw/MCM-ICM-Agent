@@ -365,9 +365,10 @@ class PaperWriterAgent:
         find their tokens. Results also gets a real metrics table.
         """
         zh = self._language == "zh"
-        metrics = read_json(workspace_root / "results" / "model_metrics.json", {})
-        if not isinstance(metrics, dict):
-            metrics = {}
+        from mcm_agent.core.metrics_flatten import flatten_metrics
+
+        # Flatten nested per-subproblem metrics for the Results table and abstract.
+        metrics = flatten_metrics(read_json(workspace_root / "results" / "model_metrics.json", {}))
         by_section: dict[str, list[PaperClaimPlanItem]] = defaultdict(list)
         for claim in claim_plan:
             by_section[Path(claim.section).name].append(claim)

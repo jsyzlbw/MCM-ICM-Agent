@@ -5,6 +5,7 @@ from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
+from mcm_agent.core.metrics_flatten import flatten_metrics
 from mcm_agent.utils.json_io import read_json, write_json
 
 
@@ -17,7 +18,8 @@ class ValidationAgent:
         evidence_sources = {
             (item.get("source_path"), item.get("evidence_id")) for item in evidence
         }
-        for metric_key in metrics:
+        # Check leaf (flattened) metrics — the solver may write nested per-subproblem dicts.
+        for metric_key in flatten_metrics(metrics):
             has_evidence = any(
                 source_path == "results/model_metrics.json" and str(evidence_id).endswith(metric_key)
                 for source_path, evidence_id in evidence_sources
@@ -30,13 +32,18 @@ class ValidationAgent:
             if source_path and not (workspace_root / source_path).exists():
                 blocking_issues.append(f"Evidence source does not exist: `{source_path}`.")
 
+        # Validate the END STATE, not historical attempts: a failed self-repair / earlier
+        # codegen attempt that a later run superseded must not block. Flag only outputs that
+        # are STILL missing on disk now.
         for run in self._read_experiment_runs(workspace_root / "results" / "experiment_runs.jsonl"):
-            run_id = run.get("run_id", "unknown")
-            exit_code = run.get("exit_code", 0)
-            missing_outputs = run.get("missing_outputs", [])
-            if exit_code != 0 or missing_outputs:
+            still_missing = [
+                output
+                for output in run.get("missing_outputs", [])
+                if not (workspace_root / str(output)).exists()
+            ]
+            if still_missing:
                 blocking_issues.append(
-                    f"Experiment run `{run_id}` failed or missed outputs: {missing_outputs}."
+                    f"Experiment run `{run.get('run_id', 'unknown')}` is missing outputs: {still_missing}."
                 )
 
         binding_report = read_json(workspace_root / "results" / "solver_binding_report.json", {})

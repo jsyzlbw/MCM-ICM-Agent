@@ -10,6 +10,7 @@ import pandas as pd
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.experiment import run_experiment
 from mcm_agent.core.experiment_spec import ExperimentSpec
+from mcm_agent.core.metrics_flatten import flatten_metrics
 from mcm_agent.core.models import EvidenceItem
 from mcm_agent.utils.json_io import read_json, write_json
 
@@ -150,23 +151,22 @@ class SolverCoderAgent:
             self._lineage_ids_for_processed_file(workspace_root, processed[0]) if processed else []
         )
         evidence = read_json(results_dir / "evidence_registry.json", [])
-        if isinstance(metrics, dict):
-            for key, value in metrics.items():
-                if not isinstance(value, (int, float, str)):
-                    continue
-                evidence.append(
-                    EvidenceItem(
-                        evidence_id=f"metric_{key}",
-                        claim=f"Metric {key} equals {value}.",
-                        value=value,
-                        source_type="code_output",
-                        source_path="results/model_metrics.json",
-                        generated_by=script_rel,
-                        used_in=[],
-                        verified=True,
-                        lineage_ids=lineage_ids,
-                    ).model_dump(mode="json")
-                )
+        # Flatten nested per-subproblem metrics so every leaf metric is registered as
+        # traceable evidence (e.g. metric_problem1_elimination_consistency_rate).
+        for key, value in flatten_metrics(metrics).items():
+            evidence.append(
+                EvidenceItem(
+                    evidence_id=f"metric_{key}",
+                    claim=f"Metric {key} equals {value}.",
+                    value=value,
+                    source_type="code_output",
+                    source_path="results/model_metrics.json",
+                    generated_by=script_rel,
+                    used_in=[],
+                    verified=True,
+                    lineage_ids=lineage_ids,
+                ).model_dump(mode="json")
+            )
         write_json(results_dir / "evidence_registry.json", evidence)
         Coordinator(workspace_root).emit("code.completed", source="SolverCoderAgent")
 
