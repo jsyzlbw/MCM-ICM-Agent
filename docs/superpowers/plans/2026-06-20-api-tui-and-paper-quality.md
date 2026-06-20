@@ -80,7 +80,7 @@
 
 ### B.0 设计原则
 - **每个 section 由 LLM 写论述**，输入=该 section 的结构化事实（题意要点、模型决策要点、真实指标、图表、来源、claim），输出=**目标语言的 LaTeX 正文**；claim/evidence 仍作事实骨架并保留 trace 注释（可追溯不变）。
-- **三道编译安全网**（无人值守关键）：① markdown→LaTeX 清洗 + LaTeX 转义；② 每 section 有确定性 fallback；③ 复用 `typesetting_repair` + tectonic 编译失败时回退 fallback section 重编译。
+- **编译-修复循环（用户确认）**：① markdown→LaTeX 清洗 + LaTeX 转义；② 编译失败时，把 tectonic 报错日志 + 出错 section 回喂 LLM 让其**修正 LaTeX 并重编译，循环直到通过**（有限次，如 ≤4）；③ 仅当修复重试耗尽仍失败，才用确定性 fallback section 兜底并显著记录（保证无人值守也能出 PDF）。
 - **彻底语言贯通**：所有 section（含 fallback、claim 文本、trace 可见句）随论文语言；专有名词允许英文。
 - **不再倒灌**：禁止把 `confirmed_direction.md` 等内部 artifact 原文拼进正文；只把"要点"喂给 LLM。
 
@@ -102,7 +102,7 @@
 - [ ] **B-T3 metrics → 表格 + 论述**：Results 由真实 `model_metrics.json` 生成 `tabular` 指标表 + LLM 一段解读（含义、是否符合预期），中文论文用中文表头。测试：metrics→含 `\begin{tabular}` 与指标名；无下划线裸字段（转义）。
 - [ ] **B-T4 references.bib 真实化**：`reference_manager` 从 source registry 生成 `@misc/@online` 条目；claim 的 `\cite` key 对齐；无来源→不放空 `\bibliography` 桩导致的孤儿。测试：给 2 条来源→bib 2 条目、key 匹配。
 - [ ] **B-T5 writer 重写 + 去重 + 语言**：abstract/intro/assumptions/model/results/sensitivity/conclusion 全走 section_writer；删除 model 决策重复；引言不再倒灌 direction_summary；全 section 语言贯通。测试：中文 run（fake LLM）→各 section 中文 fallback、无 `Confirmed Direction`、model 段不重复。
-- [ ] **B-T6 编译安全网**：section 清洗后仍编译失败时，`typesetting_repair` 用 fallback section 重试。测试：注入"坏 LaTeX" section→修复后能编译（tectonic 在则真编，不在则 mock）。
+- [ ] **B-T6 编译-修复循环**：tectonic 编译失败→把报错日志+出错 section 回喂 LLM 修正→重编译，循环 ≤4 次直到通过；耗尽后用确定性 fallback 兜底。测试：注入一段"坏 LaTeX" + fake LLM 返回修正版→循环后编译通过（tectonic 在则真编，不在则 mock 编译器按"修正后通过"断言）。
 - [ ] **B-T7 真题回归**：真跑 2026 MCM C（中/英各一），渲染 PDF 人工核对：无倒灌、无 `**`、无混语、Results 有表格、参考文献有条目。
 - [ ] **B-T8**：`pytest -q && ruff` 绿；分多次提交（latex_text→section_writer→metrics→references→writer 重写→repair）。
 
