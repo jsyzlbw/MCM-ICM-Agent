@@ -80,3 +80,78 @@ class OpenAICompatibleLLMProvider:
         raise RuntimeError(
             f"LLM request failed after {self.max_retries + 1} attempts: {last_error}"
         )
+
+
+class AnthropicCompatibleLLMProvider:
+    """LLM provider speaking the Anthropic Messages API (POST {base_url}/v1/messages).
+
+    Used for Anthropic-official and Anthropic-compatible endpoints such as
+    https://api.deepseek.com/anthropic.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str,
+        base_url: str = "https://api.anthropic.com",
+        timeout_seconds: int = 60,
+        max_retries: int = 2,
+        max_tokens: int = 4096,
+    ) -> None:
+        if not api_key:
+            raise ValueError("Anthropic-compatible provider requires api_key")
+        self.api_key = api_key
+        self.model = model
+        self.base_url = base_url.rstrip("/") or "https://api.anthropic.com"
+        self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
+        self.max_tokens = max_tokens
+
+    def generate(self, system: str, prompt: str, *, temperature: float = 0.2) -> ProviderResult:
+        last_error = "unknown error"
+        for _attempt in range(self.max_retries + 1):
+            try:
+                response = httpx.post(
+                    f"{self.base_url}/v1/messages",
+                    headers={
+                        "x-api-key": self.api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": self.model,
+                        "max_tokens": self.max_tokens,
+                        "temperature": temperature,
+                        "system": system,
+                        "messages": [{"role": "user", "content": prompt}],
+                    },
+                    timeout=self.timeout_seconds,
+                )
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                last_error = f"{type(exc).__name__}: {exc}"
+                continue
+            if response.status_code == 429 or 500 <= response.status_code < 600:
+                last_error = f"{response.status_code} {response.text[:200]}"
+                continue
+            if response.status_code < 200 or response.status_code >= 300:
+                raise RuntimeError(f"LLM request failed: {response.status_code} {response.text}")
+
+            payload = response.json()
+            blocks = payload.get("content", [])
+            content = "".join(
+                block.get("text", "")
+                for block in blocks
+                if isinstance(block, dict) and block.get("type") == "text"
+            )
+            return ProviderResult(
+                content=content,
+                metadata={
+                    "provider": "anthropic_compatible",
+                    "model": self.model,
+                    "id": payload.get("id"),
+                },
+            )
+        raise RuntimeError(
+            f"LLM request failed after {self.max_retries + 1} attempts: {last_error}"
+        )

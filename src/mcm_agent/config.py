@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = ""
     openai_model: str = "gpt-4.1"
+    llm_protocol: str = "openai"  # "openai" | "anthropic"
     llm_provider: str = "openai_compatible"
 
     tavily_api_key: str = ""
@@ -100,6 +101,7 @@ def _settings_overrides_from_workspace(workspace: Path) -> dict[str, Any]:
             "MAG_LLM_BASE_URL": "openai_base_url",
             "MAG_LLM_MODEL": "openai_model",
             "MAG_LLM_PROVIDER": "llm_provider",
+            "MAG_LLM_PROTOCOL": "llm_protocol",
             "MAG_SEARCH_API_KEY": "tavily_api_key",
             "MAG_TAVILY_API_KEY": "tavily_api_key",
             "MAG_BRAVE_API_KEY": "brave_search_api_key",
@@ -136,6 +138,7 @@ def _settings_overrides_from_json(payload: dict[str, Any]) -> dict[str, Any]:
         ("llm", "base_url"): "openai_base_url",
         ("llm", "model"): "openai_model",
         ("llm", "provider"): "llm_provider",
+        ("llm", "protocol"): "llm_protocol",
         ("llm", "timeout_seconds"): "mcm_agent_http_timeout_seconds",
         ("search", "tavily_api_key"): "tavily_api_key",
         ("search", "firecrawl_api_key"): "firecrawl_api_key",

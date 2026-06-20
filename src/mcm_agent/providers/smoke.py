@@ -22,7 +22,6 @@ from mcm_agent.providers.data_apis import (
     WorldBankProvider,
 )
 from mcm_agent.providers.humanizer import UShallPassHumanizerProvider
-from mcm_agent.providers.llm import OpenAICompatibleLLMProvider
 from mcm_agent.providers.mineru import RestMinerUProvider
 from mcm_agent.providers.search import (
     BraveSearchProvider,
@@ -140,12 +139,9 @@ class ProviderSmokeTester:
     def _check_llm(self) -> ProviderSmokeResult:
         if not self.settings.openai_api_key:
             return self._skipped("llm", "OPENAI_API_KEY is not configured.")
-        provider = OpenAICompatibleLLMProvider(
-            api_key=self.settings.openai_api_key,
-            model=self.settings.openai_model,
-            base_url=self.settings.openai_base_url or "https://api.openai.com/v1",
-            timeout_seconds=self.settings.mcm_agent_http_timeout_seconds,
-        )
+        from mcm_agent.providers.factory import build_llm_provider
+
+        provider = build_llm_provider(self.settings)
         result = provider.generate(
             "You are a provider smoke test.",
             "Reply with exactly OK.",

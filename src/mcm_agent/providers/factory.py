@@ -13,7 +13,11 @@ from mcm_agent.providers.embedding import (
 )
 from mcm_agent.providers.humanizer import FakeHumanizerProvider, UShallPassHumanizerProvider
 from mcm_agent.providers.latex import LatexProvider
-from mcm_agent.providers.llm import FakeLLMProvider, OpenAICompatibleLLMProvider
+from mcm_agent.providers.llm import (
+    AnthropicCompatibleLLMProvider,
+    FakeLLMProvider,
+    OpenAICompatibleLLMProvider,
+)
 from mcm_agent.providers.mineru import FakeMinerUProvider, LocalMinerUProvider, RestMinerUProvider
 from mcm_agent.providers.search import (
     BraveSearchProvider,
@@ -38,6 +42,28 @@ class NullExtractProvider:
         )()
 
 
+def build_llm_provider(settings: Settings) -> object:
+    """Build the LLM provider, choosing the wire protocol from settings.llm_protocol
+    ('openai' -> /chat/completions, 'anthropic' -> /v1/messages)."""
+    if not settings.openai_api_key or settings.llm_provider == "fake":
+        return FakeLLMProvider({"default": ""})
+    if settings.llm_protocol == "anthropic":
+        return AnthropicCompatibleLLMProvider(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+            base_url=settings.openai_base_url or "https://api.anthropic.com",
+            timeout_seconds=settings.mcm_agent_http_timeout_seconds,
+            max_retries=settings.mcm_agent_max_retries,
+        )
+    return OpenAICompatibleLLMProvider(
+        api_key=settings.openai_api_key,
+        model=settings.openai_model,
+        base_url=settings.openai_base_url or "https://api.openai.com/v1",
+        timeout_seconds=settings.mcm_agent_http_timeout_seconds,
+        max_retries=settings.mcm_agent_max_retries,
+    )
+
+
 def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> ProviderBundle:
     # Offline/demo mode: a fully self-contained bundle (fake LLM + demo
     # search/extract/latex) that needs no network or TeX engine. Used by the CLI
@@ -47,18 +73,7 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
 
         return _default_demo_providers()
 
-    use_real_llm = bool(settings.openai_api_key)
-    llm = (
-        OpenAICompatibleLLMProvider(
-            api_key=settings.openai_api_key,
-            model=settings.openai_model,
-            base_url=settings.openai_base_url or "https://api.openai.com/v1",
-            timeout_seconds=settings.mcm_agent_http_timeout_seconds,
-            max_retries=settings.mcm_agent_max_retries,
-        )
-        if use_real_llm
-        else FakeLLMProvider({"default": ""})
-    )
+    llm = build_llm_provider(settings)
 
     if settings.mineru_mode == "local":
         mineru = LocalMinerUProvider(settings.mineru_cli)
