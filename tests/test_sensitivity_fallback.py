@@ -63,11 +63,13 @@ def test_baseline_sensitivity_metric_column_varies(tmp_path: Path) -> None:
     df = pd.read_csv(sensitivity_path)
     assert len(df) >= 3, f"Need >=3 rows for variance check; got {len(df)}"
 
-    # The last column is the metric column; its values must differ across at least two rows.
-    metric_col = df.columns[-1]
-    metric_values = df[metric_col].astype(float)
+    # Select by name: input_mean_proxy signals this is a diagnostic proxy, not the model's primary metric.
+    assert "input_mean_proxy" in df.columns, (
+        f"Expected column 'input_mean_proxy' in sensitivity CSV; got columns: {list(df.columns)}"
+    )
+    metric_values = df["input_mean_proxy"].astype(float)
     assert metric_values.nunique() >= 2, (
-        f"Metric column '{metric_col}' is constant ({metric_values.unique()}) — "
+        f"Metric column 'input_mean_proxy' is constant ({metric_values.unique()}) — "
         "this looks like a fabricated placeholder, not a real recomputation."
     )
 
@@ -80,7 +82,7 @@ def test_sensitivity_fallback_skipped_when_csv_already_has_3_rows(tmp_path: Path
     results_dir = root / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     existing_content = (
-        "parameter,scale_factor,numeric_mean\n"
+        "parameter,scale_factor,input_mean_proxy\n"
         "numeric_input_scale,0.80,15.0\n"
         "numeric_input_scale,0.90,18.0\n"
         "numeric_input_scale,1.00,20.0\n"

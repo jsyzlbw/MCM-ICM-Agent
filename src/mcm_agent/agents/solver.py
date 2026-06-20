@@ -416,7 +416,10 @@ class SolverCoderAgent:
 
     def _run_sensitivity_sweep(self, workspace_root: Path, processed_file: Path) -> None:
         """Deterministic sensitivity fallback: scale a numeric input column and recompute
-        numeric_mean for each of 5 scale factors [0.8, 0.9, 1.0, 1.1, 1.2].
+        input_mean_proxy for each of 5 scale factors [0.8, 0.9, 1.0, 1.1, 1.2].
+
+        Column name 'input_mean_proxy' signals this is a diagnostic input-stability proxy,
+        NOT the model's primary metric.
 
         Only writes if results/sensitivity_analysis.csv is absent or has <3 data rows.
         NEVER fabricates numbers — every row is a REAL recomputation on perturbed data.
@@ -455,7 +458,7 @@ class SolverCoderAgent:
                 {
                     "parameter": sweep_col,
                     "scale_factor": factor,
-                    "numeric_mean": round(metric_value, 6),
+                    "input_mean_proxy": round(metric_value, 6),
                 }
             )
 
