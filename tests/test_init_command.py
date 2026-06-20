@@ -59,12 +59,13 @@ def test_init_interactive_import_env(tmp_path: Path) -> None:
     assert load_workspace_state(workspace.root).init.llm_configured is True
 
 
-def test_init_interactive_manual_key(tmp_path: Path) -> None:
+def test_init_interactive_manual_preset(tmp_path: Path) -> None:
     from mcm_agent.cli_commands.base import CommandContext
     from mcm_agent.cli_commands.init import InitCommand
 
     workspace = create_workspace(tmp_path / "workspace")
-    answers = iter(["2", "sk-manual", "https://api.deepseek.com/v1", "deepseek-v4-flash"])
+    # init menu 2 (manual) -> preset 1 (DeepSeek OpenAI) -> key -> model
+    answers = iter(["2", "1", "sk-manual", "deepseek-v4-flash"])
 
     InitCommand().run(
         [], CommandContext(workspace_root=workspace.root, ask=lambda prompt="": next(answers))
@@ -74,6 +75,7 @@ def test_init_interactive_manual_key(tmp_path: Path) -> None:
     assert "MAG_LLM_API_KEY=sk-manual" in env
     assert "MAG_LLM_BASE_URL=https://api.deepseek.com/v1" in env
     assert "MAG_LLM_MODEL=deepseek-v4-flash" in env
+    assert "MAG_LLM_PROTOCOL=openai" in env
 
 
 def test_init_with_llm_key_marks_workspace_complete(tmp_path: Path) -> None:

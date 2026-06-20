@@ -6,6 +6,7 @@ import shutil
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
 from mcm_agent.config import load_settings
 from mcm_agent.core.config_writer import import_env_file
+from mcm_agent.core.llm_presets import configure_llm_interactive
 from mcm_agent.core.workspace import create_workspace, load_workspace_state, save_workspace_state
 from mcm_agent.core.workspace_safety import WorkspaceSafety
 
@@ -81,13 +82,10 @@ class InitCommand:
             ok, msg = import_env_file(root, path)
             return self._finalize(root, state, msg) if ok else CommandResult(msg)
         if choice == "2":
-            key = (ask("LLM API key: ") or "").strip()
-            if not key:
-                return CommandResult("未输入 key，已取消。")
-            base_url = (ask("Base URL（回车用默认 https://api.openai.com/v1）: ") or "").strip()
-            model = (ask("Model（回车用默认 gpt-4.1）: ") or "").strip()
-            self._write_llm_config(root, key, base_url or None, model or None)
-            return self._finalize(root, state, "Init complete. LLM API 已配置。")
+            msg = configure_llm_interactive(root, ask)
+            if "已配置" in msg:
+                return self._finalize(root, state, msg)
+            return CommandResult(msg)
         return CommandResult("已跳过 LLM 配置。稍后可运行 /api 或 /init 配置。")
 
     def _finalize(self, root: Path, state: object, message: str) -> CommandResult:

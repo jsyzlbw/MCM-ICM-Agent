@@ -61,8 +61,8 @@ def test_interactive_api_status_reports_missing_llm(tmp_path: Path) -> None:
 
     result = session.run_once("/api")
 
-    assert "API status" in result.message
-    assert "[missing] LLM" in result.message
+    assert "LLM" in result.message
+    assert "[--]" in result.message  # compact status: LLM not configured
 
 
 def test_interactive_git_status_reports_checkpoint(tmp_path: Path) -> None:
