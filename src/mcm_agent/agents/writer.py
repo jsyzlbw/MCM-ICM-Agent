@@ -434,9 +434,26 @@ class PaperWriterAgent:
             ]
             return self._model_facts_from_spec(model_spec, spec_claims)
         if name == "abstract":
+            # When a ModelSpec is available, derive the approach phrase from the
+            # spec (same source as the model section) so that abstract and model
+            # section describe the *same* method (coherence).  Fall back to
+            # model_decision_summary for runs that pre-date the spec.
+            if model_spec is not None and getattr(model_spec, "subproblems", None):
+                approach_parts = [
+                    (
+                        f"{sub.title}（{sub.approach}）"
+                        if self._language == "zh"
+                        else f"{sub.title} ({sub.approach})"
+                    )
+                    for sub in model_spec.subproblems
+                    if sub.approach
+                ]
+                approach = "; ".join(approach_parts) if approach_parts else context.model_decision_summary[:600]
+            else:
+                approach = context.model_decision_summary[:600]
             return {
                 "problem": context.problem_summary,
-                "approach": context.model_decision_summary[:600],
+                "approach": approach,
                 "key_metrics": top_metrics,
             }
         if name == "introduction":
