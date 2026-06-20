@@ -24,6 +24,23 @@ class SolverCoderAgent:
             return
         self._run_templated_baseline(workspace_root)
 
+    def _model_spec_block(self, workspace_root: Path) -> str:
+        """Serialize the designed ModelSpec so the generated code implements exactly
+        the model the paper will describe (model<->code coherence)."""
+        from mcm_agent.core.model_spec import read_model_spec
+
+        spec = read_model_spec(workspace_root)
+        if spec is None or not spec.subproblems:
+            return ""
+        lines = ["MODEL SPEC TO IMPLEMENT (implement exactly this designed model):"]
+        for sub in spec.subproblems:
+            lines.append(f"- [{sub.subproblem_id}] {sub.title} — approach: {sub.approach}")
+            if sub.algorithm_steps:
+                lines.append("  algorithm: " + " | ".join(sub.algorithm_steps))
+            if sub.metrics:
+                lines.append("  required metrics (use these JSON keys): " + ", ".join(sub.metrics))
+        return "\n".join(lines) + "\n\n"
+
     def _run_llm_codegen(self, workspace_root: Path, *, max_attempts: int = 3) -> bool:
         processed = sorted((workspace_root / "data" / "processed").glob("*.csv"))
         if not processed:
@@ -42,9 +59,11 @@ class SolverCoderAgent:
             "You write correct, self-contained Python for a math-modeling contest. "
             "Output ONLY one ```python code block."
         )
+        spec_block = self._model_spec_block(workspace_root)
         base_prompt = (
             "Write a Python script that solves the contest sub-problems using the real data.\n"
             f"PROBLEM UNDERSTANDING:\n{understanding}\n\nCONFIRMED DIRECTION:\n{direction}\n\n"
+            f"{spec_block}"
             f"DATA SCHEMA (first rows):\n{schema}\n\n"
             "CONTRACT:\n"
             "- import pandas as pd; read data via "

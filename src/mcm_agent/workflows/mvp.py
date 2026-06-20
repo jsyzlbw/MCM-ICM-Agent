@@ -11,6 +11,7 @@ from mcm_agent.agents.discussion import UserDiscussionAgent
 from mcm_agent.agents.eda import DataEDAAgent
 from mcm_agent.agents.extraction import DocumentExtractionAgent
 from mcm_agent.agents.intake import IntakeAgent
+from mcm_agent.agents.model_design import ModelDesignAgent
 from mcm_agent.agents.modeling import ModelJudge, ModelingCouncil
 from mcm_agent.agents.modeling_quality import ModelingPlanQualityAgent
 from mcm_agent.agents.paper_evidence import PaperEvidenceBindingAgent
@@ -309,6 +310,9 @@ def _mvp_stage_handlers(
         return ["reports/data_profile.md", "data/processed"]
 
     def solver_coder(workspace_root: Path) -> list[str]:
+        ModelDesignAgent(
+            provider_bundle.llm, language=settings.mcm_agent_default_language
+        ).run(workspace_root)
         SolverCoderAgent(provider_bundle.llm).run(workspace_root)
         return [
             "code",

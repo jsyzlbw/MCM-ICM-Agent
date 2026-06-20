@@ -374,15 +374,40 @@ class PaperWriterAgent:
             if claim.status == "unresolved":
                 self._append_unresolved_claim(workspace_root, claim)
 
+        from mcm_agent.core.model_spec import read_model_spec
+
+        model_spec = read_model_spec(workspace_root)
         citation_context = build_citation_context(workspace_root)
         writer = PaperSectionWriter(self.llm_provider, self._language)
         for filename, name, (en_title, zh_title) in SECTION_SPEC:
             title = zh_title if zh else en_title
             claims = by_section.get(filename, [])
-            facts = self._facts_for_section(name, context, metrics, claims)
+            facts = self._facts_for_section(name, context, metrics, claims, model_spec)
             body = writer.write_section(name, title, facts)
             extras = self._section_extras(filename, name, metrics, claims, zh, citation_context)
             (section_dir / filename).write_text(body + extras, encoding="utf-8")
+
+    def _model_facts_from_spec(self, model_spec: object, claim_texts: list[str]) -> dict[str, object]:
+        """Model-section facts straight from the designed ModelSpec, so the narrative
+        matches the spec the solver implemented (model<->code<->narrative coherence)."""
+        subs = []
+        extra_lines: list[str] = []
+        for sub in model_spec.subproblems:  # type: ignore[attr-defined]
+            subs.append(
+                {
+                    "title": sub.title,
+                    "approach": sub.approach,
+                    "variables": [{"symbol": v.symbol, "meaning": v.meaning} for v in sub.variables],
+                    "assumptions": sub.assumptions,
+                    "equations": sub.equations,
+                    "algorithm_steps": sub.algorithm_steps,
+                    "metrics": sub.metrics,
+                }
+            )
+            extra_lines.append(f"{sub.title}（{sub.approach}）" if self._language == "zh" else f"{sub.title} ({sub.approach})")
+            extra_lines.extend(sub.assumptions)
+            extra_lines.extend(sub.algorithm_steps)
+        return {"model_spec": subs, "claims": claim_texts, "extra_lines": extra_lines}
 
     def _facts_for_section(
         self,
@@ -390,9 +415,12 @@ class PaperWriterAgent:
         context: PaperContext,
         metrics: dict[str, object],
         claims: list[PaperClaimPlanItem],
+        model_spec: object = None,
     ) -> dict[str, object]:
         top_metrics = dict(list(metrics.items())[:6])
         claim_texts = [c.claim_text for c in claims if c.status != "unresolved" and c.claim_text]
+        if name == "model" and model_spec is not None and model_spec.subproblems:
+            return self._model_facts_from_spec(model_spec, claim_texts)
         if name == "abstract":
             return {
                 "problem": context.problem_summary,

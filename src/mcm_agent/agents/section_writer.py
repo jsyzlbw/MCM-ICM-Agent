@@ -107,6 +107,9 @@ class PaperSectionWriter:
         claims = facts.get("claims")
         if isinstance(claims, list):
             pieces.extend(latex_escape_text(str(c).strip()) for c in claims if str(c).strip())
+        extra = facts.get("extra_lines")
+        if isinstance(extra, list):
+            pieces.extend(latex_escape_text(str(line).strip()) for line in extra if str(line).strip())
         if len(pieces) == 1:
             en, zh = _FALLBACK.get(name, (f"Section {title}.", f"{title}。"))
             pieces.append(latex_escape_text(zh if self.language == "zh" else en))
