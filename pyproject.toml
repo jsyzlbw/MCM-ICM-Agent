@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
   "typer>=0.12.5",
   "rich>=13.7.1",
+  "questionary>=2.0.1",
   "pydantic>=2.8.2",
   "pydantic-settings>=2.4.0",
   "python-dotenv>=1.0.1",
