@@ -51,13 +51,24 @@ def _off_language_evidence(tex: str, language: str) -> str:
     or an empty string if clean.
 
     Conservative heuristic:
-    - zh paper: flag a run of ≥4 consecutive long ASCII words (sentence-level leakage).
+    - zh paper: flag a run of ≥4 consecutive long ASCII words that are prose
+      (contain at least one lowercase letter), NOT all-caps acronyms like SVM/AUC.
     - en paper: flag ≥8 consecutive CJK characters (sentence-level leakage).
     """
     prose = _strip_latex_noise(tex)
     if language == "zh":
-        m = _LONG_ASCII_WORD_RUN.search(prose)
-        return m.group(0)[:120] if m else ""
+        # Find all potential English word runs and filter by prose-ness.
+        # Only count tokens with at least one lowercase letter as prose.
+        for m in _LONG_ASCII_WORD_RUN.finditer(prose):
+            candidate = m.group(0)
+            # Split into tokens and count those with lowercase letters
+            tokens = candidate.split()
+            prose_count = sum(1 for token in tokens if any(c.islower() for c in token))
+            # If ≥4 tokens contain lowercase (i.e., are real prose, not acronyms),
+            # then this is a prose run worth flagging.
+            if prose_count >= 4:
+                return candidate[:120]
+        return ""
     else:
         m = _LONG_CJK_RUN.search(prose)
         return m.group(0)[:120] if m else ""

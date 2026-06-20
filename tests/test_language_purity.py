@@ -233,6 +233,26 @@ class TestTypesettingQALanguageLint:
         # off-language lint must not block on acronyms
         assert not any("off_language" in ft or "language_purity" in ft for ft in report.issue_types)
 
+    def test_zh_paper_with_consecutive_uppercase_acronyms_not_flagged(self, tmp_path: Path) -> None:
+        """A zh paper with ≥4 consecutive UPPERCASE acronyms (SVM AUC RMSE API) must NOT be flagged.
+
+        Acronyms in ALL CAPS are not considered prose runs, so they don't trigger
+        the ≥4 consecutive English words rule. When surrounded by spaces, they appear
+        as a sequence of 4+ uppercase-only words, but should be ignored because
+        they have no lowercase letters (not prose).
+        """
+        tex = (
+            "\\begin{document}\n"
+            "\\section{方法}\n"
+            "模型评估中使用多个指标。 SVM AUC RMSE API 等常用评估标准的详细对比如下所示。\n"
+            "\\end{document}\n"
+        )
+        workspace = _make_qa_workspace(tmp_path / "zh_acronyms", "zh", tex)
+        report = TypesettingQAAgent().run(workspace)
+        # Must NOT flag: all-caps acronyms do not count as prose
+        assert not any("off_language" in ft for ft in report.issue_types), \
+            f"Acronyms should not trigger off-language lint. Issues: {report.issue_types}, Found: {[i.evidence for i in report.issues]}"
+
     def test_en_paper_with_cjk_prose_is_flagged(self, tmp_path: Path) -> None:
         """An en paper whose section contains CJK prose must be flagged."""
         tex = (
