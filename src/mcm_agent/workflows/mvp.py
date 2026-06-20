@@ -28,6 +28,7 @@ from mcm_agent.agents.validation import ValidationAgent
 from mcm_agent.agents.visualization import FigurePlanningAgent, VisualizationAgent
 from mcm_agent.agents.writer import PaperWriterAgent
 from mcm_agent.core.coordinator import Coordinator
+from mcm_agent.core.latex_compile import compile_with_repair
 from mcm_agent.core.models import TaskInput
 from mcm_agent.core.stage_executor import StageExecutor, StageHandler, StageResult
 from mcm_agent.core.workspace import create_workspace
@@ -350,12 +351,20 @@ def _mvp_stage_handlers(
     def typesetting(workspace_root: Path) -> list[str]:
         ComplianceOriginalityAgent(provider_bundle.humanizer).run(workspace_root)
         ReferenceManager().run(workspace_root)
-        compile_outputs = _compile_latex(provider_bundle.latex, workspace_root)
+        language = settings.mcm_agent_default_language
+        compile_outputs = _compile_latex(
+            provider_bundle.latex, workspace_root, provider_bundle.llm, language
+        )
         TypesettingQAAgent().run(workspace_root)
         repair_report = TypesettingRepairAgent().run(workspace_root)
         if repair_report.status == "repaired":
             compile_outputs = _unique_outputs(
-                [*compile_outputs, *_compile_latex(provider_bundle.latex, workspace_root)]
+                [
+                    *compile_outputs,
+                    *_compile_latex(
+                        provider_bundle.latex, workspace_root, provider_bundle.llm, language
+                    ),
+                ]
             )
             TypesettingQAAgent().run(workspace_root)
         return [
@@ -419,12 +428,17 @@ def _mvp_stage_handlers(
     return handlers
 
 
-def _compile_latex(latex_provider: object, workspace_root: Path) -> list[str]:
+def _compile_latex(
+    latex_provider: object,
+    workspace_root: Path,
+    llm: object | None = None,
+    language: str = "en",
+) -> list[str]:
     paper_dir = workspace_root / "paper"
     compile_method = getattr(latex_provider, "compile", None)
     if not callable(compile_method):
         return []
-    result = compile_method(paper_dir)
+    result = compile_with_repair(paper_dir, latex_provider, llm, language=language)
     report_path = workspace_root / "review" / "typesetting_report.md"
     report_path.write_text(
         "\n".join(
