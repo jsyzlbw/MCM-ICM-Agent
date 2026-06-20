@@ -66,3 +66,16 @@ def test_chat_reply_surfaces_call_error_not_misleading_guidance(tmp_path: Path) 
     assert "失败" in reply
     assert "/start" not in reply  # NOT the misleading "run /start" guidance
     assert "请运行 /api" not in reply or "测连通" in reply  # if /api mentioned, it's the live test
+
+
+def test_chat_reply_includes_attachment_content(tmp_path) -> None:
+    from pathlib import Path
+    from mcm_agent.core.workspace import create_workspace
+
+    root = create_workspace(Path(tmp_path) / "ws").root
+    llm = _EchoLLM()
+
+    generate_chat_reply(root, "看看 @data.csv", llm, [], attachments=[("data.csv", "a,b\n1,2")])
+
+    assert "data.csv" in llm.last_prompt
+    assert "a,b" in llm.last_prompt

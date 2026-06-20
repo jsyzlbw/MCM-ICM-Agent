@@ -31,6 +31,7 @@ def generate_chat_reply(
     message: str,
     llm_provider: object | None,
     recent_messages: list[dict[str, object]] | None,
+    attachments: list[tuple[str, str]] | None = None,
 ) -> str:
     """Conversational reply for the interactive CLI.
 
@@ -58,6 +59,7 @@ def generate_chat_reply(
         for part in [
             f"PROBLEM:\n{problem}" if problem else "",
             f"RECENT DISCUSSION:\n{history}" if history else "",
+            "\n\n".join(f"ATTACHED FILE {name}:\n{content}" for name, content in (attachments or [])),
             f"USER:\n{message}",
         ]
         if part

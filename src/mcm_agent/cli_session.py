@@ -190,7 +190,10 @@ class InteractiveSession:
                 "请确认后再执行修订，当前论文尚未被修改。"
             )
         recent = self.session_store.read_recent_messages(limit=8)
-        reply = generate_chat_reply(self.workspace_root, text, self._chat_llm(), recent)
+        attachments = self._collect_attachments(text)
+        reply = generate_chat_reply(
+            self.workspace_root, text, self._chat_llm(), recent, attachments=attachments
+        )
         return CommandResult(reply)
 
     def _chat_llm(self) -> object | None:
@@ -203,6 +206,19 @@ class InteractiveSession:
             return build_llm_provider(load_settings(workspace_root=self.workspace_root))
         except Exception:
             return None
+
+    def _collect_attachments(self, text: str) -> list[tuple[str, str]]:
+        import re
+
+        out: list[tuple[str, str]] = []
+        for token in re.findall(r"@(\S+)", text):
+            path = self.workspace_root / token
+            if path.is_file():
+                try:
+                    out.append((token, path.read_text(encoding="utf-8")[:4000]))
+                except (UnicodeDecodeError, OSError):
+                    out.append((token, "[binary or unreadable file]"))
+        return out
 
     def _has_draft(self) -> bool:
         return any(
