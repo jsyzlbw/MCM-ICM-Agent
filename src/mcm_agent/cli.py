@@ -344,3 +344,7 @@ def _recent_stage_runs(workspace_path: Path, *, limit: int) -> list[dict[str, ob
         if isinstance(payload, dict):
             records.append(payload)
     return records[-limit:]
+
+
+if __name__ == "__main__":
+    app()

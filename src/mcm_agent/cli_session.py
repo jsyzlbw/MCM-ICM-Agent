@@ -122,7 +122,19 @@ class InteractiveSession:
         return lambda prompt="": self.console.input(prompt, markup=False)
 
     def run(self) -> None:
-        self._run_plain()
+        import sys
+
+        try:
+            interactive = sys.stdin.isatty() and sys.stdout.isatty()
+        except Exception:
+            interactive = False
+        if not interactive:
+            return self._run_plain()
+        try:
+            from mcm_agent.tui.app import PromptUI
+        except ImportError:
+            return self._run_plain()
+        PromptUI(self).loop()
 
     def _print_welcome(self) -> None:
         from mcm_agent.config import load_settings
