@@ -81,6 +81,40 @@ class OpenAICompatibleLLMProvider:
             f"LLM request failed after {self.max_retries + 1} attempts: {last_error}"
         )
 
+    def generate_stream(self, system: str, prompt: str):
+        """Stream chat completions, yielding text chunks as they arrive (SSE)."""
+        import json
+
+        url = f"{self.base_url}/chat/completions"
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+            "stream": True,
+        }
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        with httpx.Client(timeout=self.timeout_seconds) as client:
+            with client.stream("POST", url, headers=headers, json=payload) as resp:
+                resp.raise_for_status()
+                for line in resp.iter_lines():
+                    if not line:
+                        continue
+                    if line.startswith("data: "):
+                        line = line[len("data: "):]
+                    if line.strip() == "[DONE]":
+                        break
+                    try:
+                        delta = json.loads(line)["choices"][0]["delta"].get("content")
+                    except (KeyError, IndexError, ValueError):
+                        continue
+                    if delta:
+                        yield delta
+
 
 class AnthropicCompatibleLLMProvider:
     """LLM provider speaking the Anthropic Messages API (POST {base_url}/v1/messages).

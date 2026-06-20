@@ -6,7 +6,7 @@ from rich.console import Console
 
 from mcm_agent.cli_commands import build_command_registry
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
-from mcm_agent.core.chat import generate_chat_reply
+from mcm_agent.core.chat import generate_chat_reply, stream_chat_reply
 from mcm_agent.core.dialogue_guard import DialogueGuard
 from mcm_agent.core.revision_plan import create_revision_plan
 from mcm_agent.core.session_store import SessionStore
@@ -199,14 +199,36 @@ class InteractiveSession:
                 f"Revision plan created: work/revisions/{plan.revision_id}.md\n"
                 "请确认后再执行修订，当前论文尚未被修改。"
             )
+        import sys
+
         from mcm_agent.tui.runner import Interrupted, run_with_spinner
 
         recent = self.session_store.read_recent_messages(limit=8)
         attachments = self._collect_attachments(text)
+        llm = self._chat_llm()
+
+        # Streaming branch: only when output is a real TTY and the provider supports it.
+        if sys.stdout.isatty() and hasattr(llm, "generate_stream"):
+            full_text = ""
+            try:
+                for chunk in stream_chat_reply(
+                    self.workspace_root, text, llm, recent, attachments=attachments
+                ):
+                    self.console.print(chunk, end="")
+                    full_text += chunk
+            except Interrupted:
+                self.console.print()
+                self.session_store.append_message("assistant", full_text)
+                return CommandResult("（已中断当前回复。）")
+            self.console.print()  # final newline after streaming
+            self.session_store.append_message("assistant", full_text)
+            return CommandResult("")  # already printed; avoid double render
+
+        # Non-TTY / no generate_stream fallback: spinner + markdown render.
         try:
             reply = run_with_spinner(
                 lambda: generate_chat_reply(
-                    self.workspace_root, text, self._chat_llm(), recent, attachments=attachments
+                    self.workspace_root, text, llm, recent, attachments=attachments
                 ),
                 "正在思考",
                 console=self.console,
