@@ -4,6 +4,8 @@ from pathlib import Path
 import shutil
 
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
+from mcm_agent.config import load_settings
+from mcm_agent.core.config_writer import import_env_file
 from mcm_agent.core.workspace import create_workspace, load_workspace_state, save_workspace_state
 from mcm_agent.core.workspace_safety import WorkspaceSafety
 
@@ -33,21 +35,70 @@ class InitCommand:
                 "This workspace has already been initialized.\n"
                 "Use /init rethink or /init full-reset RESET."
             )
+        # Mode 1 (scriptable): copy an existing .env into the workspace.
+        from_env = self._extract_option(args, "--from-env")
+        if from_env:
+            ok, msg = import_env_file(root, from_env)
+            return self._finalize(root, state, msg) if ok else CommandResult(msg)
+
+        # Mode 2 (scriptable): manual flags.
         llm_key = self._extract_option(args, "--llm-key")
-        if not llm_key:
-            return CommandResult(
-                "LLM API 尚未配置。Usage: /init --llm-key <key> "
-                "[--llm-base-url <url>] [--llm-model <model>]"
+        if llm_key:
+            self._write_llm_config(
+                root,
+                llm_key,
+                self._extract_option(args, "--llm-base-url"),
+                self._extract_option(args, "--llm-model"),
             )
-        base_url = self._extract_option(args, "--llm-base-url")
-        model = self._extract_option(args, "--llm-model")
-        self._write_llm_config(root, llm_key, base_url, model)
-        state.init.llm_configured = True
+            return self._finalize(root, state, "Init complete. LLM API 已配置（其余可选 API 已跳过）。")
+
+        # Interactive (Claude-Code style) when a real terminal is attached.
+        if context.ask is not None:
+            return self._interactive_config(root, state, context.ask)
+
+        return CommandResult(
+            "如何配置 LLM API：\n"
+            "  • 导入已有 .env： /init --from-env <path>（复制到本 workspace）\n"
+            "  • 手动配置：     /init --llm-key <key> [--llm-base-url <url>] [--llm-model <model>]\n"
+            "  • 在交互式终端直接运行 /init 可逐步引导配置。"
+        )
+
+    def _interactive_config(self, root: Path, state: object, ask) -> CommandResult:
+        choice = (
+            ask(
+                "如何配置 LLM API？\n"
+                "  1) 导入已有 .env 文件（输入路径，复制到本 workspace）\n"
+                "  2) 手动输入 API key\n"
+                "  3) 跳过\n"
+                "请选择 [1/2/3]: "
+            )
+            or ""
+        ).strip()
+        if choice == "1":
+            path = (ask(".env 文件路径: ") or "").strip()
+            if not path:
+                return CommandResult("未输入路径，已取消。")
+            ok, msg = import_env_file(root, path)
+            return self._finalize(root, state, msg) if ok else CommandResult(msg)
+        if choice == "2":
+            key = (ask("LLM API key: ") or "").strip()
+            if not key:
+                return CommandResult("未输入 key，已取消。")
+            base_url = (ask("Base URL（回车用默认 https://api.openai.com/v1）: ") or "").strip()
+            model = (ask("Model（回车用默认 gpt-4.1）: ") or "").strip()
+            self._write_llm_config(root, key, base_url or None, model or None)
+            return self._finalize(root, state, "Init complete. LLM API 已配置。")
+        return CommandResult("已跳过 LLM 配置。稍后可运行 /api 或 /init 配置。")
+
+    def _finalize(self, root: Path, state: object, message: str) -> CommandResult:
+        configured = bool(load_settings(workspace_root=root).openai_api_key)
+        state.init.llm_configured = configured
         state.init.completed = True
         state.phase = "init_complete"
         save_workspace_state(root, state)
         WorkspaceSafety(root).checkpoint("mag: complete init")
-        return CommandResult("Init complete. LLM API configured; optional APIs skipped.")
+        suffix = "" if configured else "\n（提醒：未检测到 LLM API key，/start 前请先配置。）"
+        return CommandResult(message + suffix)
 
     def _extract_option(self, args: list[str], option: str) -> str | None:
         if option not in args:

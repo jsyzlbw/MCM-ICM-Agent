@@ -82,7 +82,11 @@ class InteractiveSession:
             self.session_store.append_event("command.started", {"command": name})
             result = command.run(
                 args,
-                CommandContext(workspace_root=self.workspace_root, printer=self.console.print),
+                CommandContext(
+                    workspace_root=self.workspace_root,
+                    printer=self.console.print,
+                    ask=self._make_ask(),
+                ),
             )
             if result.message:
                 self.session_store.append_message("assistant", result.message)
@@ -92,6 +96,18 @@ class InteractiveSession:
         if result.message:
             self.session_store.append_message("assistant", result.message)
         return result
+
+    def _make_ask(self):
+        """A line-prompt callable for interactive commands, or None when there is no
+        TTY (tests / pipes) so commands fall back to non-interactive behavior."""
+        import sys
+
+        try:
+            if not (sys.stdin.isatty() and sys.stdout.isatty()):
+                return None
+        except Exception:
+            return None
+        return lambda prompt="": self.console.input(prompt)
 
     def run(self) -> None:
         self.console.print(self.startup_text())

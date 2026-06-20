@@ -10,8 +10,70 @@ def test_init_requires_llm_key(tmp_path: Path) -> None:
 
     result = session.run_once("/init")
 
-    assert "LLM API 尚未配置" in result.message
+    assert "--llm-key" in result.message  # shows configuration guidance
+    assert "--from-env" in result.message  # both modes offered
     assert load_workspace_state(workspace.root).init.completed is False
+
+
+def test_init_from_env_copies_env_file(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    src = tmp_path / "my.env"
+    src.write_text(
+        "MAG_LLM_API_KEY=sk-fromfile\nMAG_LLM_BASE_URL=https://api.deepseek.com/v1\n",
+        encoding="utf-8",
+    )
+    session = InteractiveSession(workspace.root)
+
+    result = session.run_once(f"/init --from-env {src}")
+
+    env = (workspace.root / ".env").read_text(encoding="utf-8")
+    assert "MAG_LLM_API_KEY=sk-fromfile" in env
+    assert "复制" in result.message
+    assert load_workspace_state(workspace.root).init.llm_configured is True
+
+
+def test_init_from_env_missing_file(tmp_path: Path) -> None:
+    workspace = create_workspace(tmp_path / "workspace")
+    session = InteractiveSession(workspace.root)
+
+    result = session.run_once(f"/init --from-env {tmp_path / 'nope.env'}")
+
+    assert "未找到" in result.message
+    assert load_workspace_state(workspace.root).init.completed is False
+
+
+def test_init_interactive_import_env(tmp_path: Path) -> None:
+    from mcm_agent.cli_commands.base import CommandContext
+    from mcm_agent.cli_commands.init import InitCommand
+
+    workspace = create_workspace(tmp_path / "workspace")
+    src = tmp_path / "team.env"
+    src.write_text("MAG_LLM_API_KEY=sk-team\n", encoding="utf-8")
+    answers = iter(["1", str(src)])
+
+    InitCommand().run(
+        [], CommandContext(workspace_root=workspace.root, ask=lambda prompt="": next(answers))
+    )
+
+    assert "MAG_LLM_API_KEY=sk-team" in (workspace.root / ".env").read_text(encoding="utf-8")
+    assert load_workspace_state(workspace.root).init.llm_configured is True
+
+
+def test_init_interactive_manual_key(tmp_path: Path) -> None:
+    from mcm_agent.cli_commands.base import CommandContext
+    from mcm_agent.cli_commands.init import InitCommand
+
+    workspace = create_workspace(tmp_path / "workspace")
+    answers = iter(["2", "sk-manual", "https://api.deepseek.com/v1", "deepseek-v4-flash"])
+
+    InitCommand().run(
+        [], CommandContext(workspace_root=workspace.root, ask=lambda prompt="": next(answers))
+    )
+
+    env = (workspace.root / ".env").read_text(encoding="utf-8")
+    assert "MAG_LLM_API_KEY=sk-manual" in env
+    assert "MAG_LLM_BASE_URL=https://api.deepseek.com/v1" in env
+    assert "MAG_LLM_MODEL=deepseek-v4-flash" in env
 
 
 def test_init_with_llm_key_marks_workspace_complete(tmp_path: Path) -> None:
@@ -94,7 +156,7 @@ def test_init_full_reset_requires_reset_word(tmp_path: Path) -> None:
 
     result = session.run_once("/init full-reset")
 
-    assert "Usage: /init --llm-key" in result.message
+    assert "--llm-key" in result.message  # falls through to config guidance, does not reset
     assert (workspace.root / "input/problem/problem.md").exists()
 
 

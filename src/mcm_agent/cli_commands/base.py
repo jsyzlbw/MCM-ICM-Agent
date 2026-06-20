@@ -8,6 +8,7 @@ from typing import Protocol
 class CommandContext:
     workspace_root: object
     printer: object | None = None  # optional callable(str) for live progress output
+    ask: object | None = None  # optional callable(prompt:str)->str for interactive prompts
 
 
 @dataclass
