@@ -680,6 +680,10 @@ class PaperWriterAgent:
         if section_dir.exists():
             for tex in sorted(section_dir.glob("*.tex")):
                 section_text += tex.read_text(encoding="utf-8")
+        # Also scan summary_sheet.tex for CJK detection
+        summary_sheet_path = paper_dir / "summary_sheet.tex"
+        if summary_sheet_path.exists():
+            section_text += summary_sheet_path.read_text(encoding="utf-8")
         # CJK content needs a XeTeX/CJK-capable class; tectonic auto-fetches the
         # ctex Fandol fonts. English-only papers stay on plain article.
         has_cjk = any("一" <= ch <= "鿿" for ch in section_text)
@@ -691,8 +695,16 @@ class PaperWriterAgent:
             "\\usepackage{booktabs}",
             "\\graphicspath{{../figures/}{figures/}}",
         ]
+        # summary_sheet is included first (before all body sections) if the file
+        # exists; this gives judges the required one-page summary as page 1.
+        summary_input = (
+            ["\\input{summary_sheet}"]
+            if summary_sheet_path.exists()
+            else []
+        )
         body = [
             "\\begin{document}",
+            *summary_input,
             "\\input{sections/abstract}",
             "\\input{sections/introduction}",
             "\\input{sections/assumptions}",
