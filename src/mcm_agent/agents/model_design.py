@@ -92,18 +92,22 @@ class ModelDesignAgent:
     def __init__(self, llm_provider: TextGenerationProvider | None = None, language: str = "en") -> None:
         self.llm = llm_provider
         self.language = language
+        self.last_reason = ""
 
     def run(self, workspace_root: Path) -> ModelSpec:
         understanding = self._read(workspace_root / "reports" / "problem_understanding.md", 4000)
         direction = self._read(workspace_root / "discussion" / "confirmed_direction.md", 1200)
         schema = self._read(workspace_root / "results" / "schema_profile.json", 1500)
-        spec = self._design(understanding, direction, schema) or self._fallback(understanding)
+        designed = self._design(understanding, direction, schema)
+        source = "llm" if designed else "fallback"
+        spec = designed or self._fallback(understanding)
         write_model_spec(workspace_root, spec)
-        self._write_md(workspace_root, spec)
+        self._write_md(workspace_root, spec, source=source)
         return spec
 
     def _design(self, understanding: str, direction: str, schema: str) -> ModelSpec | None:
         if self.llm is None:
+            self.last_reason = "no LLM provider"
             return None
         lang = "Chinese" if self.language == "zh" else "English"
         system = (
@@ -128,10 +132,14 @@ class ModelDesignAgent:
         )
         try:
             data = self._parse(self.llm.generate(system, prompt).content)
-        except Exception:
+        except Exception as exc:
+            self.last_reason = f"design call failed: {type(exc).__name__}: {exc}"
             return None
         spec = _normalize_spec(data)
-        return spec if spec and spec.subproblems else None
+        if spec and spec.subproblems:
+            return spec
+        self.last_reason = "design output had no usable subproblems after normalization"
+        return None
 
     def _fallback(self, understanding: str) -> ModelSpec:
         restate = " ".join(understanding.split())[:300] if understanding else "Contest problem."
@@ -150,8 +158,9 @@ class ModelDesignAgent:
             ],
         )
 
-    def _write_md(self, workspace_root: Path, spec: ModelSpec) -> None:
-        lines = ["# Model Spec", "", spec.problem_restatement, ""]
+    def _write_md(self, workspace_root: Path, spec: ModelSpec, *, source: str = "llm") -> None:
+        status = "LLM-designed" if source == "llm" else f"fallback ({self.last_reason or 'unknown'})"
+        lines = ["# Model Spec", "", f"<!-- spec source: {status} -->", "", spec.problem_restatement, ""]
         for sub in spec.subproblems:
             lines.append(f"## {sub.subproblem_id}: {sub.title}")
             lines.append(f"Approach: {sub.approach}")
