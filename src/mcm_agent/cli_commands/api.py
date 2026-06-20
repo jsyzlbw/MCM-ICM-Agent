@@ -24,12 +24,17 @@ class ApiCommand:
             context.ask("配置: [1]LLM [2]其他provider [3]导入.env [4]测连通  [回车]返回: ") or ""
         ).strip()
         if choice == "1":
-            return CommandResult(configure_llm_interactive(root, context.ask))
+            msg = configure_llm_interactive(root, context.ask)
+            if msg.startswith("✓"):
+                self._sync_llm_configured(root)
+            return CommandResult(msg)
         if choice == "2":
             return CommandResult(self._configure_other(root, context.ask))
         if choice == "3":
             path = (context.ask(".env 文件路径: ") or "").strip()
             ok, msg = import_env_file(root, path) if path else (False, "未输入路径。")
+            if ok:
+                self._sync_llm_configured(root)
             return CommandResult(msg)
         if choice == "4":
             return CommandResult(self._test_connectivity(root, context.ask, printer))
@@ -57,6 +62,19 @@ class ApiCommand:
         printer(f"正在测试 {provider['label']} ……")
         result = check_provider(root, provider["key"])
         return f"{provider['label']}: {result['status']} — {result.get('detail', '')}"
+
+    def _sync_llm_configured(self, root: Path) -> None:
+        """Recompute and persist state.init.llm_configured from the live .env settings.
+
+        Called after /api successfully writes LLM credentials so that DialogueGuard
+        does not block chat with "LLM API 尚未配置" immediately after /api.
+        """
+        from mcm_agent.config import load_settings
+        from mcm_agent.core.workspace import load_workspace_state, save_workspace_state
+
+        state = load_workspace_state(root)
+        state.init.llm_configured = bool(load_settings(workspace_root=root).openai_api_key)
+        save_workspace_state(root, state)
 
     def _status_text(self, root: Path) -> str:
         rows = {row["key"]: row for row in provider_status(root)}
