@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.metrics_flatten import flatten_metrics
+from mcm_agent.core.model_spec import read_model_spec
 from mcm_agent.utils.json_io import read_json, write_json
+
+# Metric name fragments that indicate a bounded [0,1] ratio-type metric.
+_RATIO_HINTS = (
+    "rate", "accuracy", "acc", "consistency", "r2", "r_squared",
+    "precision", "recall", "f1", "auc", "score", "ratio", "fraction",
+    "coverage", "pct", "percent",
+)
+# Minimum floor for ratio-type metrics; values at or below this are degenerate.
+_RATIO_FLOOR = 0.05
 
 
 class ValidationAgent:
@@ -57,6 +68,10 @@ class ValidationAgent:
                     + ", ".join(f"`{binding}`" for binding in missing_bindings)
                     + "."
                 )
+
+        # --- Result-plausibility check ---
+        plausibility_issues = self._check_result_plausibility(workspace_root, metrics)
+        blocking_issues.extend(plausibility_issues)
 
         sensitivity_rows = self._read_sensitivity_rows(
             workspace_root / "results" / "sensitivity_analysis.csv"
@@ -133,6 +148,89 @@ class ValidationAgent:
             "validation.failed" if blocking_issues else "validation.passed",
             source="ValidationAgent",
         )
+
+    def _check_result_plausibility(
+        self,
+        workspace_root: Path,
+        raw_metrics: object,
+    ) -> list[str]:
+        """Check that the primary metric is finite and within a sane band.
+
+        Returns a (possibly empty) list of blocking issue strings.
+        """
+        flat = flatten_metrics(raw_metrics)
+        if not flat:
+            return []
+
+        # Identify the primary metric name.
+        primary_name = self._primary_metric_name(workspace_root, flat)
+        if primary_name is None:
+            return []
+
+        value = flat.get(primary_name)
+        if not isinstance(value, (int, float)):
+            return []
+
+        issues: list[str] = []
+        is_ratio = any(hint in primary_name.lower() for hint in _RATIO_HINTS)
+
+        if not math.isfinite(value):
+            issues.append(
+                f"Primary metric `{primary_name}` = {value} is not finite "
+                f"(NaN/inf); result is implausible — re-solve required."
+            )
+        elif is_ratio:
+            if value <= _RATIO_FLOOR:
+                issues.append(
+                    f"Primary metric `{primary_name}` = {value:.4g} is at or below "
+                    f"the plausibility floor {_RATIO_FLOOR} for a ratio/accuracy metric; "
+                    f"result is degenerate — re-solve required."
+                )
+            elif value > 1.0:
+                issues.append(
+                    f"Primary metric `{primary_name}` = {value:.4g} exceeds 1.0 for a "
+                    f"ratio/accuracy metric; result is implausible — re-solve required."
+                )
+        else:
+            # Non-ratio metric: only require finite (already checked) and nonzero.
+            if value == 0:
+                issues.append(
+                    f"Primary metric `{primary_name}` = 0 is exactly zero; "
+                    f"result is degenerate — re-solve required."
+                )
+        return issues
+
+    def _primary_metric_name(
+        self,
+        workspace_root: Path,
+        flat: dict[str, object],
+    ) -> str | None:
+        """Return the primary metric key to check.
+
+        Strategy (in priority order):
+        1. First metric listed in ModelSpec.metrics for the first subproblem,
+           if the flattened key exists in ``flat``.
+        2. First key in ``flat`` whose value is numeric (int or float).
+        Returns None if no suitable key found.
+        """
+        spec = read_model_spec(workspace_root)
+        if spec is not None:
+            for sub in spec.subproblems:
+                for metric_name in sub.metrics:
+                    # The flatten step converts special chars to underscores.
+                    from mcm_agent.core.metrics_flatten import _safe_key  # type: ignore[attr-defined]
+                    flat_key = _safe_key(metric_name)
+                    if flat_key in flat:
+                        return flat_key
+                    # Also try the raw name in case it happened to match.
+                    if metric_name in flat:
+                        return metric_name
+
+        # Fallback: first numeric key in flat metrics.
+        for key, value in flat.items():
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                return key
+        return None
 
     def _repair_stage_for_blockers(
         self,
