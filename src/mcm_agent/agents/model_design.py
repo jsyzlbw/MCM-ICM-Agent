@@ -13,6 +13,78 @@ from mcm_agent.core.model_spec import (
 from mcm_agent.providers.base import TextGenerationProvider
 
 
+def _strlist(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _norm_vars(value: object) -> list[ModelVariable]:
+    out: list[ModelVariable] = []
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict):
+                symbol = str(item.get("symbol") or item.get("name") or "").strip()
+                meaning = str(item.get("meaning") or item.get("description") or "").strip()
+                if symbol:
+                    out.append(ModelVariable(symbol=symbol, meaning=meaning))
+            elif str(item).strip():
+                out.append(ModelVariable(symbol=str(item).strip(), meaning=""))
+    elif isinstance(value, dict):
+        for symbol, meaning in value.items():
+            out.append(ModelVariable(symbol=str(symbol), meaning=str(meaning)))
+    return out
+
+
+def _normalize_spec(data: dict) -> ModelSpec | None:
+    """Coerce the many JSON shapes LLMs emit into a ModelSpec.
+
+    Accepts {"subproblems": [...]}, {"subproblem_1": {...}, ...}, or a single model
+    dict; maps alt field names (model_name/method->approach, description, steps...).
+    """
+    if not isinstance(data, dict):
+        return None
+    raw_subs: list[dict] = []
+    if isinstance(data.get("subproblems"), list):
+        raw_subs = [s for s in data["subproblems"] if isinstance(s, dict)]
+    else:
+        for key, value in data.items():
+            if key == "problem_restatement":
+                continue
+            if isinstance(value, dict):
+                raw_subs.append({**value, "_key": key})
+        if not raw_subs and any(k in data for k in ("model_name", "approach", "algorithm", "title")):
+            raw_subs = [data]
+    subs: list[SubproblemModel] = []
+    for index, raw in enumerate(raw_subs):
+        approach = str(raw.get("approach") or raw.get("method") or raw.get("model_name") or "").strip()
+        title = str(raw.get("title") or raw.get("model_name") or raw.get("name") or f"Subproblem {index + 1}").strip()
+        assumptions = _strlist(raw.get("assumptions"))
+        description = str(raw.get("description") or "").strip()
+        if description and description not in assumptions:
+            assumptions = [description, *assumptions]
+        subs.append(
+            SubproblemModel(
+                subproblem_id=str(raw.get("subproblem_id") or raw.get("_key") or f"q{index + 1}"),
+                title=title,
+                approach=approach or title,
+                variables=_norm_vars(raw.get("variables")),
+                assumptions=assumptions,
+                equations=_strlist(raw.get("equations") or raw.get("formulas")),
+                algorithm_steps=_strlist(
+                    raw.get("algorithm_steps") or raw.get("algorithm") or raw.get("steps")
+                ),
+                metrics=_strlist(raw.get("metrics")),
+                data_inputs=_strlist(raw.get("data_inputs") or raw.get("inputs")),
+            )
+        )
+    if not subs:
+        return None
+    return ModelSpec(problem_restatement=str(data.get("problem_restatement", "")), subproblems=subs)
+
+
 class ModelDesignAgent:
     """Designs a problem-specific ModelSpec (the single source of truth that the
     solver implements and the writer narrates). LLM-driven, deterministic fallback."""
@@ -58,12 +130,8 @@ class ModelDesignAgent:
             data = self._parse(self.llm.generate(system, prompt).content)
         except Exception:
             return None
-        if not data or not isinstance(data.get("subproblems"), list) or not data["subproblems"]:
-            return None
-        try:
-            return ModelSpec.model_validate(data)
-        except Exception:
-            return None
+        spec = _normalize_spec(data)
+        return spec if spec and spec.subproblems else None
 
     def _fallback(self, understanding: str) -> ModelSpec:
         restate = " ".join(understanding.split())[:300] if understanding else "Contest problem."

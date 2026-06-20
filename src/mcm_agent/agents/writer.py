@@ -420,7 +420,14 @@ class PaperWriterAgent:
         top_metrics = dict(list(metrics.items())[:6])
         claim_texts = [c.claim_text for c in claims if c.status != "unresolved" and c.claim_text]
         if name == "model" and model_spec is not None and model_spec.subproblems:
-            return self._model_facts_from_spec(model_spec, claim_texts)
+            # The spec is the model now: drop the canned "selected model route" claim so
+            # the narrative describes the designed spec, not a leaked catalog route.
+            spec_claims = [
+                c.claim_text
+                for c in claims
+                if c.status != "unresolved" and c.claim_text and c.claim_type != "model_choice"
+            ]
+            return self._model_facts_from_spec(model_spec, spec_claims)
         if name == "abstract":
             return {
                 "problem": context.problem_summary,
