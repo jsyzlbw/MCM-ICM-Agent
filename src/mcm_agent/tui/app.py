@@ -24,18 +24,29 @@ class PromptUI:
         self.session = session
         self._input = input
         self._output = output
+        self._completer = MagCompleter(session.commands, session.workspace_root)
+        self._toolbar_cache: str | None = None
 
     def _toolbar(self):
-        state = load_workspace_state(self.session.workspace_root)
-        settings = load_settings(workspace_root=self.session.workspace_root)
-        return bottom_toolbar(state, settings)
+        # prompt_toolkit calls this on every keystroke; the workspace state only
+        # changes when a command runs, so cache the rendering between commands.
+        if self._toolbar_cache is None:
+            state = load_workspace_state(self.session.workspace_root)
+            settings = load_settings(workspace_root=self.session.workspace_root)
+            self._toolbar_cache = bottom_toolbar(state, settings)
+        return self._toolbar_cache
+
+    def _invalidate_caches(self) -> None:
+        """Drop per-keystroke caches after a command may have changed the workspace."""
+        self._toolbar_cache = None
+        self._completer.invalidate()
 
     def loop(self) -> None:
         history_path = self.session.workspace_root / ".mag" / "history"
         history_path.parent.mkdir(parents=True, exist_ok=True)
         ps = PromptSession(
             history=FileHistory(str(history_path)),
-            completer=MagCompleter(self.session.commands, self.session.workspace_root),
+            completer=self._completer,
             complete_while_typing=True,
             key_bindings=build_key_bindings(),
             bottom_toolbar=self._toolbar,
@@ -52,6 +63,7 @@ class PromptUI:
             except EOFError:
                 return
             result = self.session.run_once(text)
+            self._invalidate_caches()
             if result.message:
                 self.session._render_result(result)
             if result.exit_session:

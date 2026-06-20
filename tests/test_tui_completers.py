@@ -48,3 +48,30 @@ def test_mag_completer_dispatches_by_prefix(tmp_path: Path) -> None:
     comp = MagCompleter({"start": _Cmd("分析")}, tmp_path)  # _Cmd defined earlier
     assert _texts(comp, "/st") == ["start"]
     assert any("data.csv" in t for t in _texts(comp, "@da"))
+
+
+def test_at_completer_caches_file_list_until_invalidated(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_text("x", encoding="utf-8")
+    comp = AtFileCompleter(tmp_path)
+
+    first = _texts(comp, "@")  # first scan populates the cache
+    assert any("a.txt" in t for t in first)
+
+    (tmp_path / "b.txt").write_text("x", encoding="utf-8")  # new file after scan
+    cached = _texts(comp, "@")
+    assert all("b.txt" not in t for t in cached)  # cache hides the new file
+
+    comp.invalidate()
+    refreshed = _texts(comp, "@")
+    assert any("b.txt" in t for t in refreshed)  # invalidation re-scans
+
+
+def test_mag_completer_invalidate_clears_at_cache(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_text("x", encoding="utf-8")
+    comp = MagCompleter({"start": _Cmd("分析")}, tmp_path)
+
+    comp._at._candidates()  # populate the at-completer cache
+    assert comp._at._cache is not None
+
+    comp.invalidate()
+    assert comp._at._cache is None

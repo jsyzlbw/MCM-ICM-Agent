@@ -35,8 +35,13 @@ class AtFileCompleter(Completer):
 
     def __init__(self, workspace_root: Path) -> None:
         self._root = Path(workspace_root)
+        self._cache: list[str] | None = None
 
-    def _candidates(self) -> list[str]:
+    def invalidate(self) -> None:
+        """Drop the cached file list so the next completion re-scans the workspace."""
+        self._cache = None
+
+    def _scan(self) -> list[str]:
         out: list[str] = []
         for path in self._root.rglob("*"):
             if not path.is_file():
@@ -46,6 +51,11 @@ class AtFileCompleter(Completer):
                 continue
             out.append(rel.as_posix())
         return sorted(out)
+
+    def _candidates(self) -> list[str]:
+        if self._cache is None:
+            self._cache = self._scan()
+        return self._cache
 
     def get_completions(self, document, complete_event):
         text = document.text_before_cursor
@@ -66,6 +76,10 @@ class MagCompleter(Completer):
     def __init__(self, commands: dict[str, object], workspace_root: Path) -> None:
         self._slash = SlashCommandCompleter(commands)
         self._at = AtFileCompleter(workspace_root)
+
+    def invalidate(self) -> None:
+        """Refresh the cached file list (call after the workspace may have changed)."""
+        self._at.invalidate()
 
     def get_completions(self, document, complete_event):
         text = document.text_before_cursor
