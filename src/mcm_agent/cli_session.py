@@ -59,6 +59,11 @@ class InteractiveSession:
         if not stripped:
             return CommandResult("")
         self.session_store.append_message("user", stripped)
+        if stripped.startswith("!"):
+            result = self._run_shell(stripped[1:].strip())
+            if result.message:
+                self.session_store.append_message("assistant", result.message)
+            return result
         if stripped == "/help":
             self.session_store.append_event("command.started", {"command": "help"})
             lines = ["Commands:"]
@@ -127,6 +132,20 @@ class InteractiveSession:
                 self._print(result.message)
             if result.exit_session:
                 return
+
+    def _run_shell(self, command: str) -> CommandResult:
+        if not command:
+            return CommandResult("用法：!<shell 命令>，例如  !ls input/data")
+        from mcm_agent.core.shell_exec import run_shell
+
+        result = run_shell(self.workspace_root, command)
+        lines: list[str] = []
+        if result.stdout.strip():
+            lines.append(result.stdout.rstrip())
+        if result.stderr.strip():
+            lines.append(result.stderr.rstrip())
+        lines.append(f"(exit {result.exit_code})")
+        return CommandResult("\n".join(lines))
 
     def _handle_natural_language(self, text: str) -> CommandResult:
         state = load_workspace_state(self.workspace_root)
