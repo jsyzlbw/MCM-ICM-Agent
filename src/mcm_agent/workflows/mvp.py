@@ -31,7 +31,12 @@ from mcm_agent.agents.writer import PaperWriterAgent
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.latex_compile import compile_with_repair
 from mcm_agent.core.models import TaskInput
-from mcm_agent.core.stage_executor import StageExecutor, StageHandler, StageResult
+from mcm_agent.core.stage_executor import (
+    RepeatedGateFailureError,
+    StageExecutor,
+    StageHandler,
+    StageResult,
+)
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.base import ProviderBundle
 from mcm_agent.providers.embedding import FakeEmbeddingProvider, FakeRerankProvider
@@ -96,19 +101,33 @@ def run_mvp_workflow(
     workspace = create_workspace(workspace_root)
     provider_bundle = providers or _default_demo_providers()
     runtime_settings = settings or Settings()
-    executor = StageExecutor(
-        workspace.root,
-        handlers=_mvp_stage_handlers(
-            inputs,
-            provider_bundle,
-            settings=runtime_settings,
-            supervisor_skills_dir=supervisor_skills_dir,
-            auto_approve=auto_approve,
-        ),
+    handlers = _mvp_stage_handlers(
+        inputs,
+        provider_bundle,
+        settings=runtime_settings,
+        supervisor_skills_dir=supervisor_skills_dir,
+        auto_approve=auto_approve,
     )
-    executor.run_until_complete(
-        "intake", terminal_stage="submission_packager", controller=controller
-    )
+    executor = StageExecutor(workspace.root, handlers=handlers)
+    try:
+        executor.run_until_complete(
+            "intake", terminal_stage="submission_packager", controller=controller
+        )
+    except RepeatedGateFailureError as exc:
+        # Best-effort completion: a quality gate could not be auto-satisfied after retries.
+        # Still package whatever paper exists so the user always gets output, and record
+        # the blocker for the reviewer to see (don't crash the whole run).
+        try:
+            handlers["submission_packager"](workspace.root)
+        except Exception:
+            pass
+        (workspace.root / "review").mkdir(parents=True, exist_ok=True)
+        (workspace.root / "review" / "blocked_gate.md").write_text(
+            "# Blocked gate (best-effort output produced)\n\n"
+            f"The workflow could not auto-satisfy a gate after retries:\n\n- {exc}\n\n"
+            "A best-effort paper/package was still produced; see the reviewer report.\n",
+            encoding="utf-8",
+        )
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
     _write_ai_use_report(workspace.root)
