@@ -110,7 +110,7 @@ class MockJudge:
             return any(t in lowered for t in tokens)
 
         dims = {
-            "summary_sheet": 6 if "abstract" in lowered and length > 400 else 3,
+            "summary_sheet": 6 if has("abstract", "摘要") and length > 400 else 3,
             "problem_coverage": min(10, 3 + paper_text.count("\\section")),
             "modeling": 6 if has("model", "模型") else 3,
             "mathematics": 7 if has("\\[", "equation", "\\frac", "$") else 3,
