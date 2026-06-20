@@ -18,9 +18,10 @@ from mcm_agent.providers.smoke import (
     SmokeStatus,
 )
 from mcm_agent.utils.json_io import read_json
+from mcm_agent.version import __version__
 from mcm_agent.workflows.mvp import resume_mvp_workflow, run_demo_workflow, run_mvp_workflow
 
-VERSION = "0.1.0"
+VERSION = __version__
 
 app = typer.Typer(help="MCM/ICM math modeling agent CLI.", invoke_without_command=True)
 
