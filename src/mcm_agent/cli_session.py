@@ -141,10 +141,14 @@ class InteractiveSession:
         if not interactive:
             return self._run_plain()
         try:
-            from mcm_agent.tui.app import PromptUI
+            from mcm_agent.tui.fullscreen import MagFullScreenApp
         except ImportError:
             return self._run_plain()
-        PromptUI(self).loop()
+        try:
+            MagFullScreenApp(self).run()
+        except Exception:
+            # any TUI failure must not strand the user — fall back to the plain loop
+            self._run_plain()
 
     def _print_welcome(self) -> None:
         from mcm_agent.config import load_settings
