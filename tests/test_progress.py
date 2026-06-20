@@ -22,7 +22,7 @@ def test_start_run_emits_human_readable_progress(tmp_path: Path) -> None:
     context = CommandContext(workspace_root=root, printer=lambda _: None)
     result = StartCommand().run(["--lock", "--run"], context)
 
-    assert "workflow completed" in result.message
+    assert "main.tex" in result.message or "已完成" in result.message
 
 
 def test_workflow_emits_per_stage_progress_labels(tmp_path: Path) -> None:

@@ -77,6 +77,6 @@ def test_start_lock_run_executes_fake_workflow(tmp_path: Path) -> None:
 
     result = session.run_once("/start --lock --run")
 
-    assert "workflow completed" in result.message
+    assert "main.tex" in result.message or "已完成" in result.message
     assert (root / "output/draft/main.tex").exists()
     assert (root / "output/package/submission_package.zip").exists()

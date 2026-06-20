@@ -50,7 +50,10 @@ class StartCommand:
                         progress=lambda text: status.update(format_stage(text)),
                     )
                 return CommandResult(
-                    "Research script locked and workflow completed. See output/draft and output/package."
+                    "✓ 已完成：求解 + 写论文 + 编译 PDF。\n"
+                    "LaTeX 源码：paper/main.tex\n"
+                    "PDF 成品：output/draft/main.pdf\n"
+                    "提交包：output/package/submission_package.zip"
                 )
             return CommandResult(
                 "Research script locked. Next implementation stage can start from workflow adapter."
