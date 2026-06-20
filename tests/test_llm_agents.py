@@ -184,8 +184,9 @@ def test_reviewer_falls_back_on_invalid_llm_output(tmp_path: Path) -> None:
     ReviewerAgent(StaticLLMProvider("invalid")).run(workspace.root)
 
     report = (workspace.root / "review" / "reviewer_report.md").read_text(encoding="utf-8")
-    assert "# 自动评审报告" in report
-    assert "## 高风险问题" in report
+    # No direction lock → defaults to "en"; report must be all-English.
+    assert "# Automatic Review Report" in report
+    assert "## High-Risk Issues" in report
 
 
 def test_paper_writer_renders_contextual_abstract_intro_and_assumptions(

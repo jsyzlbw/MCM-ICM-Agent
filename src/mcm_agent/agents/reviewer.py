@@ -3,12 +3,50 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.core.lineage import find_unbound_external_data
 from mcm_agent.core.models import PaperClaimPlanItem
 from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json, write_json
+
+
+# Language-keyed strings for the deterministic fallback report.
+# Each entry: (English text, Chinese text)
+_REVIEW_STRINGS: dict[str, tuple[str, str]] = {
+    "h1": ("# Automatic Review Report", "# 自动评审报告"),
+    "h2_score": ("## Overall Score", "## 总体评分"),
+    "h2_strengths": ("## Key Strengths", "## 主要优点"),
+    "h2_risks": ("## High-Risk Issues", "## 高风险问题"),
+    "h2_revisions": ("## Required Revisions", "## 需要修改的问题"),
+    "h2_award": ("## Award-Impact Issues", "## 可能影响奖项的问题"),
+    "h2_suggestions": ("## Revision Suggestions", "## 修改建议"),
+    "status_pass": ("Pass with comments.", "通过，有意见。"),
+    "status_blocked": ("Blocked.", "已阻断。"),
+    "strength_workflow": (
+        "The workflow records evidence, figures, and review artifacts.",
+        "工作流已记录证据、图表和评审产物。",
+    ),
+    "revision_review": (
+        "Review all generated sections before submission.",
+        "提交前请逐节审查所有生成内容。",
+    ),
+    "award_modeling": (
+        "Missing deep domain-specific modeling may affect competitiveness.",
+        "缺乏深入的领域建模可能影响竞争力。",
+    ),
+    "suggestion_figures": (
+        "Improve model-specific explanation and figure captions.",
+        "完善模型专属说明及图表标题。",
+    ),
+    "none": ("None.", "无。"),
+    # headings used for _generate_review validation
+    "required_h1": ("# Automatic Review Report", "# 自动评审报告"),
+    "required_h2_score": ("## Overall Score", "## 总体评分"),
+    "required_h2_risks": ("## High-Risk Issues", "## 高风险问题"),
+    "required_h2_suggestions": ("## Revision Suggestions", "## 修改建议"),
+}
 
 
 SOURCE_ID_PATTERN = re.compile(r"source_id=([A-Za-z0-9_-]+)")
@@ -72,7 +110,11 @@ class ReviewerAgent:
             blocking.extend(typesetting_quality["blocking_findings"])
         self._write_source_audit_report(workspace_root, unbound_sources)
 
-        reviewer_report = self._generate_review(blocking) or self._fallback_review(blocking)
+        language = confirmed_language(workspace_root)
+        reviewer_report = (
+            self._generate_review(blocking, language=language)
+            or self._fallback_review(blocking, language=language)
+        )
         (workspace_root / "review" / "reviewer_report.md").write_text(
             reviewer_report,
             encoding="utf-8",
@@ -276,50 +318,78 @@ class ReviewerAgent:
                     has_omitted_plan = True
         return missing, has_omitted_plan
 
-    def _fallback_review(self, blocking: list[str]) -> str:
-        return "\n".join(
-            [
-                "# 自动评审报告",
-                "",
-                "## 总体评分",
-                "Pass with comments." if not blocking else "Blocked.",
-                "",
-                "## 主要优点",
-                "- The workflow records evidence, figures, and review artifacts.",
-                "",
-                "## 高风险问题",
-                *(f"- {issue}" for issue in blocking),
-                "" if blocking else "- None.",
-                "",
-                "## 需要修改的问题",
-                "- Review all generated sections before submission.",
-                "",
-                "## 可能影响奖项的问题",
-                "- Missing deep domain-specific modeling may affect competitiveness.",
-                "",
-                "## 修改建议",
-                "- Improve model-specific explanation and figure captions.",
-                "",
-            ]
-        )
+    def _fallback_review(self, blocking: list[str], language: str = "en") -> str:
+        """Deterministic fallback review report in the paper language (zh or en)."""
+        idx = 1 if language == "zh" else 0
 
-    def _generate_review(self, blocking: list[str]) -> str | None:
+        def s(key: str) -> str:
+            return _REVIEW_STRINGS[key][idx]
+
+        lines = [
+            s("h1"),
+            "",
+            s("h2_score"),
+            s("status_pass") if not blocking else s("status_blocked"),
+            "",
+            s("h2_strengths"),
+            "- " + s("strength_workflow"),
+            "",
+            s("h2_risks"),
+            *(f"- {issue}" for issue in blocking),
+            "" if blocking else "- " + s("none"),
+            "",
+            s("h2_revisions"),
+            "- " + s("revision_review"),
+            "",
+            s("h2_award"),
+            "- " + s("award_modeling"),
+            "",
+            s("h2_suggestions"),
+            "- " + s("suggestion_figures"),
+            "",
+        ]
+        return "\n".join(lines)
+
+    def _generate_review(self, blocking: list[str], language: str = "en") -> str | None:
         if self.llm_provider is None:
             return None
+        idx = 1 if language == "zh" else 0
+
+        def s(key: str) -> str:
+            return _REVIEW_STRINGS[key][idx]
+
+        h1 = s("required_h1")
+        h2_score = s("required_h2_score")
+        h2_risks = s("required_h2_risks")
+        h2_suggestions = s("required_h2_suggestions")
+
+        if language == "zh":
+            sys_prompt = "你是严格的MCM/ICM赛前评审员。"
+            task_line = "撰写简洁的赛前评审报告。"
+            heading_line = (
+                f"必须包含以下标题: {h1}, {h2_score}, {h2_risks}, {h2_suggestions}."
+            )
+        else:
+            sys_prompt = "You are a strict MCM/ICM pre-submission reviewer."
+            task_line = "Write a concise pre-submission review."
+            heading_line = (
+                f"Required headings: {h1}, {h2_score}, {h2_risks}, {h2_suggestions}."
+            )
+
         prompt = "\n".join(
             [
                 "# Reviewer",
                 "",
-                "Write a concise pre-submission review.",
-                "Required headings: # 自动评审报告, ## 总体评分, ## 高风险问题, ## 修改建议.",
+                task_line,
+                heading_line,
                 "",
                 "Blocking findings:",
                 *(f"- {issue}" for issue in blocking),
             ]
         )
-        result = self.llm_provider.generate("You are a strict MCM/ICM pre-submission reviewer.", prompt)
+        result = self.llm_provider.generate(sys_prompt, prompt)
         content = result.content.strip()
-        required = ["# 自动评审报告", "## 总体评分", "## 高风险问题", "## 修改建议"]
+        required = [h1, h2_score, h2_risks, h2_suggestions]
         if all(heading in content for heading in required):
             return content + "\n"
         return None

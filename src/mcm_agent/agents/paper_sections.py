@@ -115,19 +115,37 @@ def _first_sentence(text: str, max_chars: int) -> str:
     return (sentence or text)[:max_chars]
 
 
+# Language-keyed fallback sentences for _render_introduction.
+# Tuple: (English, Chinese)
+_INTRO_FALLBACKS = {
+    "problem": (
+        "The problem is decomposed into data, model, and validation tasks.",
+        "本文将问题拆解为数据采集、建模与验证三个环节。",
+    ),
+    "direction": (
+        "The confirmed direction emphasizes interpretable and reproducible modeling.",
+        "确认的方向强调可解释且可复现的建模方法。",
+    ),
+    "remainder": (
+        "The remainder of the paper follows the planned claim chain from assumptions to validated results.",
+        "本文其余部分沿计划声明链从假设逐步推进至验证结论。",
+    ),
+}
+
+
 def _render_introduction(context: PaperContext) -> str:
+    zh = context.language == "zh"
+
+    def _fb(key: str) -> str:
+        en, zh_text = _INTRO_FALLBACKS[key]
+        return zh_text if zh else en
+
     return "\n".join(
         [
             SECTION_TITLES["introduction.tex"],
-            _latex_escape(
-                context.problem_summary
-                or "The problem is decomposed into data, model, and validation tasks."
-            ),
-            _latex_escape(
-                context.direction_summary
-                or "The confirmed direction emphasizes interpretable and reproducible modeling."
-            ),
-            "The remainder of the paper follows the planned claim chain from assumptions to validated results.",
+            _latex_escape(context.problem_summary or _fb("problem")),
+            _latex_escape(context.direction_summary or _fb("direction")),
+            _fb("remainder"),
             "",
         ]
     )

@@ -7,6 +7,61 @@ from pydantic import BaseModel, Field
 
 from mcm_agent.utils.json_io import read_json, write_json
 
+# ---------------------------------------------------------------------------
+# Off-language lint helpers
+# ---------------------------------------------------------------------------
+
+# CJK Unified Ideographs (basic block) – a run of these in an en paper is a violation.
+_CJK_CHAR = re.compile(r'[一-鿿]')
+
+# Strip LaTeX commands, math, citations, and file paths before scanning for
+# prose runs so we don't flag \\textbf{}, $x+y$, \\cite{...}, etc.
+_STRIP_LATEX = re.compile(
+    r"""
+    \\[a-zA-Z]+\*?     # \command or \command*
+    (?:\[[^\]]*\])?    # optional [opt]
+    (?:\{[^}]*\})*     # zero or more {arg}
+    | \$[^$]*\$        # inline math $...$
+    | \$\$[^$]*\$\$    # display math $$...$$
+    | %[^\n]*          # % comments
+    | \[[^\]]*\]       # [something]
+    | \{[^}]*\}        # {something} not caught above
+    """,
+    re.VERBOSE,
+)
+
+# A "long" Latin-ASCII word run for zh-paper lint: ≥4 consecutive words that
+# are all ASCII alphabetic (length ≥ 3 each) separated only by spaces.
+# This catches full English sentences but ignores single acronyms like SVM/AUC.
+_LONG_ASCII_WORD_RUN = re.compile(
+    r'\b(?:[A-Za-z]{3,}\s+){3,}[A-Za-z]{3,}\b'
+)
+
+# CJK sentence: ≥8 consecutive CJK characters (catches zh sentences in en papers).
+_LONG_CJK_RUN = re.compile(r'[一-鿿]{8,}')
+
+
+def _strip_latex_noise(tex: str) -> str:
+    """Remove LaTeX markup so the scanner only sees prose words."""
+    return _STRIP_LATEX.sub(' ', tex)
+
+
+def _off_language_evidence(tex: str, language: str) -> str:
+    """Return the first offending snippet if the tex body violates language purity,
+    or an empty string if clean.
+
+    Conservative heuristic:
+    - zh paper: flag a run of ≥4 consecutive long ASCII words (sentence-level leakage).
+    - en paper: flag ≥8 consecutive CJK characters (sentence-level leakage).
+    """
+    prose = _strip_latex_noise(tex)
+    if language == "zh":
+        m = _LONG_ASCII_WORD_RUN.search(prose)
+        return m.group(0)[:120] if m else ""
+    else:
+        m = _LONG_CJK_RUN.search(prose)
+        return m.group(0)[:120] if m else ""
+
 
 class TypesettingIssue(BaseModel):
     issue_type: str
@@ -27,12 +82,15 @@ class TypesettingQAReport(BaseModel):
 
 class TypesettingQAAgent:
     def run(self, workspace_root: Path, *, max_pages: int = 25) -> TypesettingQAReport:
+        from mcm_agent.agents.discussion import confirmed_language  # local import avoids cycles
+
         paper_dir = workspace_root / "paper"
         tex_path = paper_dir / "main.tex"
         pdf_path = paper_dir / "main.pdf"
         log_path = paper_dir / "compile_log.txt"
         tex = tex_path.read_text(encoding="utf-8") if tex_path.exists() else ""
         log = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
+        language = confirmed_language(workspace_root)
 
         issues: list[TypesettingIssue] = []
         issues.extend(self._compile_errors(log))
@@ -40,6 +98,7 @@ class TypesettingQAAgent:
         issues.extend(self._table_issues(tex, log))
         issues.extend(self._equation_issues(tex, log))
         issues.extend(self._figure_issues(tex, paper_dir, log))
+        issues.extend(self._off_language_issues(tex, language))
         page_count = self._page_count(workspace_root, tex)
         if page_count is not None and page_count > max_pages:
             issues.append(
@@ -213,6 +272,33 @@ class TypesettingQAAgent:
                 )
             )
         return issues
+
+    def _off_language_issues(self, tex: str, language: str) -> list[TypesettingIssue]:
+        """Detect sentence-level off-language content in the .tex body.
+
+        Conservative approach:
+        - zh paper: flag runs of ≥4 consecutive long ASCII words in prose (catches
+          full English paragraphs, not single acronyms like SVM/AUC).
+        - en paper: flag runs of ≥8 consecutive CJK characters in prose.
+        LaTeX commands, math, citations, and comments are stripped first.
+        """
+        evidence = _off_language_evidence(tex, language)
+        if not evidence:
+            return []
+        off_lang = "English" if language == "zh" else "Chinese"
+        msg = (
+            f"Off-language content detected ({off_lang} prose in {language} paper). "
+            "Check section bodies for language leakage."
+        )
+        return [
+            TypesettingIssue(
+                issue_type="off_language_prose",
+                severity="blocking",
+                message=msg,
+                repair_stage="paper_writer",
+                evidence=evidence,
+            )
+        ]
 
     def _page_count(self, workspace_root: Path, tex: str) -> int | None:
         payload = read_json(workspace_root / "review" / "typesetting_report.json", {})
