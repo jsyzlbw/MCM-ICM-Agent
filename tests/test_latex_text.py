@@ -1,4 +1,8 @@
-from mcm_agent.core.latex_text import latex_escape_text, markdown_to_latex
+from mcm_agent.core.latex_text import (
+    latex_escape_text,
+    markdown_to_latex,
+    render_metrics_table,
+)
 
 
 def test_markdown_bold_to_textbf() -> None:
@@ -43,3 +47,23 @@ def test_latex_escape_backslash_first() -> None:
 def test_markdown_leaves_real_latex_untouched() -> None:
     src = "The model is \\textbf{good} with $\\alpha=0.5$."
     assert markdown_to_latex(src) == src
+
+
+def test_render_metrics_table_humanizes_and_rounds() -> None:
+    out = render_metrics_table(
+        {"elimination_consistency_rate": 0.78409090909, "num_seasons": 34}, "en"
+    )
+    assert "\\begin{tabular}" in out and "\\end{tabular}" in out
+    assert "elimination consistency rate" in out  # humanized name, no raw underscore
+    assert "0.7841" in out  # float rounded
+    assert "34" in out  # int kept
+    assert "Metric" in out and "Value" in out
+
+
+def test_render_metrics_table_zh_header() -> None:
+    out = render_metrics_table({"a": 1}, "zh")
+    assert "指标" in out and "数值" in out
+
+
+def test_render_metrics_table_empty() -> None:
+    assert render_metrics_table({}, "en") == ""

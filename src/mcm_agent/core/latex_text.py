@@ -26,6 +26,36 @@ def latex_escape_text(text: str) -> str:
     return out
 
 
+def _format_value(value: object) -> str:
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        return f"{round(value, 4):g}"
+    return str(value)
+
+
+def render_metrics_table(metrics: dict[str, object], language: str) -> str:
+    """Render a metrics dict as a booktabs LaTeX table. Empty dict -> empty string."""
+    if not metrics:
+        return ""
+    metric_head, value_head = ("指标", "数值") if language == "zh" else ("Metric", "Value")
+    rows = [
+        f"{latex_escape_text(str(name).replace('_', ' '))} & {latex_escape_text(_format_value(value))} \\\\"
+        for name, value in metrics.items()
+    ]
+    return "\n".join(
+        [
+            "\\begin{tabular}{ll}",
+            "\\toprule",
+            f"{metric_head} & {value_head} \\\\",
+            "\\midrule",
+            *rows,
+            "\\bottomrule",
+            "\\end{tabular}",
+        ]
+    )
+
+
 def markdown_to_latex(text: str) -> str:
     """Convert common markdown leakage in LLM-authored LaTeX into LaTeX.
 
