@@ -20,7 +20,7 @@
 3. `/` 与 `@` 有**实时过滤的补全弹出菜单**（方向键选择、带描述、Enter 接受、Esc 取消）。
 4. **命令历史**（↑/↓）、**多行输入**（Alt/Option+Enter 换行，Enter 提交）、**可中断**（Esc 取消进行中的阶段，Ctrl+C 两次退出）。
 5. 长任务（LLM 调用、求解、写论文）显示 **spinner + 状态动词 + 计时 + “esc 中断”**。
-6. 一致的**珊瑚橙主题**与盒绘装饰（圆角面板、`·` 分隔、树形符号），但仅作用于「界面外壳」，命令正文仍保持 `markup=False` 字面输出。
+6. 一致的**建模青（teal）主题**与盒绘装饰（圆角面板、`·` 分隔、树形符号），但仅作用于「界面外壳」，命令正文仍保持 `markup=False` 字面输出。
 7. **不破坏现有契约**：`InteractiveSession.run_once(text)` 维持不变，仍是所有逻辑入口；非 TTY（管道/CI/pexpect 旧用例）自动回退到原 `console.input` 行为。
 
 ### 非目标（本期不做）
@@ -57,7 +57,7 @@
 1. **`run_once` 是唯一真相入口。** 富 UI 只替换「怎么读取一行输入」与「怎么渲染输出外壳」，不改「一行输入如何被处理」。这样命令逻辑、`DialogueGuard`、chat 路径、全部单测零改动。
 2. **TTY 才富交互，否则降级。** `stdin.isatty() and stdout.isatty()` 为真时走 prompt_toolkit；否则走旧 `console.input` 直读 + `run_once`（保护 CI、管道、旧 pexpect 用例）。
 3. **外壳上色，正文留白。** 主题/盒绘只用于面板、提示符、状态行、补全菜单等「chrome」；命令正文沿用 `markup=False`（保住 `[ok]`/`[missing]` 等字面标记，见历史教训）。
-4. **模仿而非复刻。** 复制 Claude Code 的**交互范式**（面板结构、模式前缀、补全行为、中断语义、珊瑚橙基调），用 mag 自己的领域信息填充（工作区/阶段/LLM/题目/数据）。
+4. **模仿而非复刻。** 复制 Claude Code 的**交互范式**（面板结构、模式前缀、补全行为、中断语义），但**配色与品牌符号用 mag 自有的**——建模青（teal）+ 数学符号 `∑`，不沿用 Claude 的珊瑚橙与 `✻`，刻意避免观感雷同。用 mag 自己的领域信息填充面板（工作区/阶段/LLM/题目/数据）。
 5. **小而清晰的单元。** 新增独立模块（completer、key-bindings、面板渲染、shell 执行、spinner），各有单一职责与可单测的接口。
 
 ---
@@ -73,7 +73,7 @@ src/mcm_agent/
     __init__.py
     app.py                  PromptUI：组合 PromptSession + 渲染，驱动 run_once
     welcome.py              render_welcome_panel(state, settings, version) -> rich.Panel
-    theme.py                MAG_THEME（rich.Theme）+ 颜色常量（珊瑚橙等）
+    theme.py                MAG_THEME（rich.Theme）+ 颜色常量（建模青 teal 等，见 §13.1）
     completers.py           SlashCommandCompleter, AtFileCompleter, MagCompleter(合并)
     keybindings.py          build_key_bindings()（Esc/Ctrl+C/历史/多行/?）
     statusbar.py            bottom_toolbar(state, settings) -> 文本（阶段徽章 + LLM + 提示）
@@ -141,7 +141,7 @@ mag (no args)
 
 | Claude Code | mag 对应 |
 |---|---|
-| ✻ Claude Code + 版本 | ✻ Mag · MCM/ICM Modeling Agent + `v0.1.0` |
+| ✻ Claude Code + 版本 | ∑ Mag · MCM/ICM Modeling Agent + `v0.1.0` |
 | Welcome back \<name\> | 依据状态的问候（首次：欢迎；老工作区：欢迎回来） |
 | model / billing / org / cwd | **LLM**: deepseek-v4-flash · **Workspace**: test · **Phase**: discussing · **cwd** |
 | Tips for getting started | 依据状态的下一步（未 init → 配 /api；未导题 → /question；就绪 → /start） |
@@ -149,10 +149,10 @@ mag (no args)
 | Update available | （打包后才有意义，先留空） |
 | 底部 `? for shortcuts · ← for agents` | `/help 命令 · / 菜单 · ! shell · @ 文件 · ? 快捷键` |
 
-### 6.2 Mockup（圆角珊瑚橙边框）
+### 6.2 Mockup（圆角建模青 teal 边框）
 
 ```
-╭─ Mag ✻  v0.1.0 ──────────────────────────────────────────────╮
+╭─ ∑ Mag  v0.1.0 ──────────────────────────────────────────────╮
 │                                                              │
 │   Welcome back!  MCM/ICM Modeling Agent                      │
 │                                                              │
@@ -180,7 +180,7 @@ mag (no args)
 ## 7. 底部输入区
 
 ### 7.1 提示符与输入框
-- 提示 `> `（珊瑚橙），prompt_toolkit `PromptSession`。
+- 提示 `> `（建模青 teal），prompt_toolkit `PromptSession`。
 - `patch_stdout()` 包裹：后台/异步打印不会撕裂正在编辑的输入行。
 - 多行：默认单行 Enter 提交；`Alt+Enter` 插入换行进入多行；`prompt_continuation` 显示续行符（如 `… `）。
 
@@ -205,7 +205,7 @@ mag (no args)
 - 数据源：`build_command_registry()` 的 `{name: command.summary}`（已存在）。
 - 组件：`SlashCommandCompleter(Completer)`，`get_completions` 产出 `Completion(text="/name", display="/name", display_meta=summary)`。
 - 行为：实时模糊过滤；↑/↓ 移动高亮；Enter/Tab 接受并插入；Esc 关闭菜单（不提交）；右侧 dim 显示 `summary`。
-- 样式：`Completion` 用 pt 的 `style`/`selected_style`，珊瑚橙高亮行。
+- 样式：`Completion` 用 pt 的 `style`/`selected_style`，建模青 teal 高亮行。
 - 选中后若命令带子选项（如 `/api`、`/rag <category>`），后续仍走各命令既有的 `ask` 交互（暂不为子参数做二级补全，列 nice-to-have）。
 
 Mockup：
@@ -256,7 +256,7 @@ fans.csv  scores.csv
 ## 11. 运行时状态与进度
 
 - 组件：`runner.run_with_spinner(fn, status_verb, *, interruptible=True)`。
-- 机制：把阻塞调用（`generate_chat_reply`、`run_mvp_workflow` 的 stage、solver 代码生成）丢到**工作线程**；主线程用 `rich.Live` 或 pt 的 `ProgressBar` 显示单行：`✻ Solving… (12s · esc 中断)`。
+- 机制：把阻塞调用（`generate_chat_reply`、`run_mvp_workflow` 的 stage、solver 代码生成）丢到**工作线程**；主线程用 `rich.Live` 或 pt 的 `ProgressBar` 显示单行：`∑ 正在写代码求解… (12s · esc 中断)`（spinner 用动画 braille 点 + `∑` 品牌色，不用 Claude 的 `✻`）。
 - 状态动词按阶段映射（复用 `workflow_adapter.STAGE_LABELS` 的中文标签：「正在写代码求解」「正在撰写论文」…）。
 - 中断：Esc 触发取消标志；对可取消的阶段尽力停止，对不可取消的（in-flight HTTP）标记「放弃结果」并尽快返回（见风险）。`run()` 既有的 KeyboardInterrupt 捕获保留。
 - 长工作流：`run_default_workflow(progress=…)` 已支持 progress 回调，将其桥接到本 spinner，逐 stage 刷新文案。
@@ -282,7 +282,24 @@ fans.csv  scores.csv
 
 ## 13. 主题与渲染
 
-- `tui/theme.py` 定义 `MAG_THEME = rich.Theme({...})`：`accent`（珊瑚橙 `#D97757` 量级）、`success`、`warning`、`error`、`dim`、`phase.*` 徽章色。
+### 13.1 品牌色 / Signature color — 建模青（teal）
+
+刻意**不**用 Claude Code 的珊瑚橙，改用 mag 自有的「建模青（teal）」作特征色：它属于科学计算/绘图（matplotlib 风）的视觉语域，贴合「数学建模 / 数据 / 求解」气质，在深色终端上沉稳耐看，且与 Claude Code（珊瑚橙）、Gemini（蓝）、Codex（绿/黑）都明显区分，规避雷同。品牌符号同步从 `✻` 换为数学求和号 `∑`。
+
+`tui/theme.py` 的 `MAG_THEME = rich.Theme({...})` 颜色常量（teal 取自统一色阶，按终端明暗自适应）：
+
+| 语义 token | 暗底终端 | 亮底终端 | 用途 |
+|---|---|---|---|
+| `accent`（主品牌色） | `#1D9E75`（teal-400） | `#0F6E56`（teal-600） | 面板边框、`> ` 提示符、`∑` 品牌、补全高亮、阶段徽章默认色 |
+| `accent.bright`（点缀文字） | `#5DCAA5`（teal-200） | `#1D9E75`（teal-400） | 面板上的命令名、强调小字 |
+| `success` | `#639922`（黄绿） | `#3B6D11` | 成功/通过（与 teal 蓝绿明确区分，避免混淆） |
+| `warning` | `#EF9F27`（琥珀） | `#854F0B` | 提醒/未配置 |
+| `error` | `#E24B4A`（红） | `#A32D2D` | 错误/非零退出 |
+| `dim` | 终端灰 | 终端灰 | 次要说明、分隔、底部提示行 |
+| `phase.*` | 以 `accent` 为基，phase 不同微调明度 | 同 | 阶段徽章 |
+
+实现注意：`success` 用黄绿（`#639922`）而非蓝绿，与 teal `accent` 拉开色相；`accent` 单一来源，全局引用 token 名而非散落硬编码。后续若要换色，只改本表即可。
+
 - 盒绘：圆角面板 `box.ROUNDED`；资源/输出列表用树形符号 `├── └──`；行内分隔 `·`。
 - **关键约束**：`cli_session._print` 对**命令正文**继续 `markup=False, highlight=False`（保字面标记）。主题只作用于「外壳」：欢迎面板、提示符、状态栏、补全菜单、spinner、错误前缀。
 - 自然语言/LLM 回复：用 `rich.Markdown` 渲染（标题/列表/代码高亮），区别于命令正文的纯文本。
@@ -398,4 +415,4 @@ fans.csv  scores.csv
 | spinner + status verb + esc | `runner.run_with_spinner`（复用 STAGE_LABELS） |
 | 模式徽章（Plan/auto） | 工作流 phase 徽章（+ 可选 auto-approve 切换） |
 | `? for shortcuts · …` | `/help · / 菜单 · ! shell · @ 文件 · ? 快捷键` |
-| 珊瑚橙主题 + 圆角盒绘 | `MAG_THEME` + `box.ROUNDED`（仅外壳） |
+| 珊瑚橙主题 + ✻ 品牌 + 圆角盒绘 | **建模青(teal)主题 + ∑ 品牌**（换色去雷同）+ `box.ROUNDED`（仅外壳） |
