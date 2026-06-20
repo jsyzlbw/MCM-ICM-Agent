@@ -8,7 +8,7 @@ from prompt_toolkit.styles import Style
 
 from mcm_agent.config import load_settings
 from mcm_agent.core.workspace import load_workspace_state
-from mcm_agent.tui.completers import SlashCommandCompleter
+from mcm_agent.tui.completers import MagCompleter
 from mcm_agent.tui.keybindings import build_key_bindings
 from mcm_agent.tui.statusbar import bottom_toolbar
 from mcm_agent.tui.theme import ACCENT
@@ -35,7 +35,7 @@ class PromptUI:
         history_path.parent.mkdir(parents=True, exist_ok=True)
         ps = PromptSession(
             history=FileHistory(str(history_path)),
-            completer=SlashCommandCompleter(self.session.commands),
+            completer=MagCompleter(self.session.commands, self.session.workspace_root),
             complete_while_typing=True,
             key_bindings=build_key_bindings(),
             bottom_toolbar=self._toolbar,
