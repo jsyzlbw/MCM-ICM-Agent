@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
+from mcm_agent.config import load_settings
 from mcm_agent.core.research_script import build_initial_research_script, write_research_script
 from mcm_agent.core.workspace import load_workspace_state, save_workspace_state
 from mcm_agent.core.workspace_safety import WorkspaceSafety
@@ -22,8 +23,11 @@ class StartCommand:
         if not state.init.problem_imported:
             return CommandResult("No problem file found. Run /question first.")
         language = self._extract_language(args)
-        script = build_initial_research_script(root, language=language)
         lock = "--lock" in args
+        # Draft path: use the LLM to analyze the problem so the user has something
+        # substantive to react to. Lock/run path skips it (the workflow re-analyzes).
+        llm = None if lock else self._analysis_llm(root, context)
+        script = build_initial_research_script(root, language=language, llm=llm)
         write_research_script(root, script, locked=lock)
         if lock:
             self._persist_language(root, language)
@@ -45,10 +49,29 @@ class StartCommand:
             return CommandResult(
                 "Research script locked. Next implementation stage can start from workflow adapter."
             )
+        if script.analysis:
+            return CommandResult(
+                f"{script.analysis}\n\n"
+                "————\n"
+                "（草稿已存到 work/discussion/research_script_draft.md）\n"
+                "直接打字和我讨论、调整方向；满意后运行 /start --lock --run 开始求解并写论文。"
+            )
         return CommandResult(
             "Research script draft created at work/discussion/research_script_draft.md.\n"
-            "Review it, discuss changes, then run /start --lock when ready."
+            "（未能生成题目分析——通常是网络/接口问题，可运行 /api 选 [4] 测连通。）\n"
+            "直接打字讨论方向，满意后运行 /start --lock --run。"
         )
+
+    def _analysis_llm(self, root: Path, context: CommandContext) -> object | None:
+        """Best-effort LLM for problem analysis; None if unavailable (then /start
+        degrades to the static template)."""
+        try:
+            from mcm_agent.providers.factory import build_llm_provider
+
+            provider = build_llm_provider(load_settings(workspace_root=root))
+            return None if type(provider).__name__ == "FakeLLMProvider" else provider
+        except Exception:
+            return None
 
     def _extract_language(self, args: list[str]) -> str:
         if "--language" in args:

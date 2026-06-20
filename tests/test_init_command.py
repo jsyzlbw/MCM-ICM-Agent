@@ -32,6 +32,25 @@ def test_init_from_env_copies_env_file(tmp_path: Path) -> None:
     assert load_workspace_state(workspace.root).init.llm_configured is True
 
 
+def test_init_llm_key_preserves_existing_base_url_and_model(tmp_path: Path) -> None:
+    """/init --llm-key (no --llm-base-url) must NOT wipe a base_url/model set earlier
+    (e.g. by an /api preset). Otherwise a DeepSeek key is silently sent to OpenAI -> 401."""
+    workspace = create_workspace(tmp_path / "workspace")
+    from mcm_agent.config import load_settings
+    from mcm_agent.core.config_writer import set_env_var
+
+    set_env_var(workspace.root, "MAG_LLM_BASE_URL", "https://api.deepseek.com/v1")
+    set_env_var(workspace.root, "MAG_LLM_MODEL", "deepseek-v4-flash")
+    session = InteractiveSession(workspace.root)
+
+    session.run_once("/init --llm-key sk-deepseek-123")
+
+    settings = load_settings(workspace_root=workspace.root)
+    assert settings.openai_api_key == "sk-deepseek-123"
+    assert settings.openai_base_url == "https://api.deepseek.com/v1"  # preserved
+    assert settings.openai_model == "deepseek-v4-flash"  # preserved
+
+
 def test_init_from_env_missing_file(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "workspace")
     session = InteractiveSession(workspace.root)

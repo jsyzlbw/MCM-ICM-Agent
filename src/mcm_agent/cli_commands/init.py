@@ -109,21 +109,16 @@ class InitCommand:
     def _write_llm_config(
         self, root: Path, key: str, base_url: str | None, model: str | None
     ) -> None:
-        env_path = root / ".env"
-        managed = {"MAG_LLM_API_KEY", "MAG_LLM_BASE_URL", "MAG_LLM_MODEL"}
-        lines = []
-        if env_path.exists():
-            lines = [
-                line
-                for line in env_path.read_text(encoding="utf-8").splitlines()
-                if line.split("=", 1)[0] not in managed
-            ]
-        lines.append(f"MAG_LLM_API_KEY={key}")
+        # Upsert only the fields provided so an already-configured base_url/model
+        # (e.g. from an /api preset) is PRESERVED. Wiping it would silently send a
+        # non-OpenAI key (DeepSeek/SiliconFlow) to the default OpenAI endpoint -> 401.
+        from mcm_agent.core.config_writer import set_env_var
+
+        set_env_var(root, "MAG_LLM_API_KEY", key)
         if base_url:
-            lines.append(f"MAG_LLM_BASE_URL={base_url}")
+            set_env_var(root, "MAG_LLM_BASE_URL", base_url)
         if model:
-            lines.append(f"MAG_LLM_MODEL={model}")
-        env_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+            set_env_var(root, "MAG_LLM_MODEL", model)
 
     def _rethink(self, root: Path) -> None:
         for relative in [".mag/chat", "work", "output"]:

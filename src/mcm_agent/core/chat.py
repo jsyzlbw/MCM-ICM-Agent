@@ -8,6 +8,11 @@ _GUIDANCE = (
 )
 
 
+def _is_unconfigured(llm_provider: object | None) -> bool:
+    """A None or Fake provider means the LLM is not really configured."""
+    return llm_provider is None or type(llm_provider).__name__ == "FakeLLMProvider"
+
+
 def _problem_excerpt(workspace_root: Path, limit: int = 1500) -> str:
     problem_dir = workspace_root / "input" / "problem"
     if not problem_dir.exists():
@@ -29,10 +34,13 @@ def generate_chat_reply(
 ) -> str:
     """Conversational reply for the interactive CLI.
 
-    Uses the real LLM with problem + recent-discussion context. Falls back to a
-    guidance message when no LLM is configured or the model returns nothing.
+    Uses the real LLM with problem + recent-discussion context. Distinguishes the
+    three failure modes so the user never gets a misleading message:
+      - LLM not configured (None/Fake)  -> guidance to run /api
+      - LLM call fails (network/API)    -> honest error WITH the reason
+      - model returns nothing           -> retry hint
     """
-    if llm_provider is None:
+    if _is_unconfigured(llm_provider):
         return _GUIDANCE
     problem = _problem_excerpt(Path(workspace_root))
     history = "\n".join(
@@ -56,6 +64,11 @@ def generate_chat_reply(
     )
     try:
         reply = llm_provider.generate(system, prompt).content.strip()
-    except Exception:
-        return _GUIDANCE
-    return reply or _GUIDANCE
+    except Exception as exc:  # noqa: BLE001 - surface the real reason, don't hide it
+        reason = str(exc).strip() or type(exc).__name__
+        return (
+            f"⚠️ LLM 调用失败：{reason}\n"
+            "（这通常是网络或接口问题，不是没配置。）请检查网络后重试，"
+            "或运行 /api 选 [4] 测连通 定位。"
+        )
+    return reply or "（模型未返回内容，请重试，或换一种问法。）"

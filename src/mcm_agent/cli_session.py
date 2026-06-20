@@ -147,11 +147,13 @@ class InteractiveSession:
         return CommandResult(reply)
 
     def _chat_llm(self) -> object | None:
+        # Build ONLY the LLM (not the whole provider bundle) so an unrelated
+        # provider construction error can't silently disable chat.
         try:
-            from mcm_agent.core.workflow_adapter import WorkspaceWorkflowAdapter
+            from mcm_agent.config import load_settings
+            from mcm_agent.providers.factory import build_llm_provider
 
-            _settings, bundle = WorkspaceWorkflowAdapter(self.workspace_root).build_providers()
-            return bundle.llm
+            return build_llm_provider(load_settings(workspace_root=self.workspace_root))
         except Exception:
             return None
 
