@@ -16,6 +16,7 @@ class CommandResult:
     message: str
     exit_session: bool = False
     metadata: dict[str, str] = field(default_factory=dict)
+    markdown: bool = False
 
 
 class SlashCommand(Protocol):

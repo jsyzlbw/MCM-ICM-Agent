@@ -109,6 +109,14 @@ class InteractiveSession:
         # "[ok]" / "[missing]" are shown literally instead of parsed as style tags.
         self.console.print(message, markup=False, highlight=False)
 
+    def _render_result(self, result) -> None:
+        if getattr(result, "markdown", False):
+            from rich.markdown import Markdown
+
+            self.console.print(Markdown(result.message))
+        else:
+            self._print(result.message)
+
     def _make_ask(self):
         """A line-prompt callable for interactive commands, or None when there is no
         TTY (tests / pipes) so commands fall back to non-interactive behavior."""
@@ -157,7 +165,7 @@ class InteractiveSession:
                 return
             result = self.run_once(text)
             if result.message:
-                self._print(result.message)
+                self._render_result(result)
             if result.exit_session:
                 return
 
@@ -189,12 +197,18 @@ class InteractiveSession:
                 f"Revision plan created: work/revisions/{plan.revision_id}.md\n"
                 "请确认后再执行修订，当前论文尚未被修改。"
             )
+        from mcm_agent.tui.runner import run_with_spinner
+
         recent = self.session_store.read_recent_messages(limit=8)
         attachments = self._collect_attachments(text)
-        reply = generate_chat_reply(
-            self.workspace_root, text, self._chat_llm(), recent, attachments=attachments
+        reply = run_with_spinner(
+            lambda: generate_chat_reply(
+                self.workspace_root, text, self._chat_llm(), recent, attachments=attachments
+            ),
+            "正在思考",
+            console=self.console,
         )
-        return CommandResult(reply)
+        return CommandResult(reply, markdown=True)
 
     def _chat_llm(self) -> object | None:
         # Build ONLY the LLM (not the whole provider bundle) so an unrelated

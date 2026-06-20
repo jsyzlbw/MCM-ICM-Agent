@@ -53,6 +53,6 @@ class PromptUI:
                 return
             result = self.session.run_once(text)
             if result.message:
-                self.session._print(result.message)
+                self.session._render_result(result)
             if result.exit_session:
                 return
