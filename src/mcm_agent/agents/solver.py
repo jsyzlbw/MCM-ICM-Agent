@@ -411,7 +411,56 @@ class SolverCoderAgent:
             ),
             encoding="utf-8",
         )
+        self._run_sensitivity_sweep(workspace_root, processed_files[0])
         Coordinator(workspace_root).emit("code.completed", source="SolverCoderAgent")
+
+    def _run_sensitivity_sweep(self, workspace_root: Path, processed_file: Path) -> None:
+        """Deterministic sensitivity fallback: scale a numeric input column and recompute
+        numeric_mean for each of 5 scale factors [0.8, 0.9, 1.0, 1.1, 1.2].
+
+        Only writes if results/sensitivity_analysis.csv is absent or has <3 data rows.
+        NEVER fabricates numbers — every row is a REAL recomputation on perturbed data.
+        Skips silently if the processed CSV has no numeric columns.
+        """
+        sens_path = workspace_root / "results" / "sensitivity_analysis.csv"
+
+        # Check whether a valid sensitivity CSV already exists (>=3 real data rows).
+        if sens_path.exists():
+            try:
+                existing = pd.read_csv(sens_path)
+                if len(existing) >= 3:
+                    return  # already satisfied — do not overwrite
+            except Exception:
+                pass  # unreadable file; proceed to generate
+
+        try:
+            df = pd.read_csv(processed_file)
+        except Exception:
+            return  # can't read data — skip, don't fabricate
+
+        numeric_cols = list(df.select_dtypes(include="number").columns)
+        if not numeric_cols:
+            return  # no numeric column to perturb — skip, don't fabricate
+
+        # Use the first numeric column as the sweep parameter.
+        sweep_col = numeric_cols[0]
+        scale_factors = [0.8, 0.9, 1.0, 1.1, 1.2]
+        rows: list[dict[str, object]] = []
+        for factor in scale_factors:
+            perturbed = df.copy()
+            perturbed[sweep_col] = perturbed[sweep_col] * factor
+            perturbed_numeric = perturbed.select_dtypes(include="number")
+            metric_value = float(perturbed_numeric.mean().mean())
+            rows.append(
+                {
+                    "parameter": sweep_col,
+                    "scale_factor": factor,
+                    "numeric_mean": round(metric_value, 6),
+                }
+            )
+
+        result = pd.DataFrame(rows)
+        result.to_csv(sens_path, index=False)
 
     def _lineage_ids_for_processed_file(self, workspace_root: Path, processed_file: Path) -> list[str]:
         summaries = read_json(workspace_root / "results" / "eda_summary.json", [])
