@@ -61,6 +61,8 @@ class InteractiveSession:
         if not stripped:
             return CommandResult("")
         self.session_store.append_message("user", stripped)
+        if stripped == "?":
+            return CommandResult(self._shortcuts_help())
         if stripped.startswith("!"):
             result = self._run_shell(stripped[1:].strip())
             if result.message:
@@ -244,5 +246,20 @@ class InteractiveSession:
                 self.workspace_root / "output/draft/main.pdf",
                 self.workspace_root / "output/draft/main.tex",
                 self.workspace_root / "paper/main.tex",
+            ]
+        )
+
+    def _shortcuts_help(self) -> str:
+        return "\n".join(
+            [
+                "快捷键 / 输入模式：",
+                "  /          命令补全菜单（/start /api /question …）",
+                "  !          执行 shell 命令，例如 !ls input/data",
+                "  @          引用工作区文件（题目 / 数据 / 产出）",
+                "  ↑ / ↓      历史输入",
+                "  Alt+Enter  多行输入（Enter 提交）",
+                "  Esc        中断进行中的任务",
+                "  Ctrl+C ×2  退出",
+                "  /help      查看全部命令",
             ]
         )
