@@ -151,14 +151,18 @@ class InteractiveSession:
         if not interactive:
             return self._run_plain()
         try:
-            from mcm_agent.tui.fullscreen import MagFullScreenApp
+            from mcm_agent.tui.textual_app import MagTuiApp
         except ImportError:
             return self._run_plain()
+        old_suppress = self.suppress_live_output
+        self.suppress_live_output = True
         try:
-            MagFullScreenApp(self).run()
+            MagTuiApp(self).run()
         except Exception:
             # any TUI failure must not strand the user — fall back to the plain loop
             self._run_plain()
+        finally:
+            self.suppress_live_output = old_suppress
 
     def _print_welcome(self) -> None:
         from mcm_agent.config import load_settings
