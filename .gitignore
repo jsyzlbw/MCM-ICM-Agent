@@ -55,3 +55,7 @@ knowledge_base/*
 # Diagnostic / contest copyright material (COMAP problem + data) — never commit
 assets/diagnostic_2026_mcm_c/
 
+
+# Large MCM corpus + built KB (data, not source)
+assets/mcm_icm_corpus/
+corpus_kb/
