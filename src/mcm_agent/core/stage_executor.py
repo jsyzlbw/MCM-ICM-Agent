@@ -33,6 +33,7 @@ GATE_DECISION_FILES = {
     "modeling_quality_gate": "review/modeling_gate.json",
     "validation_gate": "review/validation_gate.json",
     "figure_quality_gate": "review/figure_gate.json",
+    "mock_judge_gate": "review/mock_judge_gate.json",
     "final_gatekeeper": "review/final_gate.json",
 }
 

@@ -11,6 +11,7 @@ from mcm_agent.agents.discussion import UserDiscussionAgent
 from mcm_agent.agents.eda import DataEDAAgent
 from mcm_agent.agents.extraction import DocumentExtractionAgent
 from mcm_agent.agents.intake import IntakeAgent
+from mcm_agent.agents.mock_judge_gate import MockJudgeGateAgent
 from mcm_agent.agents.model_design import ModelDesignAgent
 from mcm_agent.agents.modeling import ModelJudge, ModelingCouncil
 from mcm_agent.agents.modeling_quality import ModelingPlanQualityAgent
@@ -159,11 +160,26 @@ def resume_mvp_workflow(
             auto_approve=auto_approve,
         ),
     )
-    executor.run_until_complete(
-        start_stage,
-        terminal_stage=until_stage or "submission_packager",
-        controller=controller,
-    )
+    try:
+        executor.run_until_complete(
+            start_stage,
+            terminal_stage=until_stage or "submission_packager",
+            controller=controller,
+        )
+    except RepeatedGateFailureError as exc:
+        # Best-effort completion: same handling as run_mvp_workflow — package
+        # whatever exists and record the blocker so the reviewer can see it.
+        try:
+            handlers["submission_packager"](workspace.root)
+        except Exception:
+            pass
+        (workspace.root / "review").mkdir(parents=True, exist_ok=True)
+        (workspace.root / "review" / "blocked_gate.md").write_text(
+            "# Blocked gate (best-effort output produced)\n\n"
+            f"The workflow could not auto-satisfy a gate after retries:\n\n- {exc}\n\n"
+            "A best-effort paper/package was still produced; see the reviewer report.\n",
+            encoding="utf-8",
+        )
     if auto_approve:
         _approve_pending_checkpoints(workspace.root)
     _write_ai_use_report(workspace.root)
@@ -406,6 +422,9 @@ def _mvp_stage_handlers(
             "review/reference_audit_report.md",
         ]
 
+    def mock_judge_gate(workspace_root: Path) -> list[str]:
+        return MockJudgeGateAgent(provider_bundle.llm).run(workspace_root)
+
     def pre_submission_review(workspace_root: Path) -> list[str]:
         ReviewerAgent(provider_bundle.llm).run(workspace_root)
         return ["review/reviewer_report.md", "review/final_gate.json"]
@@ -448,6 +467,7 @@ def _mvp_stage_handlers(
         "paper_writer": paper_writer,
         "paper_evidence_binding": paper_evidence_binding,
         "typesetting": typesetting,
+        "mock_judge_gate": mock_judge_gate,
         "pre_submission_review": pre_submission_review,
         "final_gatekeeper": final_gatekeeper,
         "submission_packager": submission_packager,

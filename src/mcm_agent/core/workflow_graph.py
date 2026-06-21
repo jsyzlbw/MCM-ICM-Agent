@@ -328,6 +328,20 @@ def build_default_workflow_graph() -> WorkflowGraph:
             ],
             pass_criteria=["At least one feasible proxy or alternate formulation is ready for user choice."],
         ),
+        "mock_judge_gate": AgentNode(
+            node_id="mock_judge_gate",
+            label="Mock Judge Self-Eval Gate",
+            responsibility=(
+                "Score the assembled paper against the O-Prize rubric, identify the weakest "
+                "dimension, and route back to the responsible repair stage until the paper "
+                "meets the quality floor or the iteration cap is reached."
+            ),
+            input_artifacts=["paper/sections", "figures"],
+            output_artifacts=["review/mock_judge_gate.json", "review/mock_judge_scores.json"],
+            pass_criteria=[
+                "Paper total score >= 6.0, or no dimension scores below 4, or iteration cap reached.",
+            ],
+        ),
     }
     edges = [
         WorkflowEdge("intake", "mineru_extraction"),
@@ -354,7 +368,8 @@ def build_default_workflow_graph() -> WorkflowGraph:
         WorkflowEdge("claim_planning", "paper_writer"),
         WorkflowEdge("paper_writer", "paper_evidence_binding"),
         WorkflowEdge("paper_evidence_binding", "typesetting"),
-        WorkflowEdge("typesetting", "pre_submission_review"),
+        WorkflowEdge("typesetting", "mock_judge_gate"),
+        WorkflowEdge("mock_judge_gate", "pre_submission_review"),
         WorkflowEdge("pre_submission_review", "final_gatekeeper"),
         WorkflowEdge("final_gatekeeper", "submission_packager"),
     ]
