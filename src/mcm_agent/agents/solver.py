@@ -127,13 +127,18 @@ class SolverCoderAgent:
 
     @staticmethod
     def _extract_code_block(text: str) -> str:
-        """Return python fenced-block contents ONLY when a fence is present, else ''.
+        """Return fenced-block contents ONLY when a fence is present, else ''.
 
         Unlike _extract_code (which falls back to the whole text), this method
         returns '' when no fence is found — enabling 'no fence = DONE' semantics
         in the ReAct loop.
+
+        Accepts any or no language tag (python, py, Python, …) and tolerates an
+        optional newline between the opening fence/tag and the first line of code.
+        Returns the FIRST block only.  Plain prose / "DONE" / inline backticks
+        that are not triple-fenced all return ''.
         """
-        match = re.search(r"```(?:python)?\n(.*?)```", text, re.DOTALL)
+        match = re.search(r"```[^\n`]*\n?(.*?)```", text, re.DOTALL)
         return match.group(1).strip() if match else ""
 
     def _subproblem_prompt(
