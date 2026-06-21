@@ -272,3 +272,84 @@ def test_self_eval_rejects_degenerate_then_continues(tmp_path):
     metrics = json.loads((ws / "results" / "model_metrics.json").read_text())
     degen, _ = agent._metrics_are_degenerate(metrics)
     assert not degen, f"Final metrics should be non-degenerate, got {metrics}"
+
+
+def test_self_eval_terminates_when_always_degenerate(tmp_path):
+    """Loop must terminate (not hang) when metrics are persistently degenerate.
+
+    Script: odd calls write {"consistency": 0.0} (degenerate), even calls say DONE.
+    Because metrics are always degenerate, each DONE at _turn < max_turns-1 is
+    rejected and the loop re-prompts — but the loop is bounded by max_turns=6.
+
+    Return value analysis: at the end _run_interpreter_loop checks whether
+    results/model_metrics.json is a non-empty dict.  {"consistency": 0.0} IS
+    non-empty, so the function returns True even though the metrics are degenerate.
+    Downstream validation (not this function) is responsible for catching
+    degenerate final metrics.  We therefore assert True here and focus the
+    meaningful assertions on boundedness / termination.
+    """
+    ws = _ws(tmp_path)
+
+    # Capture the interpreter so we can inspect executed-cell count.
+    interp_holder: list[FakeCodeInterpreter] = []
+
+    def _factory(root):
+        interp = FakeCodeInterpreter(root)
+        interp_holder.append(interp)
+        return interp
+
+    degenerate_write_code = (
+        "import json, pandas as pd\n"
+        "from pathlib import Path\n"
+        "df = pd.read_csv(sorted((Path.cwd()/'data'/'processed').glob('*.csv'))[0])\n"
+        "df.to_csv('results/problem1_results.csv', index=False)\n"
+        "json.dump({'consistency': 0.0}, open('results/model_metrics.json', 'w'))\n"
+        "print('degenerate metrics written')\n"
+    )
+
+    class _AlwaysDegenerate:
+        """Odd calls: write degenerate metrics. Even calls: say DONE.
+        Metrics file always stays {"consistency": 0.0} so every DONE is
+        rejected by the self-eval gate until max_turns is exhausted."""
+
+        def __init__(self):
+            self.calls = 0
+
+        def generate(self, system, prompt, *, temperature=0.2):
+            self.calls += 1
+            if self.calls % 2 == 1:
+                # Odd turn: emit code that (re)writes degenerate metrics
+                return ProviderResult(
+                    content=f"```python\n{degenerate_write_code}```",
+                    metadata={},
+                )
+            else:
+                # Even turn: signal DONE — but metrics are still degenerate,
+                # so the self-eval gate re-prompts (until budget runs out)
+                return ProviderResult(content="DONE", metadata={})
+
+    llm = _AlwaysDegenerate()
+    agent = SolverCoderAgent(llm_provider=llm)
+
+    # Must return without hanging; max_turns=6 caps iteration.
+    # Returns True because {"consistency": 0.0} is a non-empty dict (see docstring).
+    result = agent._run_interpreter_loop(
+        ws,
+        interpreter_factory=_factory,
+        max_turns=6,
+    )
+
+    # --- Boundedness assertions (the key property: no infinite loop) ---
+    assert llm.calls <= 7, (
+        f"LLM called {llm.calls} times; expected at most max_turns+1=7"
+    )
+    interp = interp_holder[0]
+    assert len(interp.executed) <= 6, (
+        f"Interpreter executed {len(interp.executed)} cells; expected <= max_turns=6"
+    )
+
+    # --- Return value: True because metrics file is non-empty (see docstring) ---
+    assert result is True, (
+        "Expected True: {'consistency': 0.0} is a non-empty dict; "
+        "degenerate-metric rejection is the caller's responsibility"
+    )
