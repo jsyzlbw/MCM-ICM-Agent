@@ -289,3 +289,88 @@ def test_slash_command_still_uses_run_once_path(tmp_path: Path) -> None:
     assert "?" in calls, (
         f"'?' command should have been routed through run_once. Got: {calls!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test E: NL chat with _has_draft() → skips streaming, uses run_once instead
+# ---------------------------------------------------------------------------
+
+
+def test_nl_chat_with_draft_skips_streaming_uses_run_once(tmp_path: Path) -> None:
+    """When a paper draft exists (_has_draft() returns True), NL chat input
+    must NOT use the streaming path. Instead, it must route through run_once
+    (which calls _handle_natural_language and creates a revision plan).
+
+    Verification:
+    - No LLMStreamBlock should be mounted during/after processing.
+    - The response text should come from the revision plan path (not streaming).
+    - The run_once path should be called (via worker).
+    """
+    session = _make_session(tmp_path)
+
+    # Create a draft file so _has_draft() returns True
+    draft_file = session.workspace_root / "output" / "draft" / "main.tex"
+    draft_file.parent.mkdir(parents=True, exist_ok=True)
+    draft_file.write_text("\\documentclass{article}\n\\begin{document}\ntest\n\\end{document}")
+
+    assert session._has_draft(), "Setup: _has_draft() should be True"
+
+    # Set up a fake LLM with streaming support
+    fake_llm = _StreamingFakeLLM(["should", " not", " stream"])
+    session._chat_llm = lambda: fake_llm  # type: ignore[method-assign]
+
+    # Track whether run_once is called
+    run_once_calls: list[str] = []
+    original_run_once = session.run_once
+
+    def tracking_run_once(text: str) -> CommandResult:
+        run_once_calls.append(text)
+        return original_run_once(text)
+
+    session.run_once = tracking_run_once  # type: ignore[method-assign]
+
+    import mcm_agent.core.dialogue_guard as dg_mod
+    from mcm_agent.core.dialogue_guard import DialogueGuardResult
+
+    async def _scenario():
+        async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
+            app = pilot.app
+
+            original_evaluate = dg_mod.DialogueGuard.evaluate
+            dg_mod.DialogueGuard.evaluate = staticmethod(
+                lambda state, msg: DialogueGuardResult(allowed=True, message="")
+            )
+            try:
+                await pilot.pause(0.3)
+                prompt = app.query_one("#prompt", ChatTextArea)
+                # Natural language input (no prefix)
+                prompt.insert("请帮我修订论文")
+                await pilot.press("enter")
+
+                # Wait for processing to complete
+                await pilot.pause(1.5)
+
+                # Check: no LLMStreamBlock should be in the log
+                blocks = _collect_stream_blocks(pilot)
+                log_text = _get_log_text(pilot)
+                return blocks, log_text, list(run_once_calls)
+            finally:
+                dg_mod.DialogueGuard.evaluate = original_evaluate
+
+    blocks, log_text, calls = asyncio.run(_scenario())
+
+    # Verify: run_once was called (streaming path skipped)
+    assert len(calls) > 0, (
+        f"With _has_draft() True, run_once should be called to create revision plan. "
+        f"Calls: {calls!r}"
+    )
+
+    # Verify: no LLMStreamBlock in the log (streaming was skipped)
+    assert len(blocks) == 0, (
+        f"With _has_draft() True, no LLMStreamBlock should be mounted. Got {len(blocks)}"
+    )
+
+    # Verify: revision plan response should appear (not streaming output)
+    assert "revision" in log_text.lower() or "修订" in log_text, (
+        f"With draft, response should contain revision plan. Log: {log_text!r}"
+    )

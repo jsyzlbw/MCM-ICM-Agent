@@ -596,40 +596,45 @@ class MagTuiApp(App):
 
         if self._is_nl_chat(text):
             # Natural-language chat: try streaming path, fall back to run_once.
-            llm = self.session._chat_llm()
-            if llm is not None and hasattr(llm, "generate_stream"):
-                # Streaming path: append an empty LLMStreamBlock, stream into it.
-                block = LLMStreamBlock()
-                log_view = self.query_one("#log", VerticalScroll)
-                log_view.mount(block)
-                log_view.scroll_end(animate=False)
+            # GUARD: Skip streaming if a draft exists — _has_draft() returns True,
+            # meaning NL should create a REVISION PLAN (via _handle_natural_language)
+            # instead of a normal chat reply. Only stream when NO draft exists.
+            if not self.session._has_draft():
+                llm = self.session._chat_llm()
+                if llm is not None and hasattr(llm, "generate_stream"):
+                    # Streaming path: append an empty LLMStreamBlock, stream into it.
+                    block = LLMStreamBlock()
+                    log_view = self.query_one("#log", VerticalScroll)
+                    log_view.mount(block)
+                    log_view.scroll_end(animate=False)
 
-                def _stream_worker():
-                    from mcm_agent.core.chat import stream_chat_reply
+                    def _stream_worker():
+                        from mcm_agent.core.chat import stream_chat_reply
 
-                    recent = self.session.session_store.read_recent_messages(limit=8)
-                    attachments = self.session._collect_attachments(text)
-                    # Record the user turn in session_store (run_once does this
-                    # via the call path, so we mirror it here for the streaming path).
-                    self.session.session_store.append_message("user", text)
-                    full_text = ""
-                    try:
-                        for chunk in stream_chat_reply(
-                            self.session.workspace_root, text, llm, recent,
-                            attachments=attachments
-                        ):
-                            self.call_from_thread(block.append_token, chunk)
-                            full_text += chunk
-                    finally:
-                        self.call_from_thread(block.finalize_markdown)
-                    if full_text:
-                        self.session.session_store.append_message("assistant", full_text)
-                    # Return a sentinel so on_worker_state_changed knows it's streaming
-                    return _StreamingDone()
+                        recent = self.session.session_store.read_recent_messages(limit=8)
+                        attachments = self.session._collect_attachments(text)
+                        # Record the user turn in session_store (run_once does this
+                        # via the call path, so we mirror it here for the streaming path).
+                        self.session.session_store.append_message("user", text)
+                        full_text = ""
+                        try:
+                            for chunk in stream_chat_reply(
+                                self.session.workspace_root, text, llm, recent,
+                                attachments=attachments
+                            ):
+                                self.call_from_thread(block.append_token, chunk)
+                                full_text += chunk
+                        finally:
+                            self.call_from_thread(block.finalize_markdown)
+                        if full_text:
+                            self.session.session_store.append_message("assistant", full_text)
+                        # Return a sentinel so on_worker_state_changed knows it's streaming
+                        return _StreamingDone()
 
-                self.run_worker(_stream_worker, thread=True, exit_on_error=False)
-                return
-            # Fall through: LLM is None/unconfigured or has no generate_stream →
+                    self.run_worker(_stream_worker, thread=True, exit_on_error=False)
+                    return
+            # Fall through: LLM is None/unconfigured or has no generate_stream
+            # or _has_draft() is True (revisions use run_once path) →
             # use the standard run_once path (handles DialogueGuard blocking too).
 
         # Run blocking session.run_once() in a thread worker
