@@ -7,6 +7,7 @@ import typer
 
 from mcm_agent.config import load_settings
 from mcm_agent.agents.submission import SubmissionPackager
+from mcm_agent.cli_commands.kb import kb_app
 from mcm_agent.cli_session import InteractiveSession
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import TaskInput
@@ -24,6 +25,7 @@ from mcm_agent.workflows.mvp import resume_mvp_workflow, run_demo_workflow, run_
 VERSION = __version__
 
 app = typer.Typer(help="MCM/ICM math modeling agent CLI.", invoke_without_command=True)
+app.add_typer(kb_app, name="kb")
 
 
 def _version_callback(value: bool) -> None:

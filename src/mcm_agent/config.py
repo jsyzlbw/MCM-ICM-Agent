@@ -47,6 +47,8 @@ class Settings(BaseSettings):
 
     rag_knowledge_base_dir: str = "knowledge_base"
     rag_ingest_extensions: list[str] = [".md", ".txt", ".pdf"]
+    corpus_source_dir: str = "assets/mcm_icm_corpus"
+    corpus_kb_dir: str = "corpus_kb"
 
     embedding_provider: str = "fake"
     voyage_api_key: str = ""
@@ -164,6 +166,8 @@ def _settings_overrides_from_json(payload: dict[str, Any]) -> dict[str, Any]:
         ("humanizer", "api_base_url"): "humanizer_api_base_url",
         ("rag", "knowledge_base_dir"): "rag_knowledge_base_dir",
         ("rag", "ingest_extensions"): "rag_ingest_extensions",
+        ("rag", "corpus_source_dir"): "corpus_source_dir",
+        ("rag", "corpus_kb_dir"): "corpus_kb_dir",
         ("embedding", "provider"): "embedding_provider",
         ("embedding", "api_key"): "voyage_api_key",
         ("embedding", "base_url"): "embedding_base_url",
