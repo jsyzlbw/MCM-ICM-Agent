@@ -124,3 +124,40 @@ def test_exit_session_causes_app_exit(tmp_path: Path) -> None:
 
     # Should complete without hanging indefinitely
     asyncio.run(asyncio.wait_for(_scenario(), timeout=10.0))
+
+
+def test_input_reenabled_even_on_render_error(tmp_path: Path) -> None:
+    """If _append_to_log raises during result handling, input must still be re-enabled."""
+    root = create_workspace(tmp_path / "ws").root
+    session = InteractiveSession(root)
+    session.run_once = lambda text: CommandResult("ok")  # type: ignore[method-assign]
+
+    async def _scenario():
+        async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
+            await pilot.pause(0.3)
+            app = pilot.app
+            prompt = app.query_one("#prompt", ChatTextArea)
+
+            # Monkeypatch _append_to_log to raise after first call (welcome)
+            original_append = app._append_to_log
+            call_count = [0]
+
+            def raising_append(*args, **kwargs):
+                call_count[0] += 1
+                if call_count[0] > 1:  # Let welcome render, fail on result rendering
+                    raise RuntimeError("Simulated render error in _append_to_log")
+                return original_append(*args, **kwargs)
+
+            app._append_to_log = raising_append
+
+            # Submit input
+            prompt.insert("test input")
+            await pilot.press("enter")
+            # Wait for worker to finish and error handler to run
+            await pilot.pause(0.5)
+            # Check that the prompt is re-enabled (not stuck disabled)
+            return prompt.disabled
+
+    disabled_after = asyncio.run(_scenario())
+    # Input must be re-enabled, not stuck disabled
+    assert disabled_after is False, "Input prompt should be re-enabled even after render error"

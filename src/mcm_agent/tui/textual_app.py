@@ -224,27 +224,38 @@ class MagTuiApp(App):
 
     def _handle_result(self, result) -> None:
         """Called on the UI thread after the worker completes successfully."""
-        if result is not None and getattr(result, "message", ""):
-            msg = result.message
-            is_md = getattr(result, "markdown", False)
-            self._append_to_log(msg, is_markdown=is_md)
+        try:
+            if result is not None and getattr(result, "message", ""):
+                msg = result.message
+                is_md = getattr(result, "markdown", False)
+                self._append_to_log(msg, is_markdown=is_md)
 
-        # Re-enable input
-        prompt = self.query_one("#prompt", ChatTextArea)
-        prompt.border_title = ""
-        prompt.disabled = False
-        prompt.focus()
-        self._is_processing = False
-
-        if result is not None and getattr(result, "exit_session", False):
-            self.exit()
+            if result is not None and getattr(result, "exit_session", False):
+                self.exit()
+        except Exception as e:
+            # Log render error but don't fail re-enable
+            try:
+                self._append_to_log(f"[错误] 渲染失败: {e}", classes="system-msg")
+            except Exception:
+                pass  # If logging itself fails, silently continue
+        finally:
+            # Always re-enable input, even if rendering raised
+            prompt = self.query_one("#prompt", ChatTextArea)
+            prompt.border_title = ""
+            prompt.disabled = False
+            prompt.focus()
+            self._is_processing = False
 
     def _handle_error(self, worker) -> None:
         """Called on the UI thread if the worker raised an exception."""
-        self._append_to_log(f"[错误] {worker.error}", classes="system-msg")
-
-        prompt = self.query_one("#prompt", ChatTextArea)
-        prompt.border_title = ""
-        prompt.disabled = False
-        prompt.focus()
-        self._is_processing = False
+        try:
+            self._append_to_log(f"[错误] {worker.error}", classes="system-msg")
+        except Exception:
+            pass  # If logging itself fails, silently continue
+        finally:
+            # Always re-enable input, even if error logging raised
+            prompt = self.query_one("#prompt", ChatTextArea)
+            prompt.border_title = ""
+            prompt.disabled = False
+            prompt.focus()
+            self._is_processing = False
