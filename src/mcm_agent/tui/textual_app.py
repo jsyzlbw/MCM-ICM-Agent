@@ -12,6 +12,7 @@ Usage::
 """
 from __future__ import annotations
 
+import threading
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
@@ -82,7 +83,22 @@ class ChatTextArea(TextArea):
 
 
 class MagTuiApp(App):
-    """Full-screen Textual TUI: scrolling log + bordered ChatTextArea input."""
+    """Full-screen Textual TUI: scrolling log + bordered ChatTextArea input.
+
+    Ask/printer bridge (TUI-3)
+    --------------------------
+    Interactive commands like /api and /init call ctx.ask(prompt) and
+    ctx.printer(text) from inside a worker thread. The bridge routes these
+    through the Textual UI:
+
+    * _io_printer(text): posts text to the log via call_from_thread so it
+      arrives on the UI thread safely.
+    * _io_ask(prompt): posts the prompt to the log, enters "ask mode", and
+      BLOCKS the worker thread on a threading.Event until the user submits
+      an answer from the ChatTextArea.
+    * When _ask_mode is True, the submit handler treats the submitted text as
+      the answer rather than as a new command.
+    """
 
     CSS = """
     #header {
@@ -108,6 +124,9 @@ class MagTuiApp(App):
     .system-msg {
         color: $text-muted;
     }
+    .ask-prompt {
+        color: $warning;
+    }
     """
 
     BINDINGS = [
@@ -119,12 +138,77 @@ class MagTuiApp(App):
         super().__init__(**kwargs)
         self.session = session
         self._is_processing = False
+        # Ask bridge state
+        self._ask_mode: bool = False
+        self._ask_event: threading.Event = threading.Event()
+        self._ask_answer: str = ""
 
-    def compose(self) -> ComposeResult:
-        header_text = self._build_header()
-        yield Label(header_text, id="header")
-        yield VerticalScroll(id="log")
-        yield ChatTextArea("", id="prompt")
+    # ------------------------------------------------------------------
+    # Ask/printer bridge
+    # ------------------------------------------------------------------
+
+    def _io_printer(self, text: str) -> None:
+        """Called from a worker thread; routes text to the log on the UI thread."""
+        self.call_from_thread(self._append_to_log, str(text), classes="system-msg")
+
+    def _io_ask(self, prompt: str = "") -> str:
+        """Called from a worker thread; shows prompt, blocks until user answers.
+
+        Returns the answer string. Returns "" if the app exits while waiting.
+        """
+        # Show the prompt in the log and enter ask mode on the UI thread.
+        self._ask_event.clear()
+        self._ask_answer = ""
+        self.call_from_thread(self._enter_ask_mode, str(prompt))
+        # Block the worker thread until the UI thread calls _deliver_ask_answer.
+        self._ask_event.wait()
+        return self._ask_answer
+
+    def _enter_ask_mode(self, prompt: str) -> None:
+        """UI-thread side: show the ask prompt and set _ask_mode = True."""
+        if prompt:
+            self._append_to_log(prompt, classes="ask-prompt")
+        self._ask_mode = True
+        # Re-enable and focus input so the user can type
+        input_widget = self.query_one("#prompt", ChatTextArea)
+        input_widget.disabled = False
+        input_widget.border_title = "∑ 请回答…"
+        input_widget.focus()
+
+    def _deliver_ask_answer(self, answer: str) -> None:
+        """UI-thread side: store the answer, leave ask mode, unblock the worker."""
+        self._ask_answer = answer
+        self._ask_mode = False
+        self._ask_event.set()
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def on_mount(self) -> None:
+        """Install the I/O bridge on the session, render welcome, focus input."""
+        self.session._io_printer = self._io_printer
+        self.session._io_ask = self._io_ask
+        self._append_welcome()
+        prompt = self.query_one("#prompt", ChatTextArea)
+        prompt.focus()
+
+    def on_unmount(self) -> None:
+        """Restore session I/O overrides and unblock any waiting worker."""
+        self._unblock_ask_on_exit()
+        self.session._io_printer = None
+        self.session._io_ask = None
+
+    def _unblock_ask_on_exit(self) -> None:
+        """If the app exits while a worker is blocked in _io_ask, release it."""
+        if self._ask_mode and not self._ask_event.is_set():
+            self._ask_answer = ""
+            self._ask_mode = False
+            self._ask_event.set()
+
+    # ------------------------------------------------------------------
+    # Header
+    # ------------------------------------------------------------------
 
     def _build_header(self) -> str:
         """Build a one-line header from workspace state and settings."""
@@ -146,11 +230,11 @@ class MagTuiApp(App):
         except Exception:
             return "∑ Mag"
 
-    def on_mount(self) -> None:
-        """Render welcome panel and focus the input."""
-        self._append_welcome()
-        prompt = self.query_one("#prompt", ChatTextArea)
-        prompt.focus()
+    def compose(self) -> ComposeResult:
+        header_text = self._build_header()
+        yield Label(header_text, id="header")
+        yield VerticalScroll(id="log")
+        yield ChatTextArea("", id="prompt")
 
     def _append_welcome(self) -> None:
         """Mount the welcome panel into the log as rendered ANSI text."""
@@ -189,10 +273,27 @@ class MagTuiApp(App):
     # ------------------------------------------------------------------
 
     def on_chat_text_area_submitted(self, event: ChatTextArea.Submitted) -> None:
-        """Handle submitted text: append user turn and run session in a worker thread."""
+        """Handle submitted text.
+
+        If the app is in ask mode, treat the text as the answer to an ongoing
+        ctx.ask() call — echo it, deliver the answer to unblock the worker,
+        and clear ask mode.  Otherwise start a new run_once worker.
+        """
         text = event.text.strip()
         if not text:
             return
+
+        if self._ask_mode:
+            # Echo the user's answer to the log
+            self._append_to_log(f"> {text}", classes="user-turn")
+            # Reset the prompt border title (will be re-set by worker completion)
+            prompt = self.query_one("#prompt", ChatTextArea)
+            prompt.border_title = "∑ 正在处理…"
+            prompt.disabled = True
+            # Deliver the answer — this unblocks the worker thread
+            self._deliver_ask_answer(text)
+            return
+
         if self._is_processing:
             return  # Ignore new submissions while processing
 
