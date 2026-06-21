@@ -353,3 +353,67 @@ def test_self_eval_terminates_when_always_degenerate(tmp_path):
         "Expected True: {'consistency': 0.0} is a non-empty dict; "
         "degenerate-metric rejection is the caller's responsibility"
     )
+
+
+# ---------------------------------------------------------------------------
+# Task B4: run() degradation chain + evidence registration
+# ---------------------------------------------------------------------------
+
+def test_run_uses_interpreter_then_records_evidence(tmp_path):
+    """run() with interpreter_factory -> interpreter path -> _record_outputs.
+
+    Asserts:
+    - results/evidence_registry.json exists and contains an entry with
+      evidence_id "metric_value_mean" (from model_metrics.json key "value_mean").
+    - results/model_route_summary.json exists.
+    """
+    import json as _json
+    from mcm_agent.core.workspace import create_workspace
+
+    # Use a fully-initialised workspace so Coordinator.emit() can read task_state.json
+    root = create_workspace(tmp_path / "ws").root
+    (root / "data" / "processed").mkdir(parents=True, exist_ok=True)
+    pd.DataFrame({"region": ["a", "b", "c"], "value": [1.0, 2.0, 3.0]}).to_csv(
+        root / "data" / "processed" / "d.csv", index=False
+    )
+
+    ws = root
+    agent = SolverCoderAgent(llm_provider=_TwoTurnLLM())
+    agent.run(ws, interpreter_factory=lambda root: FakeCodeInterpreter(root))
+
+    # model_route_summary.json must exist (written by _record_outputs)
+    route_summary = ws / "results" / "model_route_summary.json"
+    assert route_summary.exists(), "results/model_route_summary.json should exist after run()"
+
+    # evidence_registry.json must contain metric_value_mean
+    evidence_path = ws / "results" / "evidence_registry.json"
+    assert evidence_path.exists(), "results/evidence_registry.json should exist after run()"
+    evidence = _json.loads(evidence_path.read_text())
+    ids = [entry.get("evidence_id") for entry in evidence]
+    assert "metric_value_mean" in ids, (
+        f"evidence_registry should contain 'metric_value_mean'; found ids: {ids}"
+    )
+
+
+def test_run_falls_back_to_baseline_when_no_llm(tmp_path):
+    """run() with llm_provider=None falls back to _run_templated_baseline.
+
+    The templated baseline always writes results/model_metrics.json.
+    """
+    from mcm_agent.core.workspace import create_workspace
+
+    # Use the same workspace setup as test_solver_codegen.py's _prepare()
+    root = create_workspace(tmp_path / "ws").root
+    (root / "data" / "processed").mkdir(parents=True, exist_ok=True)
+    (root / "data" / "processed" / "data.csv").write_text(
+        "a,b\n1,2\n3,4\n", encoding="utf-8"
+    )
+    (root / "reports" / "problem_understanding.md").write_text(
+        "# understanding\nestimate hidden votes", encoding="utf-8"
+    )
+
+    SolverCoderAgent(llm_provider=None).run(root)
+
+    assert (root / "results" / "model_metrics.json").exists(), (
+        "Templated baseline should produce results/model_metrics.json"
+    )
