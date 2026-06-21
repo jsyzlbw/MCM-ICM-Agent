@@ -310,32 +310,6 @@ class SolverCoderAgent:
         if isinstance(metrics, dict) and metrics:
             self._llm_script_rel = "notebook.ipynb"
             self._run_sensitivity_sweep(workspace_root, processed[0])
-            # Record a minimal experiment-run entry so downstream validators and
-            # tests that check experiment_runs.jsonl see a successful run.
-            from mcm_agent.utils.json_io import append_jsonl
-            from datetime import UTC, datetime as _dt
-
-            now = _dt.now(UTC)
-            run_id = f"run_{now.strftime('%Y%m%d%H%M%S%f')}_notebook"
-            (workspace_root / "results" / "runs").mkdir(parents=True, exist_ok=True)
-            append_jsonl(
-                workspace_root / "results" / "experiment_runs.jsonl",
-                {
-                    "run_id": run_id,
-                    "command": ["notebook"],
-                    "exit_code": 0,
-                    "stdout_path": f"results/runs/{run_id}.stdout.txt",
-                    "stderr_path": f"results/runs/{run_id}.stderr.txt",
-                    "produced_files": [
-                        "results/problem1_results.csv",
-                        "results/model_metrics.json",
-                    ],
-                    "missing_outputs": [],
-                    "duration_seconds": 0.0,
-                    "started_at": now.isoformat(),
-                    "finished_at": now.isoformat(),
-                },
-            )
             return True
         return False
 

@@ -7,6 +7,11 @@ from mcm_agent.providers.base import ProviderResult
 from mcm_agent.utils.json_io import read_json
 
 
+def _no_kernel(root: Path) -> None:
+    """interpreter_factory that raises so run() degrades to _run_llm_codegen."""
+    raise RuntimeError("no kernel available in this test")
+
+
 class _ScriptLLM:
     """Fake LLM returning a fixed python script in a fenced block."""
 
@@ -48,9 +53,12 @@ def _prepare(tmp_path: Path) -> Path:
 
 def test_llm_codegen_produces_task_metrics(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
+    llm = _ScriptLLM(GOOD_SCRIPT)
 
-    SolverCoderAgent(_ScriptLLM(GOOD_SCRIPT)).run(root)
+    SolverCoderAgent(llm).run(root, interpreter_factory=_no_kernel)
 
+    # One-shot path: exactly 1 LLM call for a passing script.
+    assert llm.calls == 1
     metrics = read_json(root / "results" / "model_metrics.json", {})
     assert metrics.get("elimination_consistency_rate") == 0.91
     evidence = read_json(root / "results" / "evidence_registry.json", [])
@@ -61,13 +69,16 @@ def test_llm_codegen_self_repairs_then_succeeds(tmp_path: Path) -> None:
     root = _prepare(tmp_path)
     llm = _ScriptLLM(GOOD_SCRIPT, fail_first=True)
 
-    SolverCoderAgent(llm).run(root)
+    # Force interpreter off so run() takes the genuine one-shot _run_llm_codegen path.
+    SolverCoderAgent(llm).run(root, interpreter_factory=_no_kernel)
 
-    assert llm.calls >= 2  # repaired after the first failing attempt
+    # Exactly 2 calls: attempt 1 fails (bad script), attempt 2 succeeds (good script).
+    assert llm.calls == 2
     metrics = read_json(root / "results" / "model_metrics.json", {})
     assert metrics.get("elimination_consistency_rate") == 0.91
     # Failed repair attempts must be pruned from the run log so the validation
     # gate does not flag them as pipeline failures.
+    # experiment_runs.jsonl is legitimately written by run_experiment() on success.
     runs_path = root / "results" / "experiment_runs.jsonl"
     lines = [line for line in runs_path.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert lines
