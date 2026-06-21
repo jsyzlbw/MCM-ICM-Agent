@@ -91,5 +91,5 @@ class VoyageRerankProvider:
         response.raise_for_status()
         return [
             {"index": item["index"], "score": item["relevance_score"]}
-            for item in response.json()["results"]
+            for item in response.json()["data"]
         ]
