@@ -126,6 +126,138 @@ class SolverCoderAgent:
         return (match.group(1) if match else text).strip()
 
     @staticmethod
+    def _extract_code_block(text: str) -> str:
+        """Return python fenced-block contents ONLY when a fence is present, else ''.
+
+        Unlike _extract_code (which falls back to the whole text), this method
+        returns '' when no fence is found — enabling 'no fence = DONE' semantics
+        in the ReAct loop.
+        """
+        match = re.search(r"```(?:python)?\n(.*?)```", text, re.DOTALL)
+        return match.group(1).strip() if match else ""
+
+    def _subproblem_prompt(
+        self, workspace_root: Path, processed_file: Path, sub: object | None
+    ) -> str:
+        """Build the per-subproblem initial prompt for the ReAct loop."""
+        understanding = self._read_text(
+            workspace_root / "reports" / "problem_understanding.md", 4000
+        )
+        direction = self._read_text(
+            workspace_root / "discussion" / "confirmed_direction.md", 1500
+        )
+        spec_block = self._model_spec_block(workspace_root)
+        schema = self._schema_excerpt(processed_file)
+        sub_title = getattr(sub, "title", None) or "problem1"
+        sub_metrics = getattr(sub, "metrics", None) or []
+        metric_keys = (
+            (", ".join(sub_metrics))
+            if sub_metrics
+            else "task-specific keys named after the problem"
+        )
+        return (
+            f"Subproblem: {sub_title}\n\n"
+            f"PROBLEM UNDERSTANDING:\n{understanding}\n\n"
+            f"CONFIRMED DIRECTION:\n{direction}\n\n"
+            f"{spec_block}"
+            f"DATA SCHEMA (first rows):\n{schema}\n\n"
+            "CONTRACT:\n"
+            "- Read data via sorted((Path.cwd()/'data'/'processed').glob('*.csv'))[0]\n"
+            "- Use only pandas, numpy, scipy, sklearn, matplotlib — no network access.\n"
+            "- Write the main result table to results/problem1_results.csv\n"
+            f"- Write a JSON dict with TASK-SPECIFIC metric keys ({metric_keys}) "
+            "to results/model_metrics.json\n"
+            "- Do not read files outside the workspace.\n"
+        )
+
+    def _run_interpreter_loop(
+        self,
+        workspace_root: Path,
+        *,
+        interpreter_factory=None,
+        max_turns: int = 12,
+        max_errors: int = 4,
+    ) -> bool:
+        """Multi-turn ReAct loop: LLM emits one ```python block per turn, we execute
+        it in a persistent interpreter, feed real stdout/error back, and continue until
+        the LLM signals DONE (no code fence) or limits are reached.
+
+        Returns True iff results/model_metrics.json is a non-empty dict at the end.
+        Returns False on any construction/fatal failure (caller degrades gracefully).
+        """
+        from mcm_agent.core.model_spec import read_model_spec
+
+        processed = sorted((workspace_root / "data" / "processed").glob("*.csv"))
+        if not processed:
+            return False
+
+        (workspace_root / "results").mkdir(parents=True, exist_ok=True)
+
+        if interpreter_factory is None:
+            try:
+                from mcm_agent.tools.code_interpreter import JupyterCodeInterpreter
+
+                interpreter_factory = lambda root: JupyterCodeInterpreter(root)  # noqa: E731
+            except Exception:
+                return False
+
+        try:
+            interp = interpreter_factory(workspace_root)
+        except Exception:
+            return False
+
+        system = (
+            "你在一个【有状态 Python(Jupyter) 会话】里求解 MCM 子问题。变量跨 cell 保留。\n"
+            "要运行代码：只回复**一个** ```python ...``` 代码块，我会执行并把输出/报错回给你。\n"
+            "报错时请基于真实报错修正后重试。\n"
+            "当该子问题**完全解出且所有要求的输出文件已写好**时，只回复一个词 DONE（不带代码块）。"
+        )
+
+        try:
+            spec = read_model_spec(workspace_root)
+            subs = (spec.subproblems if (spec and spec.subproblems) else [None])
+
+            for sub in subs:
+                title = getattr(sub, "title", None) or "problem1"
+                interp.add_section(title)
+                transcript = self._subproblem_prompt(workspace_root, processed[0], sub)
+                errors = 0
+                for _turn in range(max_turns):
+                    content = self.llm_provider.generate(system, transcript).content
+                    code = self._extract_code_block(content)
+                    if not code:
+                        break  # DONE / no fence
+                    res = interp.execute(code)
+                    feedback = (res.error if res.had_error else res.stdout)[-2000:]
+                    transcript += (
+                        f"\n\n[ASSISTANT]\n{content}\n\n[CELL OUTPUT]\n{feedback}"
+                    )
+                    if res.had_error:
+                        errors += 1
+                        if errors >= max_errors:
+                            break
+
+            interp.save_notebook()
+        except Exception:
+            try:
+                interp.shutdown()
+            except Exception:
+                pass
+            return False
+        finally:
+            try:
+                interp.shutdown()
+            except Exception:
+                pass
+
+        metrics = read_json(workspace_root / "results" / "model_metrics.json", {})
+        if isinstance(metrics, dict) and metrics:
+            self._llm_script_rel = "notebook.ipynb"
+            self._run_sensitivity_sweep(workspace_root, processed[0])
+            return True
+        return False
+
+    @staticmethod
     def _read_text(path: Path, limit: int) -> str:
         return path.read_text(encoding="utf-8")[:limit] if path.exists() else ""
 
