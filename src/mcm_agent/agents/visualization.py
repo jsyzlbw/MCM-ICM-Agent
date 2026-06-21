@@ -158,10 +158,19 @@ class VisualizationAgent:
         ]
         registry: list[FigureRecord] = []
         for item in plan_items:
-            if item.figure_type == "data_plot":
-                registry.append(self._render_data_plot(workspace_root, item))
-            elif item.figure_type == "concept_diagram":
-                registry.append(self._write_mermaid(workspace_root, item))
+            # A single un-plottable figure must never crash the whole pipeline
+            # (best-effort principle): skip it and keep producing the paper.
+            try:
+                if item.figure_type == "data_plot":
+                    record = self._render_data_plot(workspace_root, item)
+                elif item.figure_type == "concept_diagram":
+                    record = self._write_mermaid(workspace_root, item)
+                else:
+                    record = None
+            except Exception:
+                record = None
+            if record is not None:
+                registry.append(record)
 
         write_json(
             workspace_root / "figures" / "figure_registry.json",
@@ -170,12 +179,14 @@ class VisualizationAgent:
         FigureQualityAgent().run(workspace_root)
         Coordinator(workspace_root).emit("figures.ready", source="VisualizationAgent")
 
-    def _render_data_plot(self, workspace_root: Path, item: FigurePlanItem) -> FigureRecord:
+    def _render_data_plot(self, workspace_root: Path, item: FigurePlanItem) -> FigureRecord | None:
         source = workspace_root / item.source_data[0]
         frame = pd.read_csv(source)
         numeric = frame.select_dtypes(include="number")
         if numeric.empty:
-            raise ValueError(f"figure source has no numeric columns: {source}")
+            # Nothing numeric to plot (e.g. a text-only assignment table). Skip this
+            # figure rather than crashing the visualization stage.
+            return None
 
         plt.rcParams.update(
             {

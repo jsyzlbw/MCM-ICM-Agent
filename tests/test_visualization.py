@@ -40,6 +40,27 @@ def test_visualization_agent_renders_registry_outputs(tmp_path: Path) -> None:
     assert any(item["figure_id"] == "fig_method_overview" for item in registry)
 
 
+def test_visualization_skips_unplottable_source_without_crashing(tmp_path: Path) -> None:
+    """A result table with no numeric columns (e.g. a text-only pairing assignment)
+    must not crash the visualization stage — the data_plot is skipped, the pipeline
+    proceeds (best-effort). Regression for the DWTS run-5 hard crash."""
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "results" / "problem1_results.csv").write_text(
+        "celebrity_name,professional_name\nCorey,Brandon\nDanielle,Alan\n", encoding="utf-8"
+    )
+    FigurePlanningAgent().run(workspace.root)
+
+    # Must NOT raise.
+    VisualizationAgent().run(workspace.root)
+
+    registry = read_json(workspace.root / "figures" / "figure_registry.json", [])
+    # The un-plottable data_plot is skipped...
+    assert not (workspace.root / "figures" / "fig_q1_prediction.pdf").exists()
+    assert all(item["figure_id"] != "fig_q1_prediction" for item in registry)
+    # ...but concept diagrams still render and the stage completes.
+    assert any(item["figure_id"] == "fig_method_overview" for item in registry)
+
+
 def test_figure_planning_uses_selected_model_routes(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     write_json(
