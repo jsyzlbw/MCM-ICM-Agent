@@ -22,6 +22,13 @@ PRIVATE_DATA_MARKERS = [
     "payroll",
 ]
 
+# Tabular data the contest may ship with. If any of these are present in the
+# workspace, the modeling data is available by definition and we must NOT reframe
+# to a proxy model (doing so poisons the whole paper's framing — see the DWTS bug
+# where a single word "bonus" in the prompt triggered a false unavailable verdict
+# even though the data CSV was provided).
+PROVIDED_DATA_EXTS = {".csv", ".xlsx", ".xls", ".parquet", ".tsv"}
+
 
 class DataFeasibilityScoutAgent:
     def __init__(self, search_provider: SearchProvider) -> None:
@@ -33,6 +40,15 @@ class DataFeasibilityScoutAgent:
             raise FileNotFoundError("missing reports/problem_understanding.md")
 
         problem_text = problem_report.read_text(encoding="utf-8")
+
+        # Short-circuit: if the problem ships with data files, the modeling data is
+        # available by definition. Skip the brittle web-probe (a single word like
+        # "bonus" in the prompt could otherwise mark it private) and never reframe.
+        provided = self._provided_data_files(workspace_root)
+        if provided:
+            self._emit_provided_available(workspace_root, provided)
+            return
+
         target_datasets = self._target_datasets(workspace_root, problem_text)
         matrix = []
         all_results = []
@@ -81,6 +97,54 @@ class DataFeasibilityScoutAgent:
         )
         Coordinator(workspace_root).emit(
             event_type,
+            payload={"next_stage": route.next_stage},
+            source="DataFeasibilityScoutAgent",
+        )
+
+    def _provided_data_files(self, workspace_root: Path) -> list[Path]:
+        """Return tabular data files the contest shipped with (uploads / raw data)."""
+        found: list[Path] = []
+        for directory in (
+            workspace_root / "input" / "attachments",
+            workspace_root / "data" / "raw",
+        ):
+            if directory.is_dir():
+                for path in sorted(directory.iterdir()):
+                    if path.is_file() and path.suffix.lower() in PROVIDED_DATA_EXTS:
+                        found.append(path)
+        return found
+
+    def _emit_provided_available(self, workspace_root: Path, provided: list[Path]) -> None:
+        """Record an 'available' decision (no web-probe, no proxy reframe) because the
+        problem already ships with data, and route forward to user_discussion."""
+        names = ", ".join(path.name for path in provided)
+        availability = DataAvailabilityDecision(
+            target_dataset="provided contest data",
+            availability="available",
+            confidence=0.95,
+            reason=(
+                f"The problem ships with {len(provided)} provided data file(s): {names}. "
+                "The modeling data is available; no proxy reframing is needed."
+            ),
+        )
+        route = route_data_availability(availability)
+        matrix = [self._matrix_row(1, availability, "provided contest data files", [])]
+        write_json(workspace_root / "data" / "data_feasibility_matrix.json", matrix)
+        (workspace_root / "reports" / "data_feasibility_report.md").write_text(
+            self._build_report(availability, route.recommendation, [], matrix),
+            encoding="utf-8",
+        )
+        write_json(
+            workspace_root / "reports" / "data_feasibility_decision.json",
+            {
+                "availability": availability.model_dump(mode="json"),
+                "route": route.model_dump(mode="json"),
+                "matrix": matrix,
+                "top_results": [],
+            },
+        )
+        Coordinator(workspace_root).emit(
+            "data.feasibility.ready",
             payload={"next_stage": route.next_stage},
             source="DataFeasibilityScoutAgent",
         )

@@ -25,6 +25,45 @@ class OfficialSearchProvider:
         ]
 
 
+class RaisingSearchProvider:
+    """Fails if .search is called — proves the provided-data short-circuit skips the probe."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def search(self, query: str, *, max_results: int = 5) -> list[SearchResult]:
+        self.calls += 1
+        raise AssertionError("search must NOT be called when data is already provided")
+
+
+def test_provided_data_short_circuits_to_available_despite_private_marker(
+    tmp_path: Path,
+) -> None:
+    """Regression for the DWTS bug: a single word like 'bonus' in the prompt must NOT
+    trigger a private/unavailable reframe when the contest ships a data file."""
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "reports" / "problem_understanding.md").write_text(
+        "Dancing with the Stars: judges award scores and bonus points each week.",
+        encoding="utf-8",
+    )
+    attachments = workspace.root / "input" / "attachments"
+    attachments.mkdir(parents=True, exist_ok=True)
+    (attachments / "2026_MCM_Problem_C_Data.csv").write_text(
+        "week,judge_score,placement\n1,27,3\n", encoding="utf-8"
+    )
+
+    search = RaisingSearchProvider()
+    DataFeasibilityScoutAgent(search).run(workspace.root)
+
+    decision = read_json(workspace.root / "reports" / "data_feasibility_decision.json", {})
+    events = EventLog(workspace.root / "event_log.jsonl").read_all()
+    assert search.calls == 0  # probe skipped
+    assert decision["availability"]["availability"] == "available"
+    assert decision["route"]["next_stage"] == "user_discussion"
+    assert decision["route"]["next_stage"] != "research_reframing"
+    assert events[-1].event_type == "data.feasibility.ready"
+
+
 def test_data_feasibility_scout_reframes_likely_private_salary_data(tmp_path: Path) -> None:
     workspace = create_workspace(tmp_path / "run_001")
     (workspace.root / "reports" / "problem_understanding.md").write_text(
