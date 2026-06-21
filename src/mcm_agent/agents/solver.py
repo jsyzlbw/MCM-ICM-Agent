@@ -108,6 +108,7 @@ class SolverCoderAgent:
                     success_line = json.dumps(record.model_dump(mode="json"), ensure_ascii=False)
                     runs_path.write_text(prior_runs + success_line + "\n", encoding="utf-8")
                     self._llm_script_rel = str(script_path.relative_to(workspace_root))
+                    self._run_sensitivity_sweep(workspace_root, processed[0])  # PQ4: backfill if LLM omitted it
                     return True
                 last_err = "model_metrics.json missing or not a non-empty dict"
             else:

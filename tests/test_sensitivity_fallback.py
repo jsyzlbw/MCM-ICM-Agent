@@ -99,3 +99,35 @@ def test_sensitivity_fallback_skipped_when_csv_already_has_3_rows(tmp_path: Path
         "Pre-existing 5-row sensitivity CSV was wrongly truncated to "
         f"{len(df)} rows after baseline solver ran."
     )
+
+
+def test_llm_path_backfills_sensitivity_when_llm_csv_missing(tmp_path: Path) -> None:
+    """LLM codegen path must backfill sensitivity_analysis.csv when LLM script omits it."""
+    root = _build_workspace(tmp_path)
+    proc = root / "data" / "processed"
+    proc.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame({"region": ["a", "b", "c"], "value": [1.0, 2.0, 3.0]}).to_csv(
+        proc / "d.csv", index=False
+    )
+
+    class _LLM:  # writes results but deliberately omits sensitivity_analysis.csv
+        def generate(self, system, prompt, *, temperature=0.2):
+            from mcm_agent.providers.base import ProviderResult
+
+            code = (
+                "import json, pandas as pd\n"
+                "from pathlib import Path\n"
+                "Path('results').mkdir(exist_ok=True)\n"
+                "df = pd.read_csv(sorted((Path.cwd()/'data'/'processed').glob('*.csv'))[0])\n"
+                "df.to_csv('results/problem1_results.csv', index=False)\n"
+                "json.dump({'value_mean': float(df['value'].mean())}, "
+                "open('results/model_metrics.json', 'w'))\n"
+            )
+            return ProviderResult(content=f"```python\n{code}```", metadata={})
+
+    SolverCoderAgent(llm_provider=_LLM()).run(root)
+    sens = root / "results" / "sensitivity_analysis.csv"
+    assert sens.exists(), "results/sensitivity_analysis.csv was not created by LLM path"
+    assert len(pd.read_csv(sens)) >= 3, (
+        "sensitivity_analysis.csv must have >=3 rows after LLM codegen path"
+    )
