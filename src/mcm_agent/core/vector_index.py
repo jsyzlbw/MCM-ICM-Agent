@@ -51,3 +51,22 @@ class VectorIndex:
                 }
             )
         return hits
+
+    def query_where(
+        self, embedding: list[float], top_n: int, *, where: dict | None = None
+    ) -> list[dict]:
+        kwargs: dict = {"query_embeddings": [embedding], "n_results": top_n}
+        if where:
+            kwargs["where"] = where
+        result = self._collection.query(**kwargs)
+        ids = (result.get("ids") or [[]])[0]
+        documents = (result.get("documents") or [[]])[0]
+        metadatas = (result.get("metadatas") or [[]])[0]
+        return [
+            {
+                "chunk_id": cid,
+                "content": documents[i] if i < len(documents) else "",
+                "metadata": metadatas[i] if i < len(metadatas) else {},
+            }
+            for i, cid in enumerate(ids)
+        ]
