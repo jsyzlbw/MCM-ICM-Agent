@@ -44,6 +44,23 @@ def test_interpreter_loop_writes_outputs_and_notebook(tmp_path):
     assert (ws / "notebook.ipynb").exists()
 
 
+def test_interpreter_loop_persists_executed_code_for_refine_from_code(tmp_path):
+    """The executed cells MUST be written to code/experiments/problem1.py so
+    ModelDesignAgent.refine_from_code can recover the real model (coherence chain).
+    Regression guard for the B5 finding where the paper's model section went vacuous
+    because problem1.py was never written."""
+    ws = _ws(tmp_path)
+    agent = SolverCoderAgent(llm_provider=_TwoTurnLLM())
+    ok = agent._run_interpreter_loop(ws, interpreter_factory=lambda root: FakeCodeInterpreter(root))
+    assert ok is True
+    script = ws / "code" / "experiments" / "problem1.py"
+    assert script.exists(), "executed code must be persisted to code/experiments/problem1.py"
+    body = script.read_text(encoding="utf-8")
+    # the real solver code (its data read) must be present so refine_from_code sees the model
+    assert "model_metrics.json" in body
+    assert agent._llm_script_rel == "code/experiments/problem1.py"
+
+
 def test_interpreter_loop_reflects_on_error_then_succeeds(tmp_path):
     ws = _ws(tmp_path)
 

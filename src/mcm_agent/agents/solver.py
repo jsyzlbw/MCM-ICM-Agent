@@ -208,7 +208,12 @@ class SolverCoderAgent:
             "- Use only pandas, numpy, scipy, sklearn, matplotlib — no network access.\n"
             "- Write the main result table to results/problem1_results.csv\n"
             f"- Write a JSON dict with TASK-SPECIFIC metric keys ({metric_keys}) "
-            "to results/model_metrics.json\n"
+            "to results/model_metrics.json. Name each metric after what it measures "
+            "(e.g. elimination_consistency_rate, placement_r2, mae) and report the REAL "
+            "computed numbers. Do NOT use generic placeholder keys such as "
+            "'primary_metric', 'metric', 'score', 'result', or 'value'.\n"
+            "- Build a genuine, non-trivial model that actually answers the subproblem; "
+            "do not stub or hard-code outputs.\n"
             "- Do not read files outside the workspace.\n"
         )
 
@@ -255,6 +260,7 @@ class SolverCoderAgent:
             "当该子问题**完全解出且所有要求的输出文件已写好**时，只回复一个词 DONE（不带代码块）。"
         )
 
+        executed_code: list[str] = []
         try:
             spec = read_model_spec(workspace_root)
             subs = (spec.subproblems if (spec and spec.subproblems) else [None])
@@ -292,6 +298,8 @@ class SolverCoderAgent:
                         errors += 1
                         if errors >= max_errors:
                             break
+                    else:
+                        executed_code.append(code)
 
             interp.save_notebook()
         except Exception:
@@ -308,7 +316,20 @@ class SolverCoderAgent:
 
         metrics = read_json(workspace_root / "results" / "model_metrics.json", {})
         if isinstance(metrics, dict) and metrics:
-            self._llm_script_rel = "notebook.ipynb"
+            # Persist the executed cells to code/experiments/problem1.py so
+            # ModelDesignAgent.refine_from_code can read the REAL model and keep the
+            # model<->code<->narrative coherence chain intact. Without this the paper
+            # falls back to a generic-vacuous model section (modeling/coherence collapse).
+            if executed_code:
+                script_path = workspace_root / "code" / "experiments" / "problem1.py"
+                script_path.parent.mkdir(parents=True, exist_ok=True)
+                script_path.write_text(
+                    "\n\n# ---- interpreter cell ----\n\n".join(executed_code),
+                    encoding="utf-8",
+                )
+                self._llm_script_rel = "code/experiments/problem1.py"
+            else:
+                self._llm_script_rel = "notebook.ipynb"
             self._run_sensitivity_sweep(workspace_root, processed[0])
             return True
         return False
