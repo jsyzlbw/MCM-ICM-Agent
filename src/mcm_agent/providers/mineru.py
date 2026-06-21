@@ -53,26 +53,52 @@ class FakeMinerUProvider:
 
 
 class LocalMinerUProvider:
-    def __init__(self, command: str = "mineru") -> None:
+    def __init__(self, command: str = "mineru", backend: str = "pipeline") -> None:
         self.command = command
+        self.backend = backend
 
     def parse_document(self, input_path: Path, output_dir: Path) -> ParsedDocument:
         output_dir.mkdir(parents=True, exist_ok=True)
         log_path = output_dir / "mineru_cli.log"
-        result = subprocess.run(
-            [self.command, "-p", str(input_path), "-o", str(output_dir)],
-            cwd=output_dir,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        log_path.write_text(result.stdout + "\n" + result.stderr, encoding="utf-8")
+        cmd = [self.command, "-p", str(input_path), "-o", str(output_dir), "-b", self.backend]
+        result = subprocess.run(cmd, cwd=output_dir, capture_output=True, text=True, check=False)
+        log_path.write_text((result.stdout or "") + "\n" + (result.stderr or ""), encoding="utf-8")
         if result.returncode != 0:
             raise RuntimeError(f"MinerU CLI parse failed: {result.returncode}; log={log_path}")
+        return self._collect_local_outputs(output_dir, output_dir)
 
+    def _collect_local_outputs(self, result_root: Path, output_dir: Path) -> ParsedDocument:
+        # Real MinerU writes a nested tree: <out>/<stem>/auto/<stem>.md (+ *_content_list.json,
+        # images/). Locate those rather than assuming a flat "problem.md".
+        md = self._find_first(result_root, ("*.md",))
+        content = self._find_first(result_root, ("*_content_list.json", "*.json"))
         markdown_path = output_dir / "problem.md"
         json_path = output_dir / "problem.json"
-        return ParsedDocument(markdown_path=str(markdown_path), json_path=str(json_path))
+        if md:
+            shutil.copy2(md, markdown_path)
+        else:
+            markdown_path.write_text("", encoding="utf-8")
+        if content:
+            shutil.copy2(content, json_path)
+        else:
+            json_path.write_text("{}", encoding="utf-8")
+        images = [
+            str(p)
+            for p in (*sorted(result_root.rglob("*.jpg")), *sorted(result_root.rglob("*.png")))
+        ]
+        return ParsedDocument(
+            markdown_path=str(markdown_path),
+            json_path=str(json_path),
+            image_paths=images,
+        )
+
+    @staticmethod
+    def _find_first(root: Path, patterns: tuple[str, ...]) -> Path | None:
+        for pattern in patterns:
+            matches = sorted(p for p in root.rglob(pattern) if p.name not in {"problem.md"})
+            if matches:
+                return matches[0]
+        return None
 
 
 class RestMinerUProvider:

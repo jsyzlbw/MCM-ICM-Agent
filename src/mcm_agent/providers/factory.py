@@ -76,7 +76,7 @@ def build_provider_bundle(settings: Settings, *, workspace_root: Path) -> Provid
     llm = build_llm_provider(settings)
 
     if settings.mineru_mode == "local":
-        mineru = LocalMinerUProvider(settings.mineru_cli)
+        mineru = LocalMinerUProvider(settings.mineru_cli, backend=settings.mineru_backend)
     elif settings.mineru_mode == "rest":
         mineru = RestMinerUProvider(settings.mineru_api_base_url, settings.mineru_api_key)
     else:
