@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import queue
+import re
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -40,32 +42,39 @@ class JupyterCodeInterpreter:
         self._nbf = _nbf
         self._nbf4 = _nbf4
         self.workspace_root = Path(workspace_root)
-        self.cell_timeout = cell_timeout
+        self._cell_timeout = cell_timeout
         self._cell_index = 0
 
         # Start the kernel — raises on failure (caller degrades).
         self._km, self._kc = _jcm.start_new_kernel(kernel_name="python3")
-        self._kc.wait_for_ready(timeout=30)
+        try:
+            self._kc.wait_for_ready(timeout=30)
 
-        # In-memory notebook.
-        self._nb = _nbf4.new_notebook()
+            # In-memory notebook.
+            self._nb = _nbf4.new_notebook()
 
-        # Run setup cell: chdir + matplotlib backend + best-effort CJK font.
-        setup_code = (
-            "import os as _os\n"
-            f"_os.chdir({str(self.workspace_root)!r})\n"
-            "import matplotlib as _mpl\n"
-            "_mpl.use('Agg')\n"
-            "try:\n"
-            "    import matplotlib.font_manager as _fm\n"
-            "    _cjk = [f.name for f in _fm.fontManager.ttflist\n"
-            "            if any(k in f.name for k in ('CJK', 'Noto', 'SimSun', 'Microsoft YaHei'))]\n"
-            "    if _cjk:\n"
-            "        _mpl.rcParams['font.family'] = _cjk[0]\n"
-            "except Exception:\n"
-            "    pass\n"
-        )
-        self._run_cell(setup_code, record=False)
+            # Run setup cell: chdir + matplotlib backend + best-effort CJK font.
+            setup_code = (
+                "import os as _os\n"
+                f"_os.chdir({str(self.workspace_root)!r})\n"
+                "import matplotlib as _mpl\n"
+                "_mpl.use('Agg')\n"
+                "try:\n"
+                "    import matplotlib.font_manager as _fm\n"
+                "    _cjk = [f.name for f in _fm.fontManager.ttflist\n"
+                "            if any(k in f.name for k in ('CJK', 'Noto', 'SimSun', 'Microsoft YaHei'))]\n"
+                "    if _cjk:\n"
+                "        _mpl.rcParams['font.family'] = _cjk[0]\n"
+                "except Exception:\n"
+                "    pass\n"
+            )
+            self._run_cell(setup_code, record=False)
+        except Exception:
+            try:
+                self._km.shutdown_kernel(now=True)
+            except Exception:
+                pass
+            raise
 
     # ------------------------------------------------------------------
     # Protocol implementation
@@ -116,19 +125,26 @@ class JupyterCodeInterpreter:
         outputs: list[dict] = []
 
         # Drain iopub until we see execute_reply status idle for this msg_id.
+        # Enforce a TOTAL wall-clock deadline so a chatty kernel that emits
+        # output faster than any per-message gap can never hang forever.
+        deadline = time.monotonic() + self._cell_timeout
         while True:
-            try:
-                msg = self._kc.get_iopub_msg(timeout=self.cell_timeout)
-            except queue.Empty:
-                # Timeout — interrupt and mark as error.
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                # Total deadline exceeded — interrupt and mark as error.
                 try:
                     self._km.interrupt_kernel()
                 except Exception:
                     pass
-                timeout_msg = f"[timeout after {self.cell_timeout}s]"
+                timeout_msg = f"[timeout after {self._cell_timeout}s]"
                 error_parts.append(timeout_msg)
                 had_error = True
                 break
+            try:
+                msg = self._kc.get_iopub_msg(timeout=min(remaining, 5.0))
+            except queue.Empty:
+                # Transient empty — re-check the deadline rather than giving up.
+                continue
 
             msg_type = msg["msg_type"]
             parent_id = msg.get("parent_header", {}).get("msg_id", "")
@@ -176,8 +192,7 @@ class JupyterCodeInterpreter:
             elif msg_type == "error":
                 traceback_lines = content.get("traceback", [])
                 # Strip ANSI escape codes for readability.
-                import re as _re
-                ansi_escape = _re.compile(r"\x1b\[[0-9;]*m")
+                ansi_escape = re.compile(r"\x1b\[[0-9;]*m")
                 clean_tb = "\n".join(ansi_escape.sub("", ln) for ln in traceback_lines)
                 error_parts.append(clean_tb)
                 had_error = True
