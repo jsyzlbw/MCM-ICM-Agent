@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -141,6 +142,37 @@ class SolverCoderAgent:
         match = re.search(r"```[^\n`]*\n?(.*?)```", text, re.DOTALL)
         return match.group(1).strip() if match else ""
 
+    def _metrics_are_degenerate(self, metrics: dict) -> tuple[bool, str]:
+        """Deterministically check whether a metrics dict is degenerate.
+
+        Returns (True, reason) if:
+        - metrics is empty or None
+        - any numeric leaf value is NaN or infinite
+        - all numeric leaf values are exactly 0
+
+        Returns (False, "") otherwise.  Non-numeric values (strings, bools) are
+        ignored when checking finiteness and all-zero.  Nested dicts are flattened
+        via the existing flatten_metrics helper so every leaf is inspected.
+        """
+        if not metrics:
+            return (True, "metrics dict is empty")
+
+        flat = flatten_metrics(metrics)
+        numeric_values = [v for v in flat.values() if isinstance(v, (int, float)) and not isinstance(v, bool)]
+
+        if not numeric_values:
+            # No numeric values at all — treat as non-degenerate (string-only metrics ok)
+            return (False, "")
+
+        for v in numeric_values:
+            if not math.isfinite(v):
+                return (True, f"metric value is NaN or infinite ({v!r})")
+
+        if all(v == 0 for v in numeric_values):
+            return (True, "all numeric metric values are exactly 0")
+
+        return (False, "")
+
     def _subproblem_prompt(
         self, workspace_root: Path, processed_file: Path, sub: object | None
     ) -> str:
@@ -231,7 +263,21 @@ class SolverCoderAgent:
                     content = self.llm_provider.generate(system, transcript).content
                     code = self._extract_code_block(content)
                     if not code:
-                        break  # DONE / no fence
+                        # DONE signal: run success-path correctness self-eval before accepting.
+                        metrics_now = read_json(
+                            workspace_root / "results" / "model_metrics.json", {}
+                        )
+                        degenerate, reason = self._metrics_are_degenerate(
+                            metrics_now if isinstance(metrics_now, dict) else {}
+                        )
+                        if degenerate and _turn < max_turns - 1:
+                            # Still have turn budget — re-prompt with corrective message.
+                            transcript += (
+                                f"\n\n[CHECK FAILED]\n结果退化：{reason}。"
+                                "请修正模型/计算后重写 results/model_metrics.json 与结果表，然后继续。"
+                            )
+                            continue
+                        break  # Accept finish (no budget left, or metrics are fine)
                     res = interp.execute(code)
                     feedback = (res.error if res.had_error else res.stdout)[-2000:]
                     transcript += (
