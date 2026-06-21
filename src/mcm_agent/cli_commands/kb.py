@@ -7,6 +7,8 @@ import typer
 from mcm_agent.config import load_settings
 from mcm_agent.corpus.ingest import CorpusKB, ingest_corpus
 from mcm_agent.corpus.manifest import build_manifest
+from mcm_agent.corpus.patterns import build_patterns
+from mcm_agent.corpus.teardown import build_teardowns
 from mcm_agent.providers.factory import build_provider_bundle
 from mcm_agent.utils.json_io import read_json
 
@@ -58,6 +60,35 @@ def build(
     typer.echo(
         f"Ingested papers={summary.papers_ingested} chunks={summary.chunks_indexed} "
         f"skipped={summary.skipped} -> {kb}"
+    )
+
+
+@kb_app.command("teardown")
+def teardown(
+    corpus: Path = typer.Option(Path("assets/mcm_icm_corpus"), "--corpus", help="Corpus dir"),
+    kb: Path = typer.Option(Path("corpus_kb"), "--kb", help="KB dir (must already be built)"),
+    years: str = typer.Option("", "--years", help="Comma list; empty=all converted"),
+    problems: str = typer.Option("", "--problems", help="Comma list of letters; empty=all"),
+    env_file: str | None = typer.Option(None, "--env-file"),
+    config_file: str | None = typer.Option(None, "--config-file"),
+) -> None:
+    """Generate LLM teardown cards for converted papers + (re)build the pattern library."""
+    settings = load_settings(env_file, config_file)
+    bundle = build_provider_bundle(settings, workspace_root=Path.cwd())
+    entries = build_manifest(corpus)
+    result = build_teardowns(
+        entries,
+        kb,
+        llm=bundle.llm,
+        embedding_provider=bundle.embedding,
+        embedding_model=settings.embedding_model,
+        years=_parse_set(years, int),
+        problems=_parse_set(problems, str),
+    )
+    patterns = build_patterns(kb)
+    typer.echo(
+        f"Teardown cards={result['cards']} indexed={result['indexed']} -> {kb}/teardowns; "
+        f"patterns by problem_type={patterns}"
     )
 
 
