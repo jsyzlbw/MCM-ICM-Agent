@@ -13,22 +13,18 @@ def _is_unconfigured(llm_provider: object | None) -> bool:
     return llm_provider is None or type(llm_provider).__name__ == "FakeLLMProvider"
 
 
-def _problem_excerpt(workspace_root: Path, limit: int = 1500) -> str:
-    problem_dir = workspace_root / "input" / "problem"
-    if not problem_dir.exists():
-        return ""
-    files = sorted(path for path in problem_dir.iterdir() if path.is_file())
-    if not files:
-        return ""
-    try:
-        return files[0].read_text(encoding="utf-8")[:limit]
-    except UnicodeDecodeError:
-        return ""
+def _problem_excerpt(workspace_root: Path, limit: int = 6000) -> str:
+    """Return problem text, extracting from PDF if needed."""
+    from mcm_agent.core.problem_text import extract_problem_text
+
+    return extract_problem_text(workspace_root, limit)
 
 
 _SYSTEM = (
-    "You are Mag, a math-modeling (MCM/ICM) research assistant. Discuss the problem, "
-    "clarify the research direction, and give concrete, actionable modeling advice. "
+    "You are Mag, a math-modeling (MCM/ICM) research assistant. "
+    "When PROBLEM text is provided above, ground all your advice in that specific problem — "
+    "identify its sub-questions, propose concrete candidate models for EACH sub-question, "
+    "and give actionable next steps. "
     "Reply in the user's language. "
     "If the user asks you to generate or write the full paper, produce a PDF, or output LaTeX, "
     "do NOT output a paper or LaTeX source in chat — instead tell them to run "

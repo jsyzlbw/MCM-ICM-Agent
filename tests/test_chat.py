@@ -79,3 +79,27 @@ def test_chat_reply_includes_attachment_content(tmp_path) -> None:
 
     assert "data.csv" in llm.last_prompt
     assert "a,b" in llm.last_prompt
+
+
+def test_chat_reply_injects_pdf_problem_text(tmp_path: Path) -> None:
+    """When the problem is a PDF, the LLM receives its extracted text, not empty."""
+    import shutil
+
+    real_pdf = Path(__file__).parent.parent / "assets" / "diagnostic_2026_mcm_c" / "2026_MCM_Problem_C.pdf"
+    if not real_pdf.exists():
+        import pytest
+        pytest.skip("Real PDF asset not present")
+
+    root = create_workspace(tmp_path / "ws").root
+    problem_dir = root / "input" / "problem"
+    problem_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(real_pdf, problem_dir / "2026_MCM_Problem_C.pdf")
+
+    llm = _EchoLLM()
+    generate_chat_reply(root, "根据当前题目你准备怎么写", llm, [])
+
+    # The LLM prompt must contain text extracted from the PDF
+    assert "DWTS" in llm.last_prompt or "Dancing with the Stars" in llm.last_prompt, (
+        "PDF problem text was not injected into LLM prompt.\n"
+        f"last_prompt[:200]: {llm.last_prompt[:200]!r}"
+    )

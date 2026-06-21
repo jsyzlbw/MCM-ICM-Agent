@@ -207,9 +207,10 @@ class InteractiveSession:
         state = load_workspace_state(self.workspace_root)
         guard = DialogueGuard.evaluate(state, text)
         if not guard.allowed:
+            # Genuinely blocked (no LLM configured, no problem imported)
             return CommandResult(guard.message)
-        if guard.message:
-            return CommandResult(guard.message)
+        # guard.allowed == True — proceed to LLM regardless of advisory message.
+        # (The "/init not yet complete" advisory must NOT block conversation.)
         if self._has_draft():
             plan = create_revision_plan(self.workspace_root, text)
             WorkspaceSafety(self.workspace_root).checkpoint(f"mag: create {plan.revision_id}")
