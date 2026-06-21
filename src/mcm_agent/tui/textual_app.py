@@ -277,21 +277,27 @@ class MagTuiApp(App):
 
         If the app is in ask mode, treat the text as the answer to an ongoing
         ctx.ask() call — echo it, deliver the answer to unblock the worker,
-        and clear ask mode.  Otherwise start a new run_once worker.
+        and clear ask mode.  An empty answer is valid in ask mode (it means
+        "accept the default").  Otherwise start a new run_once worker,
+        ignoring empty / whitespace-only input.
         """
         text = event.text.strip()
-        if not text:
-            return
 
         if self._ask_mode:
-            # Echo the user's answer to the log
-            self._append_to_log(f"> {text}", classes="user-turn")
+            # Echo the user's answer to the log (show "(default)" if empty)
+            display = f"> {text}" if text else "> (default)"
+            self._append_to_log(display, classes="user-turn")
             # Reset the prompt border title (will be re-set by worker completion)
             prompt = self.query_one("#prompt", ChatTextArea)
             prompt.border_title = "∑ 正在处理…"
             prompt.disabled = True
-            # Deliver the answer — this unblocks the worker thread
+            # Deliver the answer — this unblocks the worker thread.
+            # Empty string is a valid answer: it signals "use the default".
             self._deliver_ask_answer(text)
+            return
+
+        # Normal (non-ask) mode: ignore empty / whitespace-only submissions
+        if not text:
             return
 
         if self._is_processing:

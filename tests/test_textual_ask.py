@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
-from mcm_agent.core.workspace import create_workspace
+from mcm_agent.core.workspace import create_workspace, load_workspace_state
 from mcm_agent.cli_session import InteractiveSession
 from mcm_agent.tui.textual_app import MagTuiApp, ChatTextArea
 
@@ -230,4 +230,146 @@ def test_init_skip_via_ask_bridge(tmp_path: Path) -> None:
     log = asyncio.run(_scenario())
     assert "已跳过" in log or "skip" in log.lower() or "LLM" in log or "跳过" in log, (
         f"Expected skip/配置 message from /init choice 3. Got: {log!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# TUI-3 bug regression: empty Enter in ask mode must deliver the answer
+# ---------------------------------------------------------------------------
+
+
+def test_api_full_flow_with_empty_default_answer(tmp_path: Path) -> None:
+    """Full /api flow inside the TUI must complete when the user presses Enter
+    with EMPTY text to accept the default model.
+
+    Bug: ChatTextArea suppressed empty submits entirely, so _deliver_ask_answer
+    was never called for the last "Model（回车用 deepseek-chat）:" prompt →
+    worker blocked forever → 已配置 never appeared → llm_configured stayed False.
+
+    Fix: In ask mode, empty Enter IS a valid answer (accept the default).
+    """
+    from mcm_agent.cli_commands.api import ApiCommand
+
+    async def _wait_for_ask_mode(app, *, timeout: float = 3.0, poll: float = 0.05) -> bool:
+        """Poll until _ask_mode is True or timeout elapses."""
+        elapsed = 0.0
+        while elapsed < timeout:
+            if getattr(app, "_ask_mode", False):
+                return True
+            await asyncio.sleep(poll)
+            elapsed += poll
+        return False
+
+    async def _wait_for_ask_mode_exit(app, *, timeout: float = 3.0, poll: float = 0.05) -> bool:
+        """Poll until _ask_mode is False (answer delivered) or timeout elapses."""
+        elapsed = 0.0
+        while elapsed < timeout:
+            if not getattr(app, "_ask_mode", False):
+                return True
+            await asyncio.sleep(poll)
+            elapsed += poll
+        return False
+
+    root = create_workspace(tmp_path / "ws").root
+    session = InteractiveSession(root)
+    # Wire up the real ApiCommand so the full ask chain runs
+    session.commands["api"] = ApiCommand()
+
+    async def _scenario():
+        async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
+            app = pilot.app
+            await pilot.pause(0.3)
+
+            # Submit /api
+            prompt = app.query_one("#prompt", ChatTextArea)
+            prompt.insert("/api")
+            await pilot.press("enter")
+
+            # Step 1: app asks "配置: [1]LLM [2]…" → answer "1"
+            entered_ask = await _wait_for_ask_mode(app)
+            assert entered_ask, "App should enter ask mode for the top-level /api menu"
+            prompt = app.query_one("#prompt", ChatTextArea)
+            prompt.insert("1")
+            await pilot.press("enter")
+            await _wait_for_ask_mode_exit(app)
+
+            # Step 2: configure_llm_interactive asks "选择 LLM 提供方…编号:" → answer "1" (DeepSeek)
+            entered_ask = await _wait_for_ask_mode(app)
+            assert entered_ask, "App should enter ask mode for LLM provider selection"
+            prompt = app.query_one("#prompt", ChatTextArea)
+            prompt.insert("1")
+            await pilot.press("enter")
+            await _wait_for_ask_mode_exit(app)
+
+            # Step 3: asks "DeepSeek 官方 API key:" → answer with a fake key
+            entered_ask = await _wait_for_ask_mode(app)
+            assert entered_ask, "App should enter ask mode for API key"
+            prompt = app.query_one("#prompt", ChatTextArea)
+            prompt.insert("sk-test-xxx")
+            await pilot.press("enter")
+            await _wait_for_ask_mode_exit(app)
+
+            # Step 4 (THE BUG): asks "Model（回车用 deepseek-chat）:" → press Enter with EMPTY text
+            entered_ask = await _wait_for_ask_mode(app)
+            assert entered_ask, "App should enter ask mode for model (the step that was broken)"
+            prompt = app.query_one("#prompt", ChatTextArea)
+            # Do NOT insert anything — press Enter with empty box to accept default
+            await pilot.press("enter")
+
+            # Worker should now unblock and complete
+            await pilot.pause(2.0)
+
+            log_text = _get_log_text(pilot)
+            ws_state = load_workspace_state(root)
+            return log_text, ws_state.init.llm_configured
+
+    log, llm_configured = asyncio.run(_scenario())
+    assert "已配置" in log, (
+        f"Expected '已配置' in log after /api completes with empty default answer. "
+        f"Got: {log!r}"
+    )
+    assert llm_configured is True, (
+        "Expected llm_configured=True after /api flow with empty default model answer"
+    )
+
+
+def test_empty_enter_in_normal_mode_does_not_run_once(tmp_path: Path) -> None:
+    """An empty Enter in normal mode (not ask mode) must NOT trigger run_once.
+
+    The app should silently ignore it — no worker should start.
+    """
+    run_once_calls: list[str] = []
+
+    root = create_workspace(tmp_path / "ws").root
+    session = InteractiveSession(root)
+
+    def _counting_run_once(text: str) -> CommandResult:
+        run_once_calls.append(text)
+        return CommandResult("done")
+
+    session.run_once = _counting_run_once  # type: ignore[method-assign]
+
+    async def _scenario():
+        async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
+            app = pilot.app
+            await pilot.pause(0.3)
+
+            # Ensure NOT in ask mode
+            assert not getattr(app, "_ask_mode", False), "Should not start in ask mode"
+
+            # Press Enter with empty input — should be ignored
+            await pilot.press("enter")
+            await pilot.pause(0.5)
+
+            # Also try whitespace-only — should also be ignored
+            prompt = app.query_one("#prompt", ChatTextArea)
+            prompt.insert("   ")
+            await pilot.press("enter")
+            await pilot.pause(0.5)
+
+            return list(run_once_calls)
+
+    calls = asyncio.run(_scenario())
+    assert calls == [], (
+        f"Empty/whitespace Enter in normal mode must NOT trigger run_once. Got calls: {calls!r}"
     )
