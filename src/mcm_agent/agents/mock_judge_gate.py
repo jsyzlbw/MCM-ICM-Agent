@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.agents.mock_judge import MockJudge, read_paper
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
 from mcm_agent.utils.json_io import read_json, write_json
+
+# Artifact dirs that constitute the shipped paper; snapshotted so the loop can
+# restore the BEST-scoring iteration rather than shipping whatever the last
+# (possibly regressed) repair produced. LLM repairs are noisy and non-monotonic.
+_SNAPSHOT_DIRS = ("paper", "figures")
+_BEST_SNAPSHOT = Path("review") / "mock_judge_best"
 
 # Minimum per-dimension score to avoid triggering a repair.
 FLOOR = 4
@@ -58,6 +65,13 @@ class MockJudgeGateAgent:
             }
         )
         write_json(scores_path, history)
+
+        # 3b. Keep-best: snapshot this iteration's paper if it is the best scored so
+        # far, so a later regressing repair cannot make us ship a worse paper.
+        prior_totals = [entry["total"] for entry in history[:-1]]
+        best_prior_total = max(prior_totals) if prior_totals else None
+        if best_prior_total is None or score.total >= best_prior_total:
+            self._snapshot_best(workspace_root)
 
         # 4. Decide PASS vs REPAIR.
         iteration = len(history)  # after append
@@ -115,4 +129,39 @@ class MockJudgeGateAgent:
 
         record_gate_decision(workspace_root, "mock_judge_gate.json", decision)
 
+        # On a final pass, restore the best-scoring snapshot so the workflow packages
+        # the best iteration's paper, not the last (which may have regressed).
+        if should_pass:
+            self._restore_best(workspace_root)
+
         return ["review/mock_judge_gate.json", "review/mock_judge_scores.json"]
+
+    def _snapshot_best(self, workspace_root: Path) -> None:
+        """Copy the current paper artifacts into the best-snapshot dir (best-effort)."""
+        best_root = workspace_root / _BEST_SNAPSHOT
+        for name in _SNAPSHOT_DIRS:
+            src = workspace_root / name
+            if not src.is_dir():
+                continue
+            dst = best_root / name
+            try:
+                if dst.exists():
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+            except Exception:
+                pass  # snapshotting must never crash the gate
+
+    def _restore_best(self, workspace_root: Path) -> None:
+        """Restore the best-snapshot paper artifacts over the working ones (best-effort)."""
+        best_root = workspace_root / _BEST_SNAPSHOT
+        if not best_root.is_dir():
+            return  # nothing snapshotted (e.g. single immediate pass) — keep current
+        for name in _SNAPSHOT_DIRS:
+            snap = best_root / name
+            if not snap.is_dir():
+                continue
+            dst = workspace_root / name
+            try:
+                shutil.copytree(snap, dst, dirs_exist_ok=True)
+            except Exception:
+                pass  # restore must never crash the gate

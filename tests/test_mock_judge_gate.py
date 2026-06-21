@@ -258,3 +258,48 @@ def test_workflow_graph_edges_typesetting_through_mock_judge_gate() -> None:
 def test_mock_judge_gate_node_exists_in_graph() -> None:
     graph = build_default_workflow_graph()
     assert "mock_judge_gate" in graph.nodes
+
+
+class _SequenceLLM:
+    """Fake LLM returning a different RubricScore per call (drives multi-iter tests)."""
+
+    def __init__(self, dim_seq: list[dict[str, int]]):
+        self._seq = dim_seq
+        self.calls = 0
+
+    def generate(self, system: str, prompt: str, **kwargs: object) -> ProviderResult:
+        dims = self._seq[min(self.calls, len(self._seq) - 1)]
+        self.calls += 1
+        payload = {
+            "dimensions": dims,
+            "comments": {d: "ok" for d in dims},
+            "revision_suggestions": [],
+        }
+        return ProviderResult(content="```json\n" + json.dumps(payload) + "\n```", metadata={})
+
+
+def test_keep_best_ships_best_iteration_not_last(tmp_path: Path) -> None:
+    """Keep-best: across noisy iterations (2.0 -> 3.0 -> 1.0), the workflow must ship
+    the BEST iteration's paper (iter2), not the last (iter3, which regressed)."""
+    ws = _make_workspace(tmp_path)
+    intro = ws / "paper" / "sections" / "intro.tex"
+    llm = _SequenceLLM(
+        [
+            {d: 2 for d in DIMENSIONS},  # iter1 total 2.0
+            {d: 3 for d in DIMENSIONS},  # iter2 total 3.0  <- best
+            {d: 1 for d in DIMENSIONS},  # iter3 total 1.0  -> MAX_ITERS pass
+        ]
+    )
+    agent = MockJudgeGateAgent(llm)
+    for marker in ("ITER1", "ITER2", "ITER3"):
+        intro.write_text(
+            rf"\section{{Introduction}} {marker} with sensitivity analysis and validation.",
+            encoding="utf-8",
+        )
+        agent.run(ws)
+
+    # iter3 forced a pass (iteration >= MAX_ITERS) -> best (iter2) restored.
+    assert "ITER2" in intro.read_text(encoding="utf-8")
+    assert "ITER3" not in intro.read_text(encoding="utf-8")
+    hist = read_json(ws / "review" / "mock_judge_scores.json", [])
+    assert [round(e["total"], 1) for e in hist] == [2.0, 3.0, 1.0]
