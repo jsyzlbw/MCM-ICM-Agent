@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     mineru_mode: str = "fake"
     mineru_cli: str = "mineru"
+    mineru_backend: str = "pipeline"
     mineru_api_base_url: str = "https://mineru.net"
     mineru_api_key: str = ""
 
@@ -156,6 +157,7 @@ def _settings_overrides_from_json(payload: dict[str, Any]) -> dict[str, Any]:
         ("official_data", "overpass_base_url"): "overpass_base_url",
         ("mineru", "mode"): "mineru_mode",
         ("mineru", "cli"): "mineru_cli",
+        ("mineru", "backend"): "mineru_backend",
         ("mineru", "api_base_url"): "mineru_api_base_url",
         ("mineru", "api_key"): "mineru_api_key",
         ("humanizer", "api_key"): "humanizer_api_key",
