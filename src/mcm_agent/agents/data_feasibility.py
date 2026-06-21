@@ -128,7 +128,11 @@ class DataFeasibilityScoutAgent:
             ),
         )
         route = route_data_availability(availability)
-        matrix = [self._matrix_row(1, availability, "provided contest data files", [])]
+        provided_row = self._matrix_row(1, availability, "provided contest data files", [])
+        # The shipped data IS the source: mark the need covered so search_data /
+        # source_verifier do not treat it as a searchable need needing web coverage.
+        provided_row["covered_by_attachment"] = True
+        matrix = [provided_row]
         write_json(workspace_root / "data" / "data_feasibility_matrix.json", matrix)
         (workspace_root / "reports" / "data_feasibility_report.md").write_text(
             self._build_report(availability, route.recommendation, [], matrix),

@@ -62,6 +62,10 @@ def test_provided_data_short_circuits_to_available_despite_private_marker(
     assert decision["route"]["next_stage"] == "user_discussion"
     assert decision["route"]["next_stage"] != "research_reframing"
     assert events[-1].event_type == "data.feasibility.ready"
+    # The provided-data need must be flagged covered_by_attachment so search_data /
+    # source_verifier do not treat it as a searchable need needing web coverage.
+    matrix = read_json(workspace.root / "data" / "data_feasibility_matrix.json", [])
+    assert matrix and matrix[0].get("covered_by_attachment") is True
 
 
 def test_data_feasibility_scout_reframes_likely_private_salary_data(tmp_path: Path) -> None:

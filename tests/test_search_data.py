@@ -978,3 +978,26 @@ def test_source_gate_still_fails_when_no_user_strategy_and_unknown_need(
     gate = read_json(workspace.root / "review" / "source_gate.json", {})
     assert gate["status"] == "fail"
     assert gate["failure_reason"] == "source_unreliable"
+
+
+def test_feasibility_need_covered_by_attachment_is_not_searchable(tmp_path: Path) -> None:
+    """A data_feasibility matrix row flagged covered_by_attachment must be classified
+    'covered_by_attachment' (not 'searchable'), so source_verifier does not demand web
+    coverage for data the contest already shipped (regression for the DWTS source block)."""
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "data" / "data_feasibility_matrix.json",
+        [
+            {
+                "need_id": "need_001",
+                "target_dataset": "provided contest data",
+                "query": "provided contest data files",
+                "availability": "available",
+                "covered_by_attachment": True,
+            }
+        ],
+    )
+    agent = SearchDataAgent(FallbackSearchProvider([]), OpenAlexProvider())
+    needs = agent._feasibility_data_needs(workspace.root)
+    assert len(needs) == 1
+    assert needs[0]["status"] == "covered_by_attachment"

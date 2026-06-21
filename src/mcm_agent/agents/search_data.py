@@ -329,7 +329,11 @@ class SearchDataAgent:
             status = "searchable"
             if availability == "private_or_unavailable":
                 status = "skipped_private_or_unavailable"
-            elif availability == "unknown" and self._has_attachments(workspace_root):
+            elif row.get("covered_by_attachment") or (
+                availability == "unknown" and self._has_attachments(workspace_root)
+            ):
+                # Data the contest shipped with is its own source — it needs no web
+                # coverage and must not be treated as a searchable need.
                 status = "covered_by_attachment"
             needs.append(
                 {
