@@ -86,7 +86,8 @@ def test_printer_routes_to_log(tmp_path: Path) -> None:
         async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
             await pilot.pause(0.3)
             prompt = pilot.app.query_one("#prompt", ChatTextArea)
-            prompt.insert("/printertest")
+            # Trailing space: "/<cmd> " so slash-popup is not shown and Enter submits directly
+            prompt.insert("/printertest ")
             await pilot.press("enter")
             # Worker is fast (no ask), give it time to complete
             await pilot.pause(1.0)
@@ -113,8 +114,9 @@ def test_ask_bridge_blocks_then_unblocks_on_answer(tmp_path: Path) -> None:
             await pilot.pause(0.3)
 
             # Submit /asktest — this triggers ctx.ask("pick: ") in the worker
+            # Trailing space: ensures slash-popup is dismissed, Enter submits directly
             prompt = pilot.app.query_one("#prompt", ChatTextArea)
-            prompt.insert("/asktest")
+            prompt.insert("/asktest ")
             await pilot.press("enter")
 
             # Give the worker a moment to reach the ask() call and enter ask mode
@@ -162,7 +164,8 @@ def test_ask_answer_echoed_to_log(tmp_path: Path) -> None:
         async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
             await pilot.pause(0.3)
             prompt = pilot.app.query_one("#prompt", ChatTextArea)
-            prompt.insert("/asktest")
+            # Trailing space so slash-popup is not shown, Enter submits directly
+            prompt.insert("/asktest ")
             await pilot.press("enter")
             await pilot.pause(0.5)
             # Answer the ask
@@ -185,9 +188,9 @@ def test_after_ask_completes_next_submit_is_normal(tmp_path: Path) -> None:
     async def _scenario():
         async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
             await pilot.pause(0.3)
-            # First: do /asktest + answer
+            # First: do /asktest + answer (trailing space avoids popup)
             prompt = pilot.app.query_one("#prompt", ChatTextArea)
-            prompt.insert("/asktest")
+            prompt.insert("/asktest ")
             await pilot.press("enter")
             await pilot.pause(0.5)
             prompt2 = pilot.app.query_one("#prompt", ChatTextArea)
@@ -196,7 +199,7 @@ def test_after_ask_completes_next_submit_is_normal(tmp_path: Path) -> None:
             await pilot.pause(1.0)
             # After ask-flow done, submit /printertest — should run as a new command
             prompt3 = pilot.app.query_one("#prompt", ChatTextArea)
-            prompt3.insert("/printertest")
+            prompt3.insert("/printertest ")
             await pilot.press("enter")
             await pilot.pause(1.0)
             return _get_log_text(pilot)
@@ -216,7 +219,7 @@ def test_init_skip_via_ask_bridge(tmp_path: Path) -> None:
         async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
             await pilot.pause(0.3)
             prompt = pilot.app.query_one("#prompt", ChatTextArea)
-            prompt.insert("/init")
+            prompt.insert("/init ")  # trailing space: bypass slash-popup so Enter submits
             await pilot.press("enter")
             await pilot.pause(0.5)
             # /init is not yet initialized, context.ask is set → interactive mode
@@ -280,9 +283,9 @@ def test_api_full_flow_with_empty_default_answer(tmp_path: Path) -> None:
             app = pilot.app
             await pilot.pause(0.3)
 
-            # Submit /api
+            # Submit /api (trailing space avoids slash-popup; Enter submits directly)
             prompt = app.query_one("#prompt", ChatTextArea)
-            prompt.insert("/api")
+            prompt.insert("/api ")
             await pilot.press("enter")
 
             # Step 1: app asks "配置: [1]LLM [2]…" → answer "1"

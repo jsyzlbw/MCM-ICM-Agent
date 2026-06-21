@@ -3,7 +3,8 @@
 Layout (top → bottom):
   1. Label header (static)
   2. VerticalScroll(id="log") – scrolling transcript, takes all remaining space
-  3. ChatTextArea(id="prompt") – bordered input at bottom, auto-height
+  3. [SlashCompleteWidget] – mounted dynamically before #prompt when "/" typed
+  4. ChatTextArea(id="prompt") – bordered input at bottom, auto-height
 
 Usage::
 
@@ -18,11 +19,16 @@ from typing import TYPE_CHECKING
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
+from textual.css.query import NoMatches
 from textual.message import Message
+from textual.widget import Widget
 from textual.widgets import Label, Static, TextArea
 
 if TYPE_CHECKING:
     from mcm_agent.cli_session import InteractiveSession
+
+# Teal accent colour (also defined in theme.ACCENT)
+_ACCENT = "#1D9E75"
 
 
 # ---------------------------------------------------------------------------
@@ -48,13 +54,113 @@ def _render_to_markup(renderable: object, width: int = 100) -> str:
     return cap.get()
 
 
+def _mode_badge(text: str) -> str:
+    """Return the mode label based on the first character of the input text."""
+    if not text:
+        return "讨论"
+    first = text[0]
+    if first == "!":
+        return "shell"
+    if first == "/":
+        return "命令"
+    if first == "@":
+        return "文件"
+    return "讨论"
+
+
+# ---------------------------------------------------------------------------
+# SlashCompleteWidget — / autocomplete dropdown
+# ---------------------------------------------------------------------------
+
+
+class SlashCompleteWidget(Static):
+    """Slash-command autocomplete popup.
+
+    Displays a filtered list of available commands.  Navigation and selection
+    are driven by ChatTextArea._on_key routing ↑/↓/Tab/Esc to this widget.
+    When a selection is made, posts ``Selected`` — MagTuiApp handles it.
+    """
+
+    can_focus = False
+
+    DEFAULT_CSS = f"""
+    SlashCompleteWidget {{
+        height: auto;
+        padding: 0 1;
+        margin: 0 2;
+        background: $surface;
+        border: round {_ACCENT};
+    }}
+    """
+
+    class Selected(Message):
+        """Posted when the user selects a command from the dropdown."""
+
+        def __init__(self, name: str) -> None:
+            self.name = name
+            super().__init__()
+
+    def __init__(self, items: list[tuple[str, str]]) -> None:
+        super().__init__("")
+        self._all_items: list[tuple[str, str]] = items
+        self._filtered: list[tuple[str, str]] = list(items)
+        self._cursor: int = 0
+
+    def set_query(self, query: str) -> None:
+        """Filter items by *query* (case-insensitive substring match on name)."""
+        q = query.lower()
+        self._filtered = [(n, d) for n, d in self._all_items if not q or q in n.lower()]
+        self._cursor = min(self._cursor, max(0, len(self._filtered) - 1))
+        if self.is_attached:
+            self._redraw()
+
+    def move_up(self) -> None:
+        if self._filtered:
+            self._cursor = (self._cursor - 1) % len(self._filtered)
+            self._redraw()
+
+    def move_down(self) -> None:
+        if self._filtered:
+            self._cursor = (self._cursor + 1) % len(self._filtered)
+            self._redraw()
+
+    def select_current(self) -> None:
+        if self._filtered:
+            self.post_message(self.Selected(self._filtered[self._cursor][0]))
+
+    def has_selection(self) -> bool:
+        return bool(self._filtered)
+
+    def on_mount(self) -> None:
+        self._redraw()
+
+    def _redraw(self) -> None:
+        if not self._filtered:
+            self.update("[dim]  no matching commands[/dim]")
+            return
+        lines: list[str] = []
+        for i, (name, desc) in enumerate(self._filtered):
+            desc_part = f"  [dim]{desc}[/dim]" if desc else ""
+            if i == self._cursor:
+                lines.append(f"  [bold]❯ /{name}[/bold]{desc_part}")
+            else:
+                lines.append(f"    /{name}{desc_part}")
+        lines.append("[dim]  ↑↓ navigate   tab/enter select   esc dismiss[/dim]")
+        self.update("\n".join(lines))
+
+
 # ---------------------------------------------------------------------------
 # ChatTextArea — bordered input widget
 # ---------------------------------------------------------------------------
 
 
 class ChatTextArea(TextArea):
-    """TextArea subclass that submits on Enter, inserts newline on Alt+Enter / Shift+Enter."""
+    """TextArea subclass that submits on Enter, inserts newline on Alt+Enter / Shift+Enter.
+
+    Also posts SlashChanged messages when text starts with "/" so MagTuiApp
+    can show/hide/update the SlashCompleteWidget.  Keys ↑↓/Tab/Esc are
+    routed to the popup when it is open.
+    """
 
     class Submitted(Message):
         """Posted when the user presses Enter to submit."""
@@ -63,18 +169,96 @@ class ChatTextArea(TextArea):
             self.text = text
             super().__init__()
 
-    def on_key(self, event) -> None:
-        """Handle Enter (submit) vs Alt+Enter / Shift+Enter (newline)."""
-        if event.key == "enter":
-            # Plain Enter → submit
-            text = self.text
-            self.clear()
+    class SlashChanged(Message):
+        """Posted when slash-command prefix changes.
+
+        ``query`` is the text after "/" (may be "").  ``None`` means the
+        text no longer looks like a slash-command → dismiss popup.
+        """
+
+        def __init__(self, query: str | None) -> None:
+            self.query = query
+            super().__init__()
+
+    def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        """Detect slash prefix and emit SlashChanged; update mode badge."""
+        text = self.text
+        # Slash-command detection: starts with "/" and no space yet
+        if text.startswith("/") and " " not in text:
+            self.post_message(ChatTextArea.SlashChanged(query=text[1:]))
+        else:
+            self.post_message(ChatTextArea.SlashChanged(query=None))
+        # Mode badge in border_title (only update when not in special states)
+        # We only update the badge when the app has NOT set a custom title
+        # (e.g. "∑ 正在处理…") — we detect that by checking the app's processing flag.
+        app = self.app  # type: ignore[attr-defined]
+        if not getattr(app, "_is_processing", False) and not getattr(app, "_ask_mode", False):
+            badge = _mode_badge(text)
+            # border_title uses Textual markup: wrap in plain text, not brackets
+            # which would be treated as style tags. Use a prefix to make it visible.
+            self.border_title = badge
+
+    async def _on_key(self, event) -> None:
+        """Route keys to popup when open; handle Enter submit / newline insert."""
+        key = event.key
+
+        # Find popup if present
+        popup: SlashCompleteWidget | None = None
+        try:
+            popup = self.app.query_one(SlashCompleteWidget)  # type: ignore[attr-defined]
+        except NoMatches:
+            popup = None
+
+        if key == "enter":
+            event.stop()
             event.prevent_default()
-            self.post_message(ChatTextArea.Submitted(text))
-        elif event.key in ("shift+enter", "escape+enter"):
-            # Alt+Enter or Shift+Enter → insert newline
-            self.insert("\n")
+            # In ask mode, always deliver answer — never let popup swallow it
+            if getattr(self.app, "_ask_mode", False):  # type: ignore[attr-defined]
+                text = self.text
+                self.clear()
+                self.post_message(self.Submitted(text))
+                return
+            # Normal mode: if popup open and has items, select the item
+            if popup is not None and popup.has_selection():
+                popup.select_current()
+                return
+            # Otherwise submit
+            if self.text.strip():
+                text = self.text
+                self.clear()
+                self.post_message(self.Submitted(text))
+            return
+
+        if key in ("shift+enter", "escape+enter", "alt+enter"):
+            event.stop()
             event.prevent_default()
+            if not self.read_only:
+                self.insert("\n")
+            return
+
+        if popup is not None:
+            if key == "up":
+                event.stop()
+                event.prevent_default()
+                popup.move_up()
+                return
+            elif key == "down":
+                event.stop()
+                event.prevent_default()
+                popup.move_down()
+                return
+            elif key == "tab":
+                event.stop()
+                event.prevent_default()
+                popup.select_current()
+                return
+            elif key == "escape":
+                event.stop()
+                event.prevent_default()
+                self.post_message(ChatTextArea.SlashChanged(query=None))
+                return
+
+        await super()._on_key(event)
 
 
 # ---------------------------------------------------------------------------
@@ -98,35 +282,42 @@ class MagTuiApp(App):
       an answer from the ChatTextArea.
     * When _ask_mode is True, the submit handler treats the submitted text as
       the answer rather than as a new command.
+
+    Slash completion (TUI-2)
+    ------------------------
+    When the user types "/" in the prompt, a SlashCompleteWidget is mounted
+    before #prompt showing all registered commands filtered by the query.
+    ↑↓ navigate, Tab/Enter select (fills input with "/{name} " and dismisses),
+    Esc dismisses.  In ask mode Enter always delivers the answer.
     """
 
-    CSS = """
-    #header {
+    CSS = f"""
+    #header {{
         background: $surface;
-        color: #1D9E75;
+        color: {_ACCENT};
         padding: 0 1;
         height: 1;
-    }
-    #log {
+    }}
+    #log {{
         height: 1fr;
-    }
-    ChatTextArea {
-        border: round #1D9E75;
+    }}
+    ChatTextArea {{
+        border: round {_ACCENT};
         min-height: 3;
         max-height: 12;
-    }
-    ChatTextArea:focus {
-        border: round #1D9E75;
-    }
-    .user-turn {
-        color: #1D9E75;
-    }
-    .system-msg {
+    }}
+    ChatTextArea:focus {{
+        border: round {_ACCENT};
+    }}
+    .user-turn {{
+        color: {_ACCENT};
+    }}
+    .system-msg {{
         color: $text-muted;
-    }
-    .ask-prompt {
+    }}
+    .ask-prompt {{
         color: $warning;
-    }
+    }}
     """
 
     BINDINGS = [
@@ -156,11 +347,9 @@ class MagTuiApp(App):
 
         Returns the answer string. Returns "" if the app exits while waiting.
         """
-        # Show the prompt in the log and enter ask mode on the UI thread.
         self._ask_event.clear()
         self._ask_answer = ""
         self.call_from_thread(self._enter_ask_mode, str(prompt))
-        # Block the worker thread until the UI thread calls _deliver_ask_answer.
         self._ask_event.wait()
         return self._ask_answer
 
@@ -169,7 +358,6 @@ class MagTuiApp(App):
         if prompt:
             self._append_to_log(prompt, classes="ask-prompt")
         self._ask_mode = True
-        # Re-enable and focus input so the user can type
         input_widget = self.query_one("#prompt", ChatTextArea)
         input_widget.disabled = False
         input_widget.border_title = "∑ 请回答…"
@@ -205,6 +393,58 @@ class MagTuiApp(App):
             self._ask_answer = ""
             self._ask_mode = False
             self._ask_event.set()
+
+    # ------------------------------------------------------------------
+    # Slash completion — event handlers
+    # ------------------------------------------------------------------
+
+    def _build_slash_items(self) -> list[tuple[str, str]]:
+        """Build list of (name, summary) for all registered commands + 'help'."""
+        items: list[tuple[str, str]] = []
+        try:
+            for name, command in self.session.commands.items():
+                items.append((name, getattr(command, "summary", "")))
+        except Exception:
+            pass
+        # Ensure "help" is present
+        if not any(n == "help" for n, _ in items):
+            items.append(("help", "show help"))
+        return items
+
+    def on_chat_text_area_slash_changed(self, event: ChatTextArea.SlashChanged) -> None:
+        """Mount, update, or remove the SlashCompleteWidget based on query."""
+        query = event.query
+        if query is None:
+            # Dismiss popup
+            try:
+                self.query_one(SlashCompleteWidget).remove()
+            except NoMatches:
+                pass
+            return
+        # Don't show popup in ask mode
+        if self._ask_mode:
+            return
+        try:
+            popup = self.query_one(SlashCompleteWidget)
+            popup.set_query(query)
+        except NoMatches:
+            items = self._build_slash_items()
+            popup = SlashCompleteWidget(items)
+            self.mount(popup, before="#prompt")
+            popup.set_query(query)
+
+    def on_slash_complete_widget_selected(self, event: SlashCompleteWidget.Selected) -> None:
+        """Fill input with the selected command name and dismiss the popup."""
+        try:
+            prompt = self.query_one("#prompt", ChatTextArea)
+            prompt.text = f"/{event.name} "
+            prompt.move_cursor(prompt.document.end)
+        except NoMatches:
+            pass
+        try:
+            self.query_one(SlashCompleteWidget).remove()
+        except NoMatches:
+            pass
 
     # ------------------------------------------------------------------
     # Header
@@ -251,8 +491,6 @@ class MagTuiApp(App):
             )
             ansi_text = _render_to_markup(panel, width=100)
             log_view = self.query_one("#log", VerticalScroll)
-            # Use markup=False so ANSI codes are treated as text (Static uses Textual markup by default)
-            # We pass the pre-rendered string and disable markup parsing
             log_view.mount(Static(ansi_text, markup=False))
         except Exception:
             pass  # welcome is non-critical
@@ -292,7 +530,6 @@ class MagTuiApp(App):
             prompt.border_title = "∑ 正在处理…"
             prompt.disabled = True
             # Deliver the answer — this unblocks the worker thread.
-            # Empty string is a valid answer: it signals "use the default".
             self._deliver_ask_answer(text)
             return
 
@@ -340,11 +577,10 @@ class MagTuiApp(App):
             if result is not None and getattr(result, "exit_session", False):
                 self.exit()
         except Exception as e:
-            # Log render error but don't fail re-enable
             try:
                 self._append_to_log(f"[错误] 渲染失败: {e}", classes="system-msg")
             except Exception:
-                pass  # If logging itself fails, silently continue
+                pass
         finally:
             # Always re-enable input, even if rendering raised
             prompt = self.query_one("#prompt", ChatTextArea)
@@ -358,9 +594,8 @@ class MagTuiApp(App):
         try:
             self._append_to_log(f"[错误] {worker.error}", classes="system-msg")
         except Exception:
-            pass  # If logging itself fails, silently continue
+            pass
         finally:
-            # Always re-enable input, even if error logging raised
             prompt = self.query_one("#prompt", ChatTextArea)
             prompt.border_title = ""
             prompt.disabled = False

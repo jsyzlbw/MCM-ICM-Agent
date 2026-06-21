@@ -116,7 +116,7 @@ def test_exit_session_causes_app_exit(tmp_path: Path) -> None:
         async with MagTuiApp(session).run_test(headless=True, size=(120, 40)) as pilot:
             await pilot.pause(0.2)
             prompt = pilot.app.query_one("#prompt", ChatTextArea)
-            prompt.insert("/exit")
+            prompt.insert("/exit ")  # trailing space: bypass slash-popup so Enter submits
             await pilot.press("enter")
             # App should exit on its own; wait a bit then check
             await pilot.pause(2.0)
