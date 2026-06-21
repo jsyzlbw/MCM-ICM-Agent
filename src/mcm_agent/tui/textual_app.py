@@ -24,6 +24,8 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Label, Static, TextArea
 
+from rich.markdown import Markdown as _RichMarkdown
+
 if TYPE_CHECKING:
     from mcm_agent.cli_session import InteractiveSession
 
@@ -66,6 +68,42 @@ def _mode_badge(text: str) -> str:
     if first == "@":
         return "文件"
     return "讨论"
+
+
+# ---------------------------------------------------------------------------
+# LLMStreamBlock — accumulates streaming tokens, renders Markdown when done
+# ---------------------------------------------------------------------------
+
+
+class LLMStreamBlock(Static):
+    """Accumulates LLM streaming tokens in a single widget.
+
+    While streaming, each ``append_token`` call extends the raw text and
+    refreshes the display.  ``finalize_markdown()`` replaces the plain text
+    with a rendered Rich Markdown renderable once the stream is complete.
+    """
+
+    DEFAULT_CSS = "LLMStreamBlock { padding: 0 1; color: $text; }"
+
+    def __init__(self) -> None:
+        super().__init__("")
+        self._text: str = ""
+        self._finalized: bool = False
+
+    def append_token(self, token: str) -> None:
+        """Append *token* to the accumulated text and refresh the display."""
+        if self._finalized:
+            return
+        self._text += token
+        self.update(self._text)
+
+    def finalize_markdown(self) -> None:
+        """Render accumulated text as Rich Markdown (called once streaming ends)."""
+        if self._finalized:
+            return
+        self._finalized = True
+        if self._text.strip():
+            self.update(_RichMarkdown(self._text, code_theme="monokai"))
 
 
 # ---------------------------------------------------------------------------
@@ -510,14 +548,21 @@ class MagTuiApp(App):
     # Submit handler
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _is_nl_chat(text: str) -> bool:
+        """Return True if *text* is a natural-language chat turn (not a command)."""
+        if not text:
+            return False
+        first = text[0]
+        return first not in ("/", "!", "?")
+
     def on_chat_text_area_submitted(self, event: ChatTextArea.Submitted) -> None:
         """Handle submitted text.
 
-        If the app is in ask mode, treat the text as the answer to an ongoing
-        ctx.ask() call — echo it, deliver the answer to unblock the worker,
-        and clear ask mode.  An empty answer is valid in ask mode (it means
-        "accept the default").  Otherwise start a new run_once worker,
-        ignoring empty / whitespace-only input.
+        * Ask mode: deliver the answer to unblock the waiting worker.
+        * NL chat (no / ! ? prefix): run the streaming path if the LLM has
+          ``generate_stream``; otherwise fall back to the run_once path.
+        * Commands / shell / shortcuts: unchanged run_once path.
         """
         text = event.text.strip()
 
@@ -549,6 +594,44 @@ class MagTuiApp(App):
         prompt.border_title = "∑ 正在处理…"
         self._is_processing = True
 
+        if self._is_nl_chat(text):
+            # Natural-language chat: try streaming path, fall back to run_once.
+            llm = self.session._chat_llm()
+            if llm is not None and hasattr(llm, "generate_stream"):
+                # Streaming path: append an empty LLMStreamBlock, stream into it.
+                block = LLMStreamBlock()
+                log_view = self.query_one("#log", VerticalScroll)
+                log_view.mount(block)
+                log_view.scroll_end(animate=False)
+
+                def _stream_worker():
+                    from mcm_agent.core.chat import stream_chat_reply
+
+                    recent = self.session.session_store.read_recent_messages(limit=8)
+                    attachments = self.session._collect_attachments(text)
+                    # Record the user turn in session_store (run_once does this
+                    # via the call path, so we mirror it here for the streaming path).
+                    self.session.session_store.append_message("user", text)
+                    full_text = ""
+                    try:
+                        for chunk in stream_chat_reply(
+                            self.session.workspace_root, text, llm, recent,
+                            attachments=attachments
+                        ):
+                            self.call_from_thread(block.append_token, chunk)
+                            full_text += chunk
+                    finally:
+                        self.call_from_thread(block.finalize_markdown)
+                    if full_text:
+                        self.session.session_store.append_message("assistant", full_text)
+                    # Return a sentinel so on_worker_state_changed knows it's streaming
+                    return _StreamingDone()
+
+                self.run_worker(_stream_worker, thread=True, exit_on_error=False)
+                return
+            # Fall through: LLM is None/unconfigured or has no generate_stream →
+            # use the standard run_once path (handles DialogueGuard blocking too).
+
         # Run blocking session.run_once() in a thread worker
         self.run_worker(
             lambda: self.session.run_once(text),
@@ -562,12 +645,24 @@ class MagTuiApp(App):
 
         if event.state == WorkerState.SUCCESS:
             result = event.worker.result
-            self._handle_result(result)
+            if isinstance(result, _StreamingDone):
+                # Streaming path completed — just re-enable input.
+                self._finish_processing()
+            else:
+                self._handle_result(result)
         elif event.state == WorkerState.ERROR:
             self._handle_error(event.worker)
 
+    def _finish_processing(self) -> None:
+        """Re-enable the input prompt after any worker (streaming or run_once) finishes."""
+        prompt = self.query_one("#prompt", ChatTextArea)
+        prompt.border_title = ""
+        prompt.disabled = False
+        prompt.focus()
+        self._is_processing = False
+
     def _handle_result(self, result) -> None:
-        """Called on the UI thread after the worker completes successfully."""
+        """Called on the UI thread after the run_once worker completes successfully."""
         try:
             if result is not None and getattr(result, "message", ""):
                 msg = result.message
@@ -583,11 +678,7 @@ class MagTuiApp(App):
                 pass
         finally:
             # Always re-enable input, even if rendering raised
-            prompt = self.query_one("#prompt", ChatTextArea)
-            prompt.border_title = ""
-            prompt.disabled = False
-            prompt.focus()
-            self._is_processing = False
+            self._finish_processing()
 
     def _handle_error(self, worker) -> None:
         """Called on the UI thread if the worker raised an exception."""
@@ -596,8 +687,17 @@ class MagTuiApp(App):
         except Exception:
             pass
         finally:
-            prompt = self.query_one("#prompt", ChatTextArea)
-            prompt.border_title = ""
-            prompt.disabled = False
-            prompt.focus()
-            self._is_processing = False
+            self._finish_processing()
+
+
+# ---------------------------------------------------------------------------
+# Internal sentinel — returned by the streaming worker to signal completion
+# ---------------------------------------------------------------------------
+
+
+class _StreamingDone:
+    """Sentinel returned from the streaming worker thread.
+
+    ``on_worker_state_changed`` checks ``isinstance(result, _StreamingDone)``
+    to distinguish the streaming path from the run_once path.
+    """

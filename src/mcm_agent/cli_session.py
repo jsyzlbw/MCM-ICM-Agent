@@ -23,10 +23,10 @@ class InteractiveSession:
         self.commands = build_command_registry()
         self.session_store = SessionStore(self.workspace_root)
         # When True, _handle_natural_language returns the reply directly (no live
-        # streaming / spinner / console printing).  Used by MagFullScreenApp so the
-        # full-screen TUI can render into the transcript instead of raw stdout.
+        # streaming / spinner / console printing).  Used by MagTuiApp so the
+        # Textual TUI can render into the log instead of raw stdout.
         self.suppress_live_output: bool = False
-        # I/O overrides set by MagFullScreenApp to route command output/input
+        # I/O overrides set by MagTuiApp to route command output/input
         # through the in-app bridge instead of raw stdin/stdout.
         self._io_printer = None
         self._io_ask = None
@@ -219,8 +219,8 @@ class InteractiveSession:
                 "请确认后再执行修订，当前论文尚未被修改。"
             )
 
-        # Suppressed path: used by MagFullScreenApp to avoid writing ANSI to raw
-        # stdout underneath prompt_toolkit's alternate screen.
+        # Suppressed path: used by MagTuiApp to avoid writing ANSI to raw
+        # stdout underneath the Textual alternate screen.
         if self.suppress_live_output:
             attachments = self._collect_attachments(text)
             recent = self.session_store.read_recent_messages(limit=8)
