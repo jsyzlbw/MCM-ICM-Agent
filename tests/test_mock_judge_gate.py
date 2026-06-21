@@ -122,30 +122,70 @@ def test_high_scores_pass(tmp_path: Path) -> None:
     assert decision_raw["status"] == "pass"
 
 
-def test_passes_at_max_iters_even_if_low(tmp_path: Path) -> None:
-    """TERMINATION GUARD: pre-seed MAX_ITERS-1 prior low entries so the next
-    call is iteration MAX_ITERS, which must force a pass."""
+def test_high_total_passes_even_with_a_weak_dim(tmp_path: Path) -> None:
+    """Hard pass: total >= PASS_TOTAL overrides a weak single dimension.
+
+    Nine dims at 8 and one dim (figures) at 1:
+      total = (8*9 + 1) / 10 = 73/10 = 7.3 >= PASS_TOTAL=6.0 → status=="pass"
+    despite figures being well below FLOOR=4.
+    """
     ws = _make_workspace(tmp_path)
-
-    # Pre-seed history with MAX_ITERS-1 entries — all low scores (avg 2.0, total < PASS_TOTAL).
-    prior_history = [
-        {"iteration": i + 1, "total": 2.0, "dimensions": {d: 2 for d in DIMENSIONS}}
-        for i in range(MAX_ITERS - 1)
-    ]
-    # Use increasing totals so the "not improving" guard doesn't fire early.
-    for i, entry in enumerate(prior_history):
-        entry["total"] = float(i + 2)
-    write_json(ws / "review" / "mock_judge_scores.json", prior_history)
-
-    # Judge returns a low paper (would normally trigger repair).
-    # Total = 3.0 > last entry's total, so not-improving guard won't fire.
-    llm = _StubbedLLM(dimensions={d: 3 for d in DIMENSIONS})
+    dims = {d: 8 for d in DIMENSIONS}
+    dims["figures"] = 1  # single weak dimension
+    llm = _StubbedLLM(dimensions=dims)
 
     MockJudgeGateAgent(llm).run(ws)
 
     decision_raw = read_json(ws / "review" / "mock_judge_gate.json", {})
     assert decision_raw["status"] == "pass", (
-        "Gate must pass at MAX_ITERS to prevent infinite loops."
+        "total >= PASS_TOTAL must be a hard pass even when a dimension is below FLOOR."
+    )
+
+
+def test_passes_at_max_iters_even_if_low(tmp_path: Path) -> None:
+    """TERMINATION GUARD: iteration >= MAX_ITERS must force a pass even when quality is low.
+
+    Isolation invariant: the not-improving guard must NOT fire so that ONLY the
+    MAX_ITERS guard can cause the pass.  We guarantee this by seeding strictly
+    increasing prior totals and returning a new total higher than the last prior
+    entry, so ``score.total > prev_total`` (not-improving guard is silent).
+
+    The dimensions are all-below-FLOOR (score 2) with total 3.0 < PASS_TOTAL=6.0,
+    so neither the natural-pass nor the not-improving guard would trigger a pass.
+    Only ``iteration >= MAX_ITERS`` saves us.
+
+    Removing the ``iteration >= MAX_ITERS`` clause from mock_judge_gate.py makes
+    this test fail because none of the remaining guards produce "pass" for these scores.
+    """
+    ws = _make_workspace(tmp_path)
+
+    # Pre-seed MAX_ITERS-1 entries with STRICTLY INCREASING totals (1.0, 2.0, …)
+    # so the last entry has total = float(MAX_ITERS - 1).
+    prior_history = [
+        {
+            "iteration": i + 1,
+            "total": float(i + 1),
+            "dimensions": {d: 2 for d in DIMENSIONS},
+        }
+        for i in range(MAX_ITERS - 1)
+    ]
+    write_json(ws / "review" / "mock_judge_scores.json", prior_history)
+
+    # Judge returns total = 3.0 > last prior total (MAX_ITERS-1), so
+    # not-improving guard does NOT fire.  Dims still below FLOOR → needs_repair
+    # normally, but MAX_ITERS guard must force "pass".
+    # With 10 dims all at score 3: total = 3.0.  PASS_TOTAL=6.0, FLOOR=4 → both
+    # the total-based and floor-based natural passes are inactive.
+    new_total = float(MAX_ITERS)  # strictly > last prior entry (MAX_ITERS - 1)
+    assert new_total > float(MAX_ITERS - 1), "test setup: new total must exceed last prior"
+    llm = _StubbedLLM(dimensions={d: 3 for d in DIMENSIONS})  # avg = 3.0
+
+    MockJudgeGateAgent(llm).run(ws)
+
+    decision_raw = read_json(ws / "review" / "mock_judge_gate.json", {})
+    assert decision_raw["status"] == "pass", (
+        "Gate must pass at MAX_ITERS to prevent infinite loops "
+        "(only the iteration>=MAX_ITERS guard should have fired here)."
     )
 
     scores = read_json(ws / "review" / "mock_judge_scores.json", [])

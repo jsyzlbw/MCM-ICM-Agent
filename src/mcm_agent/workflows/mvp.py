@@ -150,15 +150,16 @@ def resume_mvp_workflow(
     provider_bundle = providers or _default_demo_providers()
     runtime_settings = settings or Settings()
     start_stage = from_stage or _resume_stage_from_state(workspace.root)
+    handlers = _mvp_stage_handlers(
+        inputs,
+        provider_bundle,
+        settings=runtime_settings,
+        supervisor_skills_dir=supervisor_skills_dir,
+        auto_approve=auto_approve,
+    )
     executor = StageExecutor(
         workspace.root,
-        handlers=_mvp_stage_handlers(
-            inputs,
-            provider_bundle,
-            settings=runtime_settings,
-            supervisor_skills_dir=supervisor_skills_dir,
-            auto_approve=auto_approve,
-        ),
+        handlers=handlers,
     )
     try:
         executor.run_until_complete(

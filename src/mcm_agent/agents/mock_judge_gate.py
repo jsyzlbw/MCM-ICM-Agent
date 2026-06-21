@@ -101,7 +101,7 @@ class MockJudgeGateAgent:
             dim_label = weakest_dim or "unknown"
             dim_val = weakest_score if weakest_score is not None else 0
             suggestions = score.revision_suggestions[:2]
-            finding_parts = [f"Weak dimension '{dim_label}' scored {dim_val}/{10}."]
+            finding_parts = [f"Weak dimension '{dim_label}' scored {dim_val}/10."]
             finding_parts.extend(suggestions)
             blocking_findings = [" ".join(finding_parts)]
 
