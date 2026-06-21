@@ -76,12 +76,20 @@ class VoyageEmbeddingProvider:
     def _post_embeddings(self, batch: list[str]) -> list[dict]:
         response = None
         for attempt in range(self.max_retries + 1):
-            response = httpx.post(
-                f"{self.base_url}/embeddings",
-                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                json={"input": batch, "model": self.model},
-                timeout=self.timeout_seconds,
-            )
+            try:
+                response = httpx.post(
+                    f"{self.base_url}/embeddings",
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json={"input": batch, "model": self.model},
+                    timeout=self.timeout_seconds,
+                )
+            except httpx.TransportError:
+                # Transient network failure (dropped connection, SSL EOF, timeout) — common
+                # over a long build. Back off and retry instead of crashing.
+                if attempt < self.max_retries:
+                    time.sleep(min(2.0 * (2**attempt), 60.0))
+                    continue
+                raise
             # Back off and retry on rate limits (429) and transient server errors (5xx).
             if response.status_code in (429, 500, 502, 503, 504) and attempt < self.max_retries:
                 time.sleep(_retry_wait(response, attempt))

@@ -51,6 +51,19 @@ def test_voyage_embedding_retries_on_429(monkeypatch):
 
 
 @respx.mock
+def test_voyage_embedding_retries_on_connection_error(monkeypatch):
+    monkeypatch.setattr("mcm_agent.providers.embedding.time.sleep", lambda _s: None)
+    route = respx.post("https://api.voyageai.com/v1/embeddings")
+    route.side_effect = [
+        httpx.ConnectError("SSL: UNEXPECTED_EOF_WHILE_READING"),  # network drop (e.g. laptop sleep)
+        httpx.Response(200, json={"data": [{"embedding": [0.7, 0.8]}]}),
+    ]
+    p = VoyageEmbeddingProvider(api_key="k", model="voyage-3-large", batch_size=16)
+    assert p.embed(["only one"]) == [[0.7, 0.8]]
+    assert route.call_count == 2  # transient ConnectError then success
+
+
+@respx.mock
 def test_voyage_rerank_parses_response():
     # Voyage's real /rerank returns results under "data" (verified against the live API),
     # not "results" (that was a Cohere-ism that silently broke real reranking).
