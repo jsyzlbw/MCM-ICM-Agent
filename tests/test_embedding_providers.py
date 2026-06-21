@@ -37,6 +37,20 @@ def test_voyage_embedding_parses_response():
 
 
 @respx.mock
+def test_voyage_embedding_retries_on_429(monkeypatch):
+    # No real sleeping in tests.
+    monkeypatch.setattr("mcm_agent.providers.embedding.time.sleep", lambda _s: None)
+    route = respx.post("https://api.voyageai.com/v1/embeddings")
+    route.side_effect = [
+        httpx.Response(429, headers={"retry-after": "1"}),
+        httpx.Response(200, json={"data": [{"embedding": [0.5, 0.6]}]}),
+    ]
+    p = VoyageEmbeddingProvider(api_key="k", model="voyage-3-large", batch_size=16)
+    assert p.embed(["only one"]) == [[0.5, 0.6]]
+    assert route.call_count == 2  # first 429, then success
+
+
+@respx.mock
 def test_voyage_rerank_parses_response():
     # Voyage's real /rerank returns results under "data" (verified against the live API),
     # not "results" (that was a Cohere-ism that silently broke real reranking).
