@@ -47,18 +47,180 @@ class PaperSectionWriter:
         self.llm = llm_provider
         self.language = language
 
-    def write_section(self, name: str, title: str, facts: dict[str, object]) -> str:
+    def write_section(
+        self,
+        name: str,
+        title: str,
+        facts: dict[str, object],
+        *,
+        exemplars: list[str] | None = None,
+    ) -> str:
         if self.llm is None:
             return self._fallback(name, title, facts)
+
+        # ── Pass 1: outline ──────────────────────────────────────────────────
+        outline = ""
         try:
-            raw = self.llm.generate(self._system(), self._prompt(name, title, facts)).content.strip()
+            result = self.llm.generate(
+                self._system(), self._outline_prompt(name, title, facts, exemplars)
+            )
+            outline = (result.content or "").strip()
         except Exception:
+            outline = ""
+
+        # ── Pass 2: draft ────────────────────────────────────────────────────
+        draft = ""
+        try:
+            result = self.llm.generate(
+                self._system(), self._draft_prompt(name, title, facts, outline, exemplars)
+            )
+            draft = (result.content or "").strip()
+        except Exception:
+            # Draft failed — try single-pass fallback (old _prompt behavior)
+            try:
+                result = self.llm.generate(
+                    self._system(), self._prompt(name, title, facts)
+                )
+                draft = (result.content or "").strip()
+            except Exception:
+                return self._fallback(name, title, facts)
+
+        if not draft:
+            # Draft was empty — try single-pass
+            try:
+                result = self.llm.generate(
+                    self._system(), self._prompt(name, title, facts)
+                )
+                draft = (result.content or "").strip()
+            except Exception:
+                pass
+
+        if not draft:
             return self._fallback(name, title, facts)
-        content = markdown_to_latex(raw)
+
+        # ── Pass 3: revise ───────────────────────────────────────────────────
+        revised = draft
+        try:
+            result = self.llm.generate(
+                self._system(), self._revise_prompt(name, title, draft)
+            )
+            candidate = (result.content or "").strip()
+            if candidate:
+                revised = candidate
+        except Exception:
+            pass  # keep draft
+
+        # ── Finalize ─────────────────────────────────────────────────────────
+        content = markdown_to_latex(revised)
         content = self._ensure_header(content, name, title)
         if "\\section" not in content or len(content.strip()) < len(self._header(name, title)) + 5:
             return self._fallback(name, title, facts)
         return content + "\n"
+
+    # ── Prompt builders ──────────────────────────────────────────────────────
+
+    def _outline_prompt(
+        self,
+        name: str,
+        title: str,
+        facts: dict[str, object],
+        exemplars: list[str] | None,
+    ) -> str:
+        header = self._header(name, title)
+        facts_block = json.dumps(facts, ensure_ascii=False, indent=2, default=str)
+        parts = [
+            f"Create a detailed outline for the '{title}' section. "
+            f"Begin with this exact header line:",
+            header,
+            "",
+            "The outline must list: subsections with titles, what each subsection must cover, "
+            "key equations or arguments to include, and rough length guidance.",
+            "",
+            "Use only these facts (structured):",
+            facts_block,
+        ]
+        parts.extend(self._exemplar_block(exemplars))
+        return "\n".join(parts)
+
+    def _draft_prompt(
+        self,
+        name: str,
+        title: str,
+        facts: dict[str, object],
+        outline: str,
+        exemplars: list[str] | None,
+    ) -> str:
+        header = self._header(name, title)
+        facts_block = json.dumps(facts, ensure_ascii=False, indent=2, default=str)
+        parts = [
+            f"Write a substantive LaTeX body for the '{title}' section. "
+            f"Begin with this exact header line:",
+            header,
+            "",
+            "SECTION OUTLINE (follow this structure):",
+            outline if outline else "(no outline available — write a complete substantive section)",
+            "",
+            "Requirements: explain all equations, justify every assumption, interpret results "
+            "with specifics; do not invent numbers not present in the facts.",
+            "",
+            "Use only these facts (structured):",
+            facts_block,
+        ]
+        # Inject judge feedback if present
+        jf = facts.get("judge_feedback")
+        if isinstance(jf, dict):
+            critique = jf.get("critique", "")
+            suggestions = jf.get("suggestions", [])
+            suggestion_text = "; ".join(str(s) for s in suggestions) if suggestions else ""
+            parts.append("")
+            parts.append(
+                f"PRIOR JUDGE FEEDBACK — fix this specifically: {critique}. "
+                f"Suggestions: {suggestion_text}"
+            )
+        parts.extend(self._exemplar_block(exemplars))
+        return "\n".join(parts)
+
+    def _revise_prompt(self, name: str, title: str, draft: str) -> str:
+        header = self._header(name, title)
+        rubric_note = (
+            "This section is responsible for: clarity of writing, depth of explanation, "
+            "logical coherence, and coverage of the problem's mathematical/modeling aspects."
+        )
+        return "\n".join(
+            [
+                f"Self-critique and improve the following draft of the '{title}' section.",
+                f"Begin your improved version with this exact header line:",
+                header,
+                "",
+                rubric_note,
+                "",
+                "DRAFT TO REVISE:",
+                draft,
+                "",
+                "Output only the improved LaTeX section body. Do not add commentary outside the LaTeX.",
+            ]
+        )
+
+    def _exemplar_block(self, exemplars: list[str] | None) -> list[str]:
+        """Return prompt lines for exemplars (empty list if no exemplars)."""
+        if not exemplars:
+            return []
+        parts = [
+            "",
+            "EXEMPLAR SECTIONS (from award-winning papers):",
+        ]
+        for i, ex in enumerate(exemplars, 1):
+            parts.append(f"--- Exemplar {i} ---")
+            parts.append(ex)
+        parts.append(
+            "These are exemplar sections from award-winning papers — "
+            "imitate their STRUCTURE and DEPTH only; "
+            "do NOT copy sentences, numbers, or specific content; "
+            "the content here must be original to THIS problem."
+        )
+        return parts
+
+    # ── Existing helpers (unchanged) ─────────────────────────────────────────
 
     def _system(self) -> str:
         if self.language == "zh":
