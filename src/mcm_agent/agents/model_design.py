@@ -145,14 +145,25 @@ class ModelDesignAgent:
         self._write_md(workspace_root, spec, source="llm")
         return spec
 
-    def _design(self, understanding: str, direction: str, schema: str) -> ModelSpec | None:
-        if self.llm is None:
-            self.last_reason = "no LLM provider"
-            return None
-        lang = "Chinese" if self.language == "zh" else "English"
+    def _build_design_prompt(self, understanding: str, direction: str, schema: str, lang: str) -> tuple[str, str]:
+        """Build (system, prompt) strings for the design LLM call.
+
+        Separated so tests can assert on the exact text without needing to call
+        the LLM.
+        """
         system = (
             "You are a mathematical-modeling architect. Design a problem-specific model "
-            "(not a generic template) for each sub-problem. Respond ONLY with JSON matching: "
+            "(not a generic template) for each sub-problem.\n\n"
+            "STEP 1 — Extract tasks: Before writing any subproblem, enumerate every explicit "
+            "task or sub-question the problem asks. Look for: numbered questions (Task 1, Q1, 1., etc.), "
+            "imperative verbs ('estimate', 'compare', 'determine', 'propose', 'evaluate', 'predict', "
+            "'design', 'analyze'), and distinct asks in separate sentences or paragraphs. "
+            "List every task you find.\n\n"
+            "STEP 2 — One subproblem per task: Create EXACTLY ONE subproblem for each task you "
+            "extracted in Step 1. Do NOT merge multiple tasks into one subproblem, and do NOT omit "
+            "any task. Contest problems typically have 3–5 distinct tasks; if you find only 1, "
+            "re-read carefully for additional asks before finalizing.\n\n"
+            "Respond ONLY with JSON matching: "
             '{"problem_restatement": str, "subproblems": [{"subproblem_id": str, "title": str, '
             '"approach": str, "variables": [{"symbol": str, "meaning": str}], "assumptions": [str], '
             '"equations": [str (LaTeX, no $)], "algorithm_steps": [str], "metrics": [str], '
@@ -167,9 +178,21 @@ class ModelDesignAgent:
                 direction,
                 "\nDATA SCHEMA:",
                 schema,
-                "\nDesign the model(s). One subproblem per task in the problem.",
+                (
+                    "\nStep 1: List all tasks/sub-questions the problem asks (one line each)."
+                    "\nStep 2: Design one subproblem per task — do not merge, do not omit any task."
+                    "\nContest problems typically have 3–5 separate tasks; cover all of them."
+                ),
             ]
         )
+        return system, prompt
+
+    def _design(self, understanding: str, direction: str, schema: str) -> ModelSpec | None:
+        if self.llm is None:
+            self.last_reason = "no LLM provider"
+            return None
+        lang = "Chinese" if self.language == "zh" else "English"
+        system, prompt = self._build_design_prompt(understanding, direction, schema, lang)
         try:
             data = self._parse(self.llm.generate(system, prompt).content)
         except Exception as exc:

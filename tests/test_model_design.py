@@ -116,3 +116,110 @@ def test_refine_from_code_overwrites_spec_from_real_code(tmp_path: Path) -> None
 def test_refine_from_code_noop_without_code(tmp_path: Path) -> None:
     root = _prep(tmp_path)
     assert ModelDesignAgent(_CodeSpecLLM()).refine_from_code(root) is None
+
+
+# ---------------------------------------------------------------------------
+# SC1 tests: _design prompt must demand one-subproblem-per-task coverage
+# ---------------------------------------------------------------------------
+
+
+class _RecordingLLM:
+    """Records the system + prompt strings passed to generate, then returns a
+    minimal valid 1-subproblem spec so _normalize_spec succeeds."""
+
+    def __init__(self) -> None:
+        self.recorded_system: str = ""
+        self.recorded_prompt: str = ""
+
+    def generate(self, system: str, prompt: str) -> ProviderResult:
+        self.recorded_system = system
+        self.recorded_prompt = prompt
+        spec = {
+            "problem_restatement": "Test problem.",
+            "subproblems": [
+                {
+                    "subproblem_id": "q1",
+                    "title": "Task 1",
+                    "approach": "method",
+                    "variables": [],
+                    "assumptions": [],
+                    "equations": [],
+                    "algorithm_steps": ["step"],
+                    "metrics": ["m1"],
+                }
+            ],
+        }
+        return ProviderResult(content=json.dumps(spec), metadata={})
+
+
+def test_design_prompt_demands_one_subproblem_per_task(tmp_path: Path) -> None:
+    """_design must send a prompt/system that explicitly instructs the LLM to
+    create exactly one subproblem per task and not to merge or omit any task."""
+    root = _prep(tmp_path)
+    recorder = _RecordingLLM()
+    ModelDesignAgent(recorder, language="en").run(root)
+
+    combined = (recorder.recorded_system + " " + recorder.recorded_prompt).lower()
+
+    # Must instruct: enumerate tasks first
+    assert any(
+        phrase in combined for phrase in ("list every", "list all", "enumerate", "extract every", "extract all")
+    ), "prompt must instruct LLM to enumerate/list all tasks first"
+
+    # Must instruct: one subproblem per task
+    assert any(
+        phrase in combined
+        for phrase in ("one subproblem per task", "one subproblem for each task", "exactly one subproblem per")
+    ), "prompt must demand exactly one subproblem per task"
+
+    # Must forbid merging
+    assert "do not merge" in combined or "do not combine" in combined, \
+        "prompt must say 'do not merge' or 'do not combine'"
+
+    # Must forbid omitting
+    assert "do not omit" in combined or "do not skip" in combined, \
+        "prompt must say 'do not omit' or 'do not skip'"
+
+    # Must mention typical task count to guard against 1-subproblem collapse
+    assert any(
+        phrase in combined
+        for phrase in ("3", "4", "5", "typically", "multiple tasks", "several tasks")
+    ), "prompt must mention that contest problems typically have multiple tasks"
+
+
+class _FourSubproblemLLM:
+    """Fake LLM that returns 4 subproblems — mirrors what a 4-task problem
+    should produce."""
+
+    def generate(self, system: str, prompt: str) -> ProviderResult:
+        spec = {
+            "problem_restatement": "A contest problem with four tasks.",
+            "subproblems": [
+                {
+                    "subproblem_id": f"q{i}",
+                    "title": f"Task {i}",
+                    "approach": f"Method {i}",
+                    "variables": [],
+                    "assumptions": [],
+                    "equations": [],
+                    "algorithm_steps": [f"step {i}"],
+                    "metrics": [f"metric_{i}"],
+                }
+                for i in range(1, 5)
+            ],
+        }
+        return ProviderResult(content=json.dumps(spec), metadata={})
+
+
+def test_design_keeps_all_subproblems_from_llm(tmp_path: Path) -> None:
+    """When the LLM returns 4 subproblems, _normalize_spec must preserve all 4
+    (no collapse); the final ModelSpec must have exactly 4 subproblems."""
+    root = _prep(tmp_path)
+    spec = ModelDesignAgent(_FourSubproblemLLM(), language="en").run(root)
+
+    assert spec is not None, "run() returned None"
+    assert len(spec.subproblems) == 4, (
+        f"Expected 4 subproblems, got {len(spec.subproblems)}"
+    )
+    ids = [s.subproblem_id for s in spec.subproblems]
+    assert ids == ["q1", "q2", "q3", "q4"]
