@@ -404,6 +404,27 @@ class PaperWriterAgent:
             figure_floats = self._embed_figures_for_section(workspace_root, filename)
             (section_dir / filename).write_text(body + extras + figure_floats, encoding="utf-8")
 
+    @staticmethod
+    def _spec_approach_brief(model_spec: object) -> list[str]:
+        """Return a short list of '<title> (<approach>)' strings from the ModelSpec,
+        one per subproblem.  Returns [] when model_spec is None/empty or has no subproblems.
+        No LLM calls; only real spec fields are used.
+        """
+        if model_spec is None:
+            return []
+        subproblems = getattr(model_spec, "subproblems", None)
+        if not subproblems:
+            return []
+        result: list[str] = []
+        for sub in subproblems:
+            title = getattr(sub, "title", "") or ""
+            approach = getattr(sub, "approach", "") or ""
+            if title and approach:
+                result.append(f"{title} ({approach})")
+            elif title:
+                result.append(title)
+        return result
+
     def _model_facts_from_spec(self, model_spec: object, claim_texts: list[str]) -> dict[str, object]:
         """Model-section facts straight from the designed ModelSpec, so the narrative
         matches the spec the solver implemented (model<->code<->narrative coherence)."""
@@ -535,14 +556,20 @@ class PaperWriterAgent:
         elif name == "results":
             # Results is table-driven (real metrics); claim texts excluded to avoid
             # leaking underscored metric names / robotic per-metric sentences.
+            # model_approach grounds the interpretation in the model that produced each metric.
+            # validation provides the hold-out/robustness context.
             facts = {
                 "metrics": metrics,
                 "instruction": "Interpret each metric and whether it indicates a good fit.",
+                "model_approach": self._spec_approach_brief(model_spec),
+                "validation": context.validation_summary[:600],
             }
         elif name == "sensitivity":
+            # model_approach grounds sensitivity narrative in the actual model parameters/assumptions.
             facts = {
                 "validation": context.validation_summary[:600],
                 "claims": claim_texts,
+                "model_approach": self._spec_approach_brief(model_spec),
             }
             if sensitivity and sensitivity.get("rows"):
                 facts["sensitivity_table"] = {
