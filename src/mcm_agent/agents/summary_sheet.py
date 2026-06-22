@@ -85,6 +85,63 @@ _SYSTEM_PROMPT = {
 }
 
 
+_SCAFFOLD_PHRASES = frozenset(
+    [
+        "题意理解报告",
+        "题目背景",
+        "Problem Understanding",
+        "Background",
+    ]
+)
+
+
+def _clean_problem_text(text: str) -> str:
+    """Strip markdown headings and known report-scaffold phrases from free text.
+
+    Removes:
+    - Lines that start with ``#`` (any level of markdown heading).
+    - Lines whose stripped content is exactly one of the known scaffold labels
+      (e.g. "题意理解报告", "题目背景", "Problem Understanding", "Background").
+    - Scaffold phrases that appear inline at the start of a line.
+
+    Then collapses runs of blank lines and returns the cleaned text.
+    The result is suitable for use as a LaTeX title / restatement.
+    """
+    if not text:
+        return text
+    cleaned_lines: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        # Drop markdown heading lines
+        if stripped.startswith("#"):
+            continue
+        # Drop lines that are solely a scaffold phrase (with optional trailing punctuation)
+        if stripped.rstrip("：:") in _SCAFFOLD_PHRASES:
+            continue
+        # Drop lines that start with a scaffold phrase followed by optional punctuation
+        skip = False
+        for phrase in _SCAFFOLD_PHRASES:
+            if stripped.startswith(phrase) and (
+                len(stripped) == len(phrase)
+                or stripped[len(phrase)] in ("：", ":", " ", "\t")
+            ):
+                skip = True
+                break
+        if skip:
+            continue
+        cleaned_lines.append(line)
+    # Collapse multiple consecutive blank lines into one
+    result_lines: list[str] = []
+    prev_blank = False
+    for line in cleaned_lines:
+        is_blank = not line.strip()
+        if is_blank and prev_blank:
+            continue
+        result_lines.append(line)
+        prev_blank = is_blank
+    return "\n".join(result_lines).strip()
+
+
 def _latex_escape(text: str) -> str:
     """Minimal LaTeX escaping for user-visible text in the summary sheet.
 
@@ -165,7 +222,9 @@ class SummarySheetAgent:
     ) -> str:
         facts: dict[str, object] = {}
         if model_spec is not None:
-            facts["problem_restatement"] = getattr(model_spec, "problem_restatement", "")
+            facts["problem_restatement"] = _clean_problem_text(
+                getattr(model_spec, "problem_restatement", "")
+            )
             subs = getattr(model_spec, "subproblems", [])
             facts["subproblems"] = [
                 {
@@ -191,10 +250,11 @@ class SummarySheetAgent:
         """Deterministic, LaTeX-compile-safe summary body when no LLM is available."""
         lines: list[str] = []
 
-        # Problem restatement
+        # Problem restatement – clean markdown headings and report-scaffold phrases
         restatement = ""
         if model_spec is not None:
-            restatement = getattr(model_spec, "problem_restatement", "")
+            raw_restatement = getattr(model_spec, "problem_restatement", "")
+            restatement = _clean_problem_text(raw_restatement)
         if language == "zh":
             lines.append(
                 "\\textbf{" + _PROBLEM_RESTATEMENT_LABEL["zh"] + "：}"
@@ -264,14 +324,17 @@ class SummarySheetAgent:
         title_label = _SUMMARY_TITLE.get(language, _SUMMARY_TITLE["en"])
 
         # Problem title from ModelSpec restatement (first sentence / truncated)
+        # Clean out markdown headings and report-scaffold phrases before displaying.
         problem_title = ""
         if model_spec is not None:
             restatement = getattr(model_spec, "problem_restatement", "")
             if restatement:
-                # Use first 120 chars as display title
-                problem_title = restatement[:120].rstrip()
-                if len(restatement) > 120:
-                    problem_title += "..."
+                cleaned = _clean_problem_text(restatement)
+                if cleaned:
+                    # Use first 120 chars as display title
+                    problem_title = cleaned[:120].rstrip()
+                    if len(cleaned) > 120:
+                        problem_title += "..."
 
         # Build the body lines with real metric values appended as a LaTeX comment
         # so that even if LLM body doesn't mention them, they are structurally present.

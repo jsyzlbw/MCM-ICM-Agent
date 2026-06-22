@@ -341,3 +341,79 @@ def test_summary_sheet_no_bare_linebreak_in_prose(tmp_path: Path) -> None:
             "Bare \\\\\\\\ found after metric label. Use \\\\par instead.\n"
             f"Content excerpt:\n{content}"
         )
+
+
+def test_summary_sheet_strips_markdown_and_report_scaffold(tmp_path: Path) -> None:
+    """Summary sheet must NOT leak raw markdown headings or Chinese report-scaffold phrases.
+
+    Scenario: ModelSpec.problem_restatement is empty; reports/problem_understanding.md
+    starts with ``# 题意理解报告`` / ``## 题目背景`` scaffolding before the real content.
+    The generated summary_sheet.tex must:
+    - NOT contain any line beginning with a literal ``#`` character.
+    - NOT contain the phrase ``题意理解报告``.
+    - NOT contain the phrase ``题目背景``.
+    - DOES contain the keyword "DWTS" (the real problem content).
+    """
+    # Build a minimal workspace (no real ModelSpec restatement)
+    root = create_workspace(tmp_path / "ws_scaffold").root
+    (root / "discussion").mkdir(parents=True, exist_ok=True)
+    (root / "discussion" / "direction_lock.json").write_text(
+        json.dumps({"language": "en", "selected_route": "regression"}),
+        encoding="utf-8",
+    )
+    # ModelSpec with EMPTY restatement so the agent must fall back / use raw text
+    spec = ModelSpec(
+        version=1,
+        problem_restatement="# 题意理解报告\n## 题目背景\nThe problem is based on the show DWTS where contestants compete.",
+        subproblems=[
+            SubproblemModel(
+                subproblem_id="SP1",
+                title="Dance scoring",
+                approach="regression",
+                variables=[],
+                assumptions=[],
+                equations=[],
+                algorithm_steps=[],
+                metrics=["score"],
+            )
+        ],
+    )
+    write_model_spec(root, spec)
+
+    # Write problem_understanding.md with the same scaffold that real runs produce
+    reports_dir = root / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    (reports_dir / "problem_understanding.md").write_text(
+        "# 题意理解报告\n## 题目背景\nThe problem is based on the show DWTS where contestants compete.\n",
+        encoding="utf-8",
+    )
+
+    (root / "results").mkdir(parents=True, exist_ok=True)
+    (root / "results" / "model_metrics.json").write_text(json.dumps({"score": 0.88}), encoding="utf-8")
+    (root / "paper").mkdir(parents=True, exist_ok=True)
+
+    SummarySheetAgent().run(root)
+
+    content = (root / "paper" / "summary_sheet.tex").read_text(encoding="utf-8")
+
+    # Must NOT contain markdown heading scaffold
+    assert "题意理解报告" not in content, (
+        "summary_sheet.tex must not contain '题意理解报告' (report scaffold leaked)\n"
+        f"Got:\n{content}"
+    )
+    assert "题目背景" not in content, (
+        "summary_sheet.tex must not contain '题目背景' (report scaffold leaked)\n"
+        f"Got:\n{content}"
+    )
+    # No literal line starting with '#' (markdown headings must be stripped before LaTeX escaping)
+    for line in content.splitlines():
+        stripped = line.strip()
+        assert not stripped.startswith("#"), (
+            f"summary_sheet.tex has a line starting with '#': {line!r}\n"
+            f"Full content:\n{content}"
+        )
+    # MUST contain the real problem content keyword
+    assert "DWTS" in content, (
+        "summary_sheet.tex must contain 'DWTS' (the actual problem content)\n"
+        f"Got:\n{content}"
+    )
