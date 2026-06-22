@@ -119,11 +119,23 @@ class MockJudge:
         )
 
     def _system(self) -> str:
+        completeness_gate = (
+            "COMPLETENESS IS A HARD GATE. "
+            "First identify how many distinct tasks/sub-questions the problem requires (T) "
+            "and how many the paper SUBSTANTIVELY answers (A) — a task that is only mentioned "
+            "or gestured at does NOT count as answered. "
+            "Score problem_coverage proportionally to A/T: a paper that substantively answers "
+            "only some of the required tasks MUST receive a low problem_coverage regardless of "
+            "how well the answered tasks are done "
+            "(e.g. answering 1 of 4 tasks => problem_coverage <= 3; 2 of 4 => <= 5). "
+            "In revision_suggestions, explicitly name each required task the paper failed to answer."
+        )
         return (
             "You are an MCM/ICM Outstanding-Winner judge. Score the paper on each rubric "
             "dimension from 0 (poor) to 10 (Outstanding). Respond ONLY with JSON: "
             '{"dimensions": {dim: int}, "comments": {dim: str}, "revision_suggestions": [str]}. '
-            f"Dimensions: {', '.join(DIMENSIONS)}."
+            f"Dimensions: {', '.join(DIMENSIONS)}. "
+            f"{completeness_gate}"
         )
 
     def _prompt(self, paper_text: str, figure_count: int) -> str:

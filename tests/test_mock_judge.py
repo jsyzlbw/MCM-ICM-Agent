@@ -114,6 +114,28 @@ def test_score_consensus_samples_less_than_1_treated_as_1() -> None:
     assert result.dimensions["figures"] == 2
 
 
+def test_judge_prompt_demands_completeness_scaling() -> None:
+    """The judge system prompt must contain an explicit completeness-gate directive
+    so that a paper answering only 1-of-4 tasks cannot receive a high problem_coverage.
+
+    We test *prompt construction* (not LLM output) because unit tests cannot drive
+    a real model.  Key requirements:
+    - Mentions "tasks" or "sub-questions" (the unit of completeness)
+    - References proportional / A/T-style scaling
+    - States that papers answering only SOME tasks MUST receive a lower score
+    - Uses the word "problem_coverage" (ties the directive to the specific dimension)
+    """
+    system_text = MockJudge()._system()
+    # The directive must name the dimension it governs
+    assert "problem_coverage" in system_text
+    # Must reference the concept of counting tasks/sub-questions
+    assert any(kw in system_text for kw in ("tasks", "sub-question", "sub-tasks", "subtask"))
+    # Must convey proportional scaling (A/T ratio or the word proportional)
+    assert any(kw in system_text for kw in ("proportional", "A/T", "A / T"))
+    # Must convey that answering only some tasks forces the score down
+    assert any(kw in system_text for kw in ("only some", "MUST", "must"))
+
+
 def test_judge_prompt_sees_later_sections_beyond_old_12k_cap() -> None:
     """Regression: the judge must read the WHOLE paper. A substantive paper's
     model/results/sensitivity sections sit beyond char 12000; the old cap made the
