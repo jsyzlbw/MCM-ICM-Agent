@@ -49,8 +49,8 @@ class MockJudgeGateAgent:
         text, figure_count = read_paper(workspace_root)
         language = confirmed_language(workspace_root)
 
-        # 2. Score the paper.
-        score = MockJudge(self.llm_provider).score(
+        # 2. Score the paper using consensus (denoised average of N samples).
+        score = MockJudge(self.llm_provider).score_consensus(
             text, figure_count=figure_count, language=language
         )
 
@@ -102,6 +102,8 @@ class MockJudgeGateAgent:
 
         should_pass = force_pass or natural_pass
 
+        directive_path = workspace_root / "review" / "repair_directive.json"
+
         if should_pass:
             decision = GateDecision(
                 gate_id="mock_judge_gate",
@@ -110,6 +112,8 @@ class MockJudgeGateAgent:
                 repair_stage=None,
                 blocking_findings=[],
             )
+            # Remove any stale repair directive so downstream stages are not misled.
+            directive_path.unlink(missing_ok=True)
         else:
             # Build a short, informative finding line.
             dim_label = weakest_dim or "unknown"
@@ -127,6 +131,20 @@ class MockJudgeGateAgent:
                 blocking_findings=blocking_findings,
             )
 
+            # Write a targeted repair directive so the repair stage knows exactly
+            # which dimension to address and what the judge said about it.
+            write_json(
+                directive_path,
+                {
+                    "target_stage": DIM_TO_STAGE[dim_label],
+                    "weak_dimension": dim_label,
+                    "score": dim_val,
+                    "critique": score.comments.get(dim_label, ""),
+                    "suggestions": score.revision_suggestions[:3],
+                    "iteration": iteration,
+                },
+            )
+
         record_gate_decision(workspace_root, "mock_judge_gate.json", decision)
 
         # On a final pass, restore the best-scoring snapshot so the workflow packages
@@ -134,7 +152,11 @@ class MockJudgeGateAgent:
         if should_pass:
             self._restore_best(workspace_root)
 
-        return ["review/mock_judge_gate.json", "review/mock_judge_scores.json"]
+        return [
+            "review/mock_judge_gate.json",
+            "review/mock_judge_scores.json",
+            "review/repair_directive.json",
+        ]
 
     def _snapshot_best(self, workspace_root: Path) -> None:
         """Copy the current paper artifacts into the best-snapshot dir (best-effort)."""

@@ -278,16 +278,71 @@ class _SequenceLLM:
         return ProviderResult(content="```json\n" + json.dumps(payload) + "\n```", metadata={})
 
 
+# ---------------------------------------------------------------------------
+# Task A1: repair_directive.json tests
+# ---------------------------------------------------------------------------
+
+
+def test_repair_directive_written_on_needs_repair(tmp_path: Path) -> None:
+    """needs_repair path: repair_directive.json must be written with correct fields."""
+    ws = _make_workspace(tmp_path)
+    llm = _StubbedLLM(
+        dimensions=_all_floor_except("figures", low_score=1),
+        revision_suggestions=["Add flow charts.", "Use colour coding.", "Add a legend."],
+    )
+    # Override comments to be non-trivial so we can assert on critique field.
+    llm._dims_comments = {"figures": "The figures are too sparse and lack labelling."}
+
+    agent = MockJudgeGateAgent(llm)
+    outputs = agent.run(ws)
+
+    directive_path = ws / "review" / "repair_directive.json"
+    assert directive_path.exists(), "repair_directive.json must be written on needs_repair"
+
+    from mcm_agent.utils.json_io import read_json
+    directive = read_json(directive_path, {})
+
+    assert directive["weak_dimension"] == "figures"
+    assert directive["target_stage"] == "figure_planning"
+    assert "critique" in directive
+    assert "suggestions" in directive
+    assert isinstance(directive["suggestions"], list)
+    assert "review/repair_directive.json" in outputs
+
+
+def test_repair_directive_removed_on_pass(tmp_path: Path) -> None:
+    """pass path: a stale repair_directive.json must be deleted."""
+    ws = _make_workspace(tmp_path)
+    # Pre-create a stale directive file.
+    directive_path = ws / "review" / "repair_directive.json"
+    directive_path.parent.mkdir(parents=True, exist_ok=True)
+    directive_path.write_text('{"stale": true}', encoding="utf-8")
+
+    # High scores → natural pass.
+    llm = _StubbedLLM(dimensions={d: 8 for d in DIMENSIONS})
+    MockJudgeGateAgent(llm).run(ws)
+
+    assert not directive_path.exists(), "stale repair_directive.json must be removed on pass"
+
+
 def test_keep_best_ships_best_iteration_not_last(tmp_path: Path) -> None:
     """Keep-best: across noisy iterations (2.0 -> 3.0 -> 1.0), the workflow must ship
     the BEST iteration's paper (iter2), not the last (iter3, which regressed)."""
     ws = _make_workspace(tmp_path)
     intro = ws / "paper" / "sections" / "intro.tex"
+    # score_consensus calls .score() `samples` times (default 3) per run(), so
+    # each per-iteration dims entry must appear 3 times in the sequence.
     llm = _SequenceLLM(
         [
-            {d: 2 for d in DIMENSIONS},  # iter1 total 2.0
-            {d: 3 for d in DIMENSIONS},  # iter2 total 3.0  <- best
-            {d: 1 for d in DIMENSIONS},  # iter3 total 1.0  -> MAX_ITERS pass
+            {d: 2 for d in DIMENSIONS},  # iter1 sample 1
+            {d: 2 for d in DIMENSIONS},  # iter1 sample 2
+            {d: 2 for d in DIMENSIONS},  # iter1 sample 3  → avg total 2.0
+            {d: 3 for d in DIMENSIONS},  # iter2 sample 1
+            {d: 3 for d in DIMENSIONS},  # iter2 sample 2
+            {d: 3 for d in DIMENSIONS},  # iter2 sample 3  → avg total 3.0  <- best
+            {d: 1 for d in DIMENSIONS},  # iter3 sample 1
+            {d: 1 for d in DIMENSIONS},  # iter3 sample 2
+            {d: 1 for d in DIMENSIONS},  # iter3 sample 3  → avg total 1.0  → MAX_ITERS pass
         ]
     )
     agent = MockJudgeGateAgent(llm)
