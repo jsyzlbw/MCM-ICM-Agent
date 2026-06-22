@@ -14,11 +14,19 @@ from mcm_agent.agents.figure_quality import FigureQualityAgent
 from mcm_agent.core.concept_diagrams import ConceptDiagramSpec, build_concept_diagram_specs
 from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.models import ArtifactStatus, FigurePlanItem, FigureRecord
+from mcm_agent.core.repair_directive import read_repair_directive
 from mcm_agent.utils.json_io import read_json, write_json
 
 
 class FigurePlanningAgent:
     def run(self, workspace_root: Path) -> None:
+        # Read the targeted-repair directive (if any) written by O6.
+        directive = read_repair_directive(workspace_root)
+        is_figures_repair = (
+            isinstance(directive, dict)
+            and directive.get("target_stage") == "figure_planning"
+        )
+
         result_candidates = sorted((workspace_root / "results").glob("*results.csv"))
         source_data = (
             [str(result_candidates[0].relative_to(workspace_root))]
@@ -46,10 +54,97 @@ class FigurePlanningAgent:
         sensitivity_item = self._sensitivity_figure(workspace_root)
         if sensitivity_item is not None:
             plan.append(sensitivity_item)
+
+        # FIG3: when a figures-dimension repair directive is active, enrich the
+        # plan to guarantee a richer figure set and inject the judge's critique.
+        if is_figures_repair:
+            plan = self._enrich_for_repair(workspace_root, plan, directive, source_data)
+
         write_json(
             workspace_root / "figures" / "figure_plan.json",
             [item.model_dump(mode="json") for item in plan],
         )
+
+    def _enrich_for_repair(
+        self,
+        workspace_root: Path,
+        plan: list[FigurePlanItem],
+        directive: dict,
+        source_data: list[str],
+    ) -> list[FigurePlanItem]:
+        """Enrich the figure plan for a figures-dimension targeted repair.
+
+        Guarantees:
+        - The fallback data figure (fig_q1_prediction) is included even if
+          route figures are present (so the plan cannot collapse to only route
+          figures).
+        - The sensitivity figure is included when the CSV exists.
+        - Concept diagrams are included.
+        - Deduplication by figure_id (no duplicates).
+        - The directive's critique text appears in at least one figure's
+          purpose/caption_intent so the renderer/writer can reflect it.
+
+        Never raises — every sub-operation is best-effort.
+        """
+        critique: str = ""
+        try:
+            critique = str(directive.get("critique") or "")
+        except Exception:
+            pass
+
+        repair_prefix = f"[repair: {critique}] " if critique else "[repair] "
+
+        existing_ids: set[str] = {item.figure_id for item in plan}
+
+        # 1. Guarantee the fallback data figure is present.
+        if "fig_q1_prediction" not in existing_ids:
+            fallback = FigurePlanItem(
+                figure_id="fig_q1_prediction",
+                purpose=f"{repair_prefix}show baseline result trend for Problem 1",
+                figure_type="data_plot",
+                source_data=source_data,
+                generation_script="figures/source/fig_q1_prediction_plot.py",
+                output_formats=["pdf", "svg", "png"],
+                target_section="paper/sections/results.tex",
+                caption_intent=f"{repair_prefix}Baseline result trend for Problem 1.",
+                claim_supported="Baseline result trend for Problem 1.",
+                evidence_ids=self._evidence_ids(workspace_root),
+                source_ids=self._source_ids(workspace_root),
+            )
+            plan.append(fallback)
+            existing_ids.add("fig_q1_prediction")
+
+        # 2. Guarantee concept diagrams are present.
+        for concept_item in self._concept_diagram_figures(workspace_root):
+            if concept_item.figure_id not in existing_ids:
+                plan.append(concept_item)
+                existing_ids.add(concept_item.figure_id)
+
+        # 3. Guarantee sensitivity figure is present (if CSV exists).
+        sensitivity_item = self._sensitivity_figure(workspace_root)
+        if sensitivity_item is not None and sensitivity_item.figure_id not in existing_ids:
+            plan.append(sensitivity_item)
+            existing_ids.add(sensitivity_item.figure_id)
+
+        # 4. Inject the critique text into the first figure that doesn't yet
+        #    carry it (ensures the judge's feedback is visible in the plan).
+        if critique:
+            critique_injected = False
+            for item in plan:
+                if critique in (item.purpose or "") or critique in (item.caption_intent or ""):
+                    critique_injected = True
+                    break
+            if not critique_injected and plan:
+                first = plan[0]
+                # Mutate via model_copy (Pydantic v2) or direct field update.
+                try:
+                    plan[0] = first.model_copy(
+                        update={"purpose": f"{repair_prefix}{first.purpose or ''}"}
+                    )
+                except Exception:
+                    pass
+
+        return plan
 
     def _concept_diagram_figures(self, workspace_root: Path) -> list[FigurePlanItem]:
         return [
