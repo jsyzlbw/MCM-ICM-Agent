@@ -43,6 +43,9 @@ class FigurePlanningAgent:
                 )
             ]
         plan.extend(self._concept_diagram_figures(workspace_root))
+        sensitivity_item = self._sensitivity_figure(workspace_root)
+        if sensitivity_item is not None:
+            plan.append(sensitivity_item)
         write_json(
             workspace_root / "figures" / "figure_plan.json",
             [item.model_dump(mode="json") for item in plan],
@@ -149,6 +152,32 @@ class FigurePlanningAgent:
             for item in sources
             if isinstance(item, dict) and item.get("source_id")
         ]
+
+    def _sensitivity_figure(self, workspace_root: Path) -> FigurePlanItem | None:
+        """Return a data_plot FigurePlanItem for the sensitivity-analysis CSV if it
+        exists; return None otherwise (graceful — no fig_sensitivity planned)."""
+        csv_path = workspace_root / "results" / "sensitivity_analysis.csv"
+        if not csv_path.exists():
+            return None
+        return FigurePlanItem(
+            figure_id="fig_sensitivity",
+            purpose="show how the primary metric responds to perturbation of the key parameter (sensitivity/robustness analysis)",
+            figure_type="data_plot",
+            source_data=["results/sensitivity_analysis.csv"],
+            generation_script="figures/source/fig_sensitivity_plot.py",
+            output_formats=["pdf", "svg", "png"],
+            target_section="paper/sections/sensitivity.tex",
+            caption_intent=(
+                "Sensitivity of the primary metric to systematic perturbation of the "
+                "key parameter; demonstrates model robustness."
+            ),
+            claim_supported=(
+                "The model output is robust: the primary metric varies predictably and "
+                "within acceptable bounds as the key parameter is scaled."
+            ),
+            evidence_ids=self._evidence_ids(workspace_root),
+            source_ids=self._source_ids(workspace_root),
+        )
 
 
 class VisualizationAgent:

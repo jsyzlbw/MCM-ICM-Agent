@@ -245,6 +245,68 @@ def test_concept_diagram_renders_pdf(tmp_path: Path) -> None:
     )
 
 
+def test_sensitivity_figure_planned_and_rendered(tmp_path: Path) -> None:
+    """FIG2: when results/sensitivity_analysis.csv exists, FigurePlanningAgent must
+    append a fig_sensitivity data_plot item pointing at sensitivity.tex; after
+    VisualizationAgent.run the pdf must exist and registry.used_in must point at
+    sensitivity.tex."""
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "results" / "problem1_results.csv").write_text(
+        "x,y\n1,2\n2,4\n3,6\n", encoding="utf-8"
+    )
+    (workspace.root / "results" / "sensitivity_analysis.csv").write_text(
+        "parameter,scale_factor,metric\nx,0.8,1.0\nx,1.0,1.2\nx,1.2,1.4\n",
+        encoding="utf-8",
+    )
+
+    FigurePlanningAgent().run(workspace.root)
+
+    plan = read_json(workspace.root / "figures" / "figure_plan.json", [])
+    sensitivity_items = [item for item in plan if item["figure_id"] == "fig_sensitivity"]
+    assert sensitivity_items, "Expected fig_sensitivity item in plan when CSV exists"
+    sens = sensitivity_items[0]
+    assert sens["figure_type"] == "data_plot"
+    assert "results/sensitivity_analysis.csv" in sens["source_data"]
+    assert "paper/sections/sensitivity.tex" in sens["target_section"]
+    assert "pdf" in sens["output_formats"]
+
+    VisualizationAgent().run(workspace.root)
+
+    assert (workspace.root / "figures" / "fig_sensitivity.pdf").exists(), (
+        "Expected figures/fig_sensitivity.pdf after VisualizationAgent.run"
+    )
+    registry = read_json(workspace.root / "figures" / "figure_registry.json", [])
+    sens_record = next(
+        (item for item in registry if item["figure_id"] == "fig_sensitivity"), None
+    )
+    assert sens_record is not None, "fig_sensitivity not found in registry"
+    assert "paper/sections/sensitivity.tex" in sens_record["used_in"], (
+        f"Expected sensitivity.tex in used_in, got: {sens_record['used_in']}"
+    )
+
+
+def test_no_sensitivity_figure_when_csv_absent(tmp_path: Path) -> None:
+    """FIG2: when results/sensitivity_analysis.csv is absent, no fig_sensitivity
+    item is planned and the pipeline must not crash."""
+    workspace = create_workspace(tmp_path / "run_001")
+    (workspace.root / "results" / "problem1_results.csv").write_text(
+        "x,y\n1,2\n2,4\n3,6\n", encoding="utf-8"
+    )
+    # Deliberately do NOT create sensitivity_analysis.csv
+
+    FigurePlanningAgent().run(workspace.root)
+
+    plan = read_json(workspace.root / "figures" / "figure_plan.json", [])
+    sensitivity_ids = [item["figure_id"] for item in plan if item["figure_id"] == "fig_sensitivity"]
+    assert not sensitivity_ids, (
+        "Expected no fig_sensitivity item when sensitivity_analysis.csv is absent"
+    )
+
+    # Must not crash during rendering either
+    VisualizationAgent().run(workspace.root)
+    assert not (workspace.root / "figures" / "fig_sensitivity.pdf").exists()
+
+
 def test_concept_diagram_embeds_in_paper(tmp_path: Path) -> None:
     """FIG1: after visualization + writer, the concept diagram's target section
     must contain \\includegraphics referencing fig_method_overview."""
