@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from statistics import mean
 
 from pydantic import BaseModel, Field
 
@@ -69,6 +70,45 @@ class MockJudge:
             dimensions=dims,
             comments={str(k): str(v) for k, v in data.get("comments", {}).items()},
             revision_suggestions=[str(s) for s in data.get("revision_suggestions", []) if s],
+        )
+
+    def score_consensus(
+        self,
+        paper_text: str,
+        *,
+        figure_count: int = 0,
+        language: str = "en",
+        samples: int = 3,
+    ) -> RubricScore:
+        """Return a denoised score by averaging N independent judge calls.
+
+        When no LLM is configured the heuristic is already deterministic, so
+        a single call is returned directly to avoid pointless duplication.
+        ``samples`` < 1 is treated as 1.
+        """
+        if self.llm is None:
+            return self.score(paper_text, figure_count=figure_count, language=language)
+
+        n = max(1, samples)
+        sample_scores: list[RubricScore] = [
+            self.score(paper_text, figure_count=figure_count, language=language)
+            for _ in range(n)
+        ]
+
+        # Average each dimension across all samples, round to int.
+        dims: dict[str, int] = {
+            d: round(mean(s.dimensions.get(d, 0) for s in sample_scores))
+            for d in DIMENSIONS
+        }
+
+        # Pick the sample whose total is closest to the mean total for prose fields.
+        mean_total = mean(s.total for s in sample_scores)
+        representative = min(sample_scores, key=lambda s: abs(s.total - mean_total))
+
+        return RubricScore(
+            dimensions=dims,
+            comments=representative.comments,
+            revision_suggestions=representative.revision_suggestions,
         )
 
     def _system(self) -> str:
