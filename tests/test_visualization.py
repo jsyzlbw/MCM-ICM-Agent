@@ -199,3 +199,82 @@ def test_visualization_agent_renders_concept_diagram_mermaid_and_svg(tmp_path: P
     assert "<svg" in svg.read_text(encoding="utf-8")
     assert "figures/fig_method_overview.svg" in method_record["outputs"]
     assert method_record["status"] == "approved"
+
+
+def _make_concept_diagram_workspace(tmp_path: Path):
+    """Shared setup for concept-diagram PDF tests."""
+    from mcm_agent.core.workspace import create_workspace
+
+    workspace = create_workspace(tmp_path / "run_001")
+    write_json(
+        workspace.root / "results" / "model_route_summary.json",
+        {
+            "selected_routes": ["classification_model"],
+            "route_metrics": {},
+        },
+    )
+    write_json(workspace.root / "results" / "evidence_registry.json", [])
+    (workspace.root / "results" / "problem1_results.csv").write_text(
+        "x,y\n1,2\n2,4\n",
+        encoding="utf-8",
+    )
+    return workspace
+
+
+def test_concept_diagram_renders_pdf(tmp_path: Path) -> None:
+    """FIG1: after VisualizationAgent.run, figures/fig_method_overview.pdf must
+    exist on disk AND the registry outputs list must have it first."""
+    workspace = _make_concept_diagram_workspace(tmp_path)
+    FigurePlanningAgent().run(workspace.root)
+
+    VisualizationAgent().run(workspace.root)
+
+    pdf_path = workspace.root / "figures" / "fig_method_overview.pdf"
+    assert pdf_path.exists(), "Expected figures/fig_method_overview.pdf to be created by matplotlib"
+
+    registry = read_json(workspace.root / "figures" / "figure_registry.json", [])
+    method_record = next(
+        (item for item in registry if item["figure_id"] == "fig_method_overview"), None
+    )
+    assert method_record is not None, "fig_method_overview not found in registry"
+    assert any(out.endswith(".pdf") for out in method_record["outputs"]), (
+        f"No .pdf in registry outputs: {method_record['outputs']}"
+    )
+    assert method_record["outputs"][0].endswith(".pdf"), (
+        f"First output must be .pdf (for _best_output preference), got: {method_record['outputs']}"
+    )
+
+
+def test_concept_diagram_embeds_in_paper(tmp_path: Path) -> None:
+    """FIG1: after visualization + writer, the concept diagram's target section
+    must contain \\includegraphics referencing fig_method_overview."""
+    from mcm_agent.agents.writer import PaperWriterAgent
+
+    workspace = _make_concept_diagram_workspace(tmp_path)
+    FigurePlanningAgent().run(workspace.root)
+    VisualizationAgent().run(workspace.root)
+
+    # Confirm registry has .pdf first (so _best_output will pick it)
+    registry = read_json(workspace.root / "figures" / "figure_registry.json", [])
+    method_record = next(
+        (item for item in registry if item["figure_id"] == "fig_method_overview"), None
+    )
+    assert method_record is not None
+    assert method_record["outputs"][0].endswith(".pdf"), (
+        "_best_output won't pick .pdf unless it is first in outputs"
+    )
+
+    PaperWriterAgent().run(workspace.root)
+
+    # The target_section for fig_method_overview is paper/sections/model.tex
+    target_tex = workspace.root / "paper" / "sections" / "model.tex"
+    assert target_tex.exists(), "Expected model.tex to be written by PaperWriterAgent"
+    content = target_tex.read_text(encoding="utf-8")
+    assert "\\includegraphics" in content, (
+        "Expected \\includegraphics in model.tex but found none.\n"
+        f"model.tex content:\n{content}"
+    )
+    assert "fig_method_overview" in content, (
+        "Expected figure id 'fig_method_overview' in model.tex.\n"
+        f"model.tex content:\n{content}"
+    )

@@ -4,6 +4,7 @@ from html import escape
 from pathlib import Path
 
 import matplotlib
+import matplotlib.patches
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -57,7 +58,7 @@ class FigurePlanningAgent:
                 source_ids=spec.source_ids,
                 evidence_ids=spec.evidence_ids,
                 generation_script=f"figures/source/{spec.diagram_id}.mmd",
-                output_formats=["svg"],
+                output_formats=["pdf", "svg"],
                 target_section=spec.target_section,
                 caption_intent=spec.caption_intent,
                 claim_supported=spec.claim_supported,
@@ -238,15 +239,24 @@ class VisualizationAgent:
         source_path.write_text(self._mermaid_source(spec), encoding="utf-8")
         svg_path = workspace_root / "figures" / f"{item.figure_id}.svg"
         svg_path.write_text(self._svg_source(spec), encoding="utf-8")
+
+        # Attempt to render a PDF via matplotlib so the writer can embed it.
+        pdf_rel_path = self._render_concept_pdf(workspace_root, spec)
+
+        outputs: list[str] = []
+        if pdf_rel_path is not None:
+            outputs.append(pdf_rel_path)
+        outputs.extend([
+            str(source_path.relative_to(workspace_root)),
+            str(svg_path.relative_to(workspace_root)),
+        ])
+
         return FigureRecord(
             figure_id=item.figure_id,
             type="concept_diagram",
             tool="mermaid+svg",
             source_file=str(source_path.relative_to(workspace_root)),
-            outputs=[
-                str(source_path.relative_to(workspace_root)),
-                str(svg_path.relative_to(workspace_root)),
-            ],
+            outputs=outputs,
             used_in=[item.target_section],
             status=ArtifactStatus.APPROVED,
             source_data=item.source_data,
@@ -255,6 +265,88 @@ class VisualizationAgent:
             caption_intent=item.caption_intent,
             claim_supported=item.claim_supported,
         )
+
+    def _render_concept_pdf(
+        self, workspace_root: Path, spec: "ConceptDiagramSpec"
+    ) -> str | None:
+        """Render a ConceptDiagramSpec to a PDF using matplotlib.
+
+        Nodes are laid out top-to-bottom as rounded boxes; edges are drawn as
+        annotated arrows between box centres. Returns the workspace-relative
+        path to the PDF, or None on any failure (degrade gracefully).
+        """
+        try:
+            import textwrap
+
+            nodes = spec.nodes or []
+            edges = spec.edges or []
+
+            BOX_W = 2.8
+            BOX_H = 0.7
+            GAP_Y = 0.5   # vertical gap between boxes
+            FIG_W = 5.0
+
+            n = max(len(nodes), 1)
+            total_h = n * BOX_H + (n - 1) * GAP_Y + 1.5  # top/bottom margin
+            fig, ax = plt.subplots(figsize=(FIG_W, total_h))
+
+            # Positions: centre of each box, top-to-bottom
+            positions: dict[str, tuple[float, float]] = {}
+            x_centre = FIG_W / 2
+            for idx, node in enumerate(nodes):
+                y = total_h - 0.75 - idx * (BOX_H + GAP_Y)
+                positions[node.node_id] = (x_centre, y)
+
+            # Draw edges first (under boxes)
+            for edge in edges:
+                if edge.source not in positions or edge.target not in positions:
+                    continue
+                src_x, src_y = positions[edge.source]
+                tgt_x, tgt_y = positions[edge.target]
+                ax.annotate(
+                    "",
+                    xy=(tgt_x, tgt_y + BOX_H / 2),
+                    xytext=(src_x, src_y - BOX_H / 2),
+                    arrowprops=dict(arrowstyle="->", color="#334155", lw=1.2),
+                )
+                if edge.label:
+                    mid_x = (src_x + tgt_x) / 2 + 0.15
+                    mid_y = (src_y + tgt_y) / 2
+                    ax.text(
+                        mid_x, mid_y, edge.label,
+                        fontsize=7, color="#475569", ha="left", va="center",
+                    )
+
+            # Draw node boxes
+            for node in nodes:
+                cx, cy = positions[node.node_id]
+                x0 = cx - BOX_W / 2
+                y0 = cy - BOX_H / 2
+                fancy = matplotlib.patches.FancyBboxPatch(
+                    (x0, y0), BOX_W, BOX_H,
+                    boxstyle="round,pad=0.05",
+                    facecolor="#cfe2f3", edgecolor="#64748b", linewidth=1.0,
+                )
+                ax.add_patch(fancy)
+                label_wrapped = "\n".join(textwrap.wrap(node.label, width=32))
+                ax.text(
+                    cx, cy, label_wrapped,
+                    fontsize=8, ha="center", va="center",
+                    color="#111827", wrap=False,
+                )
+
+            ax.set_xlim(0, FIG_W)
+            ax.set_ylim(0, total_h)
+            ax.axis("off")
+            ax.set_title(spec.title, fontsize=10, pad=6)
+
+            (workspace_root / "figures").mkdir(parents=True, exist_ok=True)
+            pdf_path = workspace_root / "figures" / f"{spec.diagram_id}.pdf"
+            fig.savefig(str(pdf_path), bbox_inches="tight")
+            plt.close(fig)
+            return str(pdf_path.relative_to(workspace_root))
+        except Exception:
+            return None
 
     def _concept_spec_for_item(
         self,
