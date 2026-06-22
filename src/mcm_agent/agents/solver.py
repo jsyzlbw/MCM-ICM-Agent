@@ -204,9 +204,18 @@ class SolverCoderAgent:
         return (False, "")
 
     def _subproblem_prompt(
-        self, workspace_root: Path, processed_file: Path, sub: object | None
+        self,
+        workspace_root: Path,
+        processed_file: Path,
+        sub: object | None,
+        *,
+        sub_id: str = "q1",
     ) -> str:
-        """Build the per-subproblem initial prompt for the ReAct loop."""
+        """Build the per-subproblem initial prompt for the ReAct loop.
+
+        Tells the model to write results/<sub_id>_results.csv and
+        results/<sub_id>_metrics.json (task-specific metrics for THIS sub).
+        """
         understanding = self._read_text(
             workspace_root / "reports" / "problem_understanding.md", 4000
         )
@@ -215,7 +224,7 @@ class SolverCoderAgent:
         )
         spec_block = self._model_spec_block(workspace_root)
         schema = self._schema_excerpt(processed_file)
-        sub_title = getattr(sub, "title", None) or "problem1"
+        sub_title = getattr(sub, "title", None) or sub_id
         sub_metrics = getattr(sub, "metrics", None) or []
         metric_keys = (
             (", ".join(sub_metrics))
@@ -233,9 +242,9 @@ class SolverCoderAgent:
             "CONTRACT:\n"
             "- Read data via sorted((Path.cwd()/'data'/'processed').glob('*.csv'))[0]\n"
             "- Use only pandas, numpy, scipy, sklearn, matplotlib — no network access.\n"
-            "- Write the main result table to results/problem1_results.csv\n"
+            f"- Write the main result table to results/{sub_id}_results.csv\n"
             f"- Write a JSON dict with TASK-SPECIFIC metric keys ({metric_keys}) "
-            "to results/model_metrics.json. Name each metric after what it measures "
+            f"to results/{sub_id}_metrics.json. Name each metric after what it measures "
             "(e.g. elimination_consistency_rate, placement_r2, mae) and report the REAL "
             "computed numbers. Do NOT use generic placeholder keys such as "
             "'primary_metric', 'metric', 'score', 'result', or 'value'.\n"
@@ -255,6 +264,14 @@ class SolverCoderAgent:
         """Multi-turn ReAct loop: LLM emits one ```python block per turn, we execute
         it in a persistent interpreter, feed real stdout/error back, and continue until
         the LLM signals DONE (no code fence) or limits are reached.
+
+        Per-subproblem artifacts (SC2):
+        - Each sub writes results/<sub_id>_results.csv + results/<sub_id>_metrics.json.
+        - Executed code is written to code/experiments/<sub_id>.py.
+        - Accumulated metrics are written to results/model_metrics.json as nested
+          {sub_id: {...}} after all subs complete.
+        - Compat aliases: first successful sub's CSV -> results/problem1_results.csv,
+          first successful sub's py -> code/experiments/problem1.py.
 
         Returns True iff results/model_metrics.json is a non-empty dict at the end.
         Returns False on any construction/fatal failure (caller degrades gracefully).
@@ -287,24 +304,36 @@ class SolverCoderAgent:
             "当该子问题**完全解出且所有要求的输出文件已写好**时，只回复一个词 DONE（不带代码块）。"
         )
 
-        executed_code: list[str] = []
+        all_metrics: dict[str, dict] = {}
+        # Tracks (sub_id, sub_script_path) for each successful sub (for compat aliases)
+        successful_subs: list[tuple[str, Path | None]] = []
+
         try:
             spec = read_model_spec(workspace_root)
             subs = (spec.subproblems if (spec and spec.subproblems) else [None])
 
-            for sub in subs:
-                title = getattr(sub, "title", None) or "problem1"
+            for index, sub in enumerate(subs):
+                # Stable sub_id: use subproblem_id attribute if present, else q{i+1}
+                if sub is None:
+                    sub_id = "q1"
+                else:
+                    sub_id = getattr(sub, "subproblem_id", None) or f"q{index + 1}"
+
+                title = getattr(sub, "title", None) or sub_id
                 interp.add_section(title)
-                transcript = self._subproblem_prompt(workspace_root, processed[0], sub)
+                transcript = self._subproblem_prompt(
+                    workspace_root, processed[0], sub, sub_id=sub_id
+                )
                 errors = 0
+                executed_code: list[str] = []
+
                 for _turn in range(max_turns):
                     content = self.llm_provider.generate(system, transcript).content
                     code = self._extract_code_block(content)
                     if not code:
-                        # DONE signal: run success-path correctness self-eval before accepting.
-                        metrics_now = read_json(
-                            workspace_root / "results" / "model_metrics.json", {}
-                        )
+                        # DONE signal: B3 self-eval — check THIS sub's metrics file.
+                        sub_metrics_path = workspace_root / "results" / f"{sub_id}_metrics.json"
+                        metrics_now = read_json(sub_metrics_path, {})
                         degenerate, reason = self._metrics_are_degenerate(
                             metrics_now if isinstance(metrics_now, dict) else {}
                         )
@@ -312,7 +341,7 @@ class SolverCoderAgent:
                             # Still have turn budget — re-prompt with corrective message.
                             transcript += (
                                 f"\n\n[CHECK FAILED]\n结果退化：{reason}。"
-                                "请修正模型/计算后重写 results/model_metrics.json 与结果表，然后继续。"
+                                f"请修正模型/计算后重写 results/{sub_id}_metrics.json 与结果表，然后继续。"
                             )
                             continue
                         break  # Accept finish (no budget left, or metrics are fine)
@@ -328,6 +357,23 @@ class SolverCoderAgent:
                     else:
                         executed_code.append(code)
 
+                # After sub's ReAct loop: persist code and collect metrics.
+                sub_script_path: Path | None = None
+                if executed_code:
+                    code_dir = workspace_root / "code" / "experiments"
+                    code_dir.mkdir(parents=True, exist_ok=True)
+                    sub_script_path = code_dir / f"{sub_id}.py"
+                    sub_script_path.write_text(
+                        "\n\n# ---- interpreter cell ----\n\n".join(executed_code),
+                        encoding="utf-8",
+                    )
+
+                sub_metrics_path = workspace_root / "results" / f"{sub_id}_metrics.json"
+                sub_metrics = read_json(sub_metrics_path, {})
+                if isinstance(sub_metrics, dict) and sub_metrics:
+                    all_metrics[sub_id] = sub_metrics
+                    successful_subs.append((sub_id, sub_script_path))
+
             interp.save_notebook()
         except Exception:
             try:
@@ -341,25 +387,38 @@ class SolverCoderAgent:
             except Exception:
                 pass
 
-        metrics = read_json(workspace_root / "results" / "model_metrics.json", {})
-        if isinstance(metrics, dict) and metrics:
-            # Persist the executed cells to code/experiments/problem1.py so
-            # ModelDesignAgent.refine_from_code can read the REAL model and keep the
-            # model<->code<->narrative coherence chain intact. Without this the paper
-            # falls back to a generic-vacuous model section (modeling/coherence collapse).
-            if executed_code:
-                script_path = workspace_root / "code" / "experiments" / "problem1.py"
-                script_path.parent.mkdir(parents=True, exist_ok=True)
-                script_path.write_text(
-                    "\n\n# ---- interpreter cell ----\n\n".join(executed_code),
-                    encoding="utf-8",
-                )
-                self._llm_script_rel = "code/experiments/problem1.py"
-            else:
-                self._llm_script_rel = "notebook.ipynb"
-            self._run_sensitivity_sweep(workspace_root, processed[0])
-            return True
-        return False
+        # Write nested model_metrics.json (all accumulated sub-metrics)
+        write_json(workspace_root / "results" / "model_metrics.json", all_metrics)
+
+        if not all_metrics:
+            return False
+
+        # Compat aliases: copy first successful sub's artifacts to problem1 paths.
+        first_sub_id, first_script_path = successful_subs[0]
+        import shutil
+
+        # results/<sub_id>_results.csv -> results/problem1_results.csv
+        first_csv = workspace_root / "results" / f"{first_sub_id}_results.csv"
+        alias_csv = workspace_root / "results" / "problem1_results.csv"
+        if first_csv.exists() and not alias_csv.exists():
+            shutil.copy2(str(first_csv), str(alias_csv))
+
+        # code/experiments/<sub_id>.py -> code/experiments/problem1.py
+        alias_py = workspace_root / "code" / "experiments" / "problem1.py"
+        if first_script_path is not None and first_script_path.exists() and not alias_py.exists():
+            alias_py.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(first_script_path), str(alias_py))
+
+        # Set _llm_script_rel for downstream (refine/sensitivity)
+        if alias_py.exists():
+            self._llm_script_rel = "code/experiments/problem1.py"
+        elif first_script_path is not None and first_script_path.exists():
+            self._llm_script_rel = str(first_script_path.relative_to(workspace_root))
+        else:
+            self._llm_script_rel = "notebook.ipynb"
+
+        self._run_sensitivity_sweep(workspace_root, processed[0])
+        return True
 
     @staticmethod
     def _read_text(path: Path, limit: int) -> str:
