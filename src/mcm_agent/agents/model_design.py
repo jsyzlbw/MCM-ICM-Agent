@@ -14,6 +14,18 @@ from mcm_agent.core.model_spec import (
 from mcm_agent.providers.base import TextGenerationProvider
 
 
+def _safe_id(s: str, fallback: str = "q1") -> str:
+    """Return a filesystem-safe subproblem_id.
+
+    Keeps [A-Za-z0-9_-]; replaces all other characters with '_'; collapses
+    consecutive underscores; strips leading/trailing underscores.  Falls back
+    to *fallback* when the result would be empty.
+    """
+    result = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
+    result = re.sub(r"_+", "_", result).strip("_")
+    return result if result else fallback
+
+
 def _strlist(value: object) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -66,9 +78,10 @@ def _normalize_spec(data: dict) -> ModelSpec | None:
         description = str(raw.get("description") or "").strip()
         if description and description not in assumptions:
             assumptions = [description, *assumptions]
+        raw_id = str(raw.get("subproblem_id") or raw.get("_key") or f"q{index + 1}")
         subs.append(
             SubproblemModel(
-                subproblem_id=str(raw.get("subproblem_id") or raw.get("_key") or f"q{index + 1}"),
+                subproblem_id=_safe_id(raw_id, fallback=f"q{index + 1}"),
                 title=title,
                 approach=approach or title,
                 variables=_norm_vars(raw.get("variables")),
@@ -109,12 +122,95 @@ class ModelDesignAgent:
     def refine_from_code(self, workspace_root: Path) -> ModelSpec | None:
         """After solving, derive the ModelSpec from the code that ACTUALLY ran, so the
         paper's model section is both rich and guaranteed coherent with the computation.
-        No-op (keeps the existing spec) when there is no code or no LLM."""
+        No-op (keeps the existing spec) when there is no code or no LLM.
+
+        Per-sub mode (SC2 layout):
+          code/experiments/<sub_id>.py exists for each subproblem (problem1.py is
+          the alias for the first sub and is excluded from enumeration).  Each file
+          is refined independently and the results are assembled into one multi-sub
+          ModelSpec.
+
+        Fallback (single-file / one-shot codegen):
+          Only problem1.py is present → original single-file behaviour (1 subproblem).
+        """
         if self.llm is None:
             return None
-        code_path = workspace_root / "code" / "experiments" / "problem1.py"
-        if not code_path.exists():
+
+        exp_dir = workspace_root / "code" / "experiments"
+
+        # Collect per-sub files: *.py excluding problem1.py alias
+        per_sub_files: list[Path] = sorted(
+            p for p in exp_dir.glob("*.py") if p.name != "problem1.py"
+        ) if exp_dir.exists() else []
+
+        # Fallback: no per-sub files → use problem1.py if it exists
+        if not per_sub_files:
+            fallback_path = exp_dir / "problem1.py"
+            if not fallback_path.exists():
+                return None
+            return self._refine_single_file(workspace_root, fallback_path, sub_id=None)
+
+        # Per-sub mode: refine each file independently
+        lang = "Chinese" if self.language == "zh" else "English"
+        understanding = self._read(workspace_root / "reports" / "problem_understanding.md", 1500)
+
+        # Load nested metrics once; per-sub metrics may be a sub-dict
+        metrics_raw = self._read(workspace_root / "results" / "model_metrics.json", 3000)
+        try:
+            metrics_all: dict = json.loads(metrics_raw) if metrics_raw else {}
+        except (json.JSONDecodeError, ValueError):
+            metrics_all = {}
+
+        assembled_subs: list[SubproblemModel] = []
+        for code_path in per_sub_files:
+            sub_id = _safe_id(code_path.stem, fallback=f"q{len(assembled_subs) + 1}")
+            code = code_path.read_text(encoding="utf-8")[:8000]
+            # Per-sub metrics: nested dict or entire flat metrics as fallback
+            sub_metrics = metrics_all.get(sub_id, metrics_all) if metrics_all else {}
+            metrics_str = json.dumps(sub_metrics, ensure_ascii=False)[:500] if sub_metrics else ""
+            system = (
+                "You are a mathematical-modeling writer. Describe the model THIS code actually "
+                "implements (variables, assumptions, equations in LaTeX, algorithm steps, metrics) "
+                "as JSON: {\"subproblems\": [{\"subproblem_id\": str, \"title\": str, \"approach\": str, "
+                "\"variables\":[{\"symbol\": str, \"meaning\": str}], \"assumptions\":[str], "
+                "\"equations\":[str], \"algorithm_steps\":[str], \"metrics\":[str]}]}. "
+                f"Write prose fields in {lang}; keep symbols/equations in LaTeX. Be faithful to the code."
+            )
+            prompt = (
+                f"FILE: {sub_id}\n"
+                f"PROBLEM (context):\n{understanding}\n\n"
+                f"CODE THAT RAN:\n{code}\n\n"
+                f"METRICS PRODUCED:\n{metrics_str}"
+            )
+            try:
+                data = self._parse(self.llm.generate(system, prompt).content)
+            except Exception as exc:
+                self.last_reason = f"refine call for {sub_id} failed: {type(exc).__name__}: {exc}"
+                continue  # skip this sub, keep going
+            sub_spec = _normalize_spec(data)
+            if sub_spec and sub_spec.subproblems:
+                # Override the sub_id to match the file stem (LLM may guess wrong)
+                sub = sub_spec.subproblems[0]
+                sub.subproblem_id = sub_id
+                assembled_subs.append(sub)
+
+        if not assembled_subs:
+            self.last_reason = "all per-sub refine calls failed or yielded no subproblems"
             return None
+
+        # Preserve problem_restatement from existing on-disk spec
+        existing = read_model_spec(workspace_root)
+        restatement = (existing.problem_restatement if existing else "") or ""
+
+        spec = ModelSpec(problem_restatement=restatement, subproblems=assembled_subs)
+        write_model_spec(workspace_root, spec)
+        self._write_md(workspace_root, spec, source="llm")
+        return spec
+
+    def _refine_single_file(
+        self, workspace_root: Path, code_path: Path, sub_id: str | None
+    ) -> ModelSpec | None:
+        """Original single-file refine behaviour (fallback / one-shot codegen path)."""
         code = code_path.read_text(encoding="utf-8")[:8000]
         metrics = self._read(workspace_root / "results" / "model_metrics.json", 1500)
         understanding = self._read(workspace_root / "reports" / "problem_understanding.md", 1500)
@@ -122,12 +218,20 @@ class ModelDesignAgent:
         system = (
             "You are a mathematical-modeling writer. Describe the model THIS code actually "
             "implements (variables, assumptions, equations in LaTeX, algorithm steps, metrics) "
-            "as JSON: {\"subproblems\": [{\"subproblem_id\", \"title\", \"approach\", "
-            "\"variables\":[{\"symbol\",\"meaning\"}], \"assumptions\":[str], \"equations\":[str], "
-            "\"algorithm_steps\":[str], \"metrics\":[str]}]}. "
+            "as JSON: {\"subproblems\": [{\"subproblem_id\": str, \"title\": str, \"approach\": str, "
+            "\"variables\":[{\"symbol\": str, \"meaning\": str}], \"assumptions\":[str], "
+            "\"equations\":[str], \"algorithm_steps\":[str], \"metrics\":[str]}]}. "
             f"Write prose fields in {lang}; keep symbols/equations in LaTeX. Be faithful to the code."
         )
-        prompt = f"PROBLEM (context):\n{understanding}\n\nCODE THAT RAN:\n{code}\n\nMETRICS PRODUCED:\n{metrics}"
+        if sub_id:
+            prompt = (
+                f"FILE: {sub_id}\n"
+                f"PROBLEM (context):\n{understanding}\n\n"
+                f"CODE THAT RAN:\n{code}\n\n"
+                f"METRICS PRODUCED:\n{metrics}"
+            )
+        else:
+            prompt = f"PROBLEM (context):\n{understanding}\n\nCODE THAT RAN:\n{code}\n\nMETRICS PRODUCED:\n{metrics}"
         try:
             data = self._parse(self.llm.generate(system, prompt).content)
         except Exception as exc:

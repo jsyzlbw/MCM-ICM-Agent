@@ -187,6 +187,123 @@ def test_design_prompt_demands_one_subproblem_per_task(tmp_path: Path) -> None:
     ), "prompt must mention that contest problems typically have multiple tasks"
 
 
+# ---------------------------------------------------------------------------
+# SC3 tests: refine_from_code must handle per-subproblem code files
+# ---------------------------------------------------------------------------
+
+
+class _PerFileRefineRecordingLLM:
+    """Fake LLM for SC3 tests: records every call (to detect which file was shown)
+    and returns a single-subproblem spec whose sub_id echoes the file stem it saw."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []  # [(system, prompt), ...]
+
+    def generate(self, system: str, prompt: str) -> ProviderResult:
+        self.calls.append((system, prompt))
+        # Extract the sub_id hint from the prompt (we'll embed "FILE: <stem>" in the prompt)
+        stem = "q1"
+        for line in prompt.splitlines():
+            if line.startswith("FILE:"):
+                stem = line.split(":", 1)[1].strip()
+                break
+        spec = {
+            "subproblems": [
+                {
+                    "subproblem_id": stem,
+                    "title": f"Model for {stem}",
+                    "approach": f"Approach for {stem}",
+                    "algorithm_steps": [f"step for {stem}"],
+                    "metrics": [f"metric_{stem}"],
+                }
+            ]
+        }
+        return ProviderResult(content=json.dumps(spec), metadata={})
+
+
+def test_refine_from_code_keeps_all_subproblems(tmp_path: Path) -> None:
+    """When code/experiments/ has q1.py and q2.py (plus problem1.py alias),
+    refine_from_code must yield a spec with 2 subproblems (q1 and q2), NOT
+    collapse to 1 subproblem by only reading problem1.py."""
+    root = _prep(tmp_path)
+    code_dir = root / "code" / "experiments"
+    code_dir.mkdir(parents=True, exist_ok=True)
+
+    (code_dir / "q1.py").write_text("# q1 code\nresult = 1\n", encoding="utf-8")
+    (code_dir / "q2.py").write_text("# q2 code\nresult = 2\n", encoding="utf-8")
+    # problem1.py is the alias copy of q1 (SC2 produces this)
+    (code_dir / "problem1.py").write_text("# q1 code\nresult = 1\n", encoding="utf-8")
+
+    # Nested per-sub metrics (SC2 format)
+    metrics = {"q1": {"metric_q1": 0.9}, "q2": {"metric_q2": 0.8}}
+    (root / "results" / "model_metrics.json").write_text(json.dumps(metrics), encoding="utf-8")
+
+    llm = _PerFileRefineRecordingLLM()
+    agent = ModelDesignAgent(llm, language="en")
+    spec = agent.refine_from_code(root)
+
+    assert spec is not None, "refine_from_code returned None"
+    assert len(spec.subproblems) == 2, (
+        f"Expected 2 subproblems (one per per-sub file), got {len(spec.subproblems)}: "
+        f"{[s.subproblem_id for s in spec.subproblems]}"
+    )
+    ids = {s.subproblem_id for s in spec.subproblems}
+    assert ids == {"q1", "q2"}, f"Expected sub ids {{q1, q2}}, got {ids}"
+
+
+def test_refine_from_code_single_file_fallback(tmp_path: Path) -> None:
+    """When only problem1.py exists (no per-sub files), refine_from_code must fall
+    back to the old single-file behavior and return a spec with at least 1 subproblem."""
+    root = _prep(tmp_path)
+    code_dir = root / "code" / "experiments"
+    code_dir.mkdir(parents=True, exist_ok=True)
+    # Only the alias file, no q1.py / q2.py
+    (code_dir / "problem1.py").write_text("# single code\nresult = 42\n", encoding="utf-8")
+    (root / "results" / "model_metrics.json").write_text('{"some_metric": 0.5}', encoding="utf-8")
+
+    llm = _PerFileRefineRecordingLLM()
+    spec = ModelDesignAgent(llm, language="en").refine_from_code(root)
+
+    assert spec is not None, "fallback single-file path returned None"
+    assert len(spec.subproblems) >= 1, "Expected at least 1 subproblem in fallback"
+
+
+def test_normalize_spec_sanitizes_subproblem_id(tmp_path: Path) -> None:
+    """_normalize_spec must produce a filesystem-safe subproblem_id even when the
+    LLM returns an id with spaces, colons, or other unsafe characters."""
+    from mcm_agent.agents.model_design import _normalize_spec
+
+    data = {
+        "subproblems": [
+            {
+                "subproblem_id": "Task 1: estimate",
+                "title": "Estimation task",
+                "approach": "regression",
+            },
+            {
+                "subproblem_id": "q2",  # already safe
+                "title": "Comparison task",
+                "approach": "stats",
+            },
+        ]
+    }
+    spec = _normalize_spec(data)
+    assert spec is not None
+    assert len(spec.subproblems) == 2
+
+    # The first id had spaces and colons — must be sanitized
+    safe_id = spec.subproblems[0].subproblem_id
+    import re
+    assert re.fullmatch(r"[A-Za-z0-9_\-]+", safe_id), (
+        f"subproblem_id {safe_id!r} is not filesystem-safe"
+    )
+    # Should NOT contain spaces or colons
+    assert " " not in safe_id and ":" not in safe_id
+
+    # The second id was already safe — must be preserved as-is
+    assert spec.subproblems[1].subproblem_id == "q2"
+
+
 class _FourSubproblemLLM:
     """Fake LLM that returns 4 subproblems — mirrors what a 4-task problem
     should produce."""
