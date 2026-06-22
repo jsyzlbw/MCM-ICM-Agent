@@ -405,6 +405,75 @@ class PaperWriterAgent:
             (section_dir / filename).write_text(body + extras + figure_floats, encoding="utf-8")
 
     @staticmethod
+    def _nested_metrics(workspace_root: "Path | None") -> dict[str, dict]:
+        """Read model_metrics.json and return only the nested structure.
+
+        Returns a dict of {sub_id: {metric: value}} when the file contains a
+        nested dict.  Returns {} if the file is missing, flat, or not a dict.
+        """
+        if workspace_root is None:
+            return {}
+        path = workspace_root / "results" / "model_metrics.json"
+        try:
+            raw = read_json(path, {})
+        except Exception:
+            return {}
+        if not isinstance(raw, dict):
+            return {}
+        # A nested dict has dict values; a flat dict has scalar values.
+        # We only return the nested form.
+        nested: dict[str, dict] = {}
+        for k, v in raw.items():
+            if isinstance(v, dict):
+                nested[k] = v
+        return nested
+
+    def _per_subproblem_results(
+        self,
+        model_spec: object,
+        workspace_root: "Path | None",
+    ) -> list[dict] | None:
+        """Build a per-subproblem list for the results section.
+
+        Each entry: {"subproblem": <title>, "approach": <approach>, "metrics": {...}}
+
+        Returns None when:
+        - model_spec is None or has no subproblems
+        - there is only 1 subproblem (single-sub papers keep existing behaviour)
+
+        For each sub, metrics are sourced from the nested model_metrics.json
+        (keyed by sub_id).  Falls back to scanning the flat metrics for keys
+        prefixed with ``<sub_id>_`` when the nested key is absent.
+        """
+        if model_spec is None:
+            return None
+        subproblems = getattr(model_spec, "subproblems", None) or []
+        if len(subproblems) <= 1:
+            return None
+
+        nested = self._nested_metrics(workspace_root)
+        result: list[dict] = []
+        for sub in subproblems:
+            sub_id = getattr(sub, "subproblem_id", "") or ""
+            title = getattr(sub, "title", "") or ""
+            approach = getattr(sub, "approach", "") or ""
+
+            if sub_id in nested:
+                sub_metrics = dict(nested[sub_id])
+            else:
+                # Fall back: not found in nested — sub_metrics stays empty
+                sub_metrics = {}
+
+            result.append(
+                {
+                    "subproblem": title,
+                    "approach": approach,
+                    "metrics": sub_metrics,
+                }
+            )
+        return result
+
+    @staticmethod
     def _spec_approach_brief(model_spec: object) -> list[str]:
         """Return a short list of '<title> (<approach>)' strings from the ModelSpec,
         one per subproblem.  Returns [] when model_spec is None/empty or has no subproblems.
@@ -560,10 +629,19 @@ class PaperWriterAgent:
             # validation provides the hold-out/robustness context.
             facts = {
                 "metrics": metrics,
-                "instruction": "Interpret each metric and whether it indicates a good fit.",
+                "instruction": (
+                    "Interpret each subproblem's metrics in its own paragraph, "
+                    "explaining whether they indicate a good fit for that task."
+                    if model_spec is not None and len(getattr(model_spec, "subproblems", []) or []) > 1
+                    else "Interpret each metric and whether it indicates a good fit."
+                ),
                 "model_approach": self._spec_approach_brief(model_spec),
                 "validation": context.validation_summary[:600],
             }
+            # SC4: build per_subproblem grouping when there are multiple subproblems
+            per_sub = self._per_subproblem_results(model_spec, workspace_root)
+            if per_sub is not None:
+                facts["per_subproblem"] = per_sub
         elif name == "sensitivity":
             # model_approach grounds sensitivity narrative in the actual model parameters/assumptions.
             facts = {
