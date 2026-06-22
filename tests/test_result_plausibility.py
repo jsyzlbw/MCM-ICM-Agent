@@ -129,3 +129,91 @@ def test_sane_primary_metric_passes_plausibility(tmp_path: Path) -> None:
     assert gate["status"] == "pass", (
         f"Gate should pass for sane primary metric; blocking_findings={findings}"
     )
+
+
+# ---------------------------------------------------------------------------
+# (c) Nested per-subproblem metrics: suffix match resolves the spec metric
+# ---------------------------------------------------------------------------
+
+
+def _build_nested_workspace(root: Path, primary_metric_value: float) -> Path:
+    """Like _build_passing_workspace but uses NESTED model_metrics.json.
+
+    The solver writes ``{"q1": {"elimination_consistency_rate": 0.0, "other": 5.0}}``.
+    After flattening the keys become ``q1_elimination_consistency_rate`` and
+    ``q1_other``.  The ModelSpec names ``elimination_consistency_rate`` as the
+    primary metric — so exact-match fails and the suffix-match must kick in.
+    """
+    workspace = create_workspace(root)
+    ws = workspace.root
+
+    spec = ModelSpec(
+        problem_restatement="Test problem nested.",
+        subproblems=[
+            SubproblemModel(
+                subproblem_id="q1",
+                title="Test model",
+                approach="regression",
+                metrics=["elimination_consistency_rate"],
+            )
+        ],
+    )
+    write_model_spec(ws, spec)
+
+    # NESTED format: {sub_id: {metric: val}} — mirrors the real solver output.
+    # NOTE: "other" is listed FIRST so that dict-insertion order / fallback would
+    # pick q1_other (5.0, sane) instead of q1_elimination_consistency_rate if the
+    # suffix-match is missing.  This ensures the test fails without the fix.
+    write_json(
+        ws / "results" / "model_metrics.json",
+        {"q1": {"other": 5.0, "elimination_consistency_rate": primary_metric_value}},
+    )
+
+    # Evidence for all flattened keys so the evidence-coverage check passes and
+    # the ONLY gate failure can come from the plausibility check.
+    write_json(
+        ws / "results" / "evidence_registry.json",
+        [
+            {
+                "evidence_id": "metric_q1_other",
+                "claim": "Other metric computed.",
+                "value": 5.0,
+                "source_type": "code_output",
+                "source_path": "results/model_metrics.json",
+                "generated_by": "code/experiments/problem1.py",
+                "used_in": [],
+                "verified": True,
+            },
+            {
+                "evidence_id": "metric_q1_elimination_consistency_rate",
+                "claim": "elimination_consistency_rate computed.",
+                "value": primary_metric_value,
+                "source_type": "code_output",
+                "source_path": "results/model_metrics.json",
+                "generated_by": "code/experiments/problem1.py",
+                "used_in": [],
+                "verified": True,
+            },
+        ],
+    )
+    return ws
+
+
+def test_primary_metric_resolves_nested_prefixed_key(tmp_path: Path) -> None:
+    """Suffix match must find q1_elimination_consistency_rate (value 0.0) not 'other'."""
+    ws = _build_nested_workspace(tmp_path / "ws_nested_zero", primary_metric_value=0.0)
+
+    ValidationAgent().run(ws)
+
+    gate = read_json(ws / "review" / "validation_gate.json", {})
+    # 0.0 is degenerate — the gate must FAIL, meaning the suffix match correctly
+    # targeted q1_elimination_consistency_rate (not the sane 'other' = 5.0).
+    assert gate["status"] == "fail", (
+        "Gate must fail because the suffix-matched primary metric is 0.0 (degenerate); "
+        f"got status={gate['status']!r}.  If it passed, the code checked 'other'=5.0 instead."
+    )
+    findings = gate.get("blocking_findings", [])
+    assert any(
+        "plausib" in f.lower() or "primary" in f.lower() or "elimination" in f.lower()
+        for f in findings
+    ), f"No plausibility finding referencing the primary metric: {findings}"

@@ -225,6 +225,14 @@ class ValidationAgent:
                     # Also try the raw name in case it happened to match.
                     if metric_name in flat:
                         return metric_name
+                    # Suffix match: nested metrics are prefixed with sub-id, e.g.
+                    # spec metric "elimination_consistency_rate" → flat key
+                    # "q1_elimination_consistency_rate".  Exact match above fails
+                    # for nested metrics; find the prefixed key by suffix.
+                    suffix = "_" + flat_key
+                    matched = next((k for k in flat if k.endswith(suffix)), None)
+                    if matched is not None:
+                        return matched
 
         # Fallback: first numeric key in flat metrics.
         for key, value in flat.items():
