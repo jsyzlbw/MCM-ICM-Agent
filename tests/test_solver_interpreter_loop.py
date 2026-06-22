@@ -434,3 +434,159 @@ def test_run_falls_back_to_baseline_when_no_llm(tmp_path):
     assert (root / "results" / "model_metrics.json").exists(), (
         "Templated baseline should produce results/model_metrics.json"
     )
+
+
+# ---------------------------------------------------------------------------
+# Task A2: solver injects repair_directive into the prompt
+# ---------------------------------------------------------------------------
+
+def test_solver_injects_repair_directive(tmp_path):
+    """When review/repair_directive.json targets solver_coder, the LLM prompt
+    must contain "PRIOR JUDGE FEEDBACK" and the critique text.
+
+    TDD: this test is written before the implementation.
+    """
+    import json as _json
+
+    ws = _ws(tmp_path)
+
+    # Write a repair directive targeting solver_coder
+    review_dir = ws / "review"
+    review_dir.mkdir(exist_ok=True)
+    directive = {
+        "target_stage": "solver_coder",
+        "weak_dimension": "data_solution",
+        "score": 4,
+        "critique": "The data analysis missed key correlations",
+        "suggestions": ["Add Pearson correlation", "Use feature importance"],
+        "iteration": 1,
+    }
+    (review_dir / "repair_directive.json").write_text(
+        _json.dumps(directive), encoding="utf-8"
+    )
+
+    # A recording fake LLM that captures the first prompt it receives
+    class _RecordingLLM:
+        def __init__(self):
+            self.prompts: list[str] = []
+            self._turn = 0
+
+        def generate(self, system, prompt, *, temperature=0.2):
+            self.prompts.append(prompt)
+            self._turn += 1
+            if self._turn == 1:
+                # First turn: write contract outputs so the loop can finish
+                code = (
+                    "import json, pandas as pd\n"
+                    "from pathlib import Path\n"
+                    "df = pd.read_csv(sorted((Path.cwd()/'data'/'processed').glob('*.csv'))[0])\n"
+                    "df.to_csv('results/problem1_results.csv', index=False)\n"
+                    "json.dump({'value_mean': float(df['value'].mean())},"
+                    " open('results/model_metrics.json', 'w'))\n"
+                )
+                return ProviderResult(content=f"```python\n{code}```", metadata={})
+            return ProviderResult(content="DONE", metadata={})
+
+    recording_llm = _RecordingLLM()
+    agent = SolverCoderAgent(llm_provider=recording_llm)
+    agent._run_interpreter_loop(ws, interpreter_factory=lambda root: FakeCodeInterpreter(root))
+
+    assert recording_llm.prompts, "LLM was never called"
+    first_prompt = recording_llm.prompts[0]
+
+    assert "PRIOR JUDGE FEEDBACK" in first_prompt, (
+        f"Expected 'PRIOR JUDGE FEEDBACK' in first prompt; got:\n{first_prompt[:600]}"
+    )
+    assert "The data analysis missed key correlations" in first_prompt, (
+        f"Expected critique text in first prompt; got:\n{first_prompt[:600]}"
+    )
+
+
+def test_solver_no_injection_when_no_directive(tmp_path):
+    """When no repair_directive.json exists, the prompt must NOT contain
+    'PRIOR JUDGE FEEDBACK' (baseline regression guard).
+    """
+    ws = _ws(tmp_path)
+
+    class _RecordingLLM:
+        def __init__(self):
+            self.prompts: list[str] = []
+            self._turn = 0
+
+        def generate(self, system, prompt, *, temperature=0.2):
+            self.prompts.append(prompt)
+            self._turn += 1
+            if self._turn == 1:
+                code = (
+                    "import json, pandas as pd\n"
+                    "from pathlib import Path\n"
+                    "df = pd.read_csv(sorted((Path.cwd()/'data'/'processed').glob('*.csv'))[0])\n"
+                    "df.to_csv('results/problem1_results.csv', index=False)\n"
+                    "json.dump({'value_mean': float(df['value'].mean())},"
+                    " open('results/model_metrics.json', 'w'))\n"
+                )
+                return ProviderResult(content=f"```python\n{code}```", metadata={})
+            return ProviderResult(content="DONE", metadata={})
+
+    recording_llm = _RecordingLLM()
+    agent = SolverCoderAgent(llm_provider=recording_llm)
+    agent._run_interpreter_loop(ws, interpreter_factory=lambda root: FakeCodeInterpreter(root))
+
+    assert recording_llm.prompts, "LLM was never called"
+    first_prompt = recording_llm.prompts[0]
+    assert "PRIOR JUDGE FEEDBACK" not in first_prompt, (
+        "Without repair_directive.json, prompt must NOT contain 'PRIOR JUDGE FEEDBACK'"
+    )
+
+
+def test_solver_no_injection_when_directive_targets_different_stage(tmp_path):
+    """When repair_directive targets paper_writer (not solver_coder), the solver
+    prompt must NOT inject 'PRIOR JUDGE FEEDBACK'.
+    """
+    import json as _json
+
+    ws = _ws(tmp_path)
+
+    review_dir = ws / "review"
+    review_dir.mkdir(exist_ok=True)
+    directive = {
+        "target_stage": "paper_writer",  # not solver_coder
+        "weak_dimension": "writing",
+        "score": 5,
+        "critique": "prose is weak",
+        "suggestions": [],
+        "iteration": 1,
+    }
+    (review_dir / "repair_directive.json").write_text(
+        _json.dumps(directive), encoding="utf-8"
+    )
+
+    class _RecordingLLM:
+        def __init__(self):
+            self.prompts: list[str] = []
+            self._turn = 0
+
+        def generate(self, system, prompt, *, temperature=0.2):
+            self.prompts.append(prompt)
+            self._turn += 1
+            if self._turn == 1:
+                code = (
+                    "import json, pandas as pd\n"
+                    "from pathlib import Path\n"
+                    "df = pd.read_csv(sorted((Path.cwd()/'data'/'processed').glob('*.csv'))[0])\n"
+                    "df.to_csv('results/problem1_results.csv', index=False)\n"
+                    "json.dump({'value_mean': float(df['value'].mean())},"
+                    " open('results/model_metrics.json', 'w'))\n"
+                )
+                return ProviderResult(content=f"```python\n{code}```", metadata={})
+            return ProviderResult(content="DONE", metadata={})
+
+    recording_llm = _RecordingLLM()
+    agent = SolverCoderAgent(llm_provider=recording_llm)
+    agent._run_interpreter_loop(ws, interpreter_factory=lambda root: FakeCodeInterpreter(root))
+
+    assert recording_llm.prompts, "LLM was never called"
+    first_prompt = recording_llm.prompts[0]
+    assert "PRIOR JUDGE FEEDBACK" not in first_prompt, (
+        "When directive targets paper_writer, solver must NOT inject 'PRIOR JUDGE FEEDBACK'"
+    )

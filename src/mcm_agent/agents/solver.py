@@ -13,6 +13,7 @@ from mcm_agent.core.experiment import run_experiment
 from mcm_agent.core.experiment_spec import ExperimentSpec
 from mcm_agent.core.metrics_flatten import flatten_metrics
 from mcm_agent.core.models import EvidenceItem
+from mcm_agent.core.repair_directive import read_repair_directive
 from mcm_agent.utils.json_io import read_json, write_json
 
 
@@ -30,6 +31,28 @@ class SolverCoderAgent:
             self._record_outputs(workspace_root)
             return
         self._run_templated_baseline(workspace_root)
+
+    @staticmethod
+    def _repair_directive_prefix(workspace_root: Path) -> str:
+        """Return a PRIOR JUDGE FEEDBACK preamble when a solver_coder directive exists.
+
+        Returns an empty string when there is no directive or it targets a different stage.
+        """
+        directive = read_repair_directive(workspace_root)
+        if not isinstance(directive, dict):
+            return ""
+        if directive.get("target_stage") != "solver_coder":
+            return ""
+        weak = directive.get("weak_dimension", "")
+        score = directive.get("score", "?")
+        critique = directive.get("critique", "")
+        suggestions = directive.get("suggestions", [])
+        suggestion_text = "; ".join(str(s) for s in suggestions) if suggestions else "(none)"
+        return (
+            f"PRIOR JUDGE FEEDBACK — the previous solution was weak on "
+            f"{weak} (scored {score}/10): {critique}. "
+            f"Address specifically: {suggestion_text}\n\n"
+        )
 
     def _model_spec_block(self, workspace_root: Path) -> str:
         """Serialize the designed ModelSpec so the generated code implements exactly
@@ -67,7 +90,9 @@ class SolverCoderAgent:
             "Output ONLY one ```python code block."
         )
         spec_block = self._model_spec_block(workspace_root)
+        repair_prefix = self._repair_directive_prefix(workspace_root)
         base_prompt = (
+            f"{repair_prefix}"
             "Write a Python script that solves the contest sub-problems using the real data.\n"
             f"PROBLEM UNDERSTANDING:\n{understanding}\n\nCONFIRMED DIRECTION:\n{direction}\n\n"
             f"{spec_block}"
@@ -197,7 +222,9 @@ class SolverCoderAgent:
             if sub_metrics
             else "task-specific keys named after the problem"
         )
+        repair_prefix = self._repair_directive_prefix(workspace_root)
         return (
+            f"{repair_prefix}"
             f"Subproblem: {sub_title}\n\n"
             f"PROBLEM UNDERSTANDING:\n{understanding}\n\n"
             f"CONFIRMED DIRECTION:\n{direction}\n\n"

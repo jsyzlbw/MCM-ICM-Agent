@@ -12,6 +12,7 @@ from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.citations import build_citation_context
 from mcm_agent.core.latex_text import render_metrics_table
 from mcm_agent.core.models import PaperClaimPlanItem
+from mcm_agent.core.repair_directive import read_repair_directive
 from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
 
@@ -387,12 +388,16 @@ class PaperWriterAgent:
         model_spec = read_model_spec(workspace_root)
         sensitivity = self._read_sensitivity(workspace_root)
         citation_context = build_citation_context(workspace_root)
+        directive = read_repair_directive(workspace_root)
         writer = PaperSectionWriter(self.llm_provider, self._language)
         for filename, name, (en_title, zh_title) in SECTION_SPEC:
             title = zh_title if zh else en_title
             claims = by_section.get(filename, [])
-            facts = self._facts_for_section(name, context, metrics, claims, model_spec, sensitivity)
-            body = writer.write_section(name, title, facts)
+            facts = self._facts_for_section(
+                name, context, metrics, claims, model_spec, sensitivity,
+                directive=directive,
+            )
+            body = writer.write_section(name, title, facts, exemplars=[])
             extras = self._section_extras(
                 filename, name, metrics, claims, zh, citation_context, sensitivity
             )
@@ -421,6 +426,48 @@ class PaperWriterAgent:
             extra_lines.extend(sub.algorithm_steps)
         return {"model_spec": subs, "claims": claim_texts, "extra_lines": extra_lines}
 
+    # Mapping from weak_dimension to the section name(s) that should receive judge_feedback.
+    # "ALL" is a sentinel meaning every prose section gets the feedback.
+    _DIM_TO_SECTION: dict[str, list[str]] = {
+        "modeling": ["model"],
+        "mathematics": ["model"],
+        "writing": ["ALL"],
+        "coherence": ["ALL"],
+        "summary_sheet": ["abstract"],
+        "problem_coverage": ["introduction"],
+        "validation": ["sensitivity", "results"],
+        "sensitivity": ["sensitivity"],
+        "data_solution": ["results"],
+    }
+
+    # The prose section names owned by this writer (figures-only sections excluded)
+    _PROSE_SECTIONS = frozenset(
+        {"abstract", "introduction", "assumptions", "model", "results", "sensitivity", "conclusion"}
+    )
+
+    def _judge_feedback_for_section(
+        self,
+        name: str,
+        directive: dict | None,
+    ) -> dict | None:
+        """Return a judge_feedback dict if the directive targets this section, else None."""
+        if not isinstance(directive, dict):
+            return None
+        if directive.get("target_stage") != "paper_writer":
+            return None
+        dim = directive.get("weak_dimension", "")
+        targets = self._DIM_TO_SECTION.get(dim, [])
+        # "ALL" means every prose section
+        if "ALL" not in targets and name not in targets:
+            return None
+        if "ALL" in targets and name not in self._PROSE_SECTIONS:
+            return None
+        return {
+            "dimension": dim,
+            "critique": directive.get("critique", ""),
+            "suggestions": directive.get("suggestions", []),
+        }
+
     def _facts_for_section(
         self,
         name: str,
@@ -429,7 +476,14 @@ class PaperWriterAgent:
         claims: list[PaperClaimPlanItem],
         model_spec: object = None,
         sensitivity: dict | None = None,
+        *,
+        directive: dict | None = None,
+        workspace_root: "Path | None" = None,
     ) -> dict[str, object]:
+        # If workspace_root is given but no directive is explicitly passed, read it.
+        if directive is None and workspace_root is not None:
+            directive = read_repair_directive(workspace_root)
+
         top_metrics = dict(list(metrics.items())[:6])
         claim_texts = [c.claim_text for c in claims if c.status != "unresolved" and c.claim_text]
         if name == "model" and model_spec is not None and model_spec.subproblems:
@@ -440,8 +494,8 @@ class PaperWriterAgent:
                 for c in claims
                 if c.status != "unresolved" and c.claim_text and c.claim_type != "model_choice"
             ]
-            return self._model_facts_from_spec(model_spec, spec_claims)
-        if name == "abstract":
+            facts = self._model_facts_from_spec(model_spec, spec_claims)
+        elif name == "abstract":
             # When a ModelSpec is available, derive the approach phrase from the
             # spec (same source as the model section) so that abstract and model
             # section describe the *same* method (coherence).  Fall back to
@@ -459,34 +513,34 @@ class PaperWriterAgent:
                 approach = "; ".join(approach_parts) if approach_parts else context.model_decision_summary[:600]
             else:
                 approach = context.model_decision_summary[:600]
-            return {
+            facts = {
                 "problem": context.problem_summary,
                 "approach": approach,
                 "key_metrics": top_metrics,
             }
-        if name == "introduction":
-            return {
+        elif name == "introduction":
+            facts = {
                 "problem": context.problem_summary,
                 "research_direction": context.direction_summary[:400],
                 "claims": claim_texts,
             }
-        if name == "assumptions":
-            return {"problem": context.problem_summary, "claims": claim_texts}
-        if name == "model":
-            return {
+        elif name == "assumptions":
+            facts = {"problem": context.problem_summary, "claims": claim_texts}
+        elif name == "model":
+            facts = {
                 "model_decision": context.model_decision_summary,
                 "routes": context.selected_routes,
                 "claims": claim_texts,
             }
-        if name == "results":
+        elif name == "results":
             # Results is table-driven (real metrics); claim texts excluded to avoid
             # leaking underscored metric names / robotic per-metric sentences.
-            return {
+            facts = {
                 "metrics": metrics,
                 "instruction": "Interpret each metric and whether it indicates a good fit.",
             }
-        if name == "sensitivity":
-            facts: dict[str, object] = {
+        elif name == "sensitivity":
+            facts = {
                 "validation": context.validation_summary[:600],
                 "claims": claim_texts,
             }
@@ -495,15 +549,22 @@ class PaperWriterAgent:
                     "header": sensitivity["header"],
                     "rows": sensitivity["rows"][:8],
                 }
-            return facts
-        if name == "conclusion":
-            return {
+        elif name == "conclusion":
+            facts = {
                 "problem": context.problem_summary,
                 "key_metrics": dict(list(metrics.items())[:4]),
                 "routes": context.selected_routes,
                 "claims": claim_texts,
             }
-        return {}
+        else:
+            facts = {}
+
+        # Inject judge_feedback from repair_directive when applicable
+        jf = self._judge_feedback_for_section(name, directive)
+        if jf is not None:
+            facts["judge_feedback"] = jf
+
+        return facts
 
     def _section_extras(
         self,
