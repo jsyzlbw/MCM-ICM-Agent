@@ -22,6 +22,13 @@ DIMENSIONS = [
 ]
 
 
+# A full MCM/ICM paper's LaTeX sources run ~30–60k chars. The old 12k cap made the
+# judge BLIND to the model/results/sensitivity sections + most figures once the writer
+# produced substantive papers — under-scoring good work AND misrouting the O6 repair
+# loop. deepseek-v4-pro and peers have ample context, so read the whole paper.
+MAX_JUDGE_PAPER_CHARS = 60000
+
+
 class RubricScore(BaseModel):
     dimensions: dict[str, int] = Field(default_factory=dict)
     comments: dict[str, str] = Field(default_factory=dict)
@@ -124,7 +131,7 @@ class MockJudge:
             [
                 f"Figure count: {figure_count}",
                 "Paper (LaTeX sections):",
-                paper_text[:12000],
+                paper_text[:MAX_JUDGE_PAPER_CHARS],
             ]
         )
 

@@ -112,3 +112,14 @@ def test_score_consensus_samples_less_than_1_treated_as_1() -> None:
     assert fake_llm.call_count == 1
     # figures value from call 1 = 2
     assert result.dimensions["figures"] == 2
+
+
+def test_judge_prompt_sees_later_sections_beyond_old_12k_cap() -> None:
+    """Regression: the judge must read the WHOLE paper. A substantive paper's
+    model/results/sensitivity sections sit beyond char 12000; the old cap made the
+    judge blind to them (under-scoring + misrouting O6)."""
+    from mcm_agent.agents.mock_judge import MockJudge, MAX_JUDGE_PAPER_CHARS
+    assert MAX_JUDGE_PAPER_CHARS >= 40000
+    paper = ("A" * 20000) + "\nSENSITIVITY_MARKER_BEYOND_12K\n" + ("B" * 5000)
+    prompt = MockJudge()._prompt(paper, figure_count=4)
+    assert "SENSITIVITY_MARKER_BEYOND_12K" in prompt
