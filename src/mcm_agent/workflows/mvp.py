@@ -390,7 +390,16 @@ def _mvp_stage_handlers(
         return ["paper/claim_plan.json", "review/claim_plan_report.md"]
 
     def paper_writer(workspace_root: Path) -> list[str]:
-        PaperWriterAgent(provider_bundle.llm).run(workspace_root)
+        kb_dir_raw = Path(settings.corpus_kb_dir)
+        if not kb_dir_raw.is_absolute():
+            kb_dir_raw = Path.cwd() / kb_dir_raw
+        kb_dir_resolved = kb_dir_raw if kb_dir_raw.exists() else None
+        PaperWriterAgent(
+            provider_bundle.llm,
+            embedding=getattr(provider_bundle, "embedding", None),
+            reranker=getattr(provider_bundle, "reranker", None),
+            kb_dir=kb_dir_resolved,
+        ).run(workspace_root)
         return ["paper/main.tex", "paper/sections"]
 
     def paper_evidence_binding(workspace_root: Path) -> list[str]:

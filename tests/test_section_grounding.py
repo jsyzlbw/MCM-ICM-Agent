@@ -243,6 +243,7 @@ def test_sensitivity_facts_without_spec_degrade() -> None:
 import json  # noqa: E402
 import tempfile  # noqa: E402
 from pathlib import Path  # noqa: E402
+import pytest  # noqa: E402
 def _make_two_sub_spec() -> ModelSpec:
     """2-subproblem spec with ids q1 and q2."""
     return ModelSpec(
@@ -396,3 +397,86 @@ def test_results_facts_single_subproblem_unchanged() -> None:
         assert len(facts["per_subproblem"]) <= 1, (
             f"Single-sub: per_subproblem must have <=1 entry, got {len(facts['per_subproblem'])}"
         )
+
+
+# ---------------------------------------------------------------------------
+# KB2 Tests: writer fills exemplars seam from KB retrieval
+# ---------------------------------------------------------------------------
+
+class _FakeLLM:
+    """Minimal fake LLM: returns empty content so write_section uses the fallback path."""
+    def generate(self, system: str, prompt: str) -> object:
+        return type("R", (), {"content": ""})()
+
+
+def _fake_corpus_hit(content: str) -> object:
+    """Create a CorpusHit-like object with the given content."""
+    from mcm_agent.corpus.ingest import CorpusHit
+    return CorpusHit(content=content, metadata={"section_type": "model"}, rerank_score=0.9)
+
+
+def test_writer_passes_section_exemplars(monkeypatch, tmp_path) -> None:
+    """_exemplars_for_section returns content from KB hits when embedding+kb_dir are set.
+
+    We monkeypatch mcm_agent.agents.writer.section_exemplars to return one fake
+    CorpusHit so no real Voyage/Chroma I/O happens.
+    """
+    from mcm_agent.corpus.ingest import CorpusHit
+    from mcm_agent.agents import writer as writer_module
+
+    exemplar_text = "EXEMPLAR MODEL SECTION: we used gradient descent with regularisation..."
+    fake_hit = CorpusHit(content=exemplar_text, metadata={"section_type": "model"}, rerank_score=0.9)
+
+    # Patch section_exemplars in the writer module's namespace
+    monkeypatch.setattr(writer_module, "section_exemplars", lambda *a, **kw: [fake_hit])
+
+    # Also patch resolve_problem_type so no workspace I/O needed
+    monkeypatch.setattr(writer_module, "resolve_problem_type", lambda *a, **kw: None)
+
+    agent = PaperWriterAgent(
+        llm_provider=None,
+        embedding=object(),  # truthy — enables KB path
+        kb_dir=tmp_path,
+    )
+
+    result = agent._exemplars_for_section(tmp_path, "model", {})
+
+    assert isinstance(result, list), f"Expected list, got: {type(result)}"
+    assert len(result) > 0, "_exemplars_for_section returned empty list; expected one exemplar"
+    assert exemplar_text in result, (
+        f"Exemplar text not found in result: {result!r}"
+    )
+
+
+def test_writer_exemplars_graceful_no_embedding() -> None:
+    """PaperWriterAgent without embedding/kb_dir returns [] from _exemplars_for_section.
+
+    No crash even though no KB is configured.
+    """
+    agent = PaperWriterAgent(llm_provider=None)  # no embedding, no kb_dir
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = agent._exemplars_for_section(Path(tmpdir), "model", {})
+
+    assert result == [], f"Expected [], got: {result!r}"
+
+
+def test_writer_exemplars_graceful_on_retrieval_error(monkeypatch, tmp_path) -> None:
+    """_exemplars_for_section returns [] and does NOT raise when section_exemplars raises."""
+    from mcm_agent.agents import writer as writer_module
+
+    def _boom(*a, **kw):
+        raise RuntimeError("Chroma not available")
+
+    monkeypatch.setattr(writer_module, "section_exemplars", _boom)
+    monkeypatch.setattr(writer_module, "resolve_problem_type", lambda *a, **kw: None)
+
+    agent = PaperWriterAgent(
+        llm_provider=None,
+        embedding=object(),
+        kb_dir=tmp_path,
+    )
+
+    result = agent._exemplars_for_section(tmp_path, "model", {})
+    assert result == [], f"Expected [] on retrieval error, got: {result!r}"

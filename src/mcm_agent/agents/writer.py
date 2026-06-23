@@ -12,7 +12,9 @@ from mcm_agent.core.coordinator import Coordinator
 from mcm_agent.core.citations import build_citation_context
 from mcm_agent.core.latex_text import render_metrics_table
 from mcm_agent.core.models import PaperClaimPlanItem
+from mcm_agent.core.problem_type import resolve_problem_type
 from mcm_agent.core.repair_directive import read_repair_directive
+from mcm_agent.corpus.retrieve import section_exemplars
 from mcm_agent.providers.base import TextGenerationProvider
 from mcm_agent.utils.json_io import read_json
 
@@ -42,8 +44,18 @@ SECTION_CONTENT = {
 
 
 class PaperWriterAgent:
-    def __init__(self, llm_provider: TextGenerationProvider | None = None) -> None:
+    def __init__(
+        self,
+        llm_provider: TextGenerationProvider | None = None,
+        *,
+        embedding: object | None = None,
+        reranker: object | None = None,
+        kb_dir: Path | None = None,
+    ) -> None:
         self.llm_provider = llm_provider
+        self._embedding = embedding
+        self._reranker = reranker
+        self._kb_dir = kb_dir
         self._language = "en"
 
     def run(self, workspace_root: Path) -> None:
@@ -397,12 +409,63 @@ class PaperWriterAgent:
                 name, context, metrics, claims, model_spec, sensitivity,
                 directive=directive,
             )
-            body = writer.write_section(name, title, facts, exemplars=[])
+            body = writer.write_section(
+                name, title, facts,
+                exemplars=self._exemplars_for_section(workspace_root, name, facts),
+            )
             extras = self._section_extras(
                 filename, name, metrics, claims, zh, citation_context, sensitivity
             )
             figure_floats = self._embed_figures_for_section(workspace_root, filename)
             (section_dir / filename).write_text(body + extras + figure_floats, encoding="utf-8")
+
+    # Map from section filename stem (name) to KB section_type label.
+    # contract §3: abstract→summary, introduction→introduction|other, model→model, etc.
+    _SECTION_TYPE_MAP: dict[str, str] = {
+        "abstract": "summary",
+        "introduction": "introduction",
+        "assumptions": "assumptions",
+        "model": "model",
+        "results": "results",
+        "sensitivity": "sensitivity",
+        "conclusion": "conclusion",
+        "summary_sheet": "summary",
+    }
+
+    def _exemplars_for_section(
+        self,
+        workspace_root: Path,
+        name: str,
+        facts: dict[str, object],
+    ) -> list[str]:
+        """Return exemplar texts from the corpus KB for *name* (section name).
+
+        Returns [] when:
+        - embedding or kb_dir is not configured
+        - retrieval raises any exception
+        - no hits are returned
+        """
+        if self._embedding is None or self._kb_dir is None:
+            return []
+        try:
+            section_type = self._SECTION_TYPE_MAP.get(name, "other")
+            # Build a short intent query from facts
+            problem = str(facts.get("problem", ""))
+            purpose = f"{name} section of an MCM/ICM contest paper"
+            query = f"{problem[:200]} {purpose}".strip()
+            ptype = resolve_problem_type(workspace_root, self.llm_provider)
+            hits = section_exemplars(
+                self._kb_dir,
+                query,
+                section=section_type,
+                embedding_provider=self._embedding,
+                reranker=self._reranker,
+                problem_type=ptype,
+                top_k=2,
+            )
+            return [h.content for h in hits]
+        except Exception:
+            return []
 
     @staticmethod
     def _nested_metrics(workspace_root: "Path | None") -> dict[str, dict]:
