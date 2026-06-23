@@ -11,6 +11,7 @@ from mcm_agent.core.model_spec import (
     read_model_spec,
     write_model_spec,
 )
+from mcm_agent.core.problem_type import resolve_problem_type
 from mcm_agent.providers.base import TextGenerationProvider
 
 
@@ -103,16 +104,22 @@ class ModelDesignAgent:
     """Designs a problem-specific ModelSpec (the single source of truth that the
     solver implements and the writer narrates). LLM-driven, deterministic fallback."""
 
-    def __init__(self, llm_provider: TextGenerationProvider | None = None, language: str = "en") -> None:
+    def __init__(
+        self,
+        llm_provider: TextGenerationProvider | None = None,
+        language: str = "en",
+        kb_dir: Path | None = None,
+    ) -> None:
         self.llm = llm_provider
         self.language = language
+        self.kb_dir = kb_dir
         self.last_reason = ""
 
     def run(self, workspace_root: Path) -> ModelSpec:
         understanding = self._read(workspace_root / "reports" / "problem_understanding.md", 4000)
         direction = self._read(workspace_root / "discussion" / "confirmed_direction.md", 1200)
         schema = self._read(workspace_root / "results" / "schema_profile.json", 1500)
-        designed = self._design(understanding, direction, schema)
+        designed = self._design(understanding, direction, schema, workspace_root=workspace_root)
         source = "llm" if designed else "fallback"
         spec = designed or self._fallback(understanding)
         write_model_spec(workspace_root, spec)
@@ -298,6 +305,7 @@ class ModelDesignAgent:
         tasks: list[str] | None = None,
         retry: bool = False,
         got: int = 0,
+        pattern_card: str = "",
     ) -> tuple[str, str]:
         """Build (system, prompt) strings for the design LLM call.
 
@@ -308,6 +316,8 @@ class ModelDesignAgent:
         so the LLM knows which sub-questions must each get their own subproblem.
         When *retry* is True a stronger instruction is prepended noting the
         previous under-count.
+        When *pattern_card* is non-empty it is appended to the prompt to ground
+        the model choice in real award-winning practice (KB1).
         """
         system = (
             "You are a mathematical-modeling architect. Design a problem-specific model "
@@ -358,9 +368,55 @@ class ModelDesignAgent:
                 "\nStep 2: Design one subproblem per task — do not merge, do not omit any task."
                 "\nContest problems typically have 3–5 separate tasks; cover all of them."
             )
+        if pattern_card:
+            prompt_parts.append(pattern_card)
         return system, "\n".join(prompt_parts)
 
-    def _design(self, understanding: str, direction: str, schema: str) -> ModelSpec | None:
+    def _pattern_card_block(self, workspace_root: Path) -> str:
+        """Return a prompt block summarising outstanding-paper patterns for this problem type.
+
+        Returns "" (empty string) on any failure or when kb_dir is None — callers can
+        safely append this to any prompt without checking.
+        """
+        if self.kb_dir is None:
+            return ""
+        try:
+            ptype = resolve_problem_type(workspace_root, self.llm)
+            if not ptype:
+                return ""
+            pattern_file = self.kb_dir / "patterns" / f"{ptype}.json"
+            if not pattern_file.exists():
+                return ""
+            data = json.loads(pattern_file.read_text(encoding="utf-8"))
+            # Build summary sections
+            lines: list[str] = [
+                "",
+                "OUTSTANDING-PAPER PATTERNS (problem type: " + ptype + "):",
+                (
+                    "Below are modeling patterns distilled from past Outstanding papers of THIS "
+                    "problem type — use them to inform model CHOICE and to AVOID known pitfalls; "
+                    "do NOT copy any specific paper's content; your model must be original to this problem."
+                ),
+            ]
+            models = data.get("common_models") or []
+            if models:
+                names = ", ".join(m["name"] for m in models if isinstance(m, dict) and m.get("name"))
+                if names:
+                    lines.append(f"Common models in past winners: {names}.")
+            techniques = data.get("common_techniques") or []
+            if techniques:
+                lines.append("Common techniques: " + "; ".join(str(t) for t in techniques) + ".")
+            pitfalls = data.get("recurring_pitfalls") or []
+            if pitfalls:
+                lines.append("Recurring pitfalls to avoid: " + "; ".join(str(p) for p in pitfalls) + ".")
+            patterns = data.get("reusable_patterns") or []
+            if patterns:
+                lines.append("Reusable patterns: " + "; ".join(str(p) for p in patterns) + ".")
+            return "\n".join(lines)
+        except Exception:
+            return ""
+
+    def _design(self, understanding: str, direction: str, schema: str, workspace_root: Path | None = None) -> ModelSpec | None:
         if self.llm is None:
             self.last_reason = "no LLM provider"
             return None
@@ -369,7 +425,12 @@ class ModelDesignAgent:
         # COV1: enumerate tasks first with a focused call
         tasks = self._enumerate_tasks(understanding)
 
-        system, prompt = self._build_design_prompt(understanding, direction, schema, lang, tasks=tasks)
+        # KB1: build pattern card block for this problem type (empty string when disabled)
+        pattern_card = self._pattern_card_block(workspace_root) if workspace_root is not None else ""
+
+        system, prompt = self._build_design_prompt(
+            understanding, direction, schema, lang, tasks=tasks, pattern_card=pattern_card
+        )
         try:
             data = self._parse(self.llm.generate(system, prompt).content)
         except Exception as exc:
@@ -381,7 +442,8 @@ class ModelDesignAgent:
         if tasks and (spec is None or len(spec.subproblems) < len(tasks)):
             got = len(spec.subproblems) if spec else 0
             retry_system, retry_prompt = self._build_design_prompt(
-                understanding, direction, schema, lang, tasks=tasks, retry=True, got=got
+                understanding, direction, schema, lang, tasks=tasks, retry=True, got=got,
+                pattern_card=pattern_card,
             )
             try:
                 retry_data = self._parse(self.llm.generate(retry_system, retry_prompt).content)

@@ -487,3 +487,128 @@ def test_enumerate_tasks_returns_empty_on_no_llm() -> None:
     agent = ModelDesignAgent(None, language="en")
     result = agent._enumerate_tasks("Some problem understanding text.")
     assert result == [], f"Expected [], got {result}"
+
+
+# ---------------------------------------------------------------------------
+# KB1 tests: pattern card grounding via kb_dir
+# ---------------------------------------------------------------------------
+
+
+class _RecordingPromptLLM:
+    """Records the last design-call prompt (not enumerate) and returns a valid spec."""
+
+    def __init__(self) -> None:
+        self._call_index = 0
+        self.last_system: str = ""
+        self.last_prompt: str = ""
+
+    def generate(self, system: str, prompt: str) -> ProviderResult:
+        self._call_index += 1
+        self.last_system = system
+        self.last_prompt = prompt
+        spec = {
+            "problem_restatement": "Test.",
+            "subproblems": [
+                {
+                    "subproblem_id": "q1",
+                    "title": "Task 1",
+                    "approach": "method",
+                    "variables": [],
+                    "assumptions": [],
+                    "equations": [],
+                    "algorithm_steps": ["step"],
+                    "metrics": ["m1"],
+                }
+            ],
+        }
+        return ProviderResult(content=json.dumps(spec), metadata={})
+
+
+def test_design_injects_pattern_card(tmp_path: Path) -> None:
+    """_design must inject the pattern card into the design prompt when kb_dir
+    is set and patterns/<problem_type>.json exists for the resolved type."""
+    root = _prep(tmp_path)
+
+    # Set up problem_meta.json so resolve_problem_type -> "data" (no LLM needed)
+    (root / "reports" / "problem_meta.json").write_text(
+        json.dumps({"year": 2026, "letter": "C"}), encoding="utf-8"
+    )
+
+    # Set up kb_dir with a patterns/data.json
+    kb_dir = tmp_path / "kb"
+    patterns_dir = kb_dir / "patterns"
+    patterns_dir.mkdir(parents=True)
+    (patterns_dir / "data.json").write_text(
+        json.dumps(
+            {
+                "problem_type": "data",
+                "paper_count": 12,
+                "common_models": [{"name": "Random Forest", "papers": 6}],
+                "common_techniques": ["cross-validation"],
+                "recurring_pitfalls": ["overfitting"],
+                "reusable_patterns": ["feature importance ranking"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    recorder = _RecordingPromptLLM()
+    agent = ModelDesignAgent(recorder, language="en", kb_dir=kb_dir)
+    agent.run(root)
+
+    # The design prompt must contain the model name from the pattern card
+    combined = recorder.last_system + " " + recorder.last_prompt
+    assert "Random Forest" in combined, (
+        f"Expected 'Random Forest' in design prompt from pattern card. "
+        f"Prompt snippet: {combined[:800]}"
+    )
+
+    # The anti-copy notice must be present
+    anti_copy_phrases = [
+        "do not copy",
+        "must be original",
+        "not copy",
+        "avoid copying",
+    ]
+    lower_combined = combined.lower()
+    assert any(phrase in lower_combined for phrase in anti_copy_phrases), (
+        f"Anti-copy notice missing from design prompt. Prompt snippet: {combined[:800]}"
+    )
+
+
+def test_design_no_kb_dir_graceful(tmp_path: Path) -> None:
+    """ModelDesignAgent with kb_dir=None must behave exactly as before — no
+    pattern block, no crash."""
+    root = _prep(tmp_path)
+    recorder = _RecordingPromptLLM()
+    agent = ModelDesignAgent(recorder, language="en")  # kb_dir defaults to None
+    spec = agent.run(root)
+
+    assert spec is not None and spec.subproblems, "Should still return a valid spec"
+    # No pattern block injected
+    combined = recorder.last_system + " " + recorder.last_prompt
+    assert "Random Forest" not in combined, "No pattern card should appear when kb_dir is None"
+
+
+def test_design_missing_pattern_file_graceful(tmp_path: Path) -> None:
+    """When kb_dir is set but patterns/<type>.json does not exist, _design must
+    continue without injecting any block and must not crash."""
+    root = _prep(tmp_path)
+
+    # problem_meta -> type="data", but NO patterns/data.json in kb_dir
+    (root / "reports" / "problem_meta.json").write_text(
+        json.dumps({"year": 2026, "letter": "C"}), encoding="utf-8"
+    )
+    kb_dir = tmp_path / "empty_kb"
+    kb_dir.mkdir()
+    (kb_dir / "patterns").mkdir()
+    # patterns/data.json intentionally NOT created
+
+    recorder = _RecordingPromptLLM()
+    agent = ModelDesignAgent(recorder, language="en", kb_dir=kb_dir)
+    spec = agent.run(root)
+
+    assert spec is not None and spec.subproblems, "Should return valid spec even with missing file"
+    # No pattern card content in prompt
+    combined = recorder.last_system + " " + recorder.last_prompt
+    assert "Random Forest" not in combined

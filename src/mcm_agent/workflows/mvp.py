@@ -346,8 +346,13 @@ def _mvp_stage_handlers(
         return ["reports/data_profile.md", "data/processed"]
 
     def solver_coder(workspace_root: Path) -> list[str]:
+        kb_dir = Path(settings.corpus_kb_dir)
+        if not kb_dir.is_absolute():
+            kb_dir = Path.cwd() / kb_dir
         designer = ModelDesignAgent(
-            provider_bundle.llm, language=settings.mcm_agent_default_language
+            provider_bundle.llm,
+            language=settings.mcm_agent_default_language,
+            kb_dir=kb_dir if kb_dir.exists() else None,
         )
         designer.run(workspace_root)
         SolverCoderAgent(provider_bundle.llm).run(workspace_root)
