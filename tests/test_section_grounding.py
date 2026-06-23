@@ -243,7 +243,6 @@ def test_sensitivity_facts_without_spec_degrade() -> None:
 import json  # noqa: E402
 import tempfile  # noqa: E402
 from pathlib import Path  # noqa: E402
-import pytest  # noqa: E402
 def _make_two_sub_spec() -> ModelSpec:
     """2-subproblem spec with ids q1 and q2."""
     return ModelSpec(
@@ -480,3 +479,14 @@ def test_writer_exemplars_graceful_on_retrieval_error(monkeypatch, tmp_path) -> 
 
     result = agent._exemplars_for_section(tmp_path, "model", {})
     assert result == [], f"Expected [] on retrieval error, got: {result!r}"
+
+
+def test_section_type_map_values_are_valid_kb_labels() -> None:
+    """KB2 section->section_type map must use REAL KB vocabulary; a nonexistent label
+    silently yields zero exemplars (regression: introduction/results were dead)."""
+    from mcm_agent.agents.writer import PaperWriterAgent
+    from mcm_agent.corpus.sections import _SECTION_RULES
+
+    valid = {label for label, _ in _SECTION_RULES} | {"other"}
+    bad = {k: v for k, v in PaperWriterAgent._SECTION_TYPE_MAP.items() if v not in valid}
+    assert not bad, f"section_type map -> labels absent from KB vocabulary: {bad}"

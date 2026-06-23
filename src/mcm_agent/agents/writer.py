@@ -421,12 +421,17 @@ class PaperWriterAgent:
 
     # Map from section filename stem (name) to KB section_type label.
     # contract §3: abstract→summary, introduction→introduction|other, model→model, etc.
+    # Maps our paper section names -> KB section_type vocabulary
+    # (corpus/sections.py::_SECTION_RULES). NOTE: the KB has no "introduction" or
+    # "results" labels — intro maps to "restatement", and "results" is folded into
+    # "model" by the KB classifier. Mapping to a nonexistent label silently yields
+    # zero exemplars, so these MUST match the real vocabulary.
     _SECTION_TYPE_MAP: dict[str, str] = {
         "abstract": "summary",
-        "introduction": "introduction",
+        "introduction": "restatement",
         "assumptions": "assumptions",
         "model": "model",
-        "results": "results",
+        "results": "model",
         "sensitivity": "sensitivity",
         "conclusion": "conclusion",
         "summary_sheet": "summary",
