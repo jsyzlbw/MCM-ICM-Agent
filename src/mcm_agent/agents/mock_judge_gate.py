@@ -6,6 +6,7 @@ from pathlib import Path
 from mcm_agent.agents.discussion import confirmed_language
 from mcm_agent.agents.mock_judge import MockJudge, read_paper
 from mcm_agent.core.gate_decision import GateDecision, record_gate_decision
+from mcm_agent.core.problem_type import resolve_problem_type
 from mcm_agent.utils.json_io import read_json, write_json
 
 # Artifact dirs that constitute the shipped paper; snapshotted so the loop can
@@ -41,20 +42,38 @@ class MockJudgeGateAgent:
     back to the responsible repair stage unless the paper is good enough or we
     have exceeded the iteration cap."""
 
-    def __init__(self, llm_provider: object | None = None) -> None:
+    def __init__(
+        self,
+        llm_provider: object | None = None,
+        *,
+        kb_dir: object | None = None,
+        embedding: object | None = None,
+        reranker: object | None = None,
+    ) -> None:
         self.llm_provider = llm_provider
+        self.kb_dir = kb_dir
+        self.embedding = embedding
+        self.reranker = reranker
 
     def run(self, workspace_root: Path) -> list[str]:
         # 1. Read the paper and detect its language.
         text, figure_count = read_paper(workspace_root)
         language = confirmed_language(workspace_root)
 
-        # 2. Score the paper using consensus (denoised average of N samples).
-        score = MockJudge(self.llm_provider).score_consensus(
-            text, figure_count=figure_count, language=language
+        # 2. Resolve the problem type for anchored scoring (never raises).
+        ptype = resolve_problem_type(workspace_root, self.llm_provider)
+
+        # 3. Score the paper using consensus (denoised average of N samples).
+        score = MockJudge(
+            self.llm_provider,
+            kb_dir=self.kb_dir,
+            embedding=self.embedding,
+            reranker=self.reranker,
+        ).score_consensus(
+            text, figure_count=figure_count, language=language, problem_type=ptype
         )
 
-        # 3. Maintain a running history in review/mock_judge_scores.json.
+        # 4. Maintain a running history in review/mock_judge_scores.json.
         scores_path = workspace_root / "review" / "mock_judge_scores.json"
         history: list[dict] = read_json(scores_path, [])
         history.append(
@@ -66,14 +85,14 @@ class MockJudgeGateAgent:
         )
         write_json(scores_path, history)
 
-        # 3b. Keep-best: snapshot this iteration's paper if it is the best scored so
+        # 4b. Keep-best: snapshot this iteration's paper if it is the best scored so
         # far, so a later regressing repair cannot make us ship a worse paper.
         prior_totals = [entry["total"] for entry in history[:-1]]
         best_prior_total = max(prior_totals) if prior_totals else None
         if best_prior_total is None or score.total >= best_prior_total:
             self._snapshot_best(workspace_root)
 
-        # 4. Decide PASS vs REPAIR.
+        # 5. Decide PASS vs REPAIR.
         iteration = len(history)  # after append
         prev_total: float | None = history[-2]["total"] if len(history) >= 2 else None
 

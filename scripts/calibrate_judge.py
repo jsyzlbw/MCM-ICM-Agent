@@ -29,6 +29,12 @@ def main() -> None:
     ap.add_argument("--config", type=str, default="mcm_agent_config.local.json")
     ap.add_argument("--mag-total", type=float, default=7.0)
     ap.add_argument("--max-chars", type=int, default=60000)
+    ap.add_argument(
+        "--assert-min",
+        type=float,
+        default=8.0,
+        help="Acceptance gate: exit(1) if real-O mean total < this threshold (default 8.0).",
+    )
     args = ap.parse_args()
 
     from mcm_agent.agents.mock_judge import DIMENSIONS, MockJudge
@@ -37,7 +43,12 @@ def main() -> None:
 
     settings = load_settings(config_file=args.config)
     bundle = build_provider_bundle(settings, workspace_root=args.kb)
-    judge = MockJudge(bundle.llm)
+    judge = MockJudge(
+        bundle.llm,
+        kb_dir=args.kb,
+        embedding=getattr(bundle, "embedding", None),
+        reranker=getattr(bundle, "reranker", None),
+    )
     print(f"judge model: {settings.openai_model}")
 
     manifest = json.loads((args.kb / "manifest.json").read_text())
@@ -62,7 +73,15 @@ def main() -> None:
             continue
         text = md.read_text(encoding="utf-8")[: args.max_chars]
         fig = text.count("![")  # rough: MinerU image refs
-        score = judge.score_consensus(text, figure_count=fig, language="en", samples=args.samples)
+        ptype = str(e.get("problem_type") or "")
+        score = judge.score_consensus(
+            text,
+            figure_count=fig,
+            language="en",
+            samples=args.samples,
+            problem_type=ptype if ptype else None,
+            exclude_paper_id=pid,
+        )
         rows.append({"paper_id": pid, "type": e.get("problem_type"),
                      "total": score.total, "dims": score.dimensions})
         print(f"  {pid:>14} [{str(e.get('problem_type')):>18}]  total={score.total:>4}  figs~{fig}")
@@ -79,11 +98,26 @@ def main() -> None:
     for d in DIMENSIONS:
         vals = [r["dims"].get(d, 0) for r in rows]
         print(f"    {d:>18}: {st.mean(vals):.1f}")
-    print(f"\n=== GAP ===\n  mag(ref)={args.mag_total}  real-O mean={st.mean(totals):.2f}  "
-          f"gap={st.mean(totals) - args.mag_total:+.2f}")
+    real_o_mean = st.mean(totals)
+    print(f"\n=== GAP ===\n  mag(ref)={args.mag_total}  real-O mean={real_o_mean:.2f}  "
+          f"gap={real_o_mean - args.mag_total:+.2f}")
     out = args.kb / "_scripts" / "judge_calibration.json"
     out.write_text(json.dumps({"sample": rows, "mag_ref": args.mag_total}, indent=2), encoding="utf-8")
     print(f"\n  written {out}")
+
+    # Acceptance gate: real Outstanding papers must score at or above the threshold.
+    import sys
+    if real_o_mean < args.assert_min:
+        print(
+            f"\nFAIL: real-O mean={real_o_mean:.2f} < --assert-min={args.assert_min:.1f}  "
+            "— anchored judge is not yet calibrated; prompt/anchoring needs adjustment."
+        )
+        sys.exit(1)
+    else:
+        print(
+            f"\nPASS: real-O mean={real_o_mean:.2f} >= --assert-min={args.assert_min:.1f}  "
+            "— anchored judge correctly scores real Outstanding papers at or above threshold."
+        )
 
 
 if __name__ == "__main__":

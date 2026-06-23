@@ -323,6 +323,71 @@ def test_repair_directive_removed_on_pass(tmp_path: Path) -> None:
     assert not directive_path.exists(), "stale repair_directive.json must be removed on pass"
 
 
+# ---------------------------------------------------------------------------
+# Task J3: anchored judge wiring tests
+# ---------------------------------------------------------------------------
+
+
+def test_gate_passes_kb_and_problem_type_to_judge(tmp_path: Path, monkeypatch) -> None:
+    """Gate must forward kb_dir, embedding AND resolve problem_type → pass to MockJudge."""
+    ws = _make_workspace(tmp_path)
+
+    # Write problem_meta.json so resolve_problem_type can resolve via taxonomy.
+    reports_dir = ws / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    (reports_dir / "problem_meta.json").write_text(
+        json.dumps({"year": 2026, "letter": "C"}), encoding="utf-8"
+    )
+
+    # A sentinel kb_dir and embedding object.
+    kb_dir = tmp_path / "kb"
+    kb_dir.mkdir()
+    fake_embedding = object()
+
+    # Track what MockJudge.__init__ and score_consensus receive.
+    init_kwargs: dict = {}
+    score_kwargs: dict = {}
+
+    class _RecordingJudge:
+        def __init__(self, llm, *, kb_dir=None, embedding=None, reranker=None):
+            init_kwargs["kb_dir"] = kb_dir
+            init_kwargs["embedding"] = embedding
+            init_kwargs["reranker"] = reranker
+
+        def score_consensus(self, text, *, figure_count=0, language="en", samples=3, problem_type=None, **kw):
+            score_kwargs["problem_type"] = problem_type
+            # Return a passing score so gate completes.
+            from mcm_agent.agents.mock_judge import RubricScore
+            return RubricScore(dimensions={d: 8 for d in DIMENSIONS}, comments={}, revision_suggestions=[])
+
+    import mcm_agent.agents.mock_judge_gate as _gate_mod
+    monkeypatch.setattr(_gate_mod, "MockJudge", _RecordingJudge)
+
+    fake_llm = _StubbedLLM(dimensions={d: 8 for d in DIMENSIONS})
+    agent = MockJudgeGateAgent(fake_llm, kb_dir=kb_dir, embedding=fake_embedding)
+    agent.run(ws)
+
+    assert init_kwargs["kb_dir"] == kb_dir, f"kb_dir not forwarded: {init_kwargs}"
+    assert init_kwargs["embedding"] is fake_embedding, f"embedding not forwarded: {init_kwargs}"
+    assert score_kwargs.get("problem_type") == "data", (
+        f"problem_type not forwarded or wrong value: {score_kwargs}"
+    )
+
+
+def test_gate_works_without_kb(tmp_path: Path) -> None:
+    """MockJudgeGateAgent(llm) with no kb still runs and produces a gate decision."""
+    ws = _make_workspace(tmp_path)
+    llm = _StubbedLLM(dimensions={d: 8 for d in DIMENSIONS})
+
+    # No kb_dir / embedding — should default to absolute mode silently.
+    agent = MockJudgeGateAgent(llm)
+    outputs = agent.run(ws)
+
+    decision_raw = read_json(ws / "review" / "mock_judge_gate.json", {})
+    assert decision_raw["status"] == "pass", "High scores should pass even without KB."
+    assert "review/mock_judge_gate.json" in outputs
+
+
 def test_keep_best_ships_best_iteration_not_last(tmp_path: Path) -> None:
     """Keep-best: across noisy iterations (2.0 -> 3.0 -> 1.0), the workflow must ship
     the BEST iteration's paper (iter2), not the last (iter3, which regressed)."""

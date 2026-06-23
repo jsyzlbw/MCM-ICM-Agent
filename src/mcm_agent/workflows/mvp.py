@@ -438,7 +438,16 @@ def _mvp_stage_handlers(
         ]
 
     def mock_judge_gate(workspace_root: Path) -> list[str]:
-        return MockJudgeGateAgent(provider_bundle.llm).run(workspace_root)
+        kb_dir_raw = Path(settings.corpus_kb_dir)
+        if not kb_dir_raw.is_absolute():
+            kb_dir_raw = Path.cwd() / kb_dir_raw
+        kb_dir_resolved = kb_dir_raw if kb_dir_raw.exists() else None
+        return MockJudgeGateAgent(
+            provider_bundle.llm,
+            kb_dir=kb_dir_resolved,
+            embedding=getattr(provider_bundle, "embedding", None),
+            reranker=getattr(provider_bundle, "reranker", None),
+        ).run(workspace_root)
 
     def pre_submission_review(workspace_root: Path) -> list[str]:
         ReviewerAgent(provider_bundle.llm).run(workspace_root)
