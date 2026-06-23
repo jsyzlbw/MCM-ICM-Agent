@@ -145,3 +145,127 @@ def test_judge_prompt_sees_later_sections_beyond_old_12k_cap() -> None:
     paper = ("A" * 20000) + "\nSENSITIVITY_MARKER_BEYOND_12K\n" + ("B" * 5000)
     prompt = MockJudge()._prompt(paper, figure_count=4)
     assert "SENSITIVITY_MARKER_BEYOND_12K" in prompt
+
+
+# ---------------------------------------------------------------------------
+# Task J2: Anchored relative-scoring mode tests
+# ---------------------------------------------------------------------------
+
+
+class _RecordingLLM:
+    """Fake LLM that captures the system + prompt and returns a fixed valid score."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    def generate(self, system: str, prompt: str) -> "ProviderResult":
+        from mcm_agent.providers.base import ProviderResult
+        self.calls.append((system, prompt))
+        payload = {
+            "dimensions": {dim: 8 for dim in DIMENSIONS},
+            "comments": {"_mode": "anchored", "writing": "clear"},
+            "revision_suggestions": [],
+        }
+        return ProviderResult(content="```json\n" + json.dumps(payload) + "\n```", metadata={})
+
+
+def test_anchored_mode_uses_reference(tmp_path: Path, monkeypatch) -> None:
+    """When kb_dir + problem_type are provided and build_reference_block returns non-empty,
+    score() should use the anchored prompt (containing ref text, relative band wording,
+    and evidence/cite requirement) and set comments['_mode'] == 'anchored'."""
+    import mcm_agent.agents.mock_judge as mj_module
+
+    ref_text = "REF: model=Bayesian; won for rigorous validation"
+    monkeypatch.setattr(mj_module, "build_reference_block", lambda *a, **kw: ref_text)
+
+    fake_llm = _RecordingLLM()
+    judge = MockJudge(fake_llm, kb_dir=tmp_path, embedding=object())
+    result = judge.score("candidate paper text", problem_type="data")
+
+    assert fake_llm.calls, "LLM should have been called"
+    system_text, prompt_text = fake_llm.calls[0]
+
+    # Prompt must contain the reference block
+    assert ref_text in prompt_text, "Prompt must include the reference block"
+
+    # System must contain relative band wording (9-10 band)
+    assert "9-10" in system_text or "9–10" in system_text, (
+        "System prompt must mention the 9-10 relative scoring band"
+    )
+
+    # System must demand evidence / cite grounding
+    assert any(kw in system_text.lower() for kw in ("evidence", "cite", "citing", "citation")), (
+        "System prompt must require evidence-grounded scoring"
+    )
+
+    # Mode must be anchored
+    assert result.comments.get("_mode") == "anchored", (
+        f"Expected _mode='anchored', got {result.comments.get('_mode')!r}"
+    )
+
+
+def test_absolute_fallback_without_kb(monkeypatch) -> None:
+    """When no kb_dir is provided, score() must use the absolute prompt and
+    set comments['_mode'] containing 'absolute'."""
+    import mcm_agent.agents.mock_judge as mj_module
+
+    # Ensure build_reference_block is NOT called (if it were, the test would fail)
+    called = []
+    monkeypatch.setattr(mj_module, "build_reference_block", lambda *a, **kw: called.append(1) or "")
+
+    fake_llm = _RecordingLLM()
+    judge = MockJudge(fake_llm)  # no kb_dir
+    result = judge.score("some paper text")
+
+    assert fake_llm.calls, "LLM should have been called"
+    assert not called, "build_reference_block should NOT be called when no kb_dir"
+
+    mode = result.comments.get("_mode", "")
+    assert "absolute" in mode, (
+        f"Expected _mode to contain 'absolute', got {mode!r}"
+    )
+
+
+def test_anchored_falls_back_on_empty_reference(tmp_path: Path, monkeypatch) -> None:
+    """When build_reference_block returns empty string, score() must fall back to
+    absolute mode without crashing."""
+    import mcm_agent.agents.mock_judge as mj_module
+
+    monkeypatch.setattr(mj_module, "build_reference_block", lambda *a, **kw: "")
+
+    fake_llm = _RecordingLLM()
+    judge = MockJudge(fake_llm, kb_dir=tmp_path, embedding=object())
+    result = judge.score("some paper text", problem_type="data")
+
+    mode = result.comments.get("_mode", "")
+    assert "absolute" in mode, (
+        f"Expected fallback to absolute mode when ref is empty, got {mode!r}"
+    )
+
+
+def test_score_consensus_forwards_problem_type(tmp_path: Path, monkeypatch) -> None:
+    """score_consensus must forward problem_type (and exclude_paper_id) to each score() call,
+    so the anchored path is taken when ref is non-empty."""
+    import mcm_agent.agents.mock_judge as mj_module
+
+    ref_text = "REF: anchored reference for consensus test"
+    monkeypatch.setattr(mj_module, "build_reference_block", lambda *a, **kw: ref_text)
+
+    fake_llm = _RecordingLLM()
+    judge = MockJudge(fake_llm, kb_dir=tmp_path, embedding=object())
+    result = judge.score_consensus(
+        "some paper text",
+        samples=2,
+        problem_type="data",
+        exclude_paper_id="paper_001",
+    )
+
+    # All calls should have used the anchored path
+    assert len(fake_llm.calls) == 2, f"Expected 2 calls, got {len(fake_llm.calls)}"
+    for system_text, prompt_text in fake_llm.calls:
+        assert ref_text in prompt_text, "Each consensus call must include the reference"
+
+    # The representative sample's _mode should be 'anchored'
+    assert result.comments.get("_mode") == "anchored", (
+        f"Consensus result should carry _mode='anchored', got {result.comments.get('_mode')!r}"
+    )

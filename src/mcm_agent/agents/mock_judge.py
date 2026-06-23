@@ -7,6 +7,8 @@ from statistics import mean
 
 from pydantic import BaseModel, Field
 
+from mcm_agent.corpus.reference import build_reference_block
+
 # The nine+ judging dimensions from the O-Prize rubric (see docs roadmap).
 DIMENSIONS = [
     "summary_sheet",
@@ -57,25 +59,95 @@ def read_paper(root: Path) -> tuple[str, int]:
 
 class MockJudge:
     """Scores a paper against the O-Prize rubric. Uses an LLM judge when available;
-    otherwise a deterministic structural heuristic (so progress is measurable offline)."""
+    otherwise a deterministic structural heuristic (so progress is measurable offline).
 
-    def __init__(self, llm_provider: object | None = None) -> None:
+    Anchored mode (kb_dir + problem_type provided at score-time):
+        Retrieves real Outstanding-paper reference material and scores the candidate
+        RELATIVE to that bar (9-10 = matches O-level, 7-8 = strong, 5-6 = competent,
+        <=4 = weak). Every dimension score must cite specific content from the candidate.
+
+    Absolute mode (fallback when no KB or empty reference):
+        Uses the original 0-10 absolute rubric. Labeled as 'absolute(uncalibrated)' in
+        comments['_mode'] to make the uncalibrated nature explicit.
+    """
+
+    def __init__(
+        self,
+        llm_provider: object | None = None,
+        *,
+        kb_dir: Path | None = None,
+        embedding: object | None = None,
+        reranker: object | None = None,
+    ) -> None:
         self.llm = llm_provider
+        self.kb_dir = Path(kb_dir) if kb_dir is not None else None
+        self.embedding = embedding
+        self.reranker = reranker
 
-    def score(self, paper_text: str, *, figure_count: int = 0, language: str = "en") -> RubricScore:
+    def score(
+        self,
+        paper_text: str,
+        *,
+        figure_count: int = 0,
+        language: str = "en",
+        problem_type: str | None = None,
+        exclude_paper_id: str | None = None,
+    ) -> RubricScore:
         if self.llm is None:
             return self._heuristic(paper_text, figure_count)
+
+        # Try anchored mode if we have the required deps
+        if self.kb_dir is not None and problem_type is not None:
+            try:
+                ref = build_reference_block(
+                    self.kb_dir,
+                    problem_type,
+                    query=paper_text[:500],
+                    embedding=self.embedding,
+                    reranker=self.reranker,
+                    exclude_paper_id=exclude_paper_id,
+                )
+            except Exception:
+                ref = ""
+
+            if ref:
+                try:
+                    raw = self.llm.generate(
+                        self._anchored_system(),
+                        self._anchored_prompt(paper_text, figure_count, ref),
+                    ).content
+                    data = self._parse(raw)
+                except Exception:
+                    return self._heuristic(paper_text, figure_count)
+
+                if not data:
+                    return self._heuristic(paper_text, figure_count)
+
+                dims = {d: int(_clamp(data.get("dimensions", {}).get(d, 0))) for d in DIMENSIONS}
+                comments = {str(k): str(v) for k, v in data.get("comments", {}).items()}
+                comments["_mode"] = "anchored"
+                return RubricScore(
+                    dimensions=dims,
+                    comments=comments,
+                    revision_suggestions=[str(s) for s in data.get("revision_suggestions", []) if s],
+                )
+
+        # Absolute mode (no KB, no problem_type, or empty reference)
         try:
             raw = self.llm.generate(self._system(), self._prompt(paper_text, figure_count)).content
             data = self._parse(raw)
         except Exception:
             return self._heuristic(paper_text, figure_count)
+
         if not data:
             return self._heuristic(paper_text, figure_count)
+
         dims = {d: int(_clamp(data.get("dimensions", {}).get(d, 0))) for d in DIMENSIONS}
+        comments = {str(k): str(v) for k, v in data.get("comments", {}).items()}
+        comments["_mode"] = "absolute(uncalibrated)"
         return RubricScore(
             dimensions=dims,
-            comments={str(k): str(v) for k, v in data.get("comments", {}).items()},
+            comments=comments,
             revision_suggestions=[str(s) for s in data.get("revision_suggestions", []) if s],
         )
 
@@ -86,6 +158,8 @@ class MockJudge:
         figure_count: int = 0,
         language: str = "en",
         samples: int = 3,
+        problem_type: str | None = None,
+        exclude_paper_id: str | None = None,
     ) -> RubricScore:
         """Return a denoised score by averaging N independent judge calls.
 
@@ -94,11 +168,23 @@ class MockJudge:
         ``samples`` < 1 is treated as 1.
         """
         if self.llm is None:
-            return self.score(paper_text, figure_count=figure_count, language=language)
+            return self.score(
+                paper_text,
+                figure_count=figure_count,
+                language=language,
+                problem_type=problem_type,
+                exclude_paper_id=exclude_paper_id,
+            )
 
         n = max(1, samples)
         sample_scores: list[RubricScore] = [
-            self.score(paper_text, figure_count=figure_count, language=language)
+            self.score(
+                paper_text,
+                figure_count=figure_count,
+                language=language,
+                problem_type=problem_type,
+                exclude_paper_id=exclude_paper_id,
+            )
             for _ in range(n)
         ]
 
@@ -138,11 +224,63 @@ class MockJudge:
             f"{completeness_gate}"
         )
 
+    def _anchored_system(self) -> str:
+        """System prompt for anchored relative-scoring mode.
+
+        Scores the candidate RELATIVE to real Outstanding work provided as reference.
+        Each dimension score must be grounded in specific evidence from the candidate.
+        """
+        completeness_gate = (
+            "COMPLETENESS IS A HARD GATE. "
+            "First identify how many distinct tasks/sub-questions the problem requires (T) "
+            "and how many the paper SUBSTANTIVELY answers (A) — a task that is only mentioned "
+            "or gestured at does NOT count as answered. "
+            "Score problem_coverage proportionally to A/T: a paper that substantively answers "
+            "only some of the required tasks MUST receive a low problem_coverage regardless of "
+            "how well the answered tasks are done "
+            "(e.g. answering 1 of 4 tasks => problem_coverage <= 3; 2 of 4 => <= 5). "
+            "In revision_suggestions, explicitly name each required task the paper failed to answer."
+        )
+        dims_list = ", ".join(DIMENSIONS)
+        return (
+            "You are an MCM/ICM judge. "
+            "You are given REFERENCE material from REAL Outstanding papers of this problem type. "
+            "Score the CANDIDATE paper RELATIVE to that Outstanding bar on each of the 10 "
+            f"dimensions (0-10): "
+            "9-10 = matches or exceeds the reference's rigor and completeness; "
+            "7-8 = clearly strong but below the reference; "
+            "5-6 = competent; "
+            "3-4 = weak; "
+            "0-2 = absent/wrong. "
+            "For EVERY dimension you MUST justify the score by citing SPECIFIC content from the "
+            "candidate (an equation, a metric value, a table, a named method); "
+            "a claim asserted without substantiating content in the candidate scores LOW — "
+            "evidence is required, not just assertion. "
+            "The `figures` dimension: judge ONLY from the candidate's own figure_count and "
+            "figure-related content — do NOT compare figures to the reference "
+            "(the reference text has no figures). "
+            f"{completeness_gate} "
+            "Output ONLY JSON "
+            '{"dimensions": {dim: int}, "comments": {dim: str}, "revision_suggestions": [str]}. '
+            f"Dimensions: {dims_list}."
+        )
+
     def _prompt(self, paper_text: str, figure_count: int) -> str:
         return "\n".join(
             [
                 f"Figure count: {figure_count}",
                 "Paper (LaTeX sections):",
+                paper_text[:MAX_JUDGE_PAPER_CHARS],
+            ]
+        )
+
+    def _anchored_prompt(self, paper_text: str, figure_count: int, ref: str) -> str:
+        """Prompt for anchored mode: reference block first, then candidate."""
+        return "\n\n".join(
+            [
+                ref,
+                f"Figure count: {figure_count}",
+                "CANDIDATE paper (LaTeX sections):",
                 paper_text[:MAX_JUDGE_PAPER_CHARS],
             ]
         )
