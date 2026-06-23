@@ -249,11 +249,65 @@ class ModelDesignAgent:
         self._write_md(workspace_root, spec, source="llm")
         return spec
 
-    def _build_design_prompt(self, understanding: str, direction: str, schema: str, lang: str) -> tuple[str, str]:
+    def _enumerate_tasks(self, understanding: str) -> list[str]:
+        """Call the LLM with a focused prompt that ONLY enumerates the problem's tasks.
+
+        Returns a list of short task title strings (3–5 typical for MCM/ICM).
+        Returns [] on failure or when no LLM is available.
+        """
+        if self.llm is None:
+            return []
+        system = (
+            "List EVERY distinct task / sub-question the problem asks the team to do, "
+            "as a JSON array of short title strings. Contest problems usually have 3–5 distinct tasks. "
+            "Do NOT merge multiple asks into one and do NOT omit any. "
+            "Output ONLY a JSON array of strings."
+        )
+        prompt = f"PROBLEM UNDERSTANDING:\n{understanding}"
+        try:
+            raw = self.llm.generate(system, prompt).content
+        except Exception as exc:
+            self.last_reason = f"enumerate_tasks call failed: {type(exc).__name__}: {exc}"
+            return []
+        # _parse expects a dict, so handle bare array or {"tasks": [...]} shapes
+        text = raw.strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
+            text = re.sub(r"\n?```$", "", text.rstrip())
+        # Try bare array first
+        array_match = re.search(r"\[.*\]", text, re.DOTALL)
+        if array_match:
+            try:
+                parsed = json.loads(array_match.group(0))
+                if isinstance(parsed, list):
+                    return [str(t).strip() for t in parsed if str(t).strip()]
+            except json.JSONDecodeError:
+                pass
+        # Try dict with "tasks" key
+        data = self._parse(raw)
+        if isinstance(data.get("tasks"), list):
+            return [str(t).strip() for t in data["tasks"] if str(t).strip()]
+        return []
+
+    def _build_design_prompt(
+        self,
+        understanding: str,
+        direction: str,
+        schema: str,
+        lang: str,
+        tasks: list[str] | None = None,
+        retry: bool = False,
+        got: int = 0,
+    ) -> tuple[str, str]:
         """Build (system, prompt) strings for the design LLM call.
 
         Separated so tests can assert on the exact text without needing to call
         the LLM.
+
+        When *tasks* is non-empty the prompt explicitly lists every task title
+        so the LLM knows which sub-questions must each get their own subproblem.
+        When *retry* is True a stronger instruction is prepended noting the
+        previous under-count.
         """
         system = (
             "You are a mathematical-modeling architect. Design a problem-specific model "
@@ -274,35 +328,99 @@ class ModelDesignAgent:
             '"data_inputs": [str]}]}. '
             f"Write meaning/title/assumptions in {lang}; keep symbols and equations in LaTeX."
         )
-        prompt = "\n".join(
-            [
-                "PROBLEM UNDERSTANDING:",
-                understanding,
-                "\nCONFIRMED DIRECTION:",
-                direction,
-                "\nDATA SCHEMA:",
-                schema,
-                (
-                    "\nStep 1: List all tasks/sub-questions the problem asks (one line each)."
-                    "\nStep 2: Design one subproblem per task — do not merge, do not omit any task."
-                    "\nContest problems typically have 3–5 separate tasks; cover all of them."
-                ),
-            ]
-        )
-        return system, prompt
+        prompt_parts = [
+            "PROBLEM UNDERSTANDING:",
+            understanding,
+            "\nCONFIRMED DIRECTION:",
+            direction,
+            "\nDATA SCHEMA:",
+            schema,
+        ]
+        if tasks:
+            numbered = "\n".join(f"{i+1}. {t}" for i, t in enumerate(tasks))
+            task_block = (
+                f"\nPRE-ENUMERATED TASKS (you MUST design EXACTLY ONE subproblem for EACH):\n"
+                f"{numbered}\n"
+                f"Total tasks: {len(tasks)}. Keep their order. Do not merge or omit any."
+            )
+            if retry:
+                task_block = (
+                    f"\nWARNING — RETRY: your previous response returned {got} subproblem(s) "
+                    f"but there are {len(tasks)} tasks. You must return EXACTLY one subproblem "
+                    f"for each of the {len(tasks)} tasks listed below — no merging, no omitting.\n"
+                    f"{numbered}\n"
+                    f"Total required subproblems: {len(tasks)}."
+                )
+            prompt_parts.append(task_block)
+        else:
+            prompt_parts.append(
+                "\nStep 1: List all tasks/sub-questions the problem asks (one line each)."
+                "\nStep 2: Design one subproblem per task — do not merge, do not omit any task."
+                "\nContest problems typically have 3–5 separate tasks; cover all of them."
+            )
+        return system, "\n".join(prompt_parts)
 
     def _design(self, understanding: str, direction: str, schema: str) -> ModelSpec | None:
         if self.llm is None:
             self.last_reason = "no LLM provider"
             return None
         lang = "Chinese" if self.language == "zh" else "English"
-        system, prompt = self._build_design_prompt(understanding, direction, schema, lang)
+
+        # COV1: enumerate tasks first with a focused call
+        tasks = self._enumerate_tasks(understanding)
+
+        system, prompt = self._build_design_prompt(understanding, direction, schema, lang, tasks=tasks)
         try:
             data = self._parse(self.llm.generate(system, prompt).content)
         except Exception as exc:
             self.last_reason = f"design call failed: {type(exc).__name__}: {exc}"
             return None
         spec = _normalize_spec(data)
+
+        # COV1: if tasks were enumerated and we got too few subproblems, retry once
+        if tasks and (spec is None or len(spec.subproblems) < len(tasks)):
+            got = len(spec.subproblems) if spec else 0
+            retry_system, retry_prompt = self._build_design_prompt(
+                understanding, direction, schema, lang, tasks=tasks, retry=True, got=got
+            )
+            try:
+                retry_data = self._parse(self.llm.generate(retry_system, retry_prompt).content)
+                retry_spec = _normalize_spec(retry_data)
+                if retry_spec and (spec is None or len(retry_spec.subproblems) > len(spec.subproblems)):
+                    spec = retry_spec
+            except Exception:
+                pass  # keep whatever spec we have from the first call
+
+        # COV1: backfill — if still short, append placeholder subproblems for missing tasks
+        if tasks and (spec is None or len(spec.subproblems) < len(tasks)):
+            existing_titles = {s.title.lower() for s in (spec.subproblems if spec else [])}
+            placeholders: list[SubproblemModel] = []
+            # Append one placeholder per task that has no matching subproblem by index
+            existing_subs = list(spec.subproblems) if spec else []
+            for i, task_title in enumerate(tasks):
+                if i < len(existing_subs):
+                    continue  # already covered by index
+                # Check if this task title is represented by title match
+                if task_title.lower() in existing_titles:
+                    continue
+                placeholders.append(
+                    SubproblemModel(
+                        subproblem_id=_safe_id(task_title, fallback=f"q{i+1}"),
+                        title=task_title,
+                        approach=f"Problem-specific approach for: {task_title}",
+                        variables=[],
+                        assumptions=[],
+                        equations=[],
+                        algorithm_steps=[],
+                        metrics=[],
+                        data_inputs=[],
+                    )
+                )
+            if placeholders:
+                restatement = spec.problem_restatement if spec else ""
+                all_subs = existing_subs + placeholders
+                spec = ModelSpec(problem_restatement=restatement, subproblems=all_subs)
+
         if spec and spec.subproblems:
             return spec
         self.last_reason = "design output had no usable subproblems after normalization"

@@ -340,3 +340,150 @@ def test_design_keeps_all_subproblems_from_llm(tmp_path: Path) -> None:
     )
     ids = [s.subproblem_id for s in spec.subproblems]
     assert ids == ["q1", "q2", "q3", "q4"]
+
+
+# ---------------------------------------------------------------------------
+# COV1 tests: reliable sub-question enumeration + backfill
+# ---------------------------------------------------------------------------
+
+
+class _EnumerateLLM:
+    """Fake LLM that returns a JSON array of task titles from _enumerate_tasks."""
+
+    def generate(self, system: str, prompt: str) -> ProviderResult:
+        tasks = ["estimate fan votes", "compare methods", "partner effect", "fairer system"]
+        return ProviderResult(content=json.dumps(tasks), metadata={})
+
+
+def test_enumerate_tasks_returns_list() -> None:
+    """_enumerate_tasks must parse the LLM's JSON array response and return a
+    4-element list of task title strings."""
+    agent = ModelDesignAgent(_EnumerateLLM(), language="en")
+    result = agent._enumerate_tasks("Some problem understanding text.")
+    assert isinstance(result, list), f"Expected list, got {type(result)}"
+    assert len(result) == 4, f"Expected 4 tasks, got {len(result)}: {result}"
+    assert "estimate fan votes" in result
+    assert "fairer system" in result
+
+
+class _BackfillLLM:
+    """Fake LLM that:
+    - On the FIRST call (enumerate): returns 4 task titles as a JSON array.
+    - On the SECOND and THIRD calls (design + retry): returns only 1 subproblem.
+    This simulates the real collapse bug that COV1 must fix.
+    """
+
+    def __init__(self) -> None:
+        self._call_index = 0
+
+    def generate(self, system: str, prompt: str) -> ProviderResult:
+        self._call_index += 1
+        if self._call_index == 1:
+            # First call is _enumerate_tasks — return 4 task titles
+            tasks = ["estimate fan votes", "compare methods", "partner effect", "fairer system"]
+            return ProviderResult(content=json.dumps(tasks), metadata={})
+        else:
+            # Second and third calls are design / retry — collapse to 1 subproblem (the bug)
+            spec = {
+                "problem_restatement": "DWTS voting problem.",
+                "subproblems": [
+                    {
+                        "subproblem_id": "q1",
+                        "title": "estimate fan votes",
+                        "approach": "Bayesian model",
+                        "variables": [],
+                        "assumptions": [],
+                        "equations": [],
+                        "algorithm_steps": ["step1"],
+                        "metrics": ["accuracy"],
+                    }
+                ],
+            }
+            return ProviderResult(content=json.dumps(spec), metadata={})
+
+
+def test_design_backfills_to_task_count(tmp_path: Path) -> None:
+    """When LLM enumerates 4 tasks but collapses design to 1 subproblem on both
+    design and retry calls, _design/run must backfill the missing subproblems so
+    the final spec has len(subproblems) >= 4, and every task title appears in
+    some subproblem's title."""
+    root = _prep(tmp_path)
+    spec = ModelDesignAgent(_BackfillLLM(), language="en").run(root)
+
+    assert spec is not None, "run() returned None"
+    assert len(spec.subproblems) >= 4, (
+        f"Expected >= 4 subproblems after backfill, got {len(spec.subproblems)}: "
+        f"{[s.title for s in spec.subproblems]}"
+    )
+    all_titles = " ".join(s.title.lower() for s in spec.subproblems)
+    expected_tasks = ["estimate fan votes", "compare methods", "partner effect", "fairer system"]
+    for task in expected_tasks:
+        assert task.lower() in all_titles, (
+            f"Task '{task}' not found in any subproblem title. Titles: {[s.title for s in spec.subproblems]}"
+        )
+
+
+class _RecordingEnumerateLLM:
+    """LLM that records all generate calls and returns:
+    - enumerate call: 3 task titles as JSON array
+    - design call: a minimal 3-subproblem spec (so no backfill is needed)
+    Also records prompts so we can assert they contain the task titles.
+    """
+
+    def __init__(self) -> None:
+        self._call_index = 0
+        self.design_prompts: list[tuple[str, str]] = []  # (system, prompt) for design calls
+
+    def generate(self, system: str, prompt: str) -> ProviderResult:
+        self._call_index += 1
+        if self._call_index == 1:
+            # _enumerate_tasks call
+            tasks = ["estimate fan votes", "compare methods", "partner effect"]
+            return ProviderResult(content=json.dumps(tasks), metadata={})
+        else:
+            # design call — record and return 3 subproblems
+            self.design_prompts.append((system, prompt))
+            spec = {
+                "problem_restatement": "Test problem.",
+                "subproblems": [
+                    {
+                        "subproblem_id": f"q{i}",
+                        "title": task,
+                        "approach": f"method {i}",
+                        "variables": [],
+                        "assumptions": [],
+                        "equations": [],
+                        "algorithm_steps": [f"step{i}"],
+                        "metrics": [f"m{i}"],
+                    }
+                    for i, task in enumerate(
+                        ["estimate fan votes", "compare methods", "partner effect"], start=1
+                    )
+                ],
+            }
+            return ProviderResult(content=json.dumps(spec), metadata={})
+
+
+def test_design_prompt_lists_enumerated_tasks(tmp_path: Path) -> None:
+    """The design prompt passed to the LLM must contain all task titles
+    returned by _enumerate_tasks, so the LLM knows which tasks to cover."""
+    root = _prep(tmp_path)
+    recorder = _RecordingEnumerateLLM()
+    ModelDesignAgent(recorder, language="en").run(root)
+
+    assert recorder.design_prompts, "No design calls were recorded"
+    first_design_system, first_design_prompt = recorder.design_prompts[0]
+    combined = (first_design_system + " " + first_design_prompt).lower()
+
+    expected_tasks = ["estimate fan votes", "compare methods", "partner effect"]
+    for task in expected_tasks:
+        assert task.lower() in combined, (
+            f"Task '{task}' not found in design prompt. Prompt snippet: {combined[:500]}"
+        )
+
+
+def test_enumerate_tasks_returns_empty_on_no_llm() -> None:
+    """When there is no LLM provider, _enumerate_tasks must return [] (no-op)."""
+    agent = ModelDesignAgent(None, language="en")
+    result = agent._enumerate_tasks("Some problem understanding text.")
+    assert result == [], f"Expected [], got {result}"
