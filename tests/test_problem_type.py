@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.core.workspace import create_workspace
 from mcm_agent.providers.base import ProviderResult
