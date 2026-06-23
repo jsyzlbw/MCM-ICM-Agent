@@ -1,0 +1,49 @@
+{
+  "paper_id": "2024-2401102",
+  "year": 2024,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2024 MCM Problem E (sustainability). The task: assess whether/where property insurance can remain sustainable in regions hit by increasingly severe extreme weather, then extend the insight to real-estate developers and to community leaders protecting historic landmarks in areas insurers abandon. This team (Team 2401102) framed sustainability as a balance between insurer profitability (customer demand) and catastrophe exposure (aggregate risk), built a forecasting + pricing + optimization pipeline, applied it to Australia and Southeast Asia, and added two extension models for developers and landmark preservation.",
+  "models_used": [
+    "ARIMA(p,i,q) time-series forecasting of extreme-weather event frequency, per region-disaster pair (e.g. ARIMA(3,2,1) for NSW bushfire), with ADF stationarity testing and 1st/2nd-order differencing",
+    "Lane's LFC/AFC actuarial pricing model: Premium P = EL (pure premium) + EER (additional premium), with EER modeled as a Cobb-Douglas function EER = 0.55 * PEL^0.495 * CEL^0.574",
+    "Expected Loss (EL) computed two ways by region wealth: indemnity-based EL (developed regions, actual-loss based) vs index-based EL (developing regions, loss-index gamma * standard compensation), switched on per-capita GDP",
+    "Marshallian linear demand curve Q = aP + b (a<0, b>0) to convert premium into customer demand, with demand-curve right-shifts modeling rising willingness-to-buy",
+    "DBMI/DEMI Demand-Risk Equilibrium Model: a dual-objective binary optimization max Sustainability = lambda*D - (1-lambda)*R over underwrite/decline decisions x_i in {0,1}, with severity-weighted total risk r_i = sum_j p_ij * alpha_j",
+    "IRPPDM: a Willingness-Risk Cartesian quadrant system (Development Willingness Index vs DBMI risk) targeting Quadrant II (High Risk-High Willingness), with per-hazard risk-reduction adjustment formulas (e.g. p_b* = p_b/(1+d) for bushfire distance; structure-strength ratio for cyclone; soil/water coefficients for drought)",
+    "HLPM Historic Landmark Preservation Model: AHP (Analytic Hierarchy Process) over 8 secondary indicators in 4 dimensions (economy, culture, history, community), with pairwise-comparison judgment matrices, eigenvector weights, and CI/RI/CR consistency testing (CR=0.058)",
+    "Min-max normalization + weighted-sum HLV = sum W_a*I_a, with a 3-tier preservation cutoff (HLV>=0.7, 0.3-0.7, <0.3)"
+  ],
+  "key_techniques": [
+    "Region-disaster decomposition: forecasting each (area, event-type) series separately rather than one aggregate model, then re-aggregating into per-area risk r_i via severity weights alpha_j",
+    "Economic framing of 'sustainability' as a tradeoff: profitability proxied by total demand D, solvency proxied by aggregate catastrophe risk R, unified in a single weighted-objective optimization with a tunable lambda",
+    "Lambda sensitivity sweep: reporting a stable lambda window (2e-5 to 1e-6) and choosing 5e-6, giving the judge confidence the underwrite decision is robust, not cherry-picked",
+    "Switching pricing model by development level (per-capita GDP -> indemnity vs index insurance), tying the math to real actuarial practice",
+    "Rigorous model validation: ARIMA reported with R^2 (>0.6, mostly 0.66-0.84), AIC and BIC in a table; AHP validated with CI/RI/CR consistency check",
+    "Sourcing AHP pairwise weights from published literature rather than self-assigned, to defend subjectivity",
+    "Reusing the core risk engine across all three sub-problems (DBMI risk feeds developers' quadrant map and the landmark risk assessment), giving a single coherent model spine",
+    "Concrete real-world instantiation: named decisions (underwrite QLD+WA in Australia, PHL+THA in SE Asia) and a named landmark (Temple of Literature, HLV=0.463) with a budget/timetable letter"
+  ],
+  "why_it_won": "\"It delivered a complete, decision-producing pipeline (forecast -> price -> optimize -> decide) where every stage feeds the next and produces concrete named answers, not abstract formulas. Judges reward a model that actually answers the question asked: this paper says exactly which states/countries to underwrite and why, backed by per-area premium/demand/risk tables that make the optimizer's choices auditable (e.g. picking low-risk WA over high-risk VIC, picking QLD over similar-demand NSW for lower risk). The dual-objective sustainability formulation directly operationalizes the prompt's word 'sustainable' as profit-vs-solvency, which is a clean, defensible interpretation. The work shows breadth and rigor simultaneously: real actuarial methods (Lane LFC, indemnity vs index), validated forecasting (R^2/AIC/BIC), AHP with consistency testing, and a lambda robustness window. Crucially it tied all three required audiences together through one shared risk engine and finished with a polished Letter of Recommendation containing an actual budget and timetable, demonstrating the communication and completeness Outstanding papers need.\"",
+  "section_highlights": "\"Summary (front page) is exemplary: it names every model by acronym, states quantitative results (R^2>0.625, IC<300, premiums $119.2-$1295.6) and the actual decisions (QLD/WA, PHL/THA) before the reader reaches the body. The flowchart (Figure 2) maps the whole three-part pipeline. Assumptions are each paired with a justification (e.g. Google Scholar keyword search to justify Assumption 3). Validation tables (Table 1 AIC/BIC/R^2; Table 9 AHP weights with CR) are placed right after their models. The case-study tables (Tables 2-3) walk through the optimizer's reasoning area-by-area in plain language, which is what makes the 'why these regions' argument land. The closing Letter of Recommendation with a 4-row budget/timetable table and a before/after radar chart turns analysis into an actionable deliverable. A signature epigraph (Bear Grylls quote) and consistent acronym discipline give it a confident editorial voice.\"",
+  "pitfalls_or_limitations": [
+    "ARIMA is applied to differenced event-COUNT series that are near-zero and noisy (the fitting figures show truth/prediction hovering around small integers); R^2~0.63 on such low-signal count data is weak, and forecasting rare catastrophe frequency with ARIMA ignores climate trend/non-stationarity the prompt emphasizes (extreme weather is INCREASING, which a mean-reverting ARIMA understates)",
+    "The team itself notes the model is unreliable for long-horizon and fine-grained regional forecasts given only ~thousands of records over ~60-100 years",
+    "The lambda values (1e-6 to 2e-5) are extremely small, revealing that demand D (tens of thousands) and risk R (0-1) are on wildly different scales; the 'balance' is really a scale-normalization artifact, and the objective is not truly unit-consistent",
+    "Several risk-adjustment formulas in IRPPDM (p_b*=p_b/(1+d), soil-shrinkage/water-efficiency coefficients) are introduced with no calibration, units, or data; the team admits these indicators are unspecified 'illustrative' placeholders",
+    "Assumption 1 (insurers bear risk independently, no reinsurance/diversification) is unrealistic for catastrophe insurance, where reinsurance and ILS are central to sustainability",
+    "AHP pairwise weights, though literature-sourced, are still subjective and applied to a single landmark; HLV cutoffs (0.7/0.3) are arbitrary",
+    "Demand model Q=aP+b is asserted linear with unestimated a,b; no demand-elasticity data shown",
+    "The OCR'd figures/data tables in this markdown are visibly corrupted (e.g. 'Fasting'/'Friulielle' event names, choropleth filler values), so some quantitative claims can't be re-verified from the artifact"
+  ],
+  "reusable_patterns": [
+    "Sustainability-as-tradeoff template: define a benefit objective and a risk/cost objective, combine as max lambda*Benefit - (1-lambda)*Risk over binary decision variables, then report a lambda robustness window — directly transplantable to any 'is X sustainable / where should X operate' prompt",
+    "Decompose-forecast-reaggregate: split a heterogeneous system into (unit, event-type) pairs, forecast each independently, then recombine with severity/importance weights into a per-unit score",
+    "Multi-method validation habit: always pair a forecast with R^2 + AIC + BIC in a table, and always pair an AHP with CI/RI/CR — cheap rigor signals that judges reward",
+    "Switch-by-context modeling: choose the sub-model based on a contextual variable (here per-capita GDP -> indemnity vs index insurance) to show domain awareness",
+    "One shared engine, multiple audiences: build a core quantitative model (risk forecaster) and reuse it across every sub-question (insurer, developer, community) for coherence instead of three disconnected models",
+    "AHP weighted-value scoring with literature-sourced pairwise matrices + min-max normalization + tiered cutoffs — a reusable recipe for any 'assess significance/priority' task",
+    "Quadrant/2x2 decision map (Willingness vs Risk) to triage candidates and define a target segment to act on",
+    "Deliverable framing: close with a stakeholder letter containing a concrete budget + timetable table and a before/after visualization to convert analysis into an actionable recommendation"
+  ]
+}

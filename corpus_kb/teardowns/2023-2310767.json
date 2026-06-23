@@ -1,0 +1,48 @@
+{
+  "paper_id": "2023-2310767",
+  "year": 2023,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2023 MCM Problem C (data type): analyze a COMAP-provided Twitter-scraped Wordle dataset (daily reported-result counts, hard-mode share, and the 1/2/3/4/5/6/X attempt distribution per solution word) and (1) predict the number of reported results on 2023-03-01 with an interval, plus assess whether word attributes correlate with hard-mode percentage; (2) predict the attempt distribution for a future word (\"EERIE\"); (3) classify words by difficulty; (4) report interesting features. This Outstanding paper (control 2310767) titled \"Uncover the Puzzle of Words: Evidence from Wordle\".",
+  "models_used": [
+    "ARIMA(p,d,q) for the linear/trend component of the reported-results time series; d=1 chosen via unit-root/ADF test, p and q selected by minimizing BIC, residuals checked with Ljung-Box Q(m) white-noise test",
+    "LSTM recurrent neural network fitted to the ARIMA residual series (the nonlinear part), with phase-space reconstruction setting the input window to 18 lags; final forecast = ARIMA prediction + LSTM residual prediction (a hybrid ARIMA-LSTM), RMSE 0.0432, 2023-03-01 point 22577, interval [9614,43109]",
+    "Spearman rank correlation coefficient (rho) with two-tailed significance testing + correlation heatmap, linking 5 word attributes to the attempt distribution and hard-mode share",
+    "Stacking ensemble (2-layer) for distribution prediction: base learners = Ridge regression (RidgeCV, alpha=14) and Lasso (L1) as linear models + XGBoost and LightGBM as tree models; meta-learner = XGBoost; trained 7 separate stacking models (one per attempt bucket 1..6,X) then normalized to a distribution; R2=0.8377",
+    "PCA dimensionality reduction from a 107-dim feature vector (100-dim Word2Vec/Gensim embedding + 7 engineered attributes) down to 3 components (retaining ~72.8% variance) for visualization",
+    "Gaussian Mixture Model (GMM, scikit-learn) clustering words into 3 difficulty classes (difficult/medium/easy), validated against a ground-truth difficulty defined as expected number of guesses E(diff)=sum_j j*p_j (X mapped to j=7)",
+    "Word2Vec (Gensim) word embeddings as features; NLTK CMU pronouncing dictionary for phoneme length; NLTK POS tagging for lexical-label count"
+  ],
+  "key_techniques": [
+    "Hybrid linear+nonlinear forecasting: deliberately let ARIMA capture trend, diagnose (via Ljung-Box) that residuals are NOT white noise -> residual info remains -> feed residuals to LSTM. The failed residual test is used as explicit justification for the second model, which reads as principled rather than ad hoc.",
+    "Heavy domain-driven feature engineering grounded in psycholinguistics literature: information entropy of the word, COCA log-rank commonness (f=ln(p)), SUBTLEX-US frequency, syllable/phoneme length, vowel count, concreteness rating (Paivio dual-coding theory, Brysbaert), distinct-letter count, POS labels — each citing a paper.",
+    "Per-bucket modeling then renormalization: instead of one multi-output model, train 7 independent regressors for the 7 attempt percentages and normalize, sidestepping the simplex constraint.",
+    "Stacking justified by complementary error profiles: linear models accurate near the mean, tree models accurate at extremes; ensemble keeps both. Backed by an MSE/RMSE/MAE/R2 comparison table showing monotone improvement Lasso<Ridge<XGB<LGBM<Stacking.",
+    "Building a ground-truth label to validate an unsupervised model: expected-guesses E(diff) gives a 'true' difficulty to score GMM clusters against (confusion-matrix-style bar chart, ~67% accuracy, middle class weakest at 60%).",
+    "Sensitivity analysis varying the GMM training set across word lengths 4-8 and 5 resamples (25 runs), showing accuracy peaks at length 5 (the trained regime) and degrades to ~49% at length 8 — an honest robustness boundary.",
+    "Data preprocessing as a named step: outlier fill by neighbor-average, drop rows whose distribution doesn't sum to ~100%, drop non-5-letter words ('clen','tash')."
+  ],
+  "why_it_won": "\"It executes the full MCM playbook cleanly on a data problem: every one of the four tasks gets its own appropriately-matched model, and the choices are justified by diagnostics rather than asserted. The ARIMA->Ljung-Box-fails->LSTM chain is the standout — it shows the team understood WHY a single model was insufficient and fixed it with evidence. Feature engineering is unusually literature-grounded (entropy, concreteness/dual-coding, SUBTLEX, COCA) which signals modeling maturity to judges. It quantifies everything (RMSE 0.0432, R2 0.8377, 67% cluster accuracy, prediction interval [9614,43109]) and compares against single-model baselines in a clean table, so claims are falsifiable. It validated an unsupervised clustering against a constructed ground truth and ran a genuine sensitivity analysis that reveals (not hides) the model's failure regime. Finally it satisfied the deliverable contract: a concrete EERIE distribution [0,0,9,18,26,37,10], a 'difficult' label for EERIE, and the required letter to the NYT puzzle editor.\"",
+  "section_highlights": "\"Strong summary that states the method AND the number for each task (RMSE, interval, R2, accuracy, the EERIE distribution) — a judge can grade the whole paper from page one. Clear notation table, explicit assumptions with one-line justifications, and a per-task structure mirroring the problem statement. Each model section follows define->justify->diagnose->result. Visual storytelling is dense: correlation heatmap, per-letter positional frequency stacked bars, 2D/3D PCA cluster scatter, prediction-vs-truth overlays. Explicit Advantages/Disadvantages section and a sensitivity section. Keywords line and a workflow flowchart up front. The closing letter to the editor cleanly translates results into plain language for the stated audience.\"",
+  "pitfalls_or_limitations": [
+    "RMSE of 0.0432 for the reported-results forecast is dimensionally implausible for a series in the tens of thousands — almost certainly computed on normalized/scaled data but never stated, so the headline metric is hard to interpret.",
+    "The attempt distribution is predicted from word attributes + contest number only; but the data shows the percentages are dominated by the game's maturity/date (huge early-2022 spike then decay), so much of the fit likely comes from the time trend, not the word — yet the model is sold as predicting the effect of the WORD. EERIE's interval/uncertainty is never given, only a point distribution.",
+    "GMM 'difficulty' is validated against E(diff) computed from the SAME attempt distributions, but those distributions are date-confounded (early words had many novice players), so the 'ground truth' difficulty is partly a popularity artifact, not intrinsic word difficulty.",
+    "Only ~67% overall cluster accuracy (60% for the medium class) yet EERIE is confidently labeled 'difficult'; the confidence isn't propagated.",
+    "Mixing a 100-dim Word2Vec embedding with 7 hand features into one PCA/GMM space without standardization discussion risks the embedding dominating; PCA keeps only 72.8% variance in 3 comps used for the visual argument.",
+    "Spearman correlations, though starred as significant, are small in magnitude (~0.2-0.46), so 'significantly correlated' overstates practical effect; n is large enough that significance is easy.",
+    "The phase-space reconstruction 'optimal order = 18' and the LSTM hyperparameters/train-test split for the residual model are asserted without detail, hurting reproducibility.",
+    "Several figures in the source are clearly garbled/placeholder (e.g., the prediction-overlay tables), suggesting the rendered plots may not match the described claims."
+  ],
+  "reusable_patterns": [
+    "Hybrid decomposition forecasting template: fit ARIMA -> Ljung-Box test the residuals -> if not white noise, model residuals with LSTM/ML and ADD predictions. Reusable for any data-type time-series subtask.",
+    "Use a failed statistical diagnostic as the explicit motivation for adding a second model — judges reward this honesty.",
+    "Literature-anchored feature engineering: when a problem involves text/words, mine corpora (COCA, SUBTLEX-US) and psycholinguistic norms (concreteness, dual-coding) and cite each feature's source.",
+    "Per-class regress-then-normalize trick to predict a probability distribution without enforcing the simplex inside one model.",
+    "Stacking with deliberately heterogeneous base learners (linear for the bulk, trees for the tails) + a baseline comparison table (MSE/RMSE/MAE/R2) showing monotone improvement to justify the ensemble.",
+    "Validate unsupervised clustering by constructing a quantitative ground-truth label (here E(guesses)=sum j*p_j) and reporting a confusion-style accuracy.",
+    "Sensitivity analysis that sweeps a structural parameter (word length 4-8 x resamples) to map the model's valid operating regime and state its breakdown point.",
+    "Front-load a summary where every task line carries its method plus its headline number; mirror the report's section order to the problem's task order; end with the required stakeholder letter.",
+    "Named, itemized data-preprocessing step (fill outliers by neighbor mean, drop rows violating sum-to-100%, drop malformed records) as its own section."
+  ]
+}

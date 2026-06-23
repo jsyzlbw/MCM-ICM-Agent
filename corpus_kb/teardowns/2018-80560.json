@@ -1,0 +1,50 @@
+{
+  "paper_id": "2018-80560",
+  "year": 2018,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2018 MCM Problem C (data-insight). Four US-Mexico border states (CA, AZ, NM, TX) want a realistic interstate energy compact to increase use of cleaner/renewable energy. Given ~50 years of data across 605 variables per state, the team had to: (1) build an energy profile for each state, (2) characterize/rank profiles, (3) predict future energy profiles, and (4) set renewable-energy usage targets for 2025 and 2050 plus actionable policies to reach them. This paper's distinctive move is reframing the data problem through an economics lens, treating energy adoption as a macroeconomic equilibrium driven by demand/supply and policy shocks.",
+  "models_used": [
+    "Cointegration analysis with Augmented Dickey-Fuller (ADF) unit-root test for variable de-correlation/screening (p<0.05 pairs treated as cointegrated, removed redundancy from 605 vars down to ~10 categories)",
+    "Multidimensional Scaling (MDS) to further reduce/visualize variable similarity from the distance matrix",
+    "Mean Substitution for missing-data imputation (with an explicit zero-vs-missing disambiguation step)",
+    "Revised EROI (Energy Return On Investment) evaluation system — a custom index adapting financial ROI, splitting investment into internal cost (EIC) and external expenditure (EEE)",
+    "Baseline multiple linear regression on 43 energy factors (deliberately presented, then rejected as inadequate)",
+    "Dynamic New Keynesian IS-LM model (3 coupled equations: IS curve + two LM curves / a Taylor-rule interest-rate equation) with forward-looking rational-expectation terms approximated by a 5-lag weighted moving average",
+    "Enhanced NK IS-LM model with additive demand shocks (nu_t) and supply shocks (mu_t) to simulate policy interventions",
+    "Sensitivity analysis sweeping IS-LM parameters (e.g. theta_x over [-1,1]) on a representative series (Arizona natural gas)"
+  ],
+  "key_techniques": [
+    "EROI re-engineering: adapted financial ROI into energy terms, then monetized externalities — pollution external cost per energy type (coal 20.4 down to wind 0.54 $/MBtu from OECD/EEA/Pew sources) folded into the denominator as EEE",
+    "Normalization for confounders: energy-intensity factor I = GDP(2005)/CurrentGDP to strip inflation, plus a regional price quality factor alpha_i = P_i/P_1 to remove the 'Texas has cheap oil because it has oil' distortion",
+    "Sector influence weights (Residential 1.2, Commercial 1.1, Industrial 0.8, Transportation 1.3) to weight pollution by where it occurs",
+    "Separate End-use EROI vs Electric-power-plant EROI formulas combined via PEE (share consumed by electric plants) into a single Total EROI",
+    "Honest model laddering: showing the simple linear regression failing (overfitting, can't follow policy-driven trend breaks) to motivate the economic model",
+    "Justifying the absence of ARMA/GARCH by citing failed ADF stationarity tests — turning a non-result into a defensible modeling decision",
+    "Policy simulation via shock injection: demand subsidies, supply taxes, interest-rate cuts, and short- vs long-term (1-yr vs 3-yr) shocks compared quantitatively (3-yr shock ~200% more solar uptake)",
+    "Forward-looking expectations operationalized as a fixed-weight moving average [0.5,0.15,0.1,0.1,0.1,0.05]"
+  ],
+  "why_it_won": "From a judge's perspective, this paper won by giving a genuinely original interpretive frame to a generic 'crunch the spreadsheet' data problem. Instead of yet another regression/time-series forecast, it cast renewable-energy adoption as a macroeconomic system, which let it do the one thing the prompt actually demanded but most teams underdeliver: directly model HOW policies achieve the targets (subsidies, taxes, interest rates, cross-state cooperation) as quantifiable supply/demand shocks. The custom EROI index gave a defensible, economically-meaningful ranking criterion rather than an arbitrary score. It demonstrates mathematical maturity by deriving a result (4-model ladder), explicitly rejecting tempting-but-wrong tools (ARMA/GARCH via ADF, plain linear regression via overfitting), and every parameter carries an economic interpretation so the model is interpretable, not a black box. The deliverables map cleanly onto the ask — concrete 2025/2050 percentage targets per state plus a governor's memo and a formal compact resolution — which judges reward heavily on a policy-flavored C problem.",
+  "section_highlights": "Structure mirrors the task list exactly: Data Processing -> Energy Profile -> EROI Evaluation -> Predictive Modeling -> Sensitivity -> Strengths/Weaknesses -> Conclusions, then a Memo and Appendix code. The summary sheet front-loads the whole pipeline and the headline numbers (CA ~42% renewable by 2025; all states 38-51% by 2050). The EROI section is the analytical centerpiece, with every revision (US-dollar adjustment, regional adjustment, externality cost table, sector weights) building to the three combined formulas. The Predictive Modeling section's rhetorical strength is the model ladder: linear regression shown failing -> dynamic NK IS-LM -> shock-augmented version, each transition motivated by a concrete shortcoming. The policy subsection is unusually concrete for an MCM paper, with four labeled policy levers each tied to a figure. It closes the loop by feeding the 2025/2050 targets back into the EROI model to report future EROI. Communication artifacts (governor memo + WHEREAS/THEREFORE compact resolution) show audience awareness.",
+  "pitfalls_or_limitations": [
+    "Many parameters lack reported fitted values or fitting procedure — phi, lambda, gamma, theta_x, theta_pi are said to be 'set to fit historical data' but the calibration method (least squares? grid search?) and resulting values are never shown, so results are not reproducible",
+    "The forward-looking expectation is faked: rational expectations are reduced to a hard-coded 5-lag weighted moving average, and the weight vector [0.5,0.15,...] is asserted without justification or sensitivity testing",
+    "EROI external-cost and sector-influence numbers (e.g. sector weights 1.2/1.1/0.8/1.3) appear hand-set or loosely sourced; the influence weights have no cited basis",
+    "Several appendix/figure data tables are clearly garbled or placeholder (Figure 10 all-zeros, Figure 14 nonsense digit strings, far-future years to 2950), suggesting weak figure-data hygiene that survived into the final paper",
+    "Assumptions are aggressive: inflation/GDP deflator constant forever, resources never exhausted before 2050, all post-2009 energy identical in total cost — these undercut the economic realism the model otherwise leans on",
+    "The IS-LM model 'does not always have equilibrium' (admitted in sensitivity section) and ignores technology and natural-resource constraints, so long-horizon projections (and the 2950 extrapolations) are not trustworthy",
+    "Cointegration is used somewhat unconventionally as a generic correlation/redundancy filter rather than for its standard long-run-equilibrium purpose",
+    "Sensitivity analysis is thin: one parameter on one state's one series, not a systematic perturbation of the targets or rankings"
+  ],
+  "reusable_patterns": [
+    "Reframe a 'data' problem with a domain theory (here: macroeconomics) so you can model mechanisms and policy levers, not just fit curves — this is what separates an Outstanding C paper from a competent forecast",
+    "Build a custom, named evaluation index (EROI-style) by adapting a well-known metric (ROI) and explicitly itemizing each correction term — gives judges a defensible single number to rank entities",
+    "Monetize externalities / fold qualitative concerns (pollution, sector context) into the objective via cited cost tables and weight vectors",
+    "The model ladder: present a simple baseline, show concretely why it fails, then introduce the sophisticated model — demonstrates judgment and earns the complexity",
+    "Normalize away confounders early and name them (inflation via a deflator ratio, regional price advantage via a quality factor) so cross-entity comparison is fair",
+    "Justify what you DON'T use: cite a statistical test (ADF stationarity) to defend omitting standard tools (ARMA/GARCH) — pre-empts judge objections",
+    "Treat policies as additive shocks to a dynamic system so you can quantitatively compare intervention designs (demand vs supply, short vs long term)",
+    "Close the loop: feed your predicted targets back through your evaluation model to report the resulting score, showing internal consistency",
+    "Package deliverables for the stated audience: a plain-language governor memo plus a formal WHEREAS/THEREFORE compact resolution alongside the technical body"
+  ]
+}

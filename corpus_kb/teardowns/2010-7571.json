@@ -1,0 +1,48 @@
+{
+  "paper_id": "2010-7571",
+  "year": 2010,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2010 MCM Problem A (continuous): locate the \"sweet spot\" on a baseball bat, explain why it is not at the bat's end, evaluate whether corking helps, and compare aluminum vs. wooden bats. This team reframed \"sweet spot\" as a multi-objective optimization problem rather than a single physical phenomenon: the sweet spot is the hitting location that maximizes a weighted blend of (a) batted-ball exit velocity and (b) batter hand comfort (minimal sting). They build one rigid-body collision model, then reuse it across all three sub-questions (normal wood, corked, aluminum) by only changing geometry/material parameters.",
+  "models_used": [
+    "Multi-objective optimization with a weighted scalarized objective f = lambda*E_batter + (1-lambda)*E_ball, lambda in [0,1] as a preference coefficient (set to 0.5 for equal weighting)",
+    "Rigid-body bat-ball collision model using the Moment of Momentum (angular momentum) theorem about the pivot point O to derive post-impact ball velocity v2 (eqs 1.1-1.3)",
+    "Coefficient of restitution e as a location-dependent function e(b) (the 'trampoline effect'), making restitution vary along the barrel rather than constant",
+    "Comfort index E_batter derived from rigid-body acceleration analysis at the hands: a1 = F/M_bat (translation) minus a2 = Fcd/J_cm (rotation), yielding a center-of-percussion-style sting model normalized to [0,1]",
+    "Two-coaxial-cylinder geometric idealization of the bat to compute mass, center of mass, and moments of inertia (J_cm and J_o via parallel-axis theorem); extended to two hollow coaxial cylinders for the aluminum bat (wall thickness t) and a low-density cylinder insert for the cork",
+    "Empirical regression relations: swing speed as a linear function of bat mass (v = -0.6625*M_bat + 3354), and a separate swing-speed-vs-mass formula for the corked case",
+    "Quadratic curve fitting of Nathan's experimental e-vs-location data via SPSS (R^2=0.962, F=38.01), with a floor e=0.4",
+    "Definition of a 'Sweet Zone' as the contiguous region where the objective f >= 0.85, used to compare bat controllability/forgiveness"
+  ],
+  "key_techniques": [
+    "Reframing an ambiguous, multi-definition concept ('sweet spot') into a single well-posed optimization objective, then surveying prior definitions (center of percussion, vibration node, max exit velocity, comfort) to justify the choice",
+    "Normalizing two physically incommensurable quantities (velocity in cm/s and a unitless sting index) each to a [0,1] index so they can be combined linearly",
+    "Parallel-axis theorem + composite-body decomposition to get J_cm and J_o for each idealized geometry, so the same collision equations apply to wood, cork, and aluminum",
+    "Parameter-swap reuse: one core model solved three sub-problems by only changing density, geometry (hollow walls, cork insert), and e(b); the corked/aluminum sections are deltas off the baseline",
+    "Sensitivity analysis as a stability argument: varied lambda (0.1-0.9), bat mass (+/-10%), swing speed (+/-10%), and aluminum wall thickness t, showing the sweet-spot LOCATION barely moves (~4 cm band) even as exit velocity shifts, which they present as model robustness",
+    "Grounding every parameter in cited external data (Daniel Russell's Kettering bat physics pages, Alan Nathan's restitution measurements) instead of inventing numbers",
+    "Going beyond the physics to answer the 'why banned' questions with mixed reasoning: swing-speed/reaction-time advantage, psychological dependence, and a safety impact-force calculation (63.3 N from F = m*dv/dt with 0.1 s contact)"
+  ],
+  "why_it_won": "\"It directly and decisively answered the exact question asked. Problem A explicitly asks (1) does corking enhance the sweet spot, and (2) does the sweet spot differ for aluminum vs wood — and this team gave clean, quantified, physically-reasoned yes/no answers (corking LOWERS exit velocity ~0.7-1.5%, so it does not help via the sweet spot; aluminum gives ~9-11% higher exit velocity and a wider sweet zone). The winning move is the optimization reframing: instead of arguing about which textbook definition of 'sweet spot' is right, they made it a tunable objective with a preference coefficient lambda, which is both defensible and original. The model is parsimonious and reusable — one collision model parameterized three ways — which judges read as elegance. Numbers are concrete throughout (sweet spot 18.21 cm from the end, exit velocity 3915.8 cm/s) and every conclusion is tied back to a batter-facing recommendation. The sensitivity analyses showing the sweet-spot location is insensitive to lambda and bat mass let them claim robustness credibly. And they answered the implicit 'why are these bats banned' angle with safety and psychology, showing real-world insight beyond the math.\"",
+  "section_highlights": "\"Strong, self-contained summary that states all three answers with specific numbers up front (sweet spot location, exit velocities, the aluminum/corked verdicts) — a judge can grade the whole paper from page one. Clear problem-to-objective pipeline: introduction surveys competing sweet-spot definitions, then the model commits to one explicit objective formula. Logical reuse structure: Section 3 builds the baseline wood model end-to-end (objective -> comfort index -> velocity index -> parameters -> solve -> sensitivity), and Sections 4 (cork) and 5 (aluminum) are presented as parameter deltas, which keeps the paper compact and easy to follow. Heavy, well-labeled use of figures and tables (curves of comfort/velocity/objective vs location, side-by-side sweet-zone comparisons, sensitivity tables with percent-change columns). Each sub-model ends with a plain-language 'why banned' interpretation, and the paper closes with an explicit batter-facing suggestions list and an honest strengths/weaknesses section. The objective-function curve is used as the central visual that simultaneously yields the sweet spot, the sweet zone, and the comfort/velocity tradeoff.\"",
+  "pitfalls_or_limitations": [
+    "Vibration is not modeled directly — the dominant physical definition of the sweet spot in the literature (node of the first bending mode / minimal vibration) is folded only crudely into the location-dependent restitution e(b); the team admits this and suggests a free-free elastic-beam vibration model as future work but does not do it",
+    "The comfort index hard-codes a magic constant (E_batter = 1 - 0.3123*(...)^2) whose origin and normalization are not fully derived in-text, weakening reproducibility",
+    "Linear scalarization with a single lambda only finds tradeoff points that lie on a convex Pareto frontier and bakes in a strong commensurability assumption between sting and speed; no Pareto front is shown, just point solutions",
+    "Several parameters come from web pages (Baidu Zhidao answers, personal physics sites) rather than peer-reviewed sources, and the wooden-bat e values are fit from a small 6-point table (then floored at 0.4), so the restitution curve is fragile",
+    "Idealized geometry (uniform density, two perfect cylinders, no taper/handle/knob) and explicitly ignores ball spin and bat breakage; rotation of the ball is assumed away",
+    "Unit and notation sloppiness (mixing cm/s with mph/km/h, 'coefficient of resistant' for restitution, OCR-mangled symbols, a 49.99 vs 48.66/48.05 inconsistency in the aluminum highest-velocity point) — cosmetic but the kind of thing that costs polish points",
+    "The 'why corked bats are banned' explanation leans partly on psychology and reaction-time hand-waving rather than the actual rule rationale, and the swing-speed empirical formulas are used without validating their applicability to corked geometry"
+  ],
+  "reusable_patterns": [
+    "When a problem hinges on an ambiguous term, survey the competing definitions, then DEFINE your own as an explicit optimization objective — turn the controversy into a modeling choice rather than guessing the 'right' answer",
+    "Scalarize multiple incommensurable goals by normalizing each to a [0,1] index and combining with a tunable weight (preference coefficient); then sweep that weight in sensitivity analysis to show the answer is stable",
+    "Build ONE core mechanism model, then solve every sub-question by swapping geometry/material parameters (hollow walls, density inserts) instead of writing new models — judges reward this parsimony and it saves time",
+    "Use composite-body decomposition + parallel-axis theorem as the standard recipe to get masses, centers of mass, and moments of inertia for any idealized shape feeding a rigid-body dynamics model",
+    "Treat a physically-constant-looking coefficient (here, restitution) as a spatial FUNCTION fit from experimental data — capturing real effects (trampoline/location dependence) cheaply without a full PDE/vibration model",
+    "Frame sensitivity analysis explicitly as a robustness/stability argument: report percent changes and emphasize when the KEY output (location) barely moves even if magnitudes shift",
+    "Anchor every numeric parameter in a cited external source and state it in a dedicated 'parameter determination' subsection, so the solve step is auditable",
+    "Always close each result with a stakeholder-facing recommendation (here, advice to batters) and a candid strengths/weaknesses section — converts math into the 'so what' judges look for",
+    "Lead the summary with the concrete final numbers and verdicts so a time-pressured judge sees the answer immediately"
+  ]
+}

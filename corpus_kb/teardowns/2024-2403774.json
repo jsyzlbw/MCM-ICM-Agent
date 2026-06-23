@@ -1,0 +1,41 @@
+{
+  "paper_id": "2024-2403774",
+  "year": 2024,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Create a model to capture the flow of a tennis match from point-level data, quantify player momentum at any moment, evaluate whether momentum genuinely impacts outcomes, predict pivotal swings, and provide advice to coaches.",
+  "models_used": [
+    "XGBoost",
+    "Bayesian online changepoint detection",
+    "Temporal Convolutional Network (TCN/MSTCN)",
+    "Kalman filter",
+    "Spearman correlation"
+  ],
+  "key_techniques": [
+    "Multi‑scale feature engineering (current‑point, previous‑point, set/game/match‑level variables)",
+    "Correlation‑based variable selection using Spearman rank coefficient and importance ranking",
+    "Exponential‑weighted momentum labeling with a serving‑advantage factor",
+    "5×5‑fold cross‑validation for hyper‑parameter tuning and evaluation",
+    "Kalman filtering to smooth momentum visualizations",
+    "Random match baseline generation to test causality",
+    "Multi‑Stage Temporal Convolutional Network with dilated causal convolutions and multiple kernel sizes"
+  ],
+  "why_it_won": "The paper delivers a rigorous, end‑to‑end solution: a clearly defined momentum metric, meticulous data preprocessing, and a convincing random‑baseline experiment that statistically proves momentum is non‑random. It further employs Bayesian changepoint detection to identify match‑turning regions and designs a custom multi‑scale temporal convolutional network to predict them. The work is validated exhaustively with diverse metrics, cross‑validation, and a successful generalization test on women’s matches, all presented with polished visualizations.",
+  "section_highlights": "Data preprocessing is exceptionally detailed, with explicit visual evidence (boxplots, heatmaps) and a systematic feature‑recombination table. Each model is accompanied by pseudocode, equations, and step‑by‑step construction, while multiple evaluation metrics and side‑by‑side comparisons strengthen credibility. The report follows a logical narrative from problem restatement through assumptions to validation, making complex methodology accessible.",
+  "pitfalls_or_limitations": [
+    "Assumes constant total momentum for the two players, which may oversimplify real dynamics.",
+    "One match discarded due to missing serve‑speed data, reducing the training set.",
+    "Ignores external factors (psychological state, physical fatigue beyond distance run) not captured in the dataset.",
+    "Momentum estimates still exhibit noise even after Kalman filtering.",
+    "Model performance may degrade when very long‑term momentum inheritance is critical."
+  ],
+  "reusable_patterns": [
+    "Create multi‑scale time‑frame features (instant, local history, set‑ and match‑level aggregates) for rich representation.",
+    "Define target labels with exponential decay and domain‑specific adjustments (e.g., serving boost).",
+    "Generate a random baseline to statistically test whether a pattern is merely chance.",
+    "Apply Bayesian online changepoint detection to locate structural shifts, then use a sequence model (TCN) to predict them.",
+    "Use a multi‑stage temporal convolutional network with varied kernel sizes to capture short‑, medium‑, and long‑term trends simultaneously.",
+    "Perform systematic variable selection via correlation analysis and drop‑one‑feature importance ranking.",
+    "Clean data with IQR for outlier treatment and domain‑informed imputation (e.g., factoring double faults, rally count)."
+  ]
+}

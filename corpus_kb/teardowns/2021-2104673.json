@@ -1,0 +1,53 @@
+{
+  "paper_id": "2021-2104673",
+  "year": 2021,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2021 MCM Problem B (ICM, discrete): design a \"Rapid Bushfire Response\" UAV fleet for the Victoria, Australia bushfires. The team had to choose the type/number of two drone classes (SSA video+telemetry drones and radio-repeater drones) plus one mobile Emergency Operations Center (EOC), find the most-demanded SSA hover locations and best repeater hover positions, and propose a dispatch/recharge schedule that maintains continuous coverage and communication, balancing capability, safety, and economics. The deliverable also had to account for changing extreme-fire likelihood over the next decade and produce a budget request memo.",
+  "models_used": [
+    "Regional discretization model: fire area mapped to an M×N grid of unit cells (each cell = minimum transmit area of a 5W transmitter), with a 4-layer tensor representation (time layer t, drone layer x as 0-1 state, information layer I, flame-severity layer h)",
+    "Multi-objective 0-1 (binary) integer programming for SSA drone placement — maximize information-detection revenue (weighted by fire severity h_ij) minus a per-drone penalty α; solved in LINGO",
+    "Information-gain saturation model I_ij = 1 - exp(-λ t_ij) with λ = vR/S_d, encoding diminishing returns of dwell/detection time per cell",
+    "Five-mode SSA detection scheme (each drone covers 1 or 2 adjacent blocks), encoded via 5 drone sub-layers and the upper-left-corner cell identity",
+    "Cellular Automata (CA) fire-spread simulation: 6-state cell life model (w=5 unburned, 4..1 burning with residual life, 0 burnt-out), Gaussian-filter (MATLAB fspecial/imfilter) neighborhood ignition probability vs critical fire probability p_f, plus a flameout probability rule",
+    "Two-level fitted mapping for climate coupling: S_f = 64.12 p_f^-7.051 (burned area vs critical ignition probability) and p_f = -0.1226T + 2.924 (ignition probability vs pre-fire temperature), with T = 17.3 e^{0.0011 t} for the 10-year warming trend",
+    "Terrain-adapted discretization with path planning: per-cell minimum transit time g_ij from elevation change, path-order variable o_ijk with connectivity constraints to enforce a continuous drone route",
+    "Radio-repeater placement model: minimize total repeater-to-EOC distance subject to flight-range and SSA-communication-link constraints (also solved in LINGO)",
+    "Terrain-to-communication-range model: signal range M = k·ln(|∇²L| + 1) using the Laplacian (second gradient) of the elevation field as a shielding proxy",
+    "Recharge/relay scheduling rule: ns_r = 2 or 3 repeater units per station depending on whether t_charge + t_road ≤ t_stay, to guarantee continuous repeater presence"
+  ],
+  "key_techniques": [
+    "Grid discretization of an irregular geographic fire region into a rectangular lattice after spherical-to-planar coordinate transform, turning continuous siting into tractable integer programming",
+    "Layered/tensor decomposition of the decision space (time, drone-state, information, flame layers) so distinct physics live in separate matrices over the same grid",
+    "Coupling a stochastic CA simulation to the optimizer by post-processing burn-time accumulation into the severity weight h_ij that drives the objective — simulation feeds optimization",
+    "Penalty-term economics: the α·Σx_ij term acts as a marginal-value threshold that endogenously decides how many drones to buy (stop adding drones when marginal detection revenue < α)",
+    "Using the discrete Laplacian of elevation as a physically-motivated proxy for radio shielding by rough terrain",
+    "Encoding a continuous path as integer order labels o_ijk with product-form connectivity constraints (each on-path cell must have a neighbor labeled one less)",
+    "Curve-fitting empirical power-law / linear relations (MATLAB cfit) to bridge CA outputs, temperature, and burned area",
+    "Two-simulation-per-parameter sensitivity testing to expose CA stochastic variance, and stepwise parameter sweeps on λ, α, p_f to report robustness/instability"
+  ],
+  "why_it_won": "From a judge's view, this paper wins on three fronts. (1) Coverage and faithfulness to the prompt: it explicitly answers every sub-question — drone types and counts (10 SSA + 2 repeater, with a 12-drone WileE-15.2X purchase), EOC location (1,6), repeater hover positions, a recharge/relay schedule, the next-decade climate sensitivity, AND it delivers the required budget-request memo as a polished CFA letter plus an itemized cost table. (2) A genuine end-to-end pipeline rather than three disconnected models: the CA fire simulator produces a severity field h_ij that becomes the weight inside the SSA integer program, whose output count feeds the repeater optimizer — judges reward this kind of model chaining. (3) Mathematical concreteness with reproducibility: real LINGO and MATLAB code in the appendix, named drone hardware, real elevation/fire datasets, and an information-saturation objective with a clean economic penalty that ties directly to the capability-vs-cost trade the problem demanded. The climate layer (fitted p_f-temperature-area chain + warming trend) gives a quantitative, defensible answer to the \"next decade\" clause that many teams hand-wave.",
+  "section_highlights": "Structure is textbook-strong: one-page itemized summary that names each model and its method; explicit numbered assumptions each with a justification line; a full notation table with units; a two-figure model-overview flow (problem framework + algorithm pipeline) that makes the model chaining legible at a glance. Each model gets Preparation -> Derivation -> Constraints -> Results, and Model 2's CA algorithm is given as a step-by-step procedure plus a flowchart. The sensitivity section is separated out and honestly reports both a robust parameter (λ stabilizes drone count at 5) and an unstable one (α swings 7->3, p_f swings 10->4), which reads as scientific maturity. The Strengths/Improvements section is candid, and the appendix ships runnable LINGO/MATLAB so claims are auditable. The budget memo is written in genuine business-letter register addressed to the CFA — strong audience awareness.",
+  "pitfalls_or_limitations": [
+    "CA model assumes fire can ignite in every cell (uniform vegetation) — the team itself flags this as unrealistic since only vegetated cells can burn; no fuel/vegetation map is used",
+    "Terrain assumed not to affect flame spread (Assumption 8) and not to affect drone speed/battery (Assumption 5), which undercuts the very terrain-influence question Model 3 is supposed to address; the conclusion that terrain barely matters partly follows from these assumptions rather than from data",
+    "Several equations are garbled or under-specified as transcribed: the EOC out-of-fire constraint (eq 6) is a strange self-referential inequality, the repeater objective (eq 15) uses j_EOC for both coordinates, and the connectivity product constraint (eq 9) is stated without a clean derivation",
+    "Heavy reliance on magic constants from curve fits (S_f = 64.12 p_f^-7.051; p_f = -0.1226T + 2.924) over a very narrow temperature window T∈[16,18.9] with little validation data — admitted lack of detailed Victoria climate data",
+    "High sensitivity of the headline result to p_f and α (drone count nearly doubles across the swept range) means the '10 SSA + 2 repeater' answer is not robust; the team reports this but does not resolve it",
+    "The 0-1 integer program with per-cell path-order connectivity constraints is combinatorially heavy; only a small grid is solved in LINGO and scalability/optimality is not discussed",
+    "Weather and UAV ascent/descent dynamics dropped for tractability, acknowledged as a source of model-vs-reality error",
+    "Climate trend T = 17.3 e^{0.0011 t} yields only ~0.2°C over 10 years, which seems inconsistent with the cited 1.5°C/50-yr figure — the warming signal driving the next-decade answer is weak"
+  ],
+  "reusable_patterns": [
+    "Discretize-then-integer-program: map an irregular continuous siting/coverage problem onto a rectangular grid and solve placement as 0-1 integer programming in LINGO — directly reusable for any coverage/facility-location MCM problem",
+    "Simulation-feeds-optimization chaining: run a stochastic simulator (CA, agent-based, queueing) to produce a per-cell weight field, then use that field as the objective weight in an optimizer — a clean way to combine 'predict' and 'decide' sub-questions",
+    "Marginal-value penalty term (objective = revenue - α·count) to let the model endogenously choose 'how many' resources rather than fixing the count by hand",
+    "Saturation/diminishing-returns utility I = 1 - exp(-λ t) for modeling information gain, coverage, or service value as a function of time/effort",
+    "Layered-matrix (tensor) modeling: keep separate physical quantities as aligned matrices over a shared grid for clarity and clean constraint writing",
+    "Discrete-Laplacian-of-elevation (|∇²L|) as a cheap proxy for terrain ruggedness affecting signal/visibility/transit",
+    "Encode a path as integer order-labels with product-form neighbor connectivity constraints when you need a contiguous route inside an integer program",
+    "Couple climate/time to your core driver via a short fitted chain (driver <- intermediate <- temperature <- time) so a 'next decade' clause becomes a quantitative parameter sweep",
+    "Two-runs-per-value sensitivity protocol to surface and report stochastic-model variance honestly",
+    "Always ship the required side deliverable (here a budget memo with an itemized cost table) in the correct register and addressed to the named stakeholder"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "paper_id": "2024-2409961",
+  "year": 2024,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asked teams to quantify 'momentum' in tennis, predict its fluctuations, identify key factors influencing it, and provide actionable advice for coaches to help players manage momentum shifts during matches.",
+  "models_used": [
+    "Cubic spline interpolation (Instantaneous Score Rate model)",
+    "GRU sequence model with player embeddings",
+    "Integrated Gradients (feature attribution)",
+    "Moving average smoothing",
+    "Linear dimensionality reduction layers"
+  ],
+  "key_techniques": [
+    "Cubic spline interpolation for smooth differentiation of discrete point data",
+    "Statistical independence test using central limit theorem and bimodal distribution check",
+    "Manual feature grouping into six interpretable dimensions (mentality, endurance, error rate, offensive, skill, key points)",
+    "GRU-based time-series prediction with player-specific embeddings",
+    "Integrated Gradients for post-hoc feature importance quantification",
+    "Moving average to stabilize instantaneous scoring rate into a momentum curve",
+    "Data cleaning with distribution-based imputation for missing values",
+    "Generalization testing across surfaces, genders, and match types",
+    "Construction of a linear-equation-based player capability evaluation system"
+  ],
+  "why_it_won": "The paper seamlessly combined classical numerical methods (cubic splines) with modern deep learning (GRU) to model a dynamic and noisy concept. Its rigorous statistical justification of the non-independence of momentum and scoring, coupled with interpretable feature engineering via Integrated Gradients, addressed the coach's questions directly. The thorough validation, including generalization tests on unseen surfaces and matches, and the translation of model outputs into concrete, player-specific strategic advice demonstrated exceptional completeness and real-world applicability.",
+  "section_highlights": "The report follows a clear, problem-driven structure, moving from data visualization to formal hypothesis testing and finally to predictive modeling and recommendations. Each major section opens with a purpose statement and concludes with a takeaway, enhancing readability. The use of Mermaid flowcharts to summarize the entire workflow visually at the outset gives an immediate, high-level understanding of the modeling pipeline.",
+  "pitfalls_or_limitations": [
+    "The model struggles to predict sudden, abrupt changes in match momentum due to its inherent smoothing and training on historical data.",
+    "The player capability evaluation system uses only the champion as a fixed reference standard, potentially oversimplifying comparative strength.",
+    "Several influential factors (tactical adjustments, player health, crowd atmosphere, detailed venue characteristics) are acknowledged as not or only partially captured.",
+    "The linear aggregation into six attribute dimensions may lose nuanced interactions between individual indicators."
+  ],
+  "reusable_patterns": [
+    "Using cubic spline interpolation to convert discrete event sequences into continuously differentiable functions, from which instantaneous rates can be analytically derived.",
+    "Applying a moving average to a noisy derivative series to obtain a stable, interpretable 'momentum' curve.",
+    "Testing independence between a derived metric and outcomes by normalizing data and checking for unimodal normal distribution using the central limit theorem as a null model.",
+    "Grouping high-dimensional raw features into a small set of human-interpretable dimensions, then using linear layers inside a recurrent network to learn the contribution of each raw feature to its dimension.",
+    "Combining a recurrent neural network (GRU) with Integrated Gradients to both predict a target sequence and identify which input dimensions most influence the predictions, enabling model explanation.",
+    "Performing generalization tests by retraining on one surface/category and evaluating on another, reporting MSE distributions (e.g., violin plots) to assess robustness."
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "paper_id": "2016-42939",
+  "year": 2016,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2016 MCM Problem C (data): given a large cross-sectional U.S. College Scorecard dataset, advise the Goodgrant Foundation how to distribute $100M/year for 5 years across colleges to best improve student educational performance. The core difficulty is that \"donation -> performance\" is not directly in the data, the data is high-dimensional (108 candidate variables), heavily missing, and almost purely cross-sectional (no time-series to track effect of a donation over time). The team reframes it as an ROI-maximization problem with an original, charity-appropriate definition of ROI (increase in a constructed performance index per dollar donated).",
+  "models_used": [
+    "Composite performance index built from 4 selected performance indicators (completion/graduation rate, two earnings measures, repayment rate)",
+    "Principal Component Analysis / principal-component factors (PCF) to derive indicator weights, using the Customer Satisfaction Index weighting scheme (weights from first 2 PCFs scaled by variance proportions N1, N2)",
+    "LASSO (L1-penalized linear regression) for variable selection from 108 candidates, solved with the LARS algorithm",
+    "post-LASSO: OLS refit on the LASSO-selected subset to get unbiased coefficients (5-6 variables retained, e.g. PCTPELL, PPTUG_EF, StudentToFaculty_ratio, Tuition&Fees2010, Carnegie_HighResearchActivity)",
+    "Cross-validation (CV-MSE minimization) to choose the LASSO shrinkage/penalty factor (chose s=0.6)",
+    "Generalized Additive Model (GAM, called 'Generalized Adaptive Model' in the paper) to smoothly fit each donation-affectable variable against donation amount across all institutions",
+    "Homogeneous/heterogeneous decomposition of donation impact: fitted ROI (fROI = Δf/ΔX from the GAM curve) times a tuning parameter P_i (function of an institution's deviation Δh from the fitted curve, piecewise-linear, range 0-2, capturing diminishing marginal utility)",
+    "Two-step greedy ROI-maximization allocation algorithm: (1) per-institution pick the donation amount maximizing ROI, (2) rank institutions by max ROI and fund top-down until the $100M budget is exhausted",
+    "Extended models for the time dimension (dynamic full re-calibration with new yearly data; partial calibration that moves only funded institutions' points X'=X+ΔX, F_i'=F_i+ROI_i·ΔX) and geographical distribution (group-and-split or ROI-discounting for over-concentration)"
+  ],
+  "key_techniques": [
+    "Defining a domain-appropriate objective (ROI = ΔY/ΔX) instead of accepting the problem's vague 'best improve performance' — turns an open-ended ask into a maximizable quantity",
+    "Causal-chain framing to dodge endogeneity: donation does NOT regress directly on performance; instead donation -> performance-contributing variables -> performance index, with an explicit assumption (A5) justifying it",
+    "Tiered missing-data handling by missing rate (>50% drop, 10-50% imputation/model-based, <10% mean fill) rather than one blanket method",
+    "Using PCA not just for dimension reduction but as an objective, weight-assignment mechanism for the composite index, with external validation (top-10 list matches QS ranking)",
+    "post-LASSO specifically (LASSO for selection, OLS for honest coefficients) to avoid LASSO's shrinkage bias while still pruning 108->~5 variables and avoiding overfit",
+    "Filtering selected variables by actionability — dropping tuition and Carnegie classification because donation can't move them, keeping only the 3 donation-susceptible levers",
+    "Splitting impact into a homogeneous (population-level fitted curve) and heterogeneous (institution-specific deviation) component to inject per-institution realism from cross-sectional-only data",
+    "Discretizing the decision variable (donations in $0.5M steps up to $10M) to make ROI a finite set per institution, enabling a clean exhaustive/greedy optimization",
+    "Turning a static model into a multi-year strategy via calibration update rules, and addressing fairness via ROI discounting"
+  ],
+  "why_it_won": "\"It directly conquers the hardest, most distinctive trap of this specific problem — there is no donation-to-outcome signal in the data and almost no time-series — and builds a coherent, defensible causal pipeline (PCA index -> post-LASSO levers -> GAM dose-response -> ROI -> greedy allocation) that produces a concrete, deliverable answer: a ranked list of institutions with exact dollar amounts for each of 5 years. Judges reward a model that is end-to-end data-motivated with 'no arbitrary criterion,' and this team repeatedly justified each choice statistically (CV-chosen penalty, R^2=0.61, all coefficients significant) and validated outputs against external reality (index ranking vs QS). The ROI reframing is genuinely original and perfectly fits the 'charitable foundation' framing of the prompt. It also went beyond the baseline (time + geography extensions) and packaged everything cleanly, including the required CFO letter with an attached actionable table — exactly the consultant deliverable the problem asks for.\"",
+  "section_highlights": "\"Summary (lines 33-45) is a model abstract: it walks the entire pipeline in order and names every method, so a judge knows the whole approach in 60 seconds. The CFO letter (47-67) translates the math into plain advisory language and attaches the actionable year-1 funding table — strong audience awareness. The Definitions table (197) and Assumptions A1-A6 (201-215) pin down every symbol and modeling leap before the math, making the heavy notation followable. Section 4 (post-LASSO) is the analytical centerpiece, with the LASSO coefficient-path figure, the CV-MSE figure justifying s=0.6, and a regression table reporting coefficients, significance and R^2 like a real econometrics paper. Section 5 cleanly layers fROI -> tuning parameter P -> ROI -> two-step allocation. The advantages list (219-227) and honest limitations (619-622) bookend the argument well. The flowchart (Fig 1) and geographic map (Fig 8) aid navigation and concreteness.\"",
+  "pitfalls_or_limitations": [
+    "The central causal claim is correlational dressed as causal: the GAM fits performance-contributing variables against TOTAL donation amount across institutions, then treats the slope as the marginal effect of Goodgrant's NEW donation — a cross-sectional association read as a dose-response/intervention effect (the team admits time-series is needed)",
+    "The tuning parameter P_i is essentially invented: its 0-2 range, its shape, and the piecewise-linear endpoints (at min/half/quarter of deviations) are asserted from intuition with no data fit or calibration, undercutting the 'fully data-based, no arbitrary criterion' claim the paper repeatedly makes",
+    "Internal inconsistencies/sloppiness: 'GAM' is called 'Generalized Adaptive Model' (it's Additive); LASSO is cited to Tibshirani while the LARS/post-LASSO attributions are loose; summary says 5 variables then says 3, and the figure shows 6; one Year-3 ROI of 3.16% looks like an unexplained outlier/typo",
+    "PCA-based index weighting only captures variance/correlation structure, not normative importance — a variable can dominate the index for statistical reasons unrelated to what the foundation actually values",
+    "The greedy two-step allocation maximizes per-institution then fills the budget top-down; this is not guaranteed globally optimal under the budget knapsack and ignores interactions, though discretization makes it tractable",
+    "Imputation choices (random-similar-record, 'distribution diagram' substitution) are vaguely described and not validated for bias; dropping >50%-missing variables may discard informative but sparsely-reported fields",
+    "ROI values (~19-22%) are presented without uncertainty bounds or sensitivity analysis on the penalty factor, the P_i shape, or the imputation method"
+  ],
+  "reusable_patterns": [
+    "When the target outcome isn't directly in the data, build a mediating causal chain (treatment -> actionable mediators -> constructed outcome index) and state an explicit assumption licensing it — a clean way to handle endogeneity in modeling-contest data problems",
+    "Construct a composite outcome index via PCA/PCF weighting, then validate it against an external known ranking to earn judge trust",
+    "Use post-LASSO (LASSO-select then OLS-refit) as a go-to for high-dimensional variable selection that yields both a sparse model and reportable, significant coefficients; pick the penalty by CV-MSE and show both the coefficient-path and CV-error plots",
+    "After statistical selection, add an actionability filter — keep only variables the decision-maker can actually move — to connect the model to the real decision",
+    "Decompose effects into a population-level homogeneous component (a fitted curve) plus an institution/unit-specific heterogeneous adjustment to extract individualized predictions from cross-sectional-only data",
+    "Discretize the decision variable to convert a continuous optimization into a finite-set greedy/exhaustive search that is easy to implement and explain",
+    "Define a single maximizable objective (ROI) and a simple two-step rank-and-fill allocation under a budget constraint",
+    "Deliver the answer in the stakeholder's format (a CFO letter plus an attached, ready-to-act funding table), and extend the baseline along the prompt's explicit extra dimensions (time, geography) with concrete update rules",
+    "Tier missing-data treatment by missing rate rather than one global method, and state the thresholds explicitly"
+  ]
+}

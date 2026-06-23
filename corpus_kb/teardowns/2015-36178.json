@@ -1,0 +1,55 @@
+{
+  "paper_id": "2015-36178",
+  "year": 2015,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2015 MCM Problem B (discrete): design a method to locate a passenger plane lost over a large body of water. This Outstanding paper builds an end-to-end \"lost-plane\" search pipeline that (1) computes the probable splash-down area from minimal known data (last known position, heading, altitude, speed, plane family), (2) drifts/reshapes that area day-by-day using real ocean-current data, (3) chooses among three sweep-search algorithms to maximize probability of detection, and (4) reverse-drifts found debris back to the crash origin — explicitly framed as a tool usable at every stage of an evolving search rather than a single static answer.",
+  "models_used": [
+    "Glide-distance geometry: max unpowered glide distance d = altitude / tan(theta) used as the outer travel-distance bound",
+    "Turn-radius model via kinematic integration: r = integral over 0..60s of speed*cos(1.5t) dt, assuming a 1.5 deg/s turn rate (90 deg in 60 s), then parametric end-position equations x(theta), y(theta) trading arc-length-spent-turning against remaining glide",
+    "Search-area construction: rotation matrix to align shape to heading + wind-uncertainty expansion (push each perimeter edge point outward along its center-normal, scaled by wind speed) + convex hull algorithm (Graham-scan style, per Sedgewick/Wayne) to 'shrink-wrap' the point cloud into an n-gon",
+    "Ocean-current drift via Euler's method (forward integration of OSCAR/MH370-area surface-current vector field over discrete 24-hour steps), with convex hull re-applied each day to re-bound the drifted markers",
+    "Reverse-drift via Euler's method run backward (subtract scaled current vectors) to trace recovered debris to crash origin",
+    "Search Theory / Probability of Detection model: POD = 1 - exp(-(t*r*n*s)/a) using effective sweep width s",
+    "Effective sweep width function: Mathematica interpolation of US National SAR Committee sweep-width tables (over altitude, weather, object size) into a continuous global function",
+    "Three discrete sweep-search algorithms over the bounding rectangle: (a) parallel search, (b) 45-degree diagonal search with a piecewise area-swept formula, (c) optimized parallel search using 'search blocks' where staggered planes each fly one fewer leg, with total-legs TL_i = L_i*P_i - P_i*(P_i-1)/2",
+    "Representative-archetype modeling: five plane 'families' each reduced to one canonical aircraft (Cessna 172, F-22A, Challenger 300, 737-300, C-5B Galaxy) to parameterize speed/altitude/mass"
+  ],
+  "key_techniques": [
+    "Reducing an underdetermined problem to minimal inputs: derive the whole splash-down shape from just last-known-position, heading, altitude, and speed — explicitly assuming little is known",
+    "Worst-case adversarial assumption ('the crash occurs in the way that makes the search hardest') to make one model cover all scenarios and justify a conservative outer bound",
+    "Replacing the naive search-circle with a turn-radius-refined non-circular shape, then convex-hulling it back into a tractable near-elliptical n-gon",
+    "Reusing a single Euler-integration engine in both directions: forward to drift the search area, backward to trace debris — one mechanism, two deliverables",
+    "Brute-force scenario sweep: ran 900+ unique search scenarios over #planes, weather, visibility, area size to empirically map which algorithm wins where, instead of claiming one universal optimum",
+    "Grounding parameters in authoritative SAR/government sources (US National SAR Supplement, ATSB MH370 report, Coast Guard POD guide) rather than invented numbers",
+    "Real-data validation against an actual crash (Air France 447, 40 NM circle) with an honest explanation of why their bound is larger (less assumed information)",
+    "One-factor-at-a-time sensitivity analysis around a defined median 'baseline' scenario (85,957 sq NM, 11-day estimate), reporting direction AND rate of change per parameter"
+  ],
+  "why_it_won": "From a judge's seat, this paper wins on completeness, honesty, and operational realism rather than on any single fancy method. It treats the prompt as a real search-operations problem and delivers a tool for the entire search lifecycle (predict area -> drift it -> search it -> reverse-trace debris -> repeat), which directly answers the 'where AND how to search' double-barreled question. The modeling is conservative-by-design and well-justified: every assumption is paired with a reason, the math is reproducible (explicit d=alt/tan(theta), the turn integral, the parametric end positions, POD, the block-summation formula), and parameters are sourced from real SAR manuals and aircraft specs instead of being fabricated. Crucially, it does not over-claim: instead of declaring one 'optimal' algorithm, it runs 900+ scenarios and produces a decision rule (few planes/large area/bad weather -> optimized parallel; many planes/small area/good weather -> optimized parallel; otherwise diagonal), which reads as mature engineering judgment. The validation against AF447 with a candid explanation of the discrepancy, plus a quantified sensitivity table and an unusually frank weaknesses section, signal scientific integrity that judges reward. The required press-release / executive summary is clean and jargon-free.",
+  "section_highlights": "Strong structure choices a future team can copy: (1) Summary sheet states the model is \"robust... used throughout the entire search process\" and quantifies effort (900+ scenarios) — sells scope and rigor up front. (2) Numbered Assumptions, each with an explicit justification clause (e.g., visual-only search because radar/IR can't detect small debris per a cited source) — judges can audit reasoning instantly. (3) Clean problem decomposition into 6 named model components, each getting its own subsection, so the long Statement-of-Model reads as a pipeline, not a wall of equations. (4) A worked numerical example threaded through (500-knot plane, 40 NM glide -> 5.31 NM turn radius -> 32 NM after 90-deg turn) makes abstract geometry concrete with figures. (5) Results section separates real-world validation (AF447) from the algorithm comparison, and gives memorable extreme numbers (best 3 days, worst 35,000 days ~ 100 years) that make trade-offs vivid. (6) Per-parameter sensitivity subsections each report both the direction of change and an inferred functional form (linear at rate 1/4000, inverse-exponential, logistic). (7) Explicit Strengths/Weaknesses/Future-improvements triad demonstrating self-awareness. (8) A separate plain-language press address fulfilling the deliverable.",
+  "pitfalls_or_limitations": [
+    "Ocean-current drift only works in the MH370 vicinity — they hard-coded a single local OSCAR current dataset and admit they cannot model currents globally, so the drift/reverse-drift engine is not actually general",
+    "Search is performed over the bounding RECTANGLE of the n-gon, not the n-gon itself, so planes waste time sweeping outside the true probable area; the elegant convex-hull shape is partly thrown away at search time",
+    "Euler's method (first-order) for current integration accumulates error over multi-day horizons and over a coarsely-sampled vector field; no higher-order scheme or error bound on the drift is given",
+    "Several modeling simplifications stack up: ignores air drag in the glide, ignores the plane's forward speed at power-loss (admitted to bias the area too small), discretizes current drift to once-overnight jumps, and drops the debris 'splash' expansion",
+    "The POD/area model mixes two different POD formulas (Eq. 4 with t,r,n,s vs Eq. 9 using A_swept/A_search) without fully reconciling them, and 'summing POD across days > 0.95' is a loose stopping criterion that can double-count overlapping coverage",
+    "Plane-family archetypes (one representative per family) ignore within-family variance; a real lost aircraft may be far from the canonical model's speed/altitude/mass",
+    "Many embedded figures/data tables in this markdown extraction are clearly OCR/parse artifacts (e.g., the 0..100 identity 'line chart', radar-chart angle tables to thousands of degrees), so the original figure content cannot be fully verified from this file",
+    "Wind-direction uncertainty is handled by isotropically inflating the whole perimeter by wind speed — crude, and can over-expand the area",
+    "No probabilistic prior/weighting inside the search area (treated as uniform), so high-likelihood sub-regions are not searched first"
+  ],
+  "reusable_patterns": [
+    "Lifecycle framing: pitch the model as a tool for every stage of an evolving problem (predict -> update -> act -> re-estimate -> repeat) rather than a one-shot answer — directly satisfies multi-part prompts",
+    "Minimal-input design: explicitly state the few inputs you require and derive everything from them; makes the model robust and easy for judges to trust",
+    "Worst-case / conservative-bound assumption to collapse many scenarios into one, with an explicit justification sentence",
+    "Bidirectional reuse of one numerical engine (forward integration = prediction, backward integration = inverse inference) — high payoff for low extra code",
+    "Convex hull to tame an irregular geometric region into a tractable polygon for downstream computation",
+    "Calibrate parameters from authoritative domain sources (government SAR manuals, accident-bureau reports, manufacturer specs) and cite them inline — instant credibility",
+    "Decision-rule output from a large brute-force scenario sweep instead of a single 'optimal' claim: 'use X when conditions A, Y otherwise' reads as mature and defensible",
+    "Validate against a real historical case and explain any discrepancy honestly (here: bigger search radius because less info assumed)",
+    "Median-baseline + one-factor-at-a-time sensitivity, reporting both direction and inferred functional form (linear/inverse-exponential/logistic) per parameter",
+    "Archetype reduction: collapse a heterogeneous population into a few canonical representatives to make parameterization tractable",
+    "Pair every assumption with a one-line justification, and include an explicit Strengths/Weaknesses/Future-work section to show self-awareness",
+    "Thread one concrete worked numerical example through the abstract derivations so figures and formulas stay legible"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "paper_id": "2025-2500836",
+  "year": 2025,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2025 MCM Problem A asked teams to model staircase wear to infer usage: stair-usage frequency, directional preference (up vs down), single-file vs side-by-side travel, age estimation with reliability, signs of repair/renovation, material-source consistency, and whether wear reflects short-term heavy use or prolonged light use. This paper grounds the entire analysis in a concrete case study: the marble internal staircase of the Leaning Tower of Pisa.",
+  "models_used": [
+    "Archard's wear law as the core physics: d = k·N^b, with empirical exponent b≈0.3 and friction/wear coefficient k=0.06 for marble; inverted and integrated to back out daily pedestrian traffic N_daily = (1/T)·∬_A (d(x,y)/k)^(1/b) dx dy",
+    "Two-dimensional (bivariate) normal distribution as the surface wear-depth field d(x,y), capturing the central concave depression",
+    "Particle Swarm Optimization (PSO) to fit the 2-D normal parameters (rho, mu1, mu2, sigma1, sigma2) by least-squares against scanned data",
+    "Computer-vision preprocessing pipeline: grayscale conversion, Gaussian denoising, edge detection, then 3-D wear-depth reconstruction/visualization",
+    "Custom directional-preference index D = (d_mid - d_edge)/(d_mid + d_edge) to decide ascending vs descending dominance",
+    "Navier-Stokes-derived continuity (mass-conservation) equation ∂ρ/∂t + ∇·(ρv) = N(x,y,t) treating the crowd as a fluid, solved by finite-difference method (Forward Euler in time, central difference in space) with no-slip boundary conditions, to get density ρ and decide single-file vs side-by-side",
+    "Exponential decay model of historical foot traffic N(t)=N0·e^(-λt), integrated to give cumulative usage and theoretical wear",
+    "Stair-age estimator inverted from the wear-vs-time relation, T_hat = -(1/λ)·ln(1 - (λ/N0)(d/k)^(1/b))",
+    "Error-propagation formula for age uncertainty (partial derivatives of T w.r.t. d, N, k) plus Monte Carlo simulation for a 95% confidence interval (T_hat ± 1.96·σ_T)",
+    "Pearson correlation coefficient (with p-value significance test) on a feature vector [k, ρ, h, r, p] to match stair stone against Carrara-quarry stone; Carbon-14 dating similarity score S for the wood case",
+    "Impulse/Dirac-delta model for short-term peak traffic vs uniform long-term traffic, yielding the wear ratio R = T_h^(1-b) > 1, plus an instantaneous-wear PDE ∂d/∂t = k·N(t)^b"
+  ],
+  "key_techniques": [
+    "Anchoring an abstract problem to one real, verifiable artifact (Leaning Tower of Pisa marble stairs), enabling every parameter (completion 1370, T=238,710 days, marble k=0.06, Carrara quarry source) to be sourced and every result cross-checked against real facts",
+    "Inverse modeling: using a forward wear law (d = k·N^b) and inverting/integrating it to recover the unobserved quantity (pedestrian count, age)",
+    "Cross-validation of model outputs against independent real data, e.g. computed N_daily=1175 vs ~1370 from the cited 500,000 visitors/year; computed age ~312.5 yr vs actual 654 yr used as positive evidence of renovation",
+    "Reusing a single fitted wear field across multiple sub-questions so the seven tasks form one coherent chain rather than seven disconnected mini-models",
+    "Quantifying reliability explicitly: MSE thresholding (MSE=0.1542<0.2), error propagation, and Monte Carlo confidence intervals",
+    "Cross-disciplinary analogy (crowd-as-fluid) borrowed from traffic-flow literature (Helbing) to justify the Navier-Stokes treatment",
+    "Defining a purpose-built dimensionless index (the directional-preference D) to convert a geometric asymmetry into a yes/no behavioral conclusion"
+  ],
+  "why_it_won": "Judges reward papers that turn a vague, open-ended prompt into a concrete, checkable story, and this team did exactly that by binding everything to the Pisa staircase so nearly every numerical result could be validated against real-world facts (visitor counts, completion date, Carrara provenance, the tower's documented restorations). The modeling spans a genuinely impressive toolkit (wear physics, 2-D Gaussian fitting via PSO, fluid-dynamics PDE solved by FDM, Monte Carlo uncertainty) yet stays unified around one fitted wear field, and crucially they answered all seven sub-questions including the harder reliability, renovation, and short-vs-long-usage parts. The repeated \"computed value vs actual value, error small, therefore reasonable\" pattern signals self-aware, validated modeling, which reads as credible to a judge.",
+  "section_highlights": "The paper front-loads a strong \"Our Work\" task-by-task roadmap and a full-pipeline flowchart, so a judge can see the whole logical chain before reading details. Each sub-model follows a consistent, skimmable template (assumptions, establishment, parameter table, result, then a real-world sanity check), and results are stated as crisp numbers with units and an immediate validity verdict. Literary framing (the Book of Songs epigraph, the \"Glory of the Ordinary\" title) plus heatmaps, 3-D wear renders, radar and Monte Carlo plots give it polish and narrative without sacrificing rigor.",
+  "pitfalls_or_limitations": [
+    "Data provenance is shaky: the 'scanned' wear depths and the heatmap tables look schematic/illustrative rather than from real metrology, and there is no actual access to the Pisa stairs, so the impressive CV pipeline rests on essentially fabricated/idealized measurements",
+    "Unit and consistency errors undermine trust: the short-vs-long-usage section reports wear in micrometers (d_measure≈0.205 μm) while the rest of the paper works in centimeters (4.5 cm), and equation (20)/(21) integration is hand-waved; one figure even references 'Equation ()' with a missing number",
+    "Physical misuse of Archard's law: k=0.06 is taken as a 'coefficient of friction' yet used as Archard's wear constant, conflating two different quantities, and the 200×40 cm step area with b=0.3 makes the absolute N_daily essentially a tuned number rather than a derived one",
+    "The directional-preference index uses d_mid and d_edge values (1 vs 4.5) that contradict the paper's own claim that the middle is more worn than edges, so the D=-0.636 conclusion is internally inconsistent",
+    "Several 'models' (renovation detection, material source) are largely qualitative procedure descriptions (infrared thermography, water-drop test, roughness tester) presented as if executed, with parameters in the comparison tables that appear assumed rather than measured",
+    "The Navier-Stokes/continuity treatment is reduced to a thresholding rule (ρ<1.5 ⇒ single file) so the heavy PDE machinery does little real work beyond producing a single density number"
+  ],
+  "reusable_patterns": [
+    "Pick one concrete, well-documented real instance of the problem object and instantiate every parameter from cited sources so results become independently checkable, the single biggest credibility lever here",
+    "Build the solution around one core constitutive/physics law (here Archard d=k·N^b), then derive every sub-answer by inverting, integrating, or differentiating that one relation so the paper reads as one model not seven",
+    "Always pair each computed result with an independent real-world number and an explicit error/threshold verdict (computed vs actual, MSE<δ, |error| within range) to demonstrate validation rather than assertion",
+    "Stack three complementary uncertainty tools, analytic error propagation, Monte Carlo sampling, and sensitivity analysis on key parameters, to make a reliability section that looks thorough",
+    "Define a small purpose-built dimensionless index to turn a measured asymmetry into a clean qualitative decision (the D index pattern is highly transferable)",
+    "Use a cross-domain analogy with a real citation (crowd-as-fluid via Helbing's traffic Navier-Stokes) to justify importing a heavyweight method, and pair it with a standard, citable numerical solver (FDM with Forward Euler/central differences)",
+    "Open with a task-enumerated 'Our Work' section plus a single end-to-end flowchart, and template every sub-section identically (assumptions to result to sanity check) for maximum skimmability"
+  ]
+}

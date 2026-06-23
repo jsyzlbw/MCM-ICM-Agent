@@ -1,0 +1,48 @@
+{
+  "paper_id": "2024-2409404",
+  "year": 2024,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asked to develop a model to quantify momentum and capture match flow in tennis, assess whether momentum effects are non-random, predict match swings using machine learning, and provide strategic advice to coaches and players.",
+  "models_used": [
+    "Sliding window momentum quantification (MQ-SW)",
+    "CUSUM for turning point detection",
+    "Runs test",
+    "Chi-square independence test",
+    "Principal Component Analysis (PCA)",
+    "XGBoost classifier (PMT-PX)"
+  ],
+  "key_techniques": [
+    "Sliding window feature construction with serve advantage discount factor α",
+    "Discretization of continuous momentum into binary advantage indicator",
+    "CUSUM algorithm to identify momentum shift points",
+    "Label encoding for categorical match features",
+    "PCA biplot to visualize high-dimensional factor structure",
+    "XGBoost feature importance scoring and normalization",
+    "Runs test for randomness of point outcomes and winning streaks",
+    "Chi-square test for association between momentum and match swings",
+    "Model evaluation via confusion matrix, classification report, ROC and AUC",
+    "Sensitivity analysis on sliding window size β and serve advantage α",
+    "Generalization test on a held-out Wimbledon match and a different tournament/gender (US Open women's final)"
+  ],
+  "why_it_won": "The paper delivers a complete end-to-end solution: a novel momentum metric, rigorous statistical tests rejecting randomness, an interpretable XGBoost model for prediction, and thoughtful generalization to a different tournament and gender. The integration of domain knowledge (tennis rules, serve advantage) with data-driven methods, along with clear visualizations and actionable tactical advice, demonstrates exceptional modeling maturity and real-world applicability.",
+  "section_highlights": "The paper is tightly organized around the contest tasks, with a clear flow from data preparation to modeling, statistical validation, prediction, and generalization. Each section begins with a motivation, followed by methodology, results, and interpretation, making the reasoning easy to follow. Visual aids (flowchart, scatter/line plots, heatmaps, PCA biplot) effectively complement the text and reinforce key findings.",
+  "pitfalls_or_limitations": [
+    "Model accuracy limited to 69%, indicating room for improvement",
+    "Does not account for referee misjudgments or disputes that can alter momentum",
+    "Athlete psychological self-adjustment ability not modeled",
+    "Impact of opponent reputation or prior match history not included",
+    "Venue surface type not explicitly incorporated as a factor",
+    "Sliding window size and serve advantage parameter need recalibration for different players or conditions"
+  ],
+  "reusable_patterns": [
+    "Constructing a momentum index via sliding window of point-level events with weighted positive and negative contributions",
+    "Using CUSUM to detect structural changes in performance time series as turning points",
+    "Applying runs test to formally test randomness of match fluctuations and winning streaks",
+    "Discretizing a continuous metric into binary advantage for chi-square independence testing and classification target",
+    "Using PCA biplots to visually explore and explain high-dimensional factor structures before modeling",
+    "Building an XGBoost classifier on constructed match features and extracting normalized feature importance for tactical insights",
+    "Holding out a specific match for testing and evaluating generalization on a completely different tournament and gender",
+    "Conducting sensitivity analysis on key model hyperparameters (window size, discount factor) to demonstrate robustness"
+  ]
+}

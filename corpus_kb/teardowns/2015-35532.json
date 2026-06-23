@@ -1,0 +1,59 @@
+{
+  "paper_id": "2015-35532",
+  "year": 2015,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2015 MCM Problem A (continuous): given that a new anti-Ebola medication exists, build a realistic model for the spread of Ebola AND the optimized delivery/allocation of the drug across West Africa (Guinea, Liberia, Sierra Leone), specifying delivery locations, drug quantities, and the speed of manufacturing needed. The paper decomposes this into three coupled sub-problems: (1) epidemic dynamics across three phases (free spread, isolation-only, isolation+medication), (2) where to site drug-distribution medical centers, and (3) how to allocate a scarce, growing drug supply across countries over a 6-month horizon.",
+  "models_used": [
+    "Compartmental ODE epidemic model, built up in three escalating versions: base SEIR (S/E/I/R with transmission beta*S*I/N, incubation rate sigma, removal rate gamma, case-fatality f)",
+    "SEIIR model splitting the infectious class into I_free (non-isolated) and I_isolated, with a split parameter mu and two fatality rates f1>f2; key behavioral closure mu = e^(-f2) linking isolation willingness to isolated-patient mortality",
+    "SEIIR with effective medication: adds a cure flux M(t) draining I_isolated into R (drug only reaches isolated patients, by assumption)",
+    "Set covering / p-center facility-location model for medical-center siting: minimize number of centers q AND minimize sum h_i*d(v_i,X_q), s.t. max-min coverage distance <= lambda (=92.1 km, the 24h reachable distance)",
+    "Genetic algorithm to solve the NP-hard set-covering location problem (yielded 7 centers in Sierra Leone: Kailahun, Makeni, Kambia, Kabala, Bo, Moyamba, Freetown)",
+    "TOPSIS multi-attribute decision model used twice: (a) to compute each district's drug-need weight h_i, and (b) to derive a per-country 'influence coefficient' C modulating the transmission rate beta from 8 external factors",
+    "Logistic ('block') growth model for drug manufacturing capacity dG/dt = r*t*(1 - G/G_m), with G_m = 2e5 doses/day",
+    "Two-stage drug-allocation optimization: Stage 1 (drug-scarce, before day 150) nonlinear program minimizing sum of I_free; Stage 2 (relatively sufficient) multi-objective program minimizing deaths and infectious with a <20% fairness/equity constraint on per-capita infection and death rates",
+    "Numerical integration via MATLAB 2014 ode toolbox; optimization via MATLAB optimization toolbox",
+    "Model extension: SEIIR with combined drug + vaccine, adding a vaccination flux F(t) (also logistic-grown) draining S directly into R"
+  ],
+  "key_techniques": [
+    "Three-phase temporal decomposition of the epidemic (free spread / isolation / medication) that maps each MCM sub-question to a distinct, incrementally-extended model rather than one monolithic model",
+    "Parameter grounding in real literature: incubation 1/sigma=5.3d and infectiousness 1/gamma=5.61d fixed from the 1995 Congo EBOV outbreak; per-country beta and f taken from Chowell et al. and Althaus",
+    "Calibration/validation by overlaying simulated vs. WHO-observed cumulative deaths for all three countries in the free-spread phase before trusting the model for forecasting",
+    "A clever behavioral closure (mu = e^(-f2)) that makes isolation uptake endogenous to treatment outcomes instead of a free knob",
+    "Reducing a continuous geographic coverage problem to a discrete set-covering problem by representing each administrative district by its capital and using a 24h-reachability radius (lambda) as the hard coverage constraint",
+    "Using Google Earth shortest-path road distances (a real 13x13 distance matrix) instead of straight-line distances, acknowledging poor West-African transport",
+    "Coupling TOPSIS outputs back into the dynamic model (district need h_i feeds the location objective; country influence coefficient C perturbs beta), creating an integrated rather than siloed pipeline",
+    "Recomputing beta monthly and re-solving allocation every 14 days to make the plan genuinely time-varying over the 6-month horizon",
+    "Explicit equity constraint (<20% deviation from mean per-capita burden) injected into the allocation optimizer",
+    "Targeted sensitivity analysis with elasticity-style percentage changes, isolating beta (681% death-case change for a 46% beta change), E_0, manufacturing growth rate r, and max output G_m, yielding an actionable threshold G_m > 4000 doses/day"
+  ],
+  "why_it_won": "\"It answered the actual question end-to-end and operationally. The prompt asked for a realistic model AND a delivery plan; this team produced an integrated pipeline (epidemic dynamics -> where to put centers -> how much drug each country gets -> what manufacturing speed is required) and delivered concrete numbers: 7 centers in Sierra Leone, a 14-day-cadence 6-month allocation table per country, and a hard policy threshold (G_m > 4000 doses/day or the epidemic is uncontrollable). Judges reward modeling that closes the loop from differential equations to a decision a real organization (WHO/WMA) could execute. The escalating SEIR->SEIIR->SEIIR+medication sequence demonstrates genuine modeling maturity: each extension is motivated by a phase of the real outbreak and the prior model's stated limitation. Parameters are sourced from real epidemiology literature and the base model is validated against WHO data before forecasting, which buys credibility. The combination of three different mathematical tool-families (compartmental ODEs, GA-solved combinatorial optimization, TOPSIS MADM, logistic growth, nonlinear+multi-objective programming) shows breadth, and the sensitivity analysis converts the model into crisp, quotable policy levers. The required letter to the World Medical Association is concrete and prioritized.\"",
+  "section_highlights": "\"Summary sheet: dense but complete, previewing all three models, the 7-center result, and the headline G_m>4000 threshold. Assumptions: an unusually long, explicit, numbered list (15 for the epidemic model, more per sub-model) that pins down every simplification (e.g., isolated patients have zero effective contact, 24h-to-center cutoff, one drug portion = 10 doses per patient). Symbols-and-definitions tables per model. Model I builds SEIR with full per-equation derivation, then validates against WHO death curves for all three countries (Fig.2) before escalating. Each model section opens with a flowchart of compartment transitions. Sensitivity Analysis is a genuine standout: a clean table of percentage-change elasticities surfacing beta as dominant, plus the G_m>4000 dose/day control threshold (Fig.11). Strengths/Weaknesses section is candid and model-by-model. Closes with the required policy letter to the WMA giving prioritized national measures and a two-stage distribution rule, plus a vaccine extension.\"",
+  "pitfalls_or_limitations": [
+    "Pervasive English-language and notation errors: inconsistent naming (SEIIR vs SEIQR vs 'quarantined' vs 'isolated'), typos in equations (e.g., dE/dt missing a minus sign, I_fre vs I_free, dD/dt incorrectly includes a -M(t) term that double-counts the cure), and garbled prose that would frustrate a careful judge",
+    "Population conservation is violated/ignored: deaths D are not removed from N, and dD/dt = ... - M(t) is dimensionally and logically wrong (curing someone should not reduce cumulative deaths)",
+    "The closure mu = e^(-f2) is asserted with hand-waving rather than derived or fit; its functional form is essentially arbitrary",
+    "Drug only reaches isolated patients (M(t) acts only on I_isolated) is a strong, convenient assumption that sidesteps the harder logistics of reaching free infectious individuals",
+    "TOPSIS factor weighting is opaque: the 8 external factors feeding beta (temperature, humidity, economy, education, age, etc.) are combined with undisclosed/equal weights and no validation that C actually predicts observed beta; the open-degree coefficient F_n is even defined two contradictory ways (c_open/c_all and c_all/c_open)",
+    "Initial conditions look fabricated/placeholder in places (e.g., I_free(0)=I_isolated(0)=822 identical; S_0 values inconsistent between Table and text)",
+    "GA solution quality is asserted ('running repeatedly we obtain relatively good results') with no convergence evidence, no comparison to an exact/ILP solution on the small 13-node instance (which is actually solvable optimally)",
+    "The logistic manufacturing model uses dG/dt = r*t*(1-G/G_m) (note the extra t), which is not the standard logistic ODE and changes the dynamics without justification",
+    "Sensitivity reporting is internally inconsistent (percent-change columns don't match the raw numbers in Table 9), undermining the otherwise strong sensitivity narrative",
+    "Geographic simplification (district = its capital, straight reduction to a single node) understates intra-district travel time, the very quantity the 24h constraint depends on"
+  ],
+  "reusable_patterns": [
+    "Phase-decomposition pattern: split a dynamic problem into temporal regimes and assign each an incrementally-extended model (SEIR -> +isolation -> +intervention); each extension is justified by the prior model's named weakness.",
+    "Validate-before-forecast pattern: fit/calibrate the base model against real observed data (WHO death curves) in the regime where it should hold, show the overlay figure, THEN use it to predict.",
+    "Ground parameters in cited literature and a parameter table (Table 1) rather than inventing them; reserve invented values only for genuinely unknown quantities and then sensitivity-test those.",
+    "Reduce continuous facility/coverage problems to discrete set-covering/p-center by node-collapsing geography and encoding the real-world deadline as a coverage radius (here, 24h reachability -> lambda km).",
+    "Use a real distance matrix (Google Earth road distances) instead of Euclidean distance for transport-constrained logistics.",
+    "Pipeline coupling pattern: use a MADM method (TOPSIS) to produce scalar weights/coefficients that feed BOTH an optimization objective (need weights h_i) AND a dynamic-model parameter (beta modulation C), integrating qualitative factors into quantitative models.",
+    "Two-regime optimization with switching objective: minimize spread while resource-scarce, switch to minimize deaths once resource-sufficient, at an identified time node (day 150).",
+    "Embed an explicit equity/fairness constraint (<20% deviation from the cross-unit mean per-capita burden) into a resource-allocation optimizer to make allocations defensible.",
+    "Sensitivity-to-actionable-threshold pattern: run one-factor sensitivity sweeps and convert the result into a single quotable policy number (G_m > 4000 doses/day) and a ranked list of dominant levers (beta first).",
+    "Deliver the required communication artifact (letter to WMA) as a prioritized, concrete action list mirroring the model's two-stage logic, not vague platitudes.",
+    "Use compartment-transition flowcharts at the start of each model section so the reader sees structure before equations.",
+    "Caveat: this paper also shows what NOT to do — never let conservation laws break (track deaths out of N), never present sensitivity tables whose percentages contradict their raw numbers, and proofread equations/notation, since these are the cheap errors that separate a clean Outstanding from a sloppy one."
+  ]
+}

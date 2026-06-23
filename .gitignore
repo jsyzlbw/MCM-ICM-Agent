@@ -57,5 +57,10 @@ assets/diagnostic_2026_mcm_c/
 
 
 # Large MCM corpus + built KB (data, not source)
-assets/mcm_icm_corpus/
-corpus_kb/
+assets/mcm_icm_corpus/          # 4.4G raw award-paper PDFs — never published
+# Publish the KB's text + teardown/pattern layers + manifest (~37M); keep out of git:
+#   _work/ (MinerU scratch), embedding_cache.db (368M), chroma/ (410M vector DB).
+# The vector DB ships as a GitHub Release asset (corpus_kb_chroma.tar.gz), not via git.
+corpus_kb/_work/
+corpus_kb/embedding_cache.db
+corpus_kb/chroma/

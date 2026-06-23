@@ -1,0 +1,37 @@
+{
+  "paper_id": "2025-2524070",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem requires predicting Olympic medal counts for the 2028 Los Angeles Games (including first medals for nations), modeling the impact of event types and numbers on medal outcomes (especially host-country introduced events), and assessing whether a 'great coach' effect exists and its magnitude.",
+  "models_used": [
+    "Zero-inflated negative binomial (ZINB) regression with Bayesian MCMC",
+    "Association Rule mining with GRI algorithm",
+    "Mixed-effects model (ANOVA with random block and fixed coach factor)"
+  ],
+  "key_techniques": [
+    "Zero-inflation decomposition into sampling zeros and structural zeros via logistic regression with country random effect",
+    "Bayesian inference with MCMC diagnostics (Rhat, Bulk ESS, Tail ESS)",
+    "Posterior simulation for probabilistic prediction intervals (95% HDI)",
+    "Composite indicator φ_i combining type and number influencing factors for events",
+    "Association rule extraction using GRI algorithm with support, confidence, lift, and deployment capability metrics",
+    "Mixed-effects model with coach–country pairing as random block to isolate fixed 'great coach' effect",
+    "Data preprocessing: harmonizing historical NOC changes, removing unofficial competitions, resolving encoding issues"
+  ],
+  "why_it_won": "The paper combines multiple advanced statistical models (ZINB, association rules, mixed effects) seamlessly to address each prompting question with clear rationale and mathematical rigor. It provides thorough model validation (Rhat=1, high ESS, association rule metrics) and directly answers the committee’s asks—probabilistic medal forecasts with intervals, first-medal probabilities, actionable event-level insights, and a quantified coach effect. The explicit separation of sampling and structural zeros and the use of Bayesian inference show sophisticated handling of sparse count data, elevating the work's credibility.",
+  "section_highlights": "The paper’s structure follows the problem prompts in order, each section self-contained with model justification, mathematical formulation, algorithmic pseudocode, and immediately interpretable results (tables, network graphs, heatmaps). Visualizations and tables are well-captioned and support the narrative; the validity analysis of association rules with multiple metrics (support, confidence, lift, deployment capability) demonstrates both depth and transparency. The logical flow from assumptions to model building to evaluation makes the complex methodology accessible.",
+  "pitfalls_or_limitations": [
+    "Exclusion of historical countries (Soviet Union, Yugoslavia, East/West Germany) may introduce bias in trend extraction",
+    "Assumption of negative binomial distribution for medal counts may not capture all competition dynamics",
+    "Small sample size of four 'great coaches' limits generalization of the mixed-effects model",
+    "Model predictors limited to past performance, host status, and event count, omitting economic or political factors not in provided data"
+  ],
+  "reusable_patterns": [
+    "Zero-inflated negative binomial model for count data with excessive zeros, distinguishing structural and sampling zeros via logistic regression",
+    "Bayesian MCMC fitting with systematic diagnostics (Rhat, ESS) to ensure convergence and reliable posterior sampling",
+    "Construction of composite feature φ_i = ω1 x_i + ω2 y_i to jointly capture event type breadth and participation depth for association analysis",
+    "Association rule mining with GRI to discover event-to-medal patterns, validated by support, confidence, lift, and deployment capability",
+    "Mixed-effects model with country–coach random blocks to identify a fixed 'great coach' effect while accounting for heterogeneous country baselines",
+    "Prediction intervals via posterior simulation rather than point estimates alone, providing uncertainty quantification"
+  ]
+}

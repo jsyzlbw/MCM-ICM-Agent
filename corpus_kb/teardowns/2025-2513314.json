@@ -1,0 +1,36 @@
+{
+  "paper_id": "2025-2513314",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asks to develop a mathematical model for predicting the number of gold and total medals for each country at the 2028 Summer Olympics, incorporating factors such as historical performance, host advantages, and event distributions. It also requires estimating breakthrough probabilities for countries with no prior medals, analyzing the impact of elite coaches, and providing strategic insights to national Olympic committees.",
+  "models_used": [
+    "Bayesian Hierarchical Dirichlet-Multinomial (BHDM) model",
+    "Markov chain Monte Carlo (MCMC) for posterior inference"
+  ],
+  "key_techniques": [
+    "Feature engineering with economic, hosting, and event-specific categories (e.g., Host Flag, Social System Congruence, Ball Sports Events)",
+    "Hierarchical Bayesian modeling with country-specific regression coefficients and weakly informative priors",
+    "Dirichlet-Multinomial likelihood to enforce discreteness and sum constraints",
+    "Gamma-distributed concentration parameters to handle overdispersion",
+    "MCMC posterior sampling for uncertainty quantification and credible intervals",
+    "Posterior probability of 'breaking the ice' (first medal) for zero‑history countries",
+    "Sensitivity analysis on prior variance ($\\tau^2$) and the Equal Distribution Assumption",
+    "Construction of a coaching ability metric ($A = 6G+3S+B$) and aggregation into a 'Great Coach' variable"
+  ],
+  "why_it_won": "The paper precisely addresses the unique distributional structure of Olympic medal counts (discrete, sum‑constrained, overdispersed, heterogeneous) with a tailored Bayesian hierarchical model that outperforms standard ML and statistical alternatives. It delivers rigorous uncertainty quantification through 95% credible intervals and actionable insights like breakthrough probabilities and sport‑specific coaching recommendations. The model is thoroughly justified with assumptions, sensitivity analyses, and comparisons, demonstrating both statistical sophistication and practical value.",
+  "section_highlights": "The paper’s structure is exceptionally clear, moving from assumptions and notations through exploratory analysis to model specification and interpretation. Key modeling decisions are justified with visual evidence (e.g., overdispersion in medal distributions) and a workflow diagram, while results are presented in well‑annotated tables and figures with credible intervals. The dedicated sensitivity analysis section reinforces credibility and scientific rigor.",
+  "pitfalls_or_limitations": [
+    "Reliance on the Equal Distribution Assumption that 2028 event composition and total medals mirror 2024, which is acknowledged as unlikely in practice.",
+    "The definition and weighting of 'Great Coach' (A = 6G+3S+B) are simplified and may not fully capture coaching quality or intangible effects.",
+    "The model’s performance depends on a pre‑specified total medal count Tnew, for which no formal prediction is provided."
+  ],
+  "reusable_patterns": [
+    "Hierarchical Bayesian modeling with Dirichlet‑Multinomial likelihood for compositional count data with sum constraints and overdispersion.",
+    "Weakly informative priors to regularize group‑level coefficients and enable partial pooling across countries.",
+    "MCMC posterior inference to obtain credible intervals, posterior means, and event probabilities like first‑medal breakthroughs.",
+    "Creation of broad event categories (Athletics, Tactical & Strength, Ball Sports, Emerging) to reduce dimensionality while capturing sport‑specific effects.",
+    "Sensitivity analysis on prior hyperparameters and distributional assumptions to demonstrate model robustness.",
+    "Comparison of tailored probabilistic model against machine learning (XGBoost, RNN, RF) and classical count models to highlight fit."
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "paper_id": "2024-2407414",
+  "year": 2024,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2024 MCM/ICM Problem E (sustainability / climate-and-insurance). The paper answers three linked tasks plus a letter: (1) build a model telling an insurer whether to underwrite property policies in regions with rising extreme weather; (2) adapt that model to advise property developers where/how to build resilient communities; (3) build a model for community leaders to identify at-risk historic landmarks of high cultural/historical/economic value and propose preservation strategies; (4) write a one-page letter to the community. The team built two core models — an actuarial \"Climate Risk Assess Model\" (Model I) and a \"Landmark Preservation Model\" (Model II) — bridged by a SEIC real-estate evaluation metric, and demonstrated them on real cities (Mumbai, Cairns; Miami, New Orleans, Houston) and Faneuil Hall in Boston.",
+  "models_used": [
+    "Peaks Over Threshold (POT) extreme-value model with Generalized Pareto Distribution (GPD) to fit disaster intensity (loss) tails",
+    "Maximum Likelihood Estimation (MLE) for GPD parameters (k=2.929, xi=-0.499); Hill plot for threshold selection (u=2.26)",
+    "Hypothesis testing (Kolmogorov-Smirnov) to fit disaster frequency; chose Poisson (lambda_Mumbai=7.458, lambda_Cairns=4.438) over Normal/Uniform/Exponential",
+    "Non-homogeneous Poisson via a Logistic growth model dN/dt = aN(1-N/Nmax) to make frequency lambda(t) time-varying and forecast 7 years out",
+    "Cramer-Lundberg-style surplus / ruin process with a Brownian-motion disturbance term: U(t)=s+ct-S(t)+beta*W_t, compound Poisson claims S(t)",
+    "Ruin theory: Probability of Ruin (POR) computed via the asymptotic tail formula for fat-tailed (GPD) claims, Psi(s)=omega^-1 * Fe(s)",
+    "Stochastic optimal control: Hamilton-Jacobi-Bellman (HJB) equation to derive optimal investment strategy p(s) and optimal excess-of-loss reinsurance retention b(s)",
+    "Monte Carlo simulation for data augmentation (expanding sample to 1023 points)",
+    "Analytic Hierarchy Process (AHP) for subjective indicator weights in the SEIC metric",
+    "Entropy Weight Method (EWM) combined with AHP (AHP-EWM) via Lagrange multiplier / minimum relative information entropy for landmark VOL and ROL weights",
+    "Min-max normalization of benefit vs cost attributes; custom Development Potential Index (DPI) = 100*(w_SE*SE + w_I*I + w_C*C)",
+    "GE / McKinsey nine-box matrix (VOL vs ROL axes) to map landmarks into preservation-urgency levels A-E",
+    "K-Means clustering to partition landmarks within the GE matrix into categories",
+    "Q-Q plot against exponential distribution as a fat-tail diagnostic"
+  ],
+  "key_techniques": [
+    "Tail-aware loss modeling: explicitly diagnosing fat tails (exponential Q-Q plot) and switching from ordinary distribution fitting to POT+GPD instead of naively fitting Lognormal/Gamma to the whole loss distribution",
+    "Two-part actuarial decomposition: separately modeling disaster INTENSITY (GPD severity) and FREQUENCY (Poisson count), then composing them into a compound-Poisson surplus process — the standard collective-risk decomposition",
+    "Making the Poisson rate time-varying with a logistic curve to encode the problem's core premise (extreme weather is INCREASING) rather than assuming stationarity — directly ties the math to the climate-change narrative",
+    "Turning an abstract risk number (POR) into actionable thresholds: four risk levels (I Acceptable <2%, II Tolerable 2-5%, III Cautious 5-12%, IV Unacceptable >12%) with attached decision rules",
+    "Model chaining / reuse: POR from Model I is fed in as an input indicator (insurance dimension) of the SEIC metric AND as the 'risk of being uninsured' factor in the landmark model — one engine drives all three tasks",
+    "Hybrid subjective+objective weighting (AHP-EWM) to defend against the 'AHP is arbitrary' critique by anchoring weights with data-driven entropy",
+    "Borrowing a business-strategy tool (GE/McKinsey matrix) into a conservation context as a creative cross-domain mapping (VOL~market attractiveness, ROL~competitiveness)",
+    "Concrete case studies on real, contrasting cities with named data sources (NOAA NCEI, climdex, III.org, FRED, earth.nullschool) to ground every model in real data",
+    "Sensitivity analysis done as a 2D parameter sweep (perturb s and alpha_d by 20%, solve 40 POR sets, 3D heatmap) plus noise-injection robustness test on the landmark indicators"
+  ],
+  "why_it_won": "\"It reads like genuine actuarial science, not a generic optimization template. The judge-pleasing moves: (1) it picked the technically CORRECT tool for catastrophe losses — extreme-value theory (POT/GPD) plus ruin theory plus HJB-optimal reinsurance/investment — which is exactly how real cat-insurance is modeled, signalling deep domain literacy rather than bolting on a neural net; (2) it tightly coupled three sub-models through a single shared quantity (POR), so the paper feels like one coherent system answering all tasks instead of three disconnected mini-papers; (3) it operationalized every result into decision rules and discrete levels (risk levels I-IV, preservation levels A-E) that a real insurer or community leader could act on — strong on the 'so what'; (4) it embedded the problem's climate premise into the math via the logistic time-varying frequency, showing it understood the sustainability theme; (5) it delivered the required letter with a concrete 2024-2030 agenda, cost ranges, and funding sources; and (6) clean structure, named real data sources, and honest sensitivity/robustness checks gave it credibility.\"",
+  "section_highlights": "\"Summary cleanly previews all three models AND the concrete numeric answers (Mumbai POR 3.71%->12.22% moving level II->III; Cairns 1.33%->4.40% level I->II; DPI ranking Houston>New Orleans>Miami; Faneuil Hall = level A). Keyword line names the actual methods (Ruin Theory; AHP-EWM; GE Matrix; Logistic Model). Section 5 (insurance model) is the technical centerpiece, built in disciplined steps — Step1 data augmentation, Step2 fat-tail exam, Step3 threshold, Step4 MLE — then surplus process -> POR -> HJB optimal strategies -> risk-level table -> case study. The Notation table, Assumptions-with-Justifications, and explicit data-source table all front-load rigor. The GE-matrix figure plotting all landmarks plus Faneuil Hall, and the final one-page letter with a Mermaid-style timeline (2024 assessment -> 2025 design -> 2027 implementation -> 2030 insurance+education) and cost/funding statement, close strongly. Model Evaluation section explicitly lists Strengths (comprehensive disturbance term, GE-matrix creativity, surplus-process rigor) and Weaknesses (ignores inflation/macro; coastal-only; ignores cost of measures).\"",
+  "pitfalls_or_limitations": [
+    "Self-admitted: surplus process ignores inflation and macroeconomic shifts; decisions rest only on current economics + weather forecasts",
+    "Self-admitted: landmark model only covers COASTAL landmarks (sea-level-rise focus) and measures the EXTENT of preservation needed without costing those measures",
+    "Monte Carlo 'data augmentation' to inflate a thin sample to 1023 points is statistically circular — you cannot manufacture genuine tail information from a fitted Lognormal; the GPD is then fit partly to simulated data, weakening the extreme-value claim",
+    "GPD shape estimate xi = -0.499 implies a bounded (short, finite-endpoint) tail, which is in tension with the paper's whole 'fat-tailed catastrophe' motivation — a subtle internal inconsistency a sharp judge could flag",
+    "AHP judgment matrices are never shown ('for limited space, judgment matrix won't be displayed'), so the subjective weights are unauditable; consistency check is asserted not demonstrated",
+    "DPI formula and the VOL/ROL aggregation are linear weighted sums of normalized indicators — convenient but assumes additive, non-interacting factors despite the paper itself drawing a correlation/system-dynamics diagram showing indicators interact",
+    "Many reported figures (the extracted chart tables) look idealized/monotonic — predicted exactly equals actual frequency in Figure 9 — suggesting plots may be schematic rather than true fits",
+    "Sentence in summary calls Model I both 'not sensitive to market conditions' and the conclusion says model is 'quite sensitive and robust' — contradictory wording around sensitivity",
+    "GE-matrix axis labels are described inconsistently in the text ('take VOL as horizontal values and VOL as vertical values'), a proofreading slip in the core deliverable"
+  ],
+  "reusable_patterns": [
+    "Catastrophe/loss problems: decompose into SEVERITY (extreme-value POT+GPD, MLE, Hill-plot threshold) x FREQUENCY (count distribution via K-S test, usually Poisson) -> compound-Poisson surplus -> probability-of-ruin. This is a transplantable backbone for any insurance/risk MCM problem",
+    "Encode a problem's 'increasing trend' premise by making a rate parameter time-varying with a logistic (or other growth) curve — converts a static distribution into a forecasting model and visibly addresses the prompt's dynamics",
+    "Build ONE quantitative engine and reuse its output as an input feature across every sub-question (here POR feeds SEIC and the landmark risk) — produces a unified paper and saves modeling effort",
+    "Convert continuous risk scores into named discrete tiers with thresholds and attached action rules (risk levels I-IV, preservation levels A-E) to maximize the 'actionable recommendation' credit",
+    "Hybrid weighting recipe AHP-EWM (subjective AHP x objective entropy, combined via geometric mean / Lagrange minimum-entropy) as a defensible default for any multi-criteria evaluation index",
+    "Repurpose a 2x2 / 3x3 business matrix (GE-McKinsey, BCG) by mapping two computed indices onto its axes to generate a strategy taxonomy — cheap creativity that judges reward",
+    "Always pair a custom composite index (like DPI) with explicit benefit-vs-cost min-max normalization and a stated weighting so it is reproducible",
+    "Deliverable discipline for ICM: a Summary that states methods AND numeric answers, an Assumptions-with-Justifications block, a data-source table with real URLs, a Strengths/Weaknesses self-critique, and (for Problem E) a real one-page letter with a dated timeline + cost + funding source",
+    "Validate with a 2-parameter perturbation sweep visualized as a 3D/heatmap surface plus a separate noise-injection robustness test on the index model"
+  ]
+}

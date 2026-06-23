@@ -1,0 +1,42 @@
+{
+  "paper_id": "2025-2514362",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Predict medal counts for the 2028 Los Angeles Olympics, identify first-time medal winners, analyze sport–country relationships, evaluate the impact of elite coaching, and provide strategic insights for National Olympic Committees using historical data.",
+  "models_used": [
+    "Mixed-effects negative binomial regression (MEM-NB)",
+    "Zero-inflated negative binomial model (ZINB)",
+    "Bayesian entropy model with Laplace smoothing and information gain",
+    "Multi-level ensemble forecasting framework"
+  ],
+  "key_techniques": [
+    "Feature engineering: exponential time-decay weighting of historical medals, host advantage, Cold War correction, new event variables",
+    "Uncertainty quantification: 95% confidence intervals via parametric bootstrap",
+    "Model validation: time series cross-validation, ablation study, sensitivity analysis",
+    "Overdispersion handling: negative binomial with random effects",
+    "Zero-inflation handling: logit part for medal–no medal separation",
+    "Bayesian entropy: information gain with effect intensity ratio for small-sample coaching analysis",
+    "Laplace smoothing for prior probabilities",
+    "Dynamic weighted athlete counts and project match degree"
+  ],
+  "why_it_won": "The paper combines a statistically robust mixed-effects negative binomial model and a zero-inflated model to tackle the discrete, overdispersed, and zero-heavy medal data. It uniquely incorporates a Cold War correction and host/new-event effects, enhancing realism. The Bayesian entropy model provides a creative, data-limited solution for coaching impact, with rigorous sensitivity checks and actionable policy recommendations that directly answer all problem tasks.",
+  "section_highlights": "The paper is exceptionally well-structured: clear assumptions, notation, and flow from preprocessing to separate prediction models for each task. The use of detailed tables summarizing formulas, visual comparisons of predictions vs. actuals, and boxplots effectively communicate model performance. A dedicated Strengths and Weaknesses section demonstrates self-awareness and scientific honesty.",
+  "pitfalls_or_limitations": [
+    "Assumes external factors (political turmoil, economic crises, injuries) are ignorable",
+    "Relies entirely on post-1952 data, ignoring pre-WWII trends",
+    "Assumes participant numbers and event structures similar to 2024 for 2028 prediction",
+    "Cold War binary variable may oversimplify complex period effects",
+    "Zero‑inflated model may have limited power for very small nations with few data points",
+    "Coaching effect model cannot fully isolate coach impact from confounders like funding and athlete talent"
+  ],
+  "reusable_patterns": [
+    "Use mixed-effects models to handle panel data with unobserved heterogeneity and overdispersion",
+    "Employ zero-inflated models for rare-event prediction with separated probability and count processes",
+    "Incorporate domain‑specific features (host advantage, historical decay weights, event matching) to improve predictive accuracy",
+    "Apply Bayesian Laplace smoothing to stabilize probability estimates in small samples",
+    "Use information gain and dual‑metric verification (IG + effect intensity) for causal attribution under limited data",
+    "Validate models through back‑testing on held‑out Olympics, parameter sensitivity analysis, and ablation studies",
+    "Combine multiple modeling approaches into an ensemble to address distinct sub‑problems within one framework"
+  ]
+}

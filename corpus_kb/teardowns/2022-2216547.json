@@ -1,0 +1,52 @@
+{
+  "paper_id": "2022-2216547",
+  "year": 2022,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2022 MCM Problem A (continuous): build a model of cyclist power output (\"power curve\") for different rider types, then determine how a rider should distribute power over a given time-trial course to minimize finishing time. Extensions: account for weather (wind, road humidity), sensitivity to a rider deviating from the plan, and Team Time Trial drafting. This paper (2216547) frames it as an optimal-control / minimum-time pacing problem driven by a physiology-based power model and Newtonian bike dynamics, solved by dynamic programming.",
+  "models_used": [
+    "Muscle Fatigue-Recovery Model: single-state ODE for instantaneous max power, dP_max/dt = -k_f*P_max*(P_rider/P_max0) + k_r*(P_max0 - P_max) — fatigue term proportional to current effort, exponential recovery toward baseline",
+    "Energy Reserve Model: glycogen/blood-sugar analogy with replenishment P_in = k_in*(P_max0 - P_max), output P_out = k_out*P_rider, and E(t) = E_0 + integral(P_in) - integral(P_out); E acts as a hard floor constraint (E>=0)",
+    "Combined Rider Power Output Model: rider is fully described by 6 parameters (k_f, k_r, k_in, k_out, P_max0, E_0); max sustainable power is the min of the fatigue-limited and energy-limited ceilings, reproducing the 'kink' in real power-duration curves",
+    "Newtonian longitudinal bike dynamics: m_t*a = k_rider*(P_rider/v) - 0.5*C_d*rho*A*v^2 - m_t*g*(mu*cos(theta)+sin(theta)) - F_b (drive force, aero drag, rolling+gravity, braking)",
+    "Cornering constraint from circular motion: v <= sqrt(mu_0*g*cos(theta)*R), R estimated as the circumradius of the triangle through three consecutive course points",
+    "Road discretization / GIS model: Google Earth lat/long/alt points converted to local planar (x,y,z) meters; road segments carry length L_i, height delta_h_i, inclination theta_i, and radius of curvature",
+    "Optimal-control formulation: min over P_rider(t) of T = integral dx/v, subject to velocity, energy (0<=E<=E_0) and power (0<=P_rider<=P_max) constraints",
+    "Dynamic Programming (Bellman): state s=(x, v, P_max, E) discretized into levels; transition cost Delta t = (x_i - x_j)/v_j; value function via Bellman equation; complexity O(n_x*n_v*n_p*n_e*n_r)",
+    "Monte-Carlo style sensitivity model: actual power = planned power + Gaussian noise epsilon(t) to test execution error",
+    "Team Time Trial drafting model: empirical per-position air-drag percentages (100%,63%,58%,56%,55%,54% for a 6-rider paceline) plus a rotation/replacement-interval optimization for the 'mountain train' tactic"
+  ],
+  "key_techniques": [
+    "Decomposing a 'rider' into two coupled physiological sub-models (fatigue vs. energy) whose minimum yields the power curve — this directly answers the problem's 'how long can a rider hold power P' requirement",
+    "Parameter rectification: fitting the 6 rider parameters to real published 'Maximum-Effort' experimental power data (refs [4],[5]) to distinguish TTS vs Sprinter and male vs female, giving a concrete Table 1 of calibrated values",
+    "Casting pacing as a discrete optimal-control problem and using DP rather than heuristics — guarantees a globally optimal pacing plan under the discretized model",
+    "4-variable state (x,v,P_max,E) chosen so the transition dynamics (equations of motion + physiology ODEs) are Markovian, making DP valid",
+    "Explicit complexity analysis with concrete quantization levels (n_x=400, n_v=30, n_p=10, n_e=10, n_r=450) and a real runtime (~10 min on M1 MacBook) — demonstrates feasibility",
+    "Real-course grounding: rebuilding the 2021 Tokyo Olympic and 2021 UCI Flanders TT courses (plus a self-designed course) from Google Earth, and validating that uphill->high power/low speed, downhill->opposite",
+    "Curvature via circumcircle of 3 consecutive points to convert a point cloud into a cornering speed limit",
+    "Lightweight extension strategy: weather, execution error, and TTT all implemented as small parameter/constraint edits on the same DP engine rather than new models"
+  ],
+  "why_it_won": "\"From a judge's perspective this paper wins because it answers every sub-question with a single coherent, end-to-end pipeline: a physiologically-motivated power model -> calibrated rider archetypes -> physics of the bike -> a rigorously formalized minimum-time optimal-control problem -> a DP solver that provably finds the optimum -> reuse of that one engine for all extensions. The modeling choices are justified by real sports-science literature and the parameters are fit to real experimental data, so the power curves 'overlap well' with measured riders — that empirical grounding is rare and persuasive. It also closes the loop on real courses (Tokyo, Flanders) and produces interpretable, actionable strategy differences between Sprinter and TTS that match cycling intuition, plus an honest complexity/runtime analysis showing the method is tractable. The combination of physiological realism, mathematical rigor (Bellman optimality), computational honesty, and a polished coach-facing handout is exactly the full-stack competence O-award judges reward.\"",
+  "section_highlights": "\"Summary cleanly previews the three stacked models (power output -> Newtonian mechanics -> DP) and lists 5 concrete conclusions up front. Assumptions section is strong: 6 assumptions each with explicit justification (accurate data, optimal initial state, optimal gear selection, no accidents, constant environment, equal laps). The model section builds bottom-up and motivates each equation physically (fatigue proportional to effort, recovery toward baseline, glycogen-as-energy-reserve). Figure 4/5 power curves and Figure 15 (power+velocity+altitude overlaid on the Tokyo course) are excellent validation visuals tying the abstract model to a real course. The DP section formally states state, transition (eq 10), Bellman recursion (eq 11), and a genuine complexity analysis with real hardware timing. The trailing coach-facing handout ('Why we need to plan our rides wisely', rider-type identification steps, per-type advice for Climber/Puncheur/Rouleur/TTS) is a polished, audience-aware deliverable that adds communication points.\"",
+  "pitfalls_or_limitations": [
+    "The two physiology ODEs and the energy model are phenomenological and borrowed/adapted from ergonomics refs; coefficients k_in, k_out, P_other are loosely justified and 'energy' (P in Watts but E_0 listed as 10^6 J and P_max0 mislabeled with unit J in Table 1) shows unit inconsistencies that a sharp judge would flag",
+    "Parameter fitting is described qualitatively ('we found the parameters that best fit') with no stated objective function, fit error, or cross-validation — calibration is not reproducible from the paper",
+    "Discretization is coarse (n_v=30, n_p=10, n_e=10) so the DP 'optimum' is optimal only on a crude grid; no convergence study showing results are stable as levels increase",
+    "The Bellman recursion in eq (11) is written with max (it should be min for a minimum-time objective) — a sign/notation slip",
+    "Wind model v=|v_rider +/- v_wind|*cos(theta) is ad hoc and conflates wind with the rider's velocity used in the drag term; humidity is handled only by hand-waving mu up/down with no quantitative law",
+    "Team Time Trial drafting uses fixed empirical drag percentages from one reference and reduces riders to point masses, ignoring intra-team dynamics, gaps, and rider heterogeneity beyond rotation timing",
+    "Sensitivity analysis only perturbs power with unspecified-variance Gaussian noise on one course; no systematic sensitivity to physical parameters (C_d, A, mu, mass)",
+    "Several result figures (12-19) are sparsely tabulated/garbled in the extracted text, and some appear schematic rather than from clean simulation output",
+    "Assumption that the rider always selects the optimal gear (k_rider) removes a real decision variable the problem arguably wanted modeled"
+  ],
+  "reusable_patterns": [
+    "'Athlete = small parameter vector' pattern: represent each agent type by a handful of physiologically-meaningful parameters and calibrate them to real published experimental curves to generate distinct archetypes (TTS/Sprinter, M/F)",
+    "Two-ceiling min pattern: model a capacity as the minimum of two independent limiting mechanisms (fatigue-limited vs reserve-limited) to naturally reproduce kinked real-world curves",
+    "Pacing/effort-allocation as minimum-time optimal control: min integral(dx/v) subject to state constraints, then solve with DP over a discretized Markov state — transferable to any 'how to spend a budget/energy over a route' problem",
+    "Choose the DP state so that all governing ODEs/physics are Markovian (here x,v,P_max,E), then write the transition explicitly and do an honest O(.) complexity + real-hardware runtime statement",
+    "GIS-to-model pipeline: pull lat/long/alt point clouds from Google Earth, convert to local planar meters, and derive segment-level attributes (length, slope, curvature-via-circumcircle) as a reusable course/terrain data structure",
+    "Extension-by-parameter-edit: design the core engine so weather, execution error (planned + Gaussian noise), and multi-agent variants are implemented as small constraint/coefficient changes rather than new models",
+    "Validation-by-physical-sanity: overlay model output (power, velocity) on terrain (altitude) for a real course and show the expected qualitative behavior (uphill->more power/less speed) as evidence of correctness",
+    "Audience-facing deliverable: append a non-technical, step-by-step coach/athlete handout translating the model into actionable per-type advice"
+  ]
+}

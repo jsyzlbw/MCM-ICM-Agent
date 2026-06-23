@@ -1,0 +1,48 @@
+{
+  "paper_id": "2024-2425397",
+  "year": 2024,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2024 MCM Problem A (continuous) asked teams to model the adaptive, environment-dependent sex ratio of sea lampreys: (1) the effect on the larger ecosystem when sex ratio correlates with population size, (2) the advantages/disadvantages of this trait for the lamprey population itself, (3) its impact on ecosystem stability, and (4) whether lampreys' variable sex ratio benefits other species such as parasites. This O-award paper (team 2425397) builds a single age-structured discrete population dynamics model and re-uses it across all four tasks by changing initial conditions, perturbation terms, and added populations.",
+  "models_used": [
+    "Age-structured discrete population dynamics model (Leslie-matrix-style cohort recursion): lampreys split into 7 yearly age classes, ages 1-4 larvae (sexless, plankton feeders) and 5-7 adults (sexed, fish parasites), each cohort advanced by a per-capita growth/mortality difference equation X_{i+1,t+1} relative to X_{i,t}",
+    "Density-dependent (Logistic-type) growth for prey/feeder populations: x_{t+1} via r_x(1 - x_t/K_x) with carrying capacity K_x, extended with predation/competition loss terms",
+    "Multi-species Lotka-Volterra-style competition/parasitism web: larvae vs larval-competitor B_t over plankton x_t; adults vs adult-competitor C_t over fish y_t; pairwise intra- and inter-species competition coefficients (k_i, k-tilde_i, k_t, etc.)",
+    "Sex-ratio submodel: female proportion M_t modeled as a saturating rational (Michaelis-Menten-like) function of adult abundance, M_t = (e1 + e2*sum X_j)/(e3 + e4*sum X_j), capturing the food/abundance-dependent female fraction (44-50% when food abundant, ~22% when scarce)",
+    "Reproduction (recruitment) rule: one-time semelparous spawning at age 7, X_{1,t+1} = alpha * M_t * X_{7,t}",
+    "External artificial-intervention (harvesting) term F subtracted from cohort growth rates to model human pressure on migratory spawners",
+    "Impulse/pulse perturbation terms (E for lamprey crash, F for plankton spike) injected at a chosen year t0 to test resistance and resilience stability",
+    "Parasite extension (Task 4): added parasite population P_t with host-density-dependent growth and a death-risk coupling term D*P_t on adult lampreys (host-parasite dynamics)"
+  ],
+  "key_techniques": [
+    "Single unified model reused across all 4 tasks - only initial conditions, perturbation terms, and one added population (parasite) change between tasks, giving strong internal coherence",
+    "Biology-driven discretization: choosing a 7-year yearly time step matched to the lamprey's exactly-7-year semelparous lifecycle, with metamorphosis at year 5 as the larva/adult split",
+    "7-year moving-average smoothing (Delta_{i,t} = (1/7) sum over tau=-3..3) to extract the equilibrium trend from the intrinsic 7-year reproductive oscillation, plus phase-plane closed-loop (limit-cycle) plots of larvae-vs-plankton and adults-vs-fish to justify that the smoothing is legitimate",
+    "Controlled A/B comparison as the central rhetorical device: every claim is shown as variable-sex-ratio vs fixed-50/50 side by side (Figures 7 vs 8, 18a vs 18b, 19a vs 19b, 21a vs 21b)",
+    "Quantified stability metrics: recovery duration t_Delta = t2 - t1 and total fluctuation degree Phi = sum |Delta_{i,t+tau} - Delta_{i,t}|/Delta_{i,t}, yielding concrete numbers (e.g. variable 23.28%/18yr vs invariant 30.41%/22yr; plankton shock 33.19%/28yr vs 49.75%/38yr)",
+    "Model validation against literature: showing the simulated female-fraction-vs-adult-abundance relationship is negatively correlated, matching Hardisty (Nature 1961), and female-fraction tracks resource level per the problem statement",
+    "Local sensitivity analysis: +/-5% one-at-a-time perturbation of M_t, alpha, F, beta, k identifying alpha and M_t as dominant (17.56% and 16.03% output swing vs <3.34% for others)"
+  ],
+  "why_it_won": "\"From a judge's perspective the paper wins on disciplined model economy and decision-relevance rather than mathematical sophistication. It builds ONE biologically-grounded age-structured model and answers all four sub-questions with it, which reads as a coherent thesis rather than four disconnected mini-models - a common O-award discriminator. The sex-ratio mechanism (the actual crux of the problem) is modeled explicitly as a feedback loop (food -> growth rate -> sex ratio -> recruitment -> population), not bolted on. Crucially, nearly every qualitative claim is backed by a controlled variable-vs-fixed sex-ratio comparison AND a quantified metric (recovery time, % fluctuation), so the conclusion 'adaptive sex ratio increases resistance and resilience stability' is demonstrated, not asserted. The team also handled the awkward 7-year oscillation honestly - smoothing it but then validating the smoothing via limit-cycle phase plots - which shows mathematical maturity. Tying results to the real Great Lakes invasion and fishery losses gives it the real-world relevance and storytelling judges reward.\"",
+  "section_highlights": "\"Abstract: results-forward and quantitative - leads each task with concrete findings and embeds the headline stability numbers (23.28%/33.19% fluctuation, 18/28-year recovery). Section 3 (Model): clean build-up from single-cohort mortality (Eq 1-2) to competition (Eq 3) to recruitment (Eq 4-5), consolidated into two summary tables (larva-side and adult-side) that let a judge see the whole system at a glance. Figures: heavy use of paired (a)/(b) variable-vs-fixed comparisons and phase-plane validation plots. Notation table, explicit Assumptions-with-Justification format (each assumption paired with a biological rationale and a citation), and a transparent AI-use appendix (GPT-4 Turbo queries on plankton dynamics and ecosystem-stability definitions) all signal rigor. Sensitivity section isolates the two driving parameters. Strengths/Weaknesses is short but honest (admits no predation on lampreys).\"",
+  "pitfalls_or_limitations": [
+    "Numbers are dimensionless and on an arbitrary ~0-2 scale with no real calibration to lamprey census data - all initial values and ~30 coefficients (Table 4) are hand-set, so quantitative outputs (e.g. 23.28%) are internally-relative, not empirically validated",
+    "The sex-ratio function M_t is fit only qualitatively to one 1961 Nature reference; epsilon parameters are unexplained 'nonlinear function parameters' with no derivation or units",
+    "Equation/notation inconsistencies that judges would notice: beta_m vs beta_n used loosely, Eq 15 references a non-existent 'Equation (17)', M_t is described as 'proportion of females' in notation but used as a recruitment multiplier, and time axis is labeled both 'year' and 'day' in places (plankton outbreak 'at day 75')",
+    "Sensitivity figure data table (Fig 23) shows all perturbed curves as identical to baseline, contradicting the text's claimed 17.56%/16.03% swings - the supporting data does not visibly demonstrate the stated result",
+    "Self-admitted: no natural predation on lampreys is modeled (Assumption 3), so trophic feedback on the lamprey population is incomplete",
+    "Only local one-at-a-time +/-5% sensitivity; no global sensitivity, no parameter-interaction or uncertainty analysis",
+    "Causal claims (purifying water, benthic nutrient cycling) are asserted from literature, not produced by the model itself"
+  ],
+  "reusable_patterns": [
+    "One-model-many-tasks architecture: invest in a single well-justified core model, then answer each sub-question by perturbing initial conditions / adding a term / toggling a feature - far stronger than a different ad-hoc model per question",
+    "Match the time step and structure to the organism's biology: a semelparous 7-year lifecycle -> yearly age cohorts with a hard larva/adult metamorphosis split; let the lifecycle dictate discretization",
+    "Encode the problem's central mechanism as an explicit feedback loop with its own submodel (here, the resource->sex-ratio->recruitment loop) rather than treating it as an exogenous constant",
+    "When an intrinsic oscillation obscures the trend, smooth with a window equal to the natural period, then VALIDATE the smoothing with phase-plane/limit-cycle plots so reviewers trust it",
+    "A/B counterfactual as proof: to argue a trait is beneficial, always run the model with vs without that trait under identical conditions and show both curves side by side",
+    "Define explicit scalar stability metrics up front (recovery duration, summed relative fluctuation) so 'more stable' becomes a number you can tabulate and compare",
+    "Close the loop on credibility: validate at least one model relationship against a cited empirical study, and run a simple +/-x% OAT sensitivity sweep to name the few dominant parameters",
+    "Assumptions-with-justification-and-citation format: every simplifying assumption immediately followed by a biological rationale and a reference",
+    "Results-first abstract that states each task's concrete finding plus its headline number, so a triage judge gets the whole story in 30 seconds"
+  ]
+}

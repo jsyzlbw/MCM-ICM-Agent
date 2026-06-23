@@ -1,0 +1,39 @@
+{
+  "paper_id": "2025-2510185",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asked to predict the 2028 Olympic medal table and medal counts for nations, provide prediction intervals, analyze event-type impacts, estimate the probability of first medals for never-medaled countries, and explore the effect of 'Great Coaches' on medal performance.",
+  "models_used": [
+    "Random Forest regression",
+    "XGBoost regression",
+    "Linear Regression",
+    "BP neural network classifier",
+    "Grid SearchCV",
+    "Bootstrap"
+  ],
+  "key_techniques": [
+    "Feature engineering (Athlete Potential Index, Participation Scale)",
+    "Comparative model selection with cross-validation",
+    "Grid search hyperparameter optimization",
+    "Bootstrap confidence intervals",
+    "Binary classification for zero-medal countries",
+    "Feature importance for event analysis",
+    "Sensitivity analysis with varying training set sizes"
+  ],
+  "why_it_won": "The paper creatively introduced the Athlete Potential Index and Event Potential Index, effectively capturing dynamic performance. It demonstrated rigorous model selection and validation, including grid-searched Random Forest and a high-AUC neural network classifier. The analysis comprehensively addressed all problem tasks with concrete, actionable recommendations and robust uncertainty quantification.",
+  "section_highlights": "The paper employed a clear hierarchical structure with flowcharts at each major step, enhancing readability. Visual elements like correlation heatmaps, feature importance charts, and confidence interval tables effectively communicated complex results. The consistent use of a notations table and well-labeled models makes the methodology easy to follow.",
+  "pitfalls_or_limitations": [
+    "Binary classifier could benefit from a larger training dataset for better generalization",
+    "Quantifying the precise contribution of a 'Great Coach' is inherently uncertain",
+    "The Event Potential Index (EPI) requires a more precise quantitative definition"
+  ],
+  "reusable_patterns": [
+    "Exponentially decaying performance index aggregating past medal performance for dynamic prediction",
+    "Bootstrap resampling to generate prediction intervals for regression models",
+    "Combining a regression model for medal counts with a separate classifier for first-medal probability",
+    "Using feature importance from tree-based models to identify key sports per country",
+    "Developing a potential index combining trend, growth space, and athlete quality to guide investment decisions",
+    "Grid search with cross-validation for hyperparameter tuning across multiple model types"
+  ]
+}

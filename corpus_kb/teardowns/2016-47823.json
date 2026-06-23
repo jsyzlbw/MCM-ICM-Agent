@@ -1,0 +1,61 @@
+{
+  "paper_id": "2016-47823",
+  "year": 2016,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2016 MCM/ICM Problem C (data problem): the Goodgrant Foundation will donate $100M/year for 5 years to improve undergraduate educational performance in the US. Using the provided ~2977-school College Scorecard \"Most Recent Cohorts Data,\" the team must (1) pick target schools, (2) set per-school investment amounts, and (3) set investment duration, producing a prioritized, ROI-justified recommendation list. This Outstanding paper (Team 47823) frames it as a three-stage pipeline: focus decision from external grant-landscape data, dimensionality-reduction school ranking, and a constrained nonlinear optimization that maximizes total \"incremental social utility\" (ROI) under annual budget constraints.",
+  "models_used": [
+    "Variable triage / data classification: split College Scorecard columns into three buckets — continuous-for-selecting, discrete-for-selecting, continuous-for-ROI — so the same dataset feeds two different sub-models",
+    "External-data focus decision: scraped Foundation Center FC1000 (2012) grant distribution by subject and by recipient state to deliberately AVOID overlap with existing grantmakers (anti-duplication strategy)",
+    "Manual pre-filtering: dropped all schools in NY, CA, DC, MA (wealthy, grant-saturated states), cutting 2977 to 2323 candidates",
+    "Principal Component Analysis (PCA) on 68 standardized indicators to rank schools by correlation with the foundation's 'focus' (low SAT/ACT, low Pell %, high minority %, weak-subject degrees, high part-time, high debt); kept components to 90% cumulative contribution rate, selected top 500 then top 50 target schools",
+    "Mean-imputation for missing values (NULL filled with column mean) prior to PCA standardization (z-score)",
+    "Microeconomic utility model: social utility U = log(m·M·N + k·g) — a concave (logarithmic) utility of total graduate earnings (share earning >$25k m × median earnings M × student count N) plus graduation rate g, balanced by a marginal-rate-of-substitution constant k",
+    "Dynamic ROI function: ROI = incremental utility = U_j − U_{j−1}, a time-indexed difference of the log-utility with cumulative prior investments compounded in",
+    "Telescoping-sum reduction: total 5-year ROI collapses to Σ(U_i5 − U_i0), turning a 250-variable temporal problem into maximizing Σ log(total 5-yr investment + c_i0) under five annual budget equality constraints",
+    "Constrained nonlinear program with KKT (Karush-Kuhn-Tucker) conditions — derived analytically but abandoned as intractable for 250 variables",
+    "Particle Swarm Optimization (PSO) — tried, found slow to converge / suboptimal",
+    "LA_PSO_GT: improved PSO using an augmented Lagrange function to convert the constrained problem into a bound-constrained one, combined with Fletcher-Reeves conjugate gradient for local refinement (final chosen solver)",
+    "Sensitivity analysis: perturbed the MRS constant k by ±5% and ±10%, measured resulting std-dev of investment allocations"
+  ],
+  "key_techniques": [
+    "Treating a 'data' problem as a pipeline (focus → select → optimize) rather than one monolithic model — each stage has a distinct, defensible method",
+    "Using EXTERNAL data (FC1000 foundation grant distributions, Gates Foundation grant database) both to define strategy and to validate it, going beyond the supplied dataset",
+    "Anti-duplication as the core value proposition: explicitly invest where other foundations DON'T (small, poor, minority-serving colleges) — directly addressing the 'charitable identity' framing of Problem C",
+    "PCA justified specifically because the 68 indicators interact, so naive index-summing would double-count — a concrete reason for the method, not method-for-its-own-sake",
+    "Economically-motivated concavity argument: utility MUST be concave (∂²y/∂x² < 0), otherwise the optimum degenerates to dumping all $100M on one school — used to justify the log form",
+    "The telescoping-sum algebra that simplifies a 5-year, 50-school, 250-variable dynamic problem into a clean single-period objective — an elegant, paper-worthy reduction",
+    "Algorithm escalation narrative: KKT (exact, fails at scale) → PSO (fails on convergence) → LA_PSO_GT (works), showing the team understood tradeoffs rather than reaching for one tool",
+    "Cross-validation of two independent rankings: PCA-by-need list vs ROI-by-optimization list share schools (Paul Quinn, Andrew College), used as internal consistency evidence",
+    "Validation against Gates Foundation's actual top-10 grantees (Harvard, Yale, Stanford...) showing ZERO overlap with their list — concrete proof of the anti-duplication goal",
+    "Post-processing realism: zeroing out sub-$1000 yearly allocations as operationally meaningless, while reporting >99% fund utilization"
+  ],
+  "why_it_won": "\"From a judge's view, this paper wins because it answers the actual question Problem C asks — a defensible, end-to-end INVESTMENT STRATEGY (which schools, how much, how long, in priority order) — not just a data-mining exercise. Three things stand out. First, it reframes 'best investment' through a charitable-mission lens (help under-served schools, avoid duplicating Gates/others) and then backs that framing with external data on where other foundations actually give; this gives the model a point of view, which judges reward. Second, the modeling chain is coherent and each link is justified with a real reason: PCA because indicators interact, log-utility because the optimum would otherwise be degenerate, and an escalating solver story (KKT → PSO → LA_PSO_GT) that demonstrates genuine understanding of optimization tradeoffs. Third, it VALIDATES — internal consistency between the PCA list and the ROI list, plus an external check showing zero overlap with Gates' real grantees — turning claims into evidence. The telescoping-sum simplification is a genuinely clever piece of analysis that makes a 250-variable temporal problem tractable. Combined with strong structure (executive-style summary, CFO letter, sensitivity analysis, honest weaknesses) it reads like a real consulting deliverable.\"",
+  "section_highlights": "\"Summary sheet (lines 41-51): a crisp three-part roadmap that states focus, PCA selection, and the ROI/optimization model in plain language with the key assumption (log utility, MRS k) up front — a model executive summary. Planned Approach (109-129): explicitly decomposes the problem into 3 parts with numbered procedures, giving the reader a map. Focus Decision (163-247): uses FC1000 charts to derive a 6-point 'invest more where' rubric — converts vague 'charity' into operational criteria. ROI derivation (323-390): builds utility from m·M·N + k·g, argues concavity, and produces a time-dynamic ROI. Telescoping reduction (418-428): the standout analytical moment — 'The result is really exciting!' as the 250-var problem collapses. Algorithm section (432-495): the honest KKT→PSO→LA_PSO_GT escalation with a flowchart. Validation (547-555): the Gates Foundation comparison table proving no overlap. CFO letter (590-612): translates the math into client-facing prose, calling out the ROI function as 'the most creative work.' Appendices: full 50-school recommendation list with per-year allocations, plus a full mathematical write-up of the augmented-Lagrange PSO solver.\"",
+  "pitfalls_or_limitations": [
+    "x_0 = 0 assumption: sets every school's prior/baseline investment to zero 'because of limited data,' which removes the diminishing-returns interaction across schools' existing funding and weakens the ROI realism the model otherwise prides itself on",
+    "The MRS constant k is invented to make units of earnings (m·M·N, ~10^? dollars) and graduation rate g (a 0–1 fraction) commensurable, but has no data basis — it is set ad hoc (ratio of mean earnings to mean grad rate) and is the model's single biggest unjustified knob; sensitivity analysis only perturbs ±10%, not the order-of-magnitude uncertainty",
+    "Mean-imputation of many NULLs is acknowledged as 'a main source of errors' — for a dataset with heavy missingness this can systematically distort PCA loadings and rankings",
+    "Capital-demand blind spot: the team admits investing LESS in high-grant subjects (Health/Education/Human Services) confuses supply with demand — the financing GAP is what matters, and they skip it 'reluctantly'",
+    "PCA on a mix that includes deliberately chosen 'focus' indicators risks circularity: components partly encode the criteria the team pre-selected, so the 'objective' ranking is less independent than claimed",
+    "PCA score signs/directions are not shown — combining 68 indicators with different desired directions into a single additive score needs sign alignment that the paper doesn't document",
+    "LA_PSO_GT is taken wholesale from a single Chinese master's thesis (Ref [7]) and reproduced in the appendix; the team applies rather than understands-from-first-principles it, and PSO's own weaknesses (premature convergence, weak local search) are acknowledged as limiting output accuracy",
+    "Utility log(m·M·N + k·g) adds dollars and a rate inside one log, which is dimensionally awkward and means the 'utility' has no interpretable unit (the paper concedes it is 'abstract')",
+    "The graduation-rate term g is added but, with realistic k, m·M·N (large dollar magnitudes) likely dominates, so g may contribute negligibly to the optimization despite being headlined as a key factor",
+    "Five separate annual budget EQUALITY constraints (spend exactly $100M each year) plus the telescoping reduction mean the year-by-year allocation in the results table is somewhat arbitrary — only the 5-year total per school is truly optimized; the per-year columns are a feasible split, not a uniquely optimal schedule",
+    "Reproducibility: no code, no specification of which 68 indicators or how the discrete minority-serving flags entered PCA"
+  ],
+  "reusable_patterns": [
+    "Three-stage data-problem pipeline: (1) decide FOCUS/objective from domain + external data, (2) REDUCE/select entities via dimensionality reduction, (3) OPTIMIZE allocation with a constrained program — a clean template for any MCM resource-allocation 'data' problem",
+    "Bring external data to define and validate strategy: scrape the real-world landscape (here: who else already funds what) to give your model a defensible point of view and an independent validation check",
+    "Anti-duplication / counterfactual-impact framing for any 'where should we invest/intervene' problem — target where marginal impact is highest, not where absolute metrics are best",
+    "Justify dimensionality reduction by the interaction argument: when indicators are correlated, state that simple summing double-counts and PCA is the principled fix",
+    "Concavity-by-contradiction: argue a utility/objective must be concave because a linear/convex one yields a degenerate corner solution — a reusable way to motivate log/diminishing-returns forms",
+    "Telescoping-sum trick for multi-period allocation: when per-period rewards are differences of a state value, the horizon sum collapses to (end − start), shrinking variable count dramatically",
+    "Solver escalation narrative: present exact method first (KKT/Lagrange), show it doesn't scale, then justify a metaheuristic (PSO + augmented-Lagrange/conjugate-gradient hybrid) — demonstrates judgment and earns credit even if the final tool is borrowed",
+    "Dual-ranking cross-check: produce two rankings by independent methods (need-based PCA vs return-based optimization) and use their overlap as internal-consistency evidence",
+    "External-benchmark validation: compare your output list against a real institution's actual behavior (Gates grantee list) to concretely prove your differentiating claim",
+    "Operational post-processing: prune economically-meaningless allocations (sub-$1000) and report fund-utilization %, signaling real-world awareness",
+    "Client-facing deliverable layering: executive summary + technical body + sensitivity analysis + honest weaknesses + a CFO/decision-maker letter that re-tells the model in plain language and names the 'most creative' contribution"
+  ]
+}

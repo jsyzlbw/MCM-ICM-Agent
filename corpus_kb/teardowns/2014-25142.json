@@ -1,0 +1,54 @@
+{
+  "paper_id": "2014-25142",
+  "year": 2014,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2014 MCM Problem A (continuous): evaluate the \"Keep Right Except To Pass\" rule on multi-lane freeways with right-hand traffic. Required: build a model to judge how well the rule promotes traffic flow vs. safety in light and heavy traffic, compare against an unrestricted (pass-either-side) rule, extend to left-hand traffic, and propose a rule for the case where traffic is fully controlled by an intelligent system. This team (Team 25142) attacked it with a microscopic, agent-based traffic simulation rather than a closed-form analytic flow model.",
+  "models_used": [
+    "Cellular Automata (CA) traffic model: each lane discretized into 1000 cells of 4m; road = n x 1000 matrix; each cell stores current velocity V and max velocity Vm; time step T=1s = driver reaction time; cell updated by neighbor-dependent rules (a Nagel-Schreckenberg-style CA tailored with custom rules)",
+    "Monte-Carlo simulation: stochastic acceleration/deceleration draws, stochastic overtaking decisions, randomized lane assignment, randomized inflow, all averaged over a 700s run with a 400s warm-up/burn-in before statistics are collected",
+    "Inflow (vehicle-generation) sub-model: vehicle arrivals per second modeled as Poisson with rate lambda swept from 0 to 3.6 veh/s to represent light->heavy traffic; binomial arrival assumption approximated by Poisson",
+    "Vehicle-following sub-model: PIEV reaction-time decomposition (Perception/Intellection/Evaluation/Volition) defining minimum safe gap Gs = Tr*V; speed-dependent acceleration probability Pa and deceleration probability Pb (lookup tables for fast vs slow cars) implementing a probabilistic free-driving rule, a safe-deceleration rule, and a crash-free rule",
+    "Overtaking sub-model: overtaking probability Po = 1 - 0.9*e^(Vmax2-Vmax1) when slower car ahead, else 0.1; overtaking conditions (target-lane gap > Gs AND own velocity > car ahead)",
+    "Danger Index model: physics-based safe gap from kinetic-energy/braking 1/2 m V^2 = f(Gs - G0), linearized to Gs = 10 + 2.8V (and Gs = 10 + 3.4V during lane change after subtracting lateral acceleration component); per-event danger d = max(0, Gs - Gr); road danger index D = sum over 300s of A*d, with asymmetry weight A=1 passing from left, A=3 passing from right (driver blind-spot argument)",
+    "Two competing CA rule sets encoded as prioritized if-then ladders: 'Keep-Right-Except-To-Pass' vs 'Unrestricted'",
+    "Intelligent-system extension: re-parameterized CA (reaction time 0.1s, deterministic Pa/Pb tables, sharper Po, symmetric danger A) yielding a proposed hybrid policy: keep-right when inflow < 1.5 veh/s, unrestricted otherwise"
+  ],
+  "key_techniques": [
+    "Decomposition into three composable sub-models (inflow, following, overtaking) that plug into one CA update loop -- divide-and-conquer on a messy continuous problem",
+    "Designing a custom evaluation metric (Danger Index) because the prompt asks about safety but the simulation is crash-free by construction -- they turned 'closeness below safe gap' into a continuous risk proxy instead of counting collisions",
+    "Encoding the asymmetric, human-factors safety penalty (right-side passing is 3x more dangerous due to blind spot) directly into the metric weight A, which is what lets keep-right look safer than unrestricted",
+    "Sweeping the single control parameter lambda (inflow rate) across the full light-to-heavy regime, so every conclusion is stated as a function of traffic load rather than at one operating point",
+    "Burn-in / steady-state discipline: statistics only counted after t=400 (and within a window), and density measured on cells 500-900 -- avoids transient and boundary artifacts",
+    "Multiple complementary output metrics (average velocity, fast-car velocity, per-lane density, overtaking rate, danger index) cross-validating one another",
+    "Sensitivity analysis by re-running at speed limits 28/32/36 m/s and showing the qualitative pattern is unchanged -> robustness claim",
+    "Reusing symmetry: left-hand traffic handled by mirror-swapping left/right in the existing model rather than rebuilding",
+    "Grounding parameters in cited transportation literature (PIEV time from FHWA MUTCD; Pa/Pb tables and Poisson inflow from cited Chinese traffic-CA papers; MOBIL lane-change reference) to defend otherwise-guessed constants",
+    "Full reproducible MATLAB implementation included in the appendix (Xmain, Xdeal, Xbegin, Xacc, Xsub, Xurgent, Xovertake, Xfree, Xcount, Xdensity, Xpleft/Xpright)"
+  ],
+  "why_it_won": "\"From a judge's view it wins on four axes. (1) It answers every sub-question the prompt asked -- light vs heavy traffic, 2-lane vs 3-lane, keep-right vs unrestricted, left-hand traffic, and the intelligent-system rule -- and ties each back to a chart. (2) It resolves the core flow-vs-safety tradeoff honestly: it admits the unrestricted rule gives slightly higher average velocity on 3-lane roads in heavy traffic, but still recommends keep-right because its danger index is consistently lower -- a nuanced, defensible conclusion rather than a tidy lie. (3) The Danger Index is a genuine modeling contribution: faced with a crash-free simulator, they invented a continuous, physics-plus-human-factors safety proxy with the asymmetric left/right weight, which is exactly the kind of original synthesis judges reward. (4) It is end-to-end credible and reproducible: discrete CA + Monte Carlo is the right tool, parameters are literature-cited, there is burn-in and a sensitivity study supporting a robustness claim, and the complete MATLAB code is attached. The non-obvious result that keep-right helps on 2-lane roads but not on 3-lane roads shows the model produced insight, not just a restatement of intuition.\"",
+  "section_highlights": "\"Summary sheet is concrete and roadmaps the whole approach (CA + Monte-Carlo, three sub-models, the four metrics, the new intelligent-system rule). A clean Notation table (Table 1) and a Terminology + Assumptions section front-load all definitions so the model section reads without ambiguity. The model is built bottom-up: CA design -> inflow -> following -> overtaking -> danger index -> the two rule sets, each with its governing equations and the explicit prioritized CA rule ladder. Strong figure program: tempo-spatial (space-time) diagram to show the simulation is alive, then paired keep-right-vs-unrestricted charts for average velocity, fast-car velocity, per-lane density, overtaking events, and danger index across the inflow sweep -- always comparing the two rules side by side. Dedicated Sensitivity section (speed-limit sweep) and an explicit Strengths/Weaknesses section where the team self-criticizes (coarse cell size, unscientific parameter values). Reproducible MATLAB appendix with one function per behavior. Main weak spots in writing: noticeable grammar/typo issues and OCR-garbled equations (e.g. a_p, a_d derivation), and a couple of code inconsistencies (Po stated as 1-0.9e^... in the text but hardcoded 0.9/0.1 branch in Xovertake.m).\"",
+  "pitfalls_or_limitations": [
+    "Crash-free-by-construction: collisions can never happen, so 'safety' is only ever a proxy (Danger Index). The whole safety conclusion rests on the modeler-chosen weight A=3 for right-side passing -- change that single number and keep-right may no longer look safer",
+    "Many parameters are admitted to be guessed from 'common sense' rather than data: the Pa/Pb probability tables, G0=10m, friction 0.7, the 4 m/s lane-change deceleration, the 1.5 veh/s intelligent-system threshold -- limited empirical calibration",
+    "Coarse discretization: 4m cells and integer cell/s velocities (self-noted) make the dynamics blocky and limit accuracy",
+    "Idealized assumptions strip realism: perfectly straight road, no on/off ramps, only two vehicle types, identical vehicle size, no weather, no human error in the non-intelligent model beyond the probability tables",
+    "Equation/derivation for the lane-change available deceleration (a_p, a_d) is opaque and the algebra (a_d = 6.86 - (V0 - sqrt(V0^2 - 2 V0))) is not clearly justified; a_d is then just frozen at 5.76 for convenience",
+    "Text/code mismatch: overtaking probability formula in the text differs from the constant 0.9/0.1 branch actually used in Xovertake.m, and there are OCR/typo artifacts (speedmax1 vs speedmaxl, road2 typo) that would worry a careful reader",
+    "Validation is internal-consistency and common-sense only -- no comparison against real freeway flow-density (fundamental diagram) data, so 'model is robust' is supported by a sensitivity sweep, not by external validation",
+    "Boundary handling (inflow into first 6-8 cells, outflow at the end) and the single-direction simplification are not stress-tested"
+  ],
+  "reusable_patterns": [
+    "When a prompt asks about a discrete-agent system (traffic, crowds, queues), reach for Cellular Automata + Monte Carlo and decompose behavior into independent sub-models that share one update loop",
+    "Invent a continuous evaluation metric when the quantity you care about (here: accidents) is rare or excluded by construction -- define a risk/quality index from a measurable proxy (gap below safe distance) and embed domain asymmetries as weights",
+    "Sweep the one driving parameter (load/demand/intensity) across its full range and report every conclusion as a curve vs that parameter, not a single number",
+    "Always run a baseline/alternative policy side by side (keep-right vs unrestricted) so every chart is a direct comparison that answers 'is the rule actually better?'",
+    "Add burn-in before collecting statistics and measure in an interior window to kill transient and boundary effects in any simulation",
+    "Do a sensitivity study by re-running at 2-3 alternative parameter settings and showing the qualitative pattern holds -> that is your 'robustness' paragraph",
+    "Exploit symmetry to cover extra cases cheaply (mirror the model for left-hand traffic instead of rebuilding)",
+    "Cite transportation/engineering literature for every empirical constant you cannot derive, to convert 'we guessed' into 'we adopted a published value'",
+    "Include the full, function-per-behavior simulation code in the appendix for reproducibility and credibility",
+    "Write an honest Strengths/Weaknesses section that names real limitations (coarse discretization, unscientific parameters) -- judges trust self-aware papers more than overclaiming ones",
+    "Use a space-time (tempo-spatial) diagram to visually prove the simulation behaves like the real phenomenon before showing aggregate metrics"
+  ]
+}

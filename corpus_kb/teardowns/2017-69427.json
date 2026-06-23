@@ -1,0 +1,47 @@
+{
+  "paper_id": "2017-69427",
+  "year": 2017,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2017 MCM Problem B (discrete): design the shape, size, and merging pattern of a highway toll plaza in the fan-in region where B tollbooth egress lanes funnel down to L highway lanes, optimizing for accident prevention, throughput, and cost, and accounting for autonomous vehicles and varying tollbooth mixes. This Outstanding paper (Team 69427) decomposes the problem into three sequential sub-models — (1) number of toll lanes, (2) optimal merging pattern, (3) minimum-cost plaza size — and validates them on real Florida (I-417) and New Jersey (NJ-95 Turnpike) data, closing with an advisory letter to the NJ Turnpike Authority.",
+  "models_used": [
+    "Model I — Toll-lane count via queuing theory: M/G/K multi-server queue to model the plaza service process; single-lane basic capacity M = 3600/(Ts+Tg); design hour volume DHV = AADT*K*D (K=0.12, D=0.6); converts DHV to per-second traffic intensity and matches it against a tabulated traffic-intensity table n_s(N, q/s) to read off the required lane count B (got B=7 one-way for NJ AADT=38594)",
+    "Model II — Minimum-Risk-Maximum-Flow network model: abstracts the plaza as a directed weighted flow network G=(V,A,C) with input node v0, merge node vt, and tollbooths/lanes as intermediate nodes; max-flow formulation with flow-conservation + capacity constraints; bi-objective scalarized as max E = v - lambda * sum(b_ij * H_ij)",
+    "Empirical accident-rate model: U-shaped quadratic b_ij = 6.2343(H/M)^2 - 7.2219(H/M) + 2.7091 in volume-to-capacity ratio (borrowed from Zhong/Pu et al. ref [15]) used as the per-arc risk weight",
+    "Ford-Fulkerson / labeling (augmenting-path) algorithm to compute maximum flow; LINGO used to solve the LP/network programs (max-flow model LINGO.lg4 and min-accident-rate model LINGO1.lg4)",
+    "Model III — Minimum-cost plaza-size optimization: geometric deceleration/acceleration-zone length derived from rear-vehicle actual braking distance D' = v2*r + v2^2/(2a2) and inter-vehicle safety driving distance S' = S0 + v1*t/3.6 + (v2^2/2*3.6^2)(1/j_a2 - 1/j_a1); weighted objective max Z = sum(lambda1*S'_ij + lambda2*D'_j); solved in MATLAB (sir.m, iil.m) giving accel zone ~65.25 m and plaza area",
+    "Three-class vehicle/tollbooth taxonomy (automatic/ETC ~727 veh/h, semi-automatic ~703, manual ~624) with capacity-driven booth ordering (inside-to-outside: auto, semi-auto, manual)"
+  ],
+  "key_techniques": [
+    "Sequential model decomposition: lane-count -> merging pattern -> plaza size, where each model's output feeds the next (a clean pipeline rather than three disconnected models)",
+    "Reframing a physical geometry problem as graph theory: the deceleration-shunt and acceleration-merge of the whole plaza modeled as a single directed weighted network-flow problem — the move that made the merging pattern tractable and 'universally applicable'",
+    "Bi-objective scalarization with a weight lambda to fold conflicting goals (max throughput vs min accident rate) into one objective E = v - lambda*sum(b*H)",
+    "Exploiting the empirically-known U-shaped volume/capacity vs accident-rate curve as the risk model instead of inventing one",
+    "Real data grounding throughout: Florida I-417 plaza data to fit/demonstrate, NJ-95 Turnpike (AADT 38594, peak ~7am, avg 2634 veh/h) as the headline case study with a calculated-vs-actual comparison bar chart",
+    "Control-variable (controlling-variable) method for all three robustness tests: traffic-flow level, autonomous-vehicle injection (+500 AVs forced to ETC lanes), and booth-mix proportion (2:2:1 vs 3:1:1)",
+    "Sensitivity analysis on DHV showing monotone positive relation between hourly volume and lane count",
+    "Standard MCM scaffolding executed well: summary sheet with quantified results, symbol table, explicitly justified assumptions, strengths/weaknesses, future improvements, and the required advisory letter"
+  ],
+  "why_it_won": "\"It fully answered every part of a multi-part discrete prompt (shape, size, merging pattern, autonomous-vehicle effect, booth-mix effect) with a coherent three-stage pipeline rather than scattered tactics, and it produced concrete, quantified, named deliverables a judge can verify at a glance: B=7 lanes, max flow 1375/3000 veh/h, accident rate ~0.9-0.96%, plaza area, 5:3:2 booth ratio. The standout intellectual move is recasting the messy merging-geometry problem as a directed weighted max-flow network and attaching an empirically-grounded U-shaped accident-rate weight — a clean, defensible, and generalizable abstraction. It backs claims with real Florida and New Jersey data and an actual-vs-calculated comparison, uses genuine solvers (LINGO + MATLAB) with appended code, and demonstrates robustness via systematic control-variable tests including the autonomous-vehicle scenario the problem specifically asked about. The writing is organized, the assumptions are justified, and it closes with the required well-structured letter — all the boxes a judge checks, plus one memorable modeling idea.\"",
+  "section_highlights": "\"Summary sheet is the strongest section: it leads with the three-stage architecture and hands the judge every headline number (7 lanes, 1375 veh/h, 0.9% accident rate, plaza area, autonomous-vehicle delta of -0.83%, NJ 5:3:2 / 9614.5 m^2) in one page. Section 5.2 (Minimum-Risk-Maximum-Flow) is the conceptual core — the graph abstraction with a labeled network diagram, the scalarized bi-objective, and the explicit max-flow constraint system make the key idea legible. Section 6 (Testing the Model) is unusually thorough for a sub-model paper: three separate control-variable experiments map directly onto the prompt's required scenarios (traffic level, autonomous vehicles, booth mix). Section 7 (New Jersey case study) gives the work external validity with real AADT/peak data and a calculated-vs-actual comparison chart. Assumptions (Sec 3) and the symbol table (Sec 4) are cleanly enumerated and individually justified. The appended LINGO and MATLAB code is a credibility signal that the numbers were actually computed.\"",
+  "pitfalls_or_limitations": [
+    "Hard symmetry assumption (input area == merge area) is acknowledged as unrealistic and weakens Model III's geometry; real plazas are asymmetric",
+    "Traffic distribution is fixed rather than Poisson/exponential despite invoking M/G/K queuing theory — internally inconsistent, since M/G/K presumes Poisson arrivals; the team flags this only in Future Improvements",
+    "The accident-rate quadratic b=6.2343(H/M)^2-7.2219(H/M)+2.7091 is borrowed wholesale from one Chinese reference with no recalibration to US toll-plaza conditions; coefficients are taken on faith",
+    "Numerical inconsistency: Model III area is reported as 4650.1875 m^2 in the abstract but 24650.1875 m^2 in section 5.3.4 — an uncaught factor-of-~5 discrepancy that a careful judge would notice",
+    "The merging-pattern network is hand-constructed (booth-to-lane arcs enumerated manually in LINGO) rather than derived; scalability to large plazas is unclear and not discussed",
+    "lambda weights in both the throughput-vs-risk objective and the cost objective are introduced without a principled selection method or sensitivity sweep over lambda itself",
+    "Autonomous-vehicle analysis is shallow: just +500 AVs forced onto ETC lanes with all other parameters frozen; no exploration of AV proportion sweep or mixed-autonomy car-following dynamics",
+    "Some figures are weak/garbled in the source (several 'traffic flow diagrams' are near-duplicate schematic sketches rather than informative plots), and English prose has frequent grammar issues"
+  ],
+  "reusable_patterns": [
+    "Three-stage 'sizing -> routing -> geometry/cost' decomposition: when a design problem couples a discrete count, a flow/assignment pattern, and a physical dimension/cost, split it so each stage consumes the previous stage's output — a clean template for any facility-layout prompt",
+    "Network-flow reframing: turn any 'things merge/split/route through a constrained region' problem into a directed weighted max-flow graph with a per-arc cost/risk weight; solve with augmenting-path/LP and an off-the-shelf solver (LINGO)",
+    "Scalarized bi-objective E = (benefit) - lambda*(penalty) to combine throughput and risk into a single optimization — quick and judge-legible when full Pareto analysis is overkill",
+    "Borrow an empirically-validated response curve (here the U-shaped V/C-vs-accident-rate) from literature as a model component instead of deriving one, and cite it",
+    "Queuing-theory capacity sizing: M/G/K plus a tabulated intensity lookup to convert demand (AADT->DHV->per-second intensity) into a required server/lane count — transferable to any service-counter sizing problem",
+    "Validate-on-real-data discipline: fit/demonstrate on one real dataset (Florida), then run the headline case study on a second (New Jersey) and show a calculated-vs-actual comparison chart — strong external-validity signal",
+    "Control-variable robustness battery mapped one-to-one onto the prompt's 'what if' scenarios (load level, new technology/autonomous vehicles, mix ratio) — guarantees full coverage of the question",
+    "Ship the solver code in an appendix (LINGO .lg4 / MATLAB .m) as a credibility artifact that the reported numbers were actually computed"
+  ]
+}

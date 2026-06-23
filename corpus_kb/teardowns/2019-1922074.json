@@ -1,0 +1,49 @@
+{
+  "paper_id": "2019-1922074",
+  "year": 2019,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2019 MCM/ICM Problem D (operations research): design an emergency evacuation plan for the Louvre that evacuates all visitors as quickly and safely as possible, lets emergency personnel enter rapidly, identifies bottlenecks, handles visitor diversity (disabled, languages, groups) and potential threats, and yields policy recommendations. This team (1922074) built a \"Visitor Emergency Evacuation (VEE)\" model combining an improved ant colony optimization (ACO) for evacuee route selection, a closed-form human-chain queueing time model for evacuation duration, and a time-varying improved Dijkstra for emergency-personnel ingress.",
+  "models_used": [
+    "Improved Ant Colony Optimization (ACO) on a topological graph G(N,R,tau0) — nodes = exhibition rooms/stairs/entrances, edges = corridors/stairs/passages, used to select optimal evacuee routes",
+    "Pheromone-threshold modification of ACO: when channel pheromone (proxy for crowd density) exceeds threshold n*v*t1, selection probability is inverted to 1 - p to push evacuees away from congested channels (anti-congestion negative feedback)",
+    "Human-chain queueing / discharge model: chain length L_ij = (S_ij*d + (S_ij-1)*e)/n_f giving closed-form per-staircase egress time",
+    "Evacuation-time model T = min{max t_i} where t_i sums approach time l_i/v, stair traversal L_f/v, exit-floor walk l'_j/v, exit discharge L_ij/v, plus congestion delay t_d; split into a 3-floor (0F-2F) and 5-floor (-2F..2F) sub-model, combined as T_min = max{T3,T5}+t0",
+    "Stair-congestion delay model t_d with a priority rule (lower-floor evacuees clear a shared staircase first), gated by indicator beta = 1 if t_d>0 else 0",
+    "Time-varying / dynamic improved Dijkstra for emergency personnel: graph G(N,R(t)) where each stair edge weight = traversal time + time for that stair to fully clear of evacuees at the current moment; re-solved every 1s as the responder node advances",
+    "Discrete-event-style simulation in Python that tracks each staircase's 'clear time' over the evacuation horizon (the basis for the time-varying edge weights and the Table-2 clearance schedule)"
+  ],
+  "key_techniques": [
+    "Reframed a physical building as a topological graph and treated rooms/stairs/exits as nodes — making both evacuation and ingress solvable as graph-search problems",
+    "Coupled crowd density to ACO pheromone (each person carries one unit of pheromone) so congestion is endogenous to the routing algorithm rather than an external constraint",
+    "Inverting the ACO selection probability above a derived threshold to model real human avoidance of crowded channels — a domain-motivated fix to standard ACO's pure positive feedback",
+    "Equivalence reductions to shrink the problem: merging the three -2F entrances into one effective exit; mapping 0F-to-1F flow onto the 2F-to-1F staircase so floors collapse into a tractable 3-floor and 5-floor case",
+    "Making Dijkstra time-dependent by injecting stair-clearance time into edge weights and re-running per second — letting responders dodge the counter-flow of evacuees instead of fighting it",
+    "Grounding parameters in a real data source: reverse-inferring live visitor counts from queue times reported by the 'Affluences' app, plus a language-mix pie chart from 2018 nationality data",
+    "Concrete validation against an external benchmark: 417.2s evacuation < the 15-minute safety standard, and computing a critical-capacity threshold (28,000 visitors) beyond which extra exits are required",
+    "Scenario / threat modeling by simply editing N and R (close stair B -> 453.3s; open 338 entrance -> 343.4s; close Portes des Lions -> 430.1s) to show model adaptability"
+  ],
+  "why_it_won": "\"It directly and completely answered every sub-question Problem D posed — evacuee routing, emergency-personnel ingress, bottlenecks, disabled/language/group diversity, additional-exit trade-offs, threats, validation, policy, and generalization — which is what O-award judges reward most. The two-sided modeling insight is the standout: it didn't just route evacuees out, it modeled responders going IN against the crowd using a time-varying Dijkstra whose weights encode when each stair clears, a genuinely non-obvious coupling. The single unified graph abstraction (edit N and R to handle any new scenario) gave it both elegance and a clean generalization story for 'other large structures.' It produced concrete, checkable numbers (417.2s, 130s responder time, 28,000-visitor threshold, before/after exit comparisons) validated against the real 15-minute standard, and tied every result back to actionable policy. Real data sourcing (Affluences queue times, nationality mix) and working appendix code added credibility that separates O from finalist papers.\"",
+  "section_highlights": "\"Summary sheet leads with a hook (10.8M visitors, terror-attack motivation) and states the three models plus headline numbers (417.2s, 130s) up front — judge-friendly. Clear top-down structure: VEE umbrella model (Fig 1) decomposed into Route / Time / Emergency-personnel / Potential-factors branches. Strong use of visuals to carry the argument: floor-plan-to-topology conversions (Figs 3-4), responder route maps with two competing routes A/B and a threshold T=141 decision, a relationship curve linking visitor count to evacuation time (Fig 11) that motivates the 28,000 threshold. Diversity handling is concrete and well-organized (separate treatment of groups, six-language broadcast priority, disabled-elevator topology variant with v'=1m/s, capacity 10). Sensitivity analysis isolates the two parameters the model is genuinely most sensitive to (speed v, stair throughput n_f) and frames them as actionable 'what-if' guidance for staff. Honest, specific Strengths/Weaknesses, real references including the cited ACO source paper, and an appendix with runnable Python.\"",
+  "pitfalls_or_limitations": [
+    "Uniform-distribution assumption: visitors assumed evenly spread (except 3 treasure rooms at 3x) — acknowledged as unrealistic since room popularity, size, and time-of-day vary",
+    "Homogeneous-agent assumption: every visitor has identical speed, body thickness d, and spacing e, despite the paper itself noting ~10% children and ~13% elderly (a quarter of visitors)",
+    "ACO is presented but the actual reported times come from the deterministic Python human-chain simulation, not clearly from an ACO run — the link between the 'improved ACO route' and the quoted 417.2s time model is loose and not fully integrated",
+    "The threshold derivation (tau_ij > n*v*t1 inverting probability) is hand-waved; pheromone-as-headcount and the threshold equality t1 = L_d/v are asserted rather than rigorously justified, and equation (3) contains notation slips (pi_ij vs tau_ij)",
+    "Missing/incomplete data for some staircases is admitted to affect real evacuation-time accuracy",
+    "No comparison against a baseline (e.g. unguided/nearest-exit evacuation) to quantify how much the optimized routes actually save",
+    "Behavioral realism is thin: panic, herding, falls, smoke/visibility, and exit-choice psychology are not modeled beyond the single congestion-avoidance heuristic",
+    "Appendix code is OCR-garbled (broken indentation, __len() instead of len()) and the two scripts hardcode totals/weights, so reproducibility is limited"
+  ],
+  "reusable_patterns": [
+    "Building-as-graph abstraction: convert any floor plan into G(N,R) with rooms/stairs/exits as nodes; then every variant scenario (closed exit, blocked stair, new entrance, disabled-only paths) is just an edit to N and R — a powerful, reusable 'one model, many scenarios' framing for OR/network problems",
+    "Couple a metaheuristic's internal state to a physical quantity (here pheromone = crowd density) so constraints emerge endogenously instead of being bolted on",
+    "Add a threshold/inversion to a positive-feedback algorithm when real agents avoid the thing the algorithm normally reinforces — generalizable anti-congestion / load-balancing trick",
+    "Time-varying edge weights + per-step re-solve to turn a static shortest-path algorithm (Dijkstra) into a dynamic one for moving agents in a changing environment",
+    "Equivalence/aggregation reductions (merge parallel exits into one effective exit; map one floor's flow onto another's staircase) to collapse a high-dimensional layout into a few tractable cases",
+    "Derive a critical-capacity threshold by plotting the objective (evacuation time) vs a driver (visitor count) and intersecting it with an external standard (15-min limit) -> actionable trigger value (28,000)",
+    "Source live/real parameters cleverly from public proxies (reverse-engineering counts from app queue times) to make a model defensible",
+    "Validate against a published external benchmark and report concrete before/after deltas for each intervention to demonstrate impact",
+    "Pick sensitivity-analysis parameters by physical reasoning about which most affect the bottleneck (throughput n_f and speed v at stairs), then convert findings directly into operational policy"
+  ]
+}

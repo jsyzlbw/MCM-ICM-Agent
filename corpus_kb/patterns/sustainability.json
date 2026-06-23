@@ -1,0 +1,252 @@
+{
+  "problem_type": "sustainability",
+  "paper_count": 59,
+  "common_models": [
+    {
+      "name": "Excess Water Ratio (EWR): a novel per-capita scarcity metric, EWR = (MAR - WU_industrial - WU_agricultural - WU_personal) / Population, built explicitly as an improvement on the Water Stress Indicator (WSI = Withdrawals / Mean Annual Runoff)",
+      "papers": 1
+    },
+    {
+      "name": "Algebraic re-expression of EWR in terms of WSI to bypass missing MAR data: EWR = (1/WSI - 1)*(withdrawals/population) — used because India's national MAR was not directly available but WSI was published",
+      "papers": 1
+    },
+    {
+      "name": "Component-decomposition growth model: each water-use sector decomposed into output x water-footprint (Industrial = O_i*F_i, Agricultural = O_a*F_a, Domestic = U*W_u + R*W_r), then projected with compound/exponential growth using the sum-of-growth-rates approximation g(product) ~ g(factor1)+g(factor2)",
+      "papers": 1
+    },
+    {
+      "name": "Population-weighted domestic growth rate: g(D) = (U*W_u/D)*g(U) + (R*W_r/D)*g(R), splitting urban vs rural cohorts (computed g(D)=0.0122)",
+      "papers": 1
+    },
+    {
+      "name": "Exponential projection of total water use to 2031: WaterUse = I(1+g(I))^t + A(1+g(A))^t + P(1+g(D))^t, yielding 1306e9 m^3 by 2031",
+      "papers": 1
+    },
+    {
+      "name": "Polynomial interpolation model (MATLAB polyfit): fit polynomials to the Indian government's discrete water-availability/use predictions for 1997, 2010, 2025, 2050 to estimate EWR for intermediate years; expanded EWR with 7 water-use categories (agriculture, domestic, industrial, power, inland navigation, ecology, evaporation) minus WAPC",
+      "papers": 1
+    },
+    {
+      "name": "Intervention-impact accounting model: watershed development (each watershed ~276,800 m^3/yr for agriculture; 50 new ones -> 1.38e7 m^3/yr), wastewater treatment (treat the 11.03e9 m^3/yr currently untreated via ~651 new plants), and crop substitution to millet (rice 1250mm vs wheat 550mm vs millet 350mm; saves 900mm per rice-unit, additional 200mm per wheat-unit, phased over 30 years)",
+      "papers": 1
+    },
+    {
+      "name": "More-complex EWR variant adding imports and environmental flow: EWR = (MAR + Import - WU_i - WU_a - WU_p - WU_e)/Population, incorporating ecological water needs WU_e",
+      "papers": 1
+    },
+    {
+      "name": "Composite/hierarchical scoring metric (TSM = weighted blend of PSM and ESM via a tunable emphasis parameter alpha, eqs. 7-8)",
+      "papers": 1
+    },
+    {
+      "name": "Literature-derived physical scarcity indicators: Falkenmark Indicator, Criticality Ratio (CR = water withdrawal / total renewable water resources), and Criticality Index (CI, a 2D lookup table over CR x per-capita availability)",
+      "papers": 1
+    },
+    {
+      "name": "Custom 'Adjusted CR' (ACR = CR x Climate Factor, with Climate Factor = weighted sum of WRI Interannual Variability, Seasonal Variability, Flood Occurrence; desalination added to denominator) as the physical scarcity metric",
+      "papers": 1
+    },
+    {
+      "name": "Grey Relational Analysis (GRA / Grey System Theory) to derive objective factor weights for both the Economic Scarcity Metric (5 socio-economic factors) and the Climate Factor (3 indicators)",
+      "papers": 1
+    },
+    {
+      "name": "Linear factor model for ESM (weighted normalized sum, inverted so higher scarcity = higher value, eq. 6)",
+      "papers": 1
+    },
+    {
+      "name": "Grey Forecasting Model GM(1,1) to project ESM factors and GDP/population to 2030 from short time series (~11 points)",
+      "papers": 1
+    },
+    {
+      "name": "Linear regression (log-log) of industrial and municipal per-capita water withdrawal on per-capita GDP across 169 countries",
+      "papers": 1
+    }
+  ],
+  "common_techniques": [
+    {
+      "name": "Anchoring a novel metric to an authoritative incumbent (WSI used by UN Environment Programme) for credibility, then articulating one sharp differentiator: per-capita normalization, which the WSI lacks",
+      "papers": 1
+    },
+    {
+      "name": "Validation by correlation: plotting EWR vs WSI across 10 countries (Argentina, Colombia, China, India, Russia, Saudi Arabia, South Africa, Spain, Sweden, USA) to show the new metric tracks the established one while adding resolution (e.g. China and USA have near-identical WSI 0.478/0.499 but China's EWR is ~3x smaller)",
+      "papers": 1
+    },
+    {
+      "name": "Algebraic substitution to route around a data gap — rewriting EWR using WSI when MAR was unavailable at national scale",
+      "papers": 1
+    },
+    {
+      "name": "Worst-case framing: deliberately treating sectoral growth as exponential and footprints as constant, then explicitly labeling the result a lower bound / worst case, which makes an aggressive prediction defensible rather than naive",
+      "papers": 1
+    },
+    {
+      "name": "Two-tier modeling: a transparent hand-computed 'preliminary' growth model first, then a 'more robust' MATLAB polyfit model grounded in official government projections — giving both intuition and rigor",
+      "papers": 1
+    },
+    {
+      "name": "Quantifying every intervention into the SAME EWR units (m^3/yr added or saved) so heterogeneous policies (watersheds, treatment plants, crop swaps) become directly comparable on one curve",
+      "papers": 1
+    },
+    {
+      "name": "Counterfactual comparison via the year-EWR-hits-zero as a single headline outcome metric (2083 baseline -> 2084 with infrastructure -> 2097 with millet), making the supply-vs-demand conclusion vivid",
+      "papers": 1
+    },
+    {
+      "name": "Supply-side vs demand-side taxonomy borrowed from the FAO framework to organize interventions and justify why demand-side wins",
+      "papers": 1
+    },
+    {
+      "name": "Honest sensitivity reasoning: noting the model is more pessimistic than the Indian government's and explaining exactly why (exponential assumption, constant footprints)",
+      "papers": 1
+    },
+    {
+      "name": "Decomposing one fuzzy quantity (water scarcity) into two causally-grounded sub-metrics (physical vs economic) tied to the problem's own definitions, then recombining with an explicit trade-off knob alpha",
+      "papers": 1
+    },
+    {
+      "name": "Min-max normalization of heterogeneous indicators to [0,1] before weighting, with explicit 'higher/lower/middle is better' classification",
+      "papers": 1
+    },
+    {
+      "name": "Using GRA instead of expert-assigned or AHP weights, then justifying it as 'avoiding interference of human factors' (objectivity narrative judges like)",
+      "papers": 1
+    },
+    {
+      "name": "Augmenting an existing accepted indicator (CR/CI) rather than inventing from scratch — adds the Climate Factor and desalination term to patch named weaknesses",
+      "papers": 1
+    },
+    {
+      "name": "External validation against an authoritative benchmark (UN World Water Scarcity Map) with honest discussion of agreement (Sudan/Pakistan/Saudi/Japan/Belgium match) and disagreement (Tunisia/Kenya)",
+      "papers": 1
+    },
+    {
+      "name": "Carrying both a discrete (CI) and a continuous (ACR) physical metric and deliberately choosing which to use where (CI for verification, ACR for sensitivity)",
+      "papers": 1
+    }
+  ],
+  "recurring_pitfalls": [
+    {
+      "name": "The headline projections rest on stacked optimistic-then-pessimistic assumptions: constant MAR over 15 years (admittedly ignores climate change), constant industrial/agricultural water footprints (g(F)=0), and purely exponential sector growth — the team flags these but the long-range extrapolations to 2083/2097 push a model calibrated on near-term data far beyond its validity",
+      "papers": 1
+    },
+    {
+      "name": "The two models are not reconciled: the preliminary growth model predicts India runs out of water BEFORE 2031, while the polyfit/government-based model shows EWR merely halving by 2031 and surviving to ~2083 — a large discrepancy that is acknowledged but never resolved into a single coherent forecast",
+      "papers": 1
+    },
+    {
+      "name": "The figure data shown is suspiciously linear/identical across upper and lower bounds (Figures 1, 3, 4 lower=upper), suggesting the bound-spread and some curve detail may be schematic rather than computed",
+      "papers": 1
+    },
+    {
+      "name": "Geographic/temporal distribution is assumed away (a stated assumption), yet the paper itself identifies spatial-temporal rainfall variability as India's #1 scarcity driver — the model cannot capture the very problem it diagnoses",
+      "papers": 1
+    },
+    {
+      "name": "EWR treats agriculture, industry, personal as monolithic blocks (the team admits this), so it cannot model intra-sector efficiency gains that are central to real water policy",
+      "papers": 1
+    },
+    {
+      "name": "The millet intervention assumes all rice+wheat converts to millet over 30 years with simple per-unit mm savings, ignoring yield/caloric-area differences and the demand/cultural barriers the paper itself raises",
+      "papers": 1
+    },
+    {
+      "name": "Some quantitative leaps are thinly sourced (e.g. plant build times borrowed from US analogues, single per-hectare water figures applied nationwide)",
+      "papers": 1
+    },
+    {
+      "name": "The discrete CI (only 4 levels) cannot distinguish countries within a band — the paper's own headline result for the plan is that CI stays at 4, so its physical-scarcity verdict barely moves; they paper over this by switching to continuous ACR for sensitivity, which is a bit of a have-it-both-ways move",
+      "papers": 1
+    },
+    {
+      "name": "GM(1,1) is applied to socio-economic series with strong structural breaks; reported 'errors' (e.g. GERD error 4.09, primary enrollment 1.85 in Table 6) are large and the GERD prediction collapses to 0.0207% (one-fortieth of the global average) — an implausible extrapolation that they then simply override in the plan",
+      "papers": 1
+    },
+    {
+      "name": "The regression has weak fit (R^2 = 0.32 and 0.41) yet is used to drive 2030 withdrawal projections without confidence intervals or error propagation into TSM",
+      "papers": 1
+    },
+    {
+      "name": "alpha is introduced as country-specific but is never actually estimated per country; a single global alpha ~1.1 is asserted 'after verification' with no procedure shown, and the open question of how to set alpha is punted to future work",
+      "papers": 1
+    },
+    {
+      "name": "Climate Factor is frozen for the forecast (Assumption 1) even though the paper argues climate change will worsen it — a self-acknowledged bias that undercuts the physical-scarcity forecast",
+      "papers": 1
+    },
+    {
+      "name": "Validation is qualitative (visual color matching to the UN map), not a quantitative correlation/accuracy metric; only 83 of ~190 countries used due to missing data",
+      "papers": 1
+    },
+    {
+      "name": "Several embedded data tables/figures in the markdown appear garbled or placeholder (the Figure 2 scatter and Figure 3 heatmap rows look corrupted), so the quantitative validation is hard to audit from the artifact",
+      "papers": 1
+    },
+    {
+      "name": "Forecast contradicts domain reality: the model predicts access RISING to 94.4% by 2031, at odds with the well-documented impending Indian water crisis — the team admits the model captures total freshwater availability, not delivery/distribution/treatment capacity, so it answers a subtly different question than the prompt intends",
+      "papers": 1
+    }
+  ],
+  "reusable_patterns": [
+    {
+      "name": "Metric-improvement play: take the field-standard index the problem implies, name ONE concrete weakness (here: no per-capita view), define a new metric fixing it, then validate it by correlation/scatter against the incumbent across many cases. Directly transferable to any 'design a measure' MCM/ICM prompt.",
+      "papers": 1
+    },
+    {
+      "name": "Data-gap algebra: when a needed raw quantity (MAR) is unavailable but a published composite (WSI) contains it, algebraically re-express your formula in terms of the available quantity instead of guessing the missing one.",
+      "papers": 1
+    },
+    {
+      "name": "Two-tier model pairing: present a transparent closed-form/hand-computed model for intuition AND a computational model (polyfit, simulation) grounded in authoritative data for rigor — covers both 'show your reasoning' and 'show your sophistication'.",
+      "papers": 1
+    },
+    {
+      "name": "Common-unit intervention comparison: convert every proposed policy into the same output unit as your core metric (m^3/yr here) so heterogeneous interventions plot on one curve and rank objectively.",
+      "papers": 1
+    },
+    {
+      "name": "Single headline counterfactual metric: pick one vivid scalar (year-the-resource-hits-zero) and report it for baseline vs each intervention — turns a complex model into a one-line decision insight.",
+      "papers": 1
+    },
+    {
+      "name": "Worst-case lower-bound framing: when forced into aggressive assumptions, explicitly declare the result a bound and note how it compares to authoritative forecasts — converts a weakness into a credibility asset.",
+      "papers": 1
+    },
+    {
+      "name": "Supply-vs-demand (or any dual-lever) taxonomy from a domain authority (FAO) to structure the intervention analysis and motivate which lever dominates.",
+      "papers": 1
+    },
+    {
+      "name": "Per-section strengths/weaknesses honesty pass, including social/equity side effects (women's grazing land, downstream salinity), which signals maturity to judges.",
+      "papers": 1
+    },
+    {
+      "name": "Summary sheet that delivers metric + method + case + numeric punchlines in one paragraph so the whole result is legible before the body.",
+      "papers": 1
+    },
+    {
+      "name": "Decompose-and-recombine: split an ill-defined target metric into causally distinct sub-metrics aligned with the problem statement's own definitions, then recombine with an explicit, sensitivity-tested weight/trade-off parameter (the alpha pattern)",
+      "papers": 1
+    },
+    {
+      "name": "Build ON the literature's accepted indicator and patch its named weaknesses (here CR/CI + Climate Factor + desalination) instead of inventing a metric from zero — gives instant credibility",
+      "papers": 1
+    },
+    {
+      "name": "Use GRA (or any objective weighting) and explicitly frame it as 'removing human subjectivity' — a reusable justification narrative for weight choices over AHP/expert weights",
+      "papers": 1
+    },
+    {
+      "name": "Validate every composite index against an external authoritative benchmark and openly discuss both matches and mismatches",
+      "papers": 1
+    },
+    {
+      "name": "Pair each assumption with its directional bias on the result ('underestimates X', 'overestimates Y') so error reasoning is transparent — a cheap, high-credibility habit",
+      "papers": 1
+    },
+    {
+      "name": "Carry both a discrete and a continuous version of a metric and assign each to the task it suits (classification vs sensitivity)",
+      "papers": 1
+    }
+  ]
+}

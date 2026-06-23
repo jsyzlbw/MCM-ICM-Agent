@@ -1,0 +1,48 @@
+{
+  "paper_id": "2010-8088",
+  "year": 2010,
+  "problem": "C",
+  "problem_type": "interdisciplinary",
+  "problem_summary": "2010 MCM/ICM Problem C (interdisciplinary, the ICM environmental problem) on marine plastic pollution in the Great Pacific Garbage Patch. Team #8088 narrowed the open-ended \"plastic in the gyre\" problem to a single tractable question: model the rate of mass loss of a common plastic (polyethylene) due to photolytic (UV) degradation in seawater, outputting mass remaining as a function of time. They built two complementary models — a High Transmittance Model (HTM, plastic on land / in clear water) and a Low Transmittance Model (LTM, partially submerged hollow sphere in turbid water) — grounding the degradation rate in real chemistry (bond dissociation energy of C-C bonds, Planck's E=hc/λ, Avogadro/molar-mass unit conversions) and physics (Archimedes buoyancy to determine the sun-exposed surface area).",
+  "models_used": [
+    "High Transmittance Model (HTM): linear photodegradation of a rectangular prism via a triple integral ∫∫∫ K1 dt dx dy of a constant areal mass-loss rate K1 = 4.02e-8 g/(s·cm^2); yields M_loss = K1·t·x·y",
+    "Low Transmittance Model (LTM): mass loss of a partially-submerged hollow polyethylene sphere using only the effective (above-water) sun-facing surface area; Δm = ∫∫∫ U·K·r dr dθ dt = U·K·Re^2·π·t, Final Mass = Initial − (U·K·Re^2·π·t)",
+    "Photochemistry sub-model: minimum bond-breaking wavelength from Planck relation E = hc/λ → λ = 344 nm (UVB) using C-C average bond dissociation energy (5.78e-19 J)",
+    "Free-radical photo-oxidation reaction mechanism (initiation R–H + UV → R·, propagation with O2 to peroxy radicals, and termination reactions) used to justify the 'one C-C cleavage removes one monomer' mass-loss assumption",
+    "Archimedes' principle / buoyant-force equilibrium (F_buoyant = W_plastic) to solve for the waterline angle x and hence the effective solar radius r_e = r·cos(π/2 − x)",
+    "Geometric/calculus mass model: mass of a hollow sphere as the difference of two concentric-sphere volumes ((4/3)πr^3 − (4/3)π(r−h)^3)·l = M, solved via the quadratic formula for outer radius r in terms of mass m and thickness h",
+    "Stoichiometric unit-conversion model (dimensional analysis) chaining bond energy, Avogadro's number, and monomer molar mass (28 g/mol) to convert UV irradiance (W/m^2) into grams of polyethylene lost per second per cm^2; constant K = 8.046e-5 g/J",
+    "Excel spreadsheet implementation of the LTM as a year-by-year recursive iteration (r, x, c, Δm, M_final updated each year) — Appendix A"
+  ],
+  "key_techniques": [
+    "Triple integration over time and 2D area as the unifying mathematical spine of both models — same integral structure, different geometry/limits",
+    "Dimensional analysis / unit-conversion chaining as a first-class modeling tool to bridge chemistry (J, mol, bonds) and the macroscopic mass-loss rate",
+    "Using first-principles physical constants (Planck's constant, speed of light, Avogadro's number, bond dissociation energy, polyethylene density 0.93 g/mL, seawater density 1.0255 g/mL) instead of fitted/empirical parameters",
+    "Bracketing the real situation with two end-member models (high vs low light transmittance) to span the realistic range rather than committing to one regime",
+    "Parameterizing the unknown UV irradiance as a free symbol U, deferring a hard number and explicitly flagging it as needing field calibration — honest treatment of an unmeasured input",
+    "Reducing a 3D sphere problem to a 2D 'effective surface area' perpendicular to orthogonally-incident sunlight, then linking it to buoyancy via the waterline angle",
+    "Designing models for reusability: limits of integration, shape, light intensity, and water properties are all tunable so the same framework handles other shapes/conditions"
+  ],
+  "why_it_won": "\"From a deliberately vague, sprawling ICM environmental prompt, the team made a sharp, defensible scoping decision (photodegradation of one specific plastic, polyethylene, measured as mass loss over time) and then executed it with unusual scientific depth for an interdisciplinary entry. The win comes from genuine interdisciplinary integration done correctly: real organic chemistry (free-radical photo-oxidation mechanism, bond dissociation energy, the E=hc/λ derivation of the 344 nm UVB threshold), real physics (Archimedes buoyancy fixing the exposed surface area), and clean multivariable calculus (triple integrals) all feed one coherent, dimensionally-consistent mass-loss equation. The dimensional analysis is airtight and traceable — a judge can follow every unit from watts/m^2 down to grams/year. The two-model bracketing strategy shows modeling maturity, and the team is candid about limitations (UV value needs primary research, mechanical degradation neglected, UV stabilizers ignored). It connects back to real-world impact (marine-life ingestion, cruise-ship and land-based pollution, regulation). For an interdisciplinary problem, demonstrating that you can correctly wield tools from multiple disciplines and fuse them into one validated model is exactly what distinguishes an Outstanding paper.\"",
+  "section_highlights": "\"Section III (Photolytic Degradation of Polyethylene) is the standout: it earns the model's credibility by deriving the 344 nm threshold from E=hc/λ and laying out the full radical reaction mechanism, so the later 'one C-C bond = one monomer lost' assumption reads as justified, not arbitrary. The unit-conversion display (Figure 5) chaining bonds → joules → moles → grams is a model of transparency. Section VI (LTM) is the mathematical centerpiece: it threads Archimedes' principle → waterline angle x → effective solar radius r_e → the double-integral mass loss, with a clear hand-off between the buoyancy geometry and the calculus. The abstract is concrete and results-forward, giving specific numeric outputs (HTM: 1.86 g prism loses 1.26 g/yr; LTM: 9.145 g sphere loses 0.1897 g in year 1). Section VII (Comparisons and Limitations) is unusually honest, enumerating seven specific refinements needed. Diagram 1 (effective solar radius geometry) and the Appendix A Excel iteration table make the LTM reproducible.\"",
+  "pitfalls_or_limitations": [
+    "Self-inconsistent / shaky inputs across the paper: the C-C bond dissociation energy is quoted as 5.78e-19 J (Fig 2) but the K constant uses 348000 J/mol; the irradiance plugged in (0.0005 J/(s·cm^2), and U=1400 vs U=90 in the spreadsheet) is internally inconsistent and the authors themselves admit U is unverified — undermining the headline numbers",
+    "The HTM is essentially trivial: integrating a constant gives M_loss = K1·t·x·y, a plain linear rate × area. It is dressed up as a 'triple integral' but adds no real mathematical content beyond a multiplication",
+    "Physically implausible result magnitudes: HTM predicts a 1.86 g prism loses 1.26 g (≈68%) in one year, which contradicts the paper's own Discussion that photodegradation in the gyre is very slow and may never complete — no sanity check reconciles this",
+    "Labeling/typo errors: Section V header says 'High transmittance' but the text inside calls it 'this Low Transmittance model' and 'K1'; the prism is '1x1x3 cm' in text but '1x1x2 cm' in the abstract",
+    "The Diagram 2 line chart is clearly schematic/fabricated-looking (mass declining linearly to 0 and then to negative values, e.g. −3.0 g), which is physically nonsensical and a red flag a stricter judge would catch",
+    "No sensitivity analysis or validation against any measured field/lab degradation data — the model is never tested against reality, only asserted to be 'realistic'",
+    "Linear (zeroth-order) mass loss ignores that surface area shrinks as the particle degrades and that real polymer degradation is autocatalytic/non-linear; the LTM only weakly couples area via the recomputed radius",
+    "Major mechanisms acknowledged but excluded: mechanical/wave abrasion, UV stabilizers, sub-surface plastics to ~100 ft depth, plastics other than polyethylene, and ocean currents"
+  ],
+  "reusable_patterns": [
+    "Scope an open-ended ICM/environmental prompt down to ONE measurable output variable (here: mass remaining vs time) and one representative material — radical narrowing is a winning move, not a weakness",
+    "Bracket reality with two end-member models (best/worst case, here high vs low light transmittance) instead of one over-committed model",
+    "Anchor a model in first-principles physical constants and a clean dimensional-analysis chain so every number is traceable from raw physics to the final unit",
+    "Use a single mathematical spine (triple integration over time and area) and vary only the geometry/limits to handle multiple scenarios — keeps the paper coherent and the models comparable",
+    "Keep a genuinely unknown input as a free symbol (U) and explicitly state it needs field calibration, rather than inventing a false-precision number",
+    "Borrow the right tool from each discipline and show the hand-off explicitly (chemistry sets the rate constant; physics/Archimedes sets the exposed area; calculus integrates) — the core recipe for ICM interdisciplinary problems",
+    "Provide a reproducible computational artifact (the Appendix A Excel year-by-year iteration) so judges can re-run the model",
+    "Lead the abstract with concrete numeric results, and close with a candid, itemized limitations list that names specific neglected mechanisms — signals scientific honesty"
+  ]
+}

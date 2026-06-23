@@ -1,0 +1,50 @@
+{
+  "paper_id": "2024-2417004",
+  "year": 2024,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2024 MCM/ICM Problem D (operations research / water resource management): regulate the water levels of the Great Lakes – St. Lawrence system by controlling dam discharge to balance the competing interests of multiple stakeholders under climate uncertainty, improving on the IJC's existing Plan 2014. The team (#2417004) built a multi-layer system: a network flow model of the five lakes, an advanced rule-curve-based dam discharge model focused on Lake Ontario / St. Lawrence River, and a multi-objective optimization that derives monthly optimal water levels balancing six stakeholder groups.",
+  "models_used": [
+    "Directed network / graph flow model of the lakes: nodes = lakes/ocean (Superior to Atlantic), directed edges = connecting rivers, edge weights = flow; water-balance equations linking inflow, outflow, NBS (Net Basin Supply = P - E + R) and NTS (Net Total Supply = NBS + Q_in), with level update H_i = H_pre + (NTS_i + Q_out)*T / S_lake",
+    "Sliding 'rule curve' dam-discharge model adapted from Plan 2014: total outflow change Delta Q_out = sum of piecewise components, each a normalized-deviation-raised-to-power-M times a scaling Z, driven by NTS supply index (W_NTS over 12 weeks), Lake Ontario water level, short-term precipitation forecast, synthetic lake wind, Ottawa River spring snowmelt flooding, and ice jams",
+    "Dam-with-baffles mechanical sub-model: 50 gates, Z = A_0 * r where r = number of baffles above water surface and A_0 = outflow added per opened baffle",
+    "Synthetic wind model: Lake Ontario abstracted as a rectangle (L1 E-W, L2 N-S); 16-direction wind vectors resolved onto N and E axes via cos(22.5/45/67.5 deg), combined into a wind 'range' C and synthetic speed v = C/f, feeding a wind-driven outflow term weighted by L1/(L1+L2) and L2/(L1+L2)",
+    "Multi-objective optimization model: six objective functions f1..f6 (benefit minus cost) for shipping companies, Montreal harbor/docks residents, environmentalists, shoreline property owners, recreational boaters/fishers, and hydropower companies, expressed as quadratic and exponential (Gaussian-like e^{-k|H - H_target|}) utility/cost functions of water level H and flow Q, with box constraints on H and Q",
+    "NSGA-II (Non-dominated Sorting Genetic Algorithm II) to solve the multi-objective model: binary encoding, population 100, non-dominated sorting into Pareto fronts, crowding-distance for diversity, tournament selection, crossover, mutation, elitist parent+offspring merging; implemented in R/RStudio (partial Python in appendix)",
+    "Multiple linear regression of watershed water use Y on the four annual lake levels (Y = 17,460,000 - 48,300 x1 + 83,860 x2 - 148,600 x3 + 35,370 x4) used as an independent validation channel",
+    "Cubic B-spline interpolation (make_interp_spline, k=3) for smoothing sensitivity curves in plotting"
+  ],
+  "key_techniques": [
+    "Multi-layer / progressive modeling: a simple base network model established first, then refined by an 'advanced' model adding wind, ice jams, snowmelt, precipitation — lets judges follow a buildable story from simple to complex",
+    "Reusing and explicitly improving the real-world Plan 2014 rule-curve formulation rather than inventing from scratch; recalibrated rule-curve parameters (A_NTS, H, A_Q) to 1900-2023 historical data vs Plan 2014's 1900-2000, shown side-by-side in tables",
+    "Piecewise above-normal / below-normal discharge laws with tunable exponents M to accelerate/decelerate adjustment — a clean operations-research control rule",
+    "Decomposing total outflow adjustment into additive, physically-interpretable terms (supply, level, precipitation, wind, Ottawa River, ice), each modeled separately then summed",
+    "Encoding stakeholder preferences as utility functions peaked at a target level (exponential decay) or quadratic cost, converting a qualitative conflict into a quantitative MOO",
+    "Pareto-front solving with NSGA-II to avoid arbitrary weighting of stakeholders",
+    "Two-channel validation against 2017 data: (a) checking recorded levels fall in the optimal seasonal ranges, (b) independent water-use regression cross-check",
+    "Sensitivity analysis isolating precipitation (high sensitivity) vs snowmelt (low sensitivity, satisfaction stays >0.97) to demonstrate robustness",
+    "Synthetic wind vector decomposition over 16 compass directions onto orthogonal axes — a neat physical abstraction of a setup/seiche effect"
+  ],
+  "why_it_won": "\"It reads like a credible engineering proposal, not a toy exercise. It anchors on the actual IJC Plan 2014 and improves it with recalibrated, sourced parameters, which signals real domain engagement to judges. The multi-layer architecture gives a clear narrative spine (network -> advanced flow -> optimization) so every model has an obvious purpose. It directly answers the prompt's hardest sub-question — balancing many conflicting stakeholders — with a principled multi-objective + NSGA-II Pareto approach rather than ad hoc weights, and it produces a concrete deliverable: a 12-month table of optimal levels for all five lakes. Validation is done two independent ways on held-out 2017 data, and there is a genuine sensitivity analysis. The IJC memo, side-by-side Plan 2014 comparison, and clean figures make it persuasive and decision-maker-ready.\"",
+  "section_highlights": "\"Strong structural choices: (1) Three explicitly labeled Parts (Basic Network Model, Advanced Model, Optimal Water Levels) so the modeling escalates logically. (2) A framework flowchart (Figure 1) up front that maps the whole pipeline. (3) Side-by-side tables comparing 'Plan 2014' vs 'Our Plan' parameters (Tables 2-4), which instantly communicates the contribution. (4) A full monthly optimal-level table for all five lakes (Table 5) plus a comparison figure against recent averages — a tangible answer. (5) A dedicated stakeholder section with figures showing who benefits from high vs low water and from flow stability, motivating the objective functions. (6) A genuine two-pronged validation section and a sensitivity section that names which factor dominates. (7) A polished closing IJC memo that explicitly inherits Plan 2014 strengths and addresses its named shortcomings — judge-facing communication done well.\"",
+  "pitfalls_or_limitations": [
+    "Internal inconsistency: Strengths claim NSGA-II 'combines neural network and symbolic reasoning' and Weaknesses mention slow 'LSTM training' — but no neural network or LSTM is actually built anywhere in the paper, suggesting boilerplate copied from another template",
+    "Many parameters in the utility/cost functions (k1..k9, t1, t2, H_a, H_b, H_sta, etc.) and the regression coefficients appear with specific numeric values but their calibration/derivation is not shown — they look asserted rather than fitted",
+    "The synthetic wind formulas contain apparent typos/errors (e.g. duplicated W_NW / S_SW terms in the C_N and C_E expansions), and equation numbering skips (no Eq 10), indicating rushed editing",
+    "Appendix code is incomplete and buggy (broken indentation, a literal 'i hue' typo, no actual call to the stakeholder objective functions), so reproducibility is weak — the NSGA-II shown operates on placeholder objectives f1=x+1 etc., not the real f1..f6",
+    "Heavy reliance on Assumption 2/3 (Lake Ontario-St.Lawrence model generalizes to all lakes; Ontario level ~ St. Lawrence level) without testing generalization; the optimization is really only worked out for Lake Ontario and asserted to transfer",
+    "Validation is weak as proof: showing 2017 recorded levels fall inside fairly wide seasonal optimal ranges does not demonstrate the new plan would outperform Plan 2014 — there is no head-to-head stakeholder-benefit comparison",
+    "Data provenance is shaky in places (e.g. a Chinese popular-science encyclopedia cited for minimum navigable stage; a water-use database URL that looks malformed)",
+    "A leftover marketing watermark line ('公众号：蚂蚁竞赛...') appears in the text, a transcription/source artifact"
+  ],
+  "reusable_patterns": [
+    "Layered modeling scaffold: build a deliberately simple base model first, then a labeled 'advanced' refinement that adds second-order physical factors — easy for judges to follow and easy to write incrementally",
+    "Anchor on the real-world existing policy (here Plan 2014), reproduce its mechanism, then show your improvement via a side-by-side parameter table — instant, legible contribution",
+    "Decompose a control variable (dam outflow) into additive, named, individually-modeled terms, then sum — modular and each term defensible on its own",
+    "Convert multi-stakeholder conflict into multi-objective optimization with peaked utility functions (exponential decay around each stakeholder's target) and solve with NSGA-II for a Pareto front instead of guessing weights",
+    "Use a network/graph abstraction for any connected flow system (lakes/rivers, supply chains, traffic) with conservation equations on nodes and flows on edges",
+    "Validate on a held-out year through two independent channels (direct range-check + an auxiliary regression) to strengthen the credibility argument",
+    "Sensitivity analysis that contrasts a high-sensitivity driver vs a low-sensitivity one to simultaneously identify the key risk factor and argue robustness",
+    "Close with a decision-maker memo that explicitly lists which strengths of the incumbent plan you keep and which weaknesses you fix"
+  ]
+}

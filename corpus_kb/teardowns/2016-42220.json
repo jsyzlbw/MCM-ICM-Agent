@@ -1,0 +1,52 @@
+{
+  "paper_id": "2016-42220",
+  "year": 2016,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2016 MCM/ICM Problem D, \"Analysis of Society's Information Networks.\" Teams had to build a model of how information flows through society, develop a measure to qualify \"news,\" predict how information communication will evolve (including to ~2050), model how information networks shape public interest/opinion, and analyze which factors (information value, initial bias, message form/source, network topology) most influence spread and opinion. Despite the \"Operations Research\" tag, this is fundamentally a network-diffusion / opinion-dynamics modeling problem rather than a classic optimization/scheduling OR problem.",
+  "models_used": [
+    "Double-layer complex network architecture: inner layer = point-to-point information flow within a region, outer layer = region-to-region (global) flow",
+    "AsIC Model (Asynchronous Independent Cascade) as the base diffusion model, extended with custom node/edge feature vectors",
+    "Feature-engineered propagation model: node eigenvector phi_n = [phi_S sender, phi_R receiver, phi_C content] and edge vector phi_e = phi_{S,R}, combined via linear score f(u,v,c)=k1*phi_m + alpha1^T*phi_n + alpha2^T*phi_e",
+    "Bayesian logistic function to map the linear score f into a propagation probability p(u,v,c)",
+    "Analytic Hierarchy Process (AHP) to weight the six communication media (newspaper, telegraph, radio, TV, Internet, mobile)",
+    "Maximum Likelihood Estimation with a survival/hazard formulation (accumulated probability F and survival S over continuous time, time-decay factor) to fit coefficients k_i, alpha_i, beta_i by minimizing -lg f(C)",
+    "TF-IDF + cosine similarity for sender/receiver interest similarity; Jaccard distance for structural (friend-circle) similarity",
+    "Two-dimensional Reaction-Diffusion (R-D) model in polar coordinates: divergence of gradient shown proportional to 1/rho, used to derive distance-corrected propagation (p_ex = k1*p/d_uv, tau_ex = k2*tau*d_uv)",
+    "Bounded Confidence Model (Deffuant-style opinion dynamics): s_i(t+1)=s_i(t)+mu[s_j(t)-s_i(t)] with confidence threshold epsilon, aggregated into average public opinion phi_o(t)",
+    "Regression analysis to fit/forecast media market-share trends over time",
+    "A Dijkstra/BFS-style greedy propagation simulation (set K of infected nodes, threshold gamma in 0.5-0.6) to compute total propagation ratio and delay"
+  ],
+  "key_techniques": [
+    "Two-tier decomposition (local micro-diffusion vs. global macro-diffusion) so each layer can use a different mechanism and they compose",
+    "Heavy feature engineering of nodes/edges into named, formula-backed indices (Influence=lg(RT+1), Authority=lg(FO/FR+1), Activity=lg(PO/D+1), Willing=lg(R/P+1)) with min-max normalization to [0,1]",
+    "Borrowing physics (reaction-diffusion / gradient divergence) to justify the 1/distance attenuation of cross-region propagation",
+    "Reusing the same core diffusion engine for all five tasks (news qualification, today's prediction, 2050 forecast, opinion, factor sensitivity) instead of inventing a new model per task",
+    "Validation against real events: ~89 simulated repost nodes vs. ~80 real Twitter reposts for the bin Laden event; <10% relative error on newspaper/Internet market share",
+    "Two-flavor sensitivity analysis: (a) perturb an index by +/-10% (0.9W, W, 1.1W) and (b) remove an index entirely and measure change in propagation delay, yielding the ranking Authority > Influence > Activity > Willing",
+    "Grounding abstract content value in a published 10-indicator weighting scheme (Authenticity 0.318, Timeliness 0.247, etc.) rather than inventing arbitrary weights"
+  ],
+  "why_it_won": "\"From a judge's view it wins on scope, coherence, and the appearance of rigor. It addresses every sub-task with one unified, reusable model rather than disconnected answers, which reads as a coherent body of work. It demonstrates breadth of mathematical literacy by name-dropping and actually wiring together a stack of recognized methods (AsIC, AHP, MLE survival analysis, TF-IDF, Jaccard, reaction-diffusion, bounded confidence) and citing real literature for each, signaling the team knows the field rather than improvising. Crucially it includes two independent real-world validations (bin Laden repost count and media market-share error <10%), which judges reward heavily because most teams never quantify their error. The double-layer framing is a memorable, well-illustrated central idea that gives the paper an identity. The sensitivity analysis is done two different ways and produces a clean, quotable conclusion (Authority most sensitive). The summary sheet is dense, hits every task, and states concrete results.\"",
+  "section_highlights": "\"Summary sheet (lines 37-49): one page that names the architecture, lists every method, and states concrete numeric findings (relative error <10%, 2050 predictions) plus the sensitivity ranking — exactly what a triage judge scans for. Section 3.1 Frame (137-165): sells the central double-layer idea with a figure before any math, giving the paper a clear spine. Section 3.2.1 Index Extraction (188-304): the strongest technical stretch — every abstract attribute is turned into an explicit, cited, normalized formula. Section 3.2.3 Coefficient calculation (340-378): the MLE/survival derivation that makes the model look like real statistics rather than hand-set weights. Section 3.3 Outer Layer (380-545): the reaction-diffusion derivation justifying 1/distance attenuation — a nice 'borrow from physics' move. Section 3.5 Sensitivity Analysis (610-706): two complementary methods plus the clean Authority>Influence>Activity>Willing takeaway. Sections 4.2/4.4 examples (838-905, 1047-1073): the bin Laden and Ebola validations that anchor the model to reality.\"",
+  "pitfalls_or_limitations": [
+    "Severe presentation/data-integrity problems: many figures are placeholder/garbled (Figure 4 'global network' is OCR nonsense; Figures 7 and 8 sensitivity charts show identical flat 0.03/0.04/0.05 columns for every year, so the curves are fabricated-looking and don't actually show sensitivity)",
+    "The Bayesian logistic formula as written is wrong: p = 1/(1+In(-f)) uses 'In' (a typo, and logarithm not exp); a proper logistic should be 1/(1+exp(-f)). The actual function is mis-stated.",
+    "Coefficients k_i, alpha_i, beta_i are never reported — the MLE is described but no fitted values, no data set size, no convergence evidence is given, so the 'training' is unverifiable",
+    "Validation is anecdotal and cherry-picked: two single events (bin Laden, Ebola) and two media series; the 89-vs-80 node 'match' has no error bars and the market-share table even has an internally inconsistent entry (Internet absolute error 0.12 with relative error 1.55% — numbers don't reconcile)",
+    "2050 forecasts (ratio curves, capacity curves) are essentially asserted trend lines with no stated forecasting model, confidence intervals, or driver variables — pure extrapolation dressed as prediction",
+    "Many parameters are set by fiat (media weights 1/0.5/2/2.5/3/3.5, threshold gamma 0.5-0.6, mu, epsilon) with no calibration or justification of the specific numbers",
+    "English is noticeably broken throughout ('phi_pre', 'sides and code', mislabeled figure references like 'Figure 13' inside the W discussion), which costs polish points",
+    "Conflates correlation/assumption with mechanism — e.g., assumes inherent information value decreases toward 2050 as a premise, then 'predicts' it"
+  ],
+  "reusable_patterns": [
+    "Layered/multi-resolution network template: model micro-interactions and macro-interactions as separate but coupled layers — directly transferable to epidemic spread, supply chains, transportation, rumor control",
+    "Attribute-to-index recipe: for any fuzzy quality (influence, trust, news value), define a closed-form index from observable counts, apply a log transform to compress heavy tails, then min-max normalize to [0,1] before combining",
+    "Linear-score-then-logistic pattern: aggregate weighted features into a scalar f, then squash through a logistic to get a probability — a clean, defensible way to turn many factors into one transmission probability (fix the exp typo)",
+    "Survival/hazard MLE for diffusion timing: use accumulated-probability F and survival S=1-F with a time-decay factor, then fit by minimizing -log-likelihood — reusable whenever you have timestamped cascade data",
+    "Physics-borrowing for spatial decay: invoke gradient/divergence (reaction-diffusion) to motivate a 1/distance attenuation term instead of asserting it",
+    "Bounded Confidence Model as a drop-in opinion-dynamics engine for any 'how does public opinion evolve' sub-question, with a confidence threshold epsilon controlling polarization vs. consensus",
+    "Two-mode sensitivity analysis as a standard closing section: perturb each key parameter +/-10% AND ablate (remove) each index, then rank importance — produces a quotable result judges like",
+    "Validate against a named real event plus a quantified relative-error table — even one good anchor dramatically raises perceived credibility",
+    "Summary-sheet discipline: name the model, list the methods, and state concrete numbers/answers for every sub-task on page one"
+  ]
+}

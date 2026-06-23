@@ -1,0 +1,49 @@
+{
+  "paper_id": "2019-1908810",
+  "year": 2019,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2019 MCM/ICM Problem D: design and evaluate emergency evacuation/egress strategies for the Louvre museum in Paris, balancing fast crowd evacuation against emergency responders reaching a target site. This team (#1908810) reframed the entire problem as exit-sign placement on a graph of rooms, then built three complementary models (a connectivity/spectral graph model, an agent-based queuing simulation, and a differential-flow PDE-on-a-graph model) to identify bottlenecks, test robustness to structural damage, and recommend a sign-direction policy.",
+  "models_used": [
+    "Graph/network model of the museum: hand-annotated floorplan -> nodes = rooms (variable size = footprint), edges = doors/halls/stairs (near-uniform traversal time); directed edges encode exit-sign directions",
+    "Normalized graph Laplacian spectral analysis: L(u,v) with -1/sqrt(d_u d_v) off-diagonal; computed Fiedler value lambda_2 = 0.009287 and used the Cheeger inequality (Chung's non-d-regular form) to bound graph conductance Phi_G in [0.00464, 0.1927]",
+    "Spectral graph drawing & Fiedler partitioning: plotted nodes at (v2[n], v3[n]); bimodal Fiedler-vector histogram -> Fiedler cut splitting the Louvre into two halves; found the cut severs only 4 corridors (the Richelieu wing connections) = critical links",
+    "Flood-fill / brute-force shortest-path search (Algorithm 1) to infer locations of undisclosed emergency exits by minimizing mean shortest-path distance to an exit",
+    "Agent-based discrete-event simulation grounded in queuing theory: inter-room transfer times ~ Erlang(k,mu); with k=1 reduces to Exponential(mu); congestion modeled via density-dependent rate mu = t0 * exp(c*rho(u)); room capacity -> blocking/queueing (Algorithm 2 = next-event scheduling, Algorithm 3 = re-routing around damage-induced dead-ends at a critical density)",
+    "Emergency-personnel sub-model: same agent dynamics but priority movement via a smaller penalty constant c_s < c; studied effect of responder arrival delay (0/5/10/15/20 min) vs crowd density on time-to-target",
+    "Differential-flow (PDE-on-a-graph) model: crowd treated as a viscous non-Newtonian fluid percolating a porous medium; per-edge flow d(rho_u)/dt = (1/t0)e^{-c*rho_u} * n(rho_u) * b(rho_v); vectorized system d(rho)/dt = [A B(rho)+E] (Hadamard) V^-1 N(rho) - [A^T V^-1 N(rho)] (Hadamard) B(rho) with smooth Hermite-style polynomials b_i=(1+2rho)(1-rho)^2, n_i; solved by forward Euler",
+    "Sensitivity/adaptability experiments: node/edge removal for structural damage, non-uniform 'Mona Lisa' density distribution (15 high-interest areas from geo-tagged Instagram data), and varying exit count (4 vs 7 vs 8 exits)"
+  ],
+  "key_techniques": [
+    "Problem reframing: collapsed an open-ended 'evacuation plan' into a single concrete, optimizable lever (exit-sign direction = edge orientation on a graph), making the problem tractable and policy-relevant",
+    "Triangulation by three models of different fidelity (algebraic/spectral, stochastic agent-based, deterministic PDE) that share one graph and one congestion law mu = t0*e^{c*rho}, so insights cross-validate",
+    "Cheeger/Fiedler spectral bound to quantify worst-case 'bottleneckedness' cheaply instead of solving the NP-hard min-conductance cut directly",
+    "Queuing-theory derivation: justifying exponential transfer times from the Erlang-with-k=1 limit rather than asserting it",
+    "Density-dependent rate coupling congestion to flow consistently across both the stochastic (mu scaling) and deterministic (e^{-c rho} penalty) models",
+    "Next-event/event-driven scheduling for the agent simulation (sort edge events by completion time, advance to soonest, reschedule blocked moves) = efficient discrete-event simulation",
+    "Inferring hidden information (unmarked emergency exits) from a design-intent optimality assumption + flood-fill",
+    "Sensitivity analysis that produced an actionable negative result: evacuation time is insensitive to per-room population distribution -> justifies using a simple uniform-density assumption"
+  ],
+  "why_it_won": "\"It read like a coherent research narrative, not a checklist. The team made one sharp, defensible modeling decision early (exit-sign direction as the controllable variable) and carried it through every model, so the paper has a spine. It demonstrated genuine mathematical range and maturity rare at this level: real algebraic graph theory (normalized Laplacian, Fiedler vector, Cheeger inequality with a properly cited non-d-regular variant), a queuing-theory-grounded agent simulation, and an original non-Newtonian-fluid PDE-on-a-graph formulation — three independent lenses that corroborate each other. Crucially it was self-critical and honest (explicit Shortcomings sections, a frank model-comparison section admitting the PDE model was 'very hard to tune', and a negative sensitivity finding it actually exploited). It grounded parameters in real data (2.5k visitors/hr, 3-hr dwell, 72,737 m^2 footprint, code-based capacity of 21,748) and tied everything back to concrete, implementable recommendations for the Louvre's management. Judges reward exactly this combination: a clean frame, sophisticated-but-justified math, multi-model validation, intellectual honesty, and decision-ready conclusions.\"",
+  "section_highlights": "\"Strong: (1) The summary sheet states the whole arc in one paragraph — frame (signs = edge directions), then three models ordered by purpose (preliminary spectral -> validating agent-based -> fast theoretical PDE). (2) A 'Direction and Rationale' section that argues WHY exit signs are the robust lever (power-independent, language-independent iconography, works for disoriented tourists) before any math — earns buy-in for the central abstraction. (3) A 'Terms' glossary mapping evocative words (viscosity, percolation, sites) to model objects, which makes the cross-model fluid/graph analogies land. (4) Explicit per-model Assumptions lists and a dedicated 'Comparisons of Models' section weighing each model's strengths/weaknesses against the others. (5) Algorithms presented as numbered pseudocode (Guess Exits, Scheduling of Movements, Modified Movements With Damage). (6) Recommendation section gives a bulleted, museum-facing policy list and even names follow-on optimization methods (genetic algorithm / simulated annealing). Clear escalating structure: heuristic -> insight -> refinement -> policy.\"",
+  "pitfalls_or_limitations": [
+    "The PDE/differential-flow model was admittedly under-developed — the team states it was 'very hard to tune' and they only ran uniform initial conditions, so its results are mostly illustrative rather than load-bearing",
+    "Several figures appear to carry placeholder or non-real data (the extracted figure tables show synthetic linear ramps / -1 fill values), suggesting some plots may be schematic rather than genuine simulation output — a credibility risk if a judge probes the numbers",
+    "Single hand-annotated floorplan with no validation of the graph against ground truth; room-capacity and traversal-time parameters are coarse estimates",
+    "Spectral connectivity model is explicitly acknowledged not to capture capacity or directed bottlenecks (it analyzes undirected random walkers as a heuristic proxy for directed evacuation)",
+    "Behavioral realism is thin: assumes everyone always follows signs, signs always visible, no panic; mob-mentality only mentioned as future work; emergency-personnel priority is modeled merely as a smaller penalty constant c_s",
+    "The headline optimization (point signs to reduce predicted congestion rather than to nearest exit) is recommended but never actually executed — they only propose using a GA/simulated annealing, leaving the core deliverable as future work",
+    "Some quantitative claims (e.g. responder-delay bar chart, evacuation-time area chart) are averaged over an unspecified small number of stochastic trials with no confidence intervals"
+  ],
+  "reusable_patterns": [
+    "Reframe an open-ended planning/OR prompt into choosing edge directions/weights on a hand-built graph of the real environment — turns 'design a plan' into an optimizable, analyzable object",
+    "Use a tiered multi-model strategy: a cheap analytical model for structural insight (spectral/Cheeger), a high-fidelity stochastic simulation for realism (agent-based + queuing), and a deterministic continuum approximation for speed/theory (PDE on graph) — and add a 'Comparison of Models' section that owns each one's tradeoffs",
+    "Spectral graph toolkit for any network problem: normalized Laplacian -> Fiedler vector for natural partitioning -> Cheeger bound on conductance to find/critique bottlenecks without solving an NP-hard cut",
+    "Couple congestion to flow with a density-dependent rate law mu = t0 * e^{c*rho} and reuse the SAME law across discrete and continuous models for internal consistency",
+    "Derive (don't assert) distributional assumptions: get exponential service times as the k=1 case of Erlang from queuing theory",
+    "Model capacity limits as explicit blocking/queueing with event rescheduling in a next-event discrete-event simulator",
+    "Infer hidden/undisclosed inputs from a design-intent optimality assumption plus a simple search (flood-fill shortest paths)",
+    "Run sensitivity analysis aiming to justify simplifications — a negative result ('insensitive to population distribution -> use uniform') is a legitimate, defensible modeling win",
+    "Open with a Rationale section that argues for your central abstraction before the math, and close with a bulleted client-facing policy list naming concrete next-step optimizers (GA / simulated annealing)"
+  ]
+}

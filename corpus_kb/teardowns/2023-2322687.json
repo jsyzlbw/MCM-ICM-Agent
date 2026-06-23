@@ -1,0 +1,43 @@
+{
+  "paper_id": "2023-2322687",
+  "year": 2023,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2023 MCM Problem A continuous. Plant community through drought cycles, verifying biodiversity aids survival, solved with a spatiotemporal reaction-diffusion PDE plus stochastic drought forcing.",
+  "models_used": [
+    "Reaction-diffusion PDEs, biomass PDE per species (quadratic water growth, linear mortality, diffusion) plus groundwater PDE (rainfall, drainage, quadratic consumption, advection, diffusion)",
+    "Stochastic rainfall/drought sub-model, 52-week seasonal sine, tunable drought timing/duration/severity",
+    "Method of Lines in Mathematica NDSolve",
+    "Lotka-Volterra and Monod examined and rejected",
+    "Emergent Turing-style banded vegetation patterns"
+  ],
+  "key_techniques": [
+    "Spatiotemporal PDEs unify immobility, competition, dispersal, habitat reduction",
+    "Nondimensionalization for biome-independence",
+    "Each sub-question mapped to one knob, species count, growth, mortality, rainfall, habitat size",
+    "Quadratic self-facilitation growth drives clustering and water conservation",
+    "Periodic boundaries plus random-seed initial conditions",
+    "Match simulated stripes to real aerial photos",
+    "Two species for sweeps"
+  ],
+  "why_it_won": "Rejected Lotka-Volterra for a spatial PDE answering every sub-question in one model, with mechanistic findings, a diminishing-returns optimum, severity worse than frequency, habitat loss causing extinction, and stripes matched to real photos.",
+  "section_highlights": "Summary front-loads model and findings, Literature Review rejects Lotka-Volterra and Monod as a design spec, Model Development derives the PDEs with table and diagram, Results run k=1 to 4, Sensitivity sweeps resilience/pollution/habitat, Conclusion answers the five tasks.",
+  "pitfalls_or_limitations": [
+    "Dimensional inconsistency, implicit unit diffusion, advection not a divergence operator",
+    "Unbounded quadratic growth, no carrying capacity",
+    "Water-only resource, cooperation is a water-conservation artifact",
+    "Compute cost capped species at four, sweeps at two",
+    "Validation is qualitative pattern-matching only",
+    "Periodic boundaries clash with habitat reduction",
+    "Parameters chosen not estimated"
+  ],
+  "reusable_patterns": [
+    "Literature review as a design spec",
+    "Map each prompt bullet to one tunable knob",
+    "Go spatial for immobile entities",
+    "Dimensionless mechanistic model for generality",
+    "Stochastic scenario generator for forcing input",
+    "Validate against real imagery",
+    "Method of Lines with NDSolve for nonlinear PDEs"
+  ]
+}

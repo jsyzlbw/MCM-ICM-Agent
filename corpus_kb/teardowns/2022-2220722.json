@@ -1,0 +1,57 @@
+{
+  "paper_id": "2022-2220722",
+  "year": 2022,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2022 MCM/ICM Problem F (policy type): \"Global Equity and Asteroid Mining.\" Teams had to (1) define and quantify \"global equity\" across nations with a defensible composite index, (2) forecast what a future asteroid-mining industry would look like (jobs, capital, business model), (3) determine how asteroid mining would change global equity in the short and long term, and (4) deliver actionable policy recommendations to the UN. The deep difficulty is that the core construct (equity) is undefined and the subject (space mining) is speculative with no data — so the modeling burden is on building a credible measurement instrument and a credible analogy-grounded economic story, not on solving a closed-form physical problem.",
+  "models_used": [
+    "Global Equity composite-index model: 7 first-level dimensions (Population Distribution, Environment, Education, Gender, Technology, Economy, Medicine) x 2 secondary indicators each = 14 indicators, with benefit/cost/interval normalization",
+    "Entropy Weight Method (EWM) to weight the 14 secondary indicators objectively (data-dispersion-driven)",
+    "Analytic Hierarchy Process (AHP) to weight the 7 first-level dimensions subjectively, justified via Maslow's hierarchy of needs",
+    "Combined EWM+AHP weight blend: w^RF = alpha*w^e + (1-alpha)*w^H",
+    "Resource Equity (RE) model = static snapshot score for a single year",
+    "Opportunity Equity (OE) model = dynamic score built on a 'variation dataset T' from 4 chain growth rates (2014-2018), T_ij in (-1,1)",
+    "Exponential-smoothing fusion to build dataset 2: x2 = (1 + x1)*e^(T/4), yielding the FA (Fairness Coefficient) score",
+    "Gini-style Global Equity coefficient GE = 1 - S1/2, where the FA cumulative distribution is fit to y = x^a (a=0.7165, R^2=0.8957) and S1 is the Lorenz-curve gap integral",
+    "Partial-equilibrium / monopolistic-competition market model of asteroid mining with 3 production factors (technology, capital, labor quality) and 3 country roles (tech leaders 0.6751, advanced economies 0.3122, others 0.0123 income shares)",
+    "Iterative dynamic simulation of the market over T periods with natural growth x_{T-t}=x_t*e^(T-t); GE drops to 0.4521 at T=50 under monopoly",
+    "Factor Analysis via PCA: 14 indicators -> 4 common factors (eigenvalue>1, 62.5% cumulative variance), Bartlett sphericity test (chi-sq=234.01, p<0.001); factors labeled Economic Y, Social/talent L, Living-standard F, Technology A",
+    "Cobb-Douglas-style production function Y = A*L^alpha to model economic impact of mining",
+    "GM(1,1) grey forecasting model to project Finland and Chile indicator trends (residuals |eps|<0.1)",
+    "Ward's hierarchical clustering + one-dimensional clustering for country tiering; Rand Index = 0.85 to validate RE vs OE agreement"
+  ],
+  "key_techniques": [
+    "Decomposing an undefined abstract construct (equity) into two orthogonal sub-constructs: 'Resource Equity' = current static state and 'Opportunity Equity' = development trajectory/potential — this is the paper's signature conceptual move",
+    "Hybrid objective+subjective weighting (EWM for objectivity from data dispersion + AHP anchored to Maslow's needs for a defensible human-meaning rationale), avoiding the common single-method weighting critique",
+    "Engineering a derived 'variation dataset' from chain growth ratios so a static index method (RE) could be reused to score dynamics (OE) — code/method reuse across a new data representation",
+    "Borrowing the Lorenz-curve / Gini integral idea to convert a distribution of per-country FA scores into a single scalar GE in [0,1], giving an interpretable 'closer to 1 = more equitable' number",
+    "Grounding a speculative future (asteroid mining) in a concrete real-world analogy (high-seas oil exploration + UN 'priority mining rights'), explicitly listing 5 shared characteristics to justify the transfer",
+    "Three-tier role decomposition of nations (tech leaders / capital-rich economies / labor providers) tied directly to specific indicator thresholds (tech equity > 0.42, economy > 0.58) derived by clustering",
+    "Closing the loop: feeding factor-analysis common factors back into the equity model to quantify mining's impact, then forecasting forward with GM(1,1) and comparing GE with vs without mining",
+    "Validation triangulation: Rand Index (0.85), goodness-of-fit R^2 (0.8957), sensitivity analysis (+/-5% Finland GDP), and a sanity-check historical case study of Finland"
+  ],
+  "why_it_won": "\"From a judge's perspective this paper won because it converted a vague, open-ended policy prompt into a rigorous, auditable measurement pipeline and never lost the thread back to the actual question (equity). Its winning moves: (1) a genuinely original conceptual contribution — splitting equity into static Resource Equity and forward-looking Opportunity Equity, which directly answers the 'is it fair now AND will it stay fair' tension that policy judges care about; (2) a defensible methodology stack where every weighting choice is justified (EWM = let the data speak, AHP via Maslow = let human values speak) rather than asserted; (3) a single interpretable headline number (GE in [0,1] via a Lorenz/Gini construction) that judges can immediately reason about, plus concrete counterfactual results (GE=0.7265 baseline, drops to 0.4521 under 50-period monopoly, recovers to ~0.85/0.5689 under universal participation) that turn the modeling into a clear policy narrative; (4) it grounded the speculative asteroid-mining future in the high-seas-oil analogy with explicit justification, which reads as disciplined rather than hand-wavy; and (5) it closed the analytical loop from index -> market model -> factor analysis -> forecast -> policy, so the four UN policy recommendations are visibly derived from the model (fair-competition convention, research cooperation, financial assistance, education) instead of bolted on. The full validation suite (sensitivity, Rand index, R^2, Finland case study) signals self-skepticism, which O-award judges reward.\"",
+  "section_highlights": "\"Summary sheet is strong: it walks Q1-Q4 in order, states the key numerical results, and names the methods — a judge can grasp the whole arc in 30 seconds. The Figure 1 flowchart maps the entire data->model->answer pipeline. Section 4 (Global Equity Model) is the centerpiece and is built incrementally: indicators (4.1) -> RE static model (4.2) -> OE dynamic model (4.3) -> GE definition via Lorenz curve (4.4) -> a multi-pronged validation section (4.5) with a Finland deep-dive case study, RE-vs-OE weight comparison, and Rand-index cross-check. The asteroid section (5) opens with an explicit 5-point analogy justification before any math, which earns credibility. Sensitivity analysis (9) and an honest Strengths/Improvements/Further-Discussion evaluation (10) bookend the paper professionally. Notations table, assumptions-with-explanations, and a real literature review (with a stated gap: 'no model directly quantifies global equity at the macro level') all show standard O-award scaffolding done well.\"",
+  "pitfalls_or_limitations": [
+    "Severe internal contradiction in assumptions vs model: Assumption 2 states the market is 'perfectly competitive,' yet the abstract and Section 5 conclude 'monopolistic competition / monopoly' — a logical inconsistency a sharp judge would flag",
+    "Garbled/placeholder numbers throughout the OCR'd version (GE = '??.????????', some headline coefficients missing) — in the original these were values, but the paper leans on a few magic constants (income split 0.6751/0.3122/0.0123, thresholds 0.42, 0.58) with thin derivation",
+    "The GE=1-S1/2 construction conflates a Lorenz/Gini gap with 'equity' but the FA scores being integrated are themselves composite indices on arbitrary scales, so GE's absolute value is hard to interpret cross-model (e.g., baseline 0.7265 vs post-mining 0.5689 vs 0.8531 are not obviously on one consistent axis)",
+    "The dynamic iteration x_{T-t}=x_t*e^(T-t) implies unbounded exponential divergence, which mechanically guarantees 'the strong get stronger' — the long-run inequity conclusion is partly baked into the growth assumption rather than discovered",
+    "AHP weights justified by Maslow are qualitative hand-waving; no pairwise-comparison matrix or consistency ratio (CR) is shown, which is the standard AHP rigor check",
+    "Sensitivity analysis is thin: only one parameter (Finland GDP +/-5%) on one country is perturbed; the many threshold and income-share constants are never stress-tested",
+    "Income shares and cost weights are 'estimated from high-seas oil field data' but the actual mapping from oil data to asteroid mining is asserted, not computed",
+    "Factor analysis cumulative variance is only 62.5% — a meaningful chunk of indicator variance is unexplained by the 4 retained factors",
+    "Some country-level data tables are clearly corrupted/duplicated (repeated 0.5000 and 1.2346 entries), suggesting figure/data quality issues that survived to submission"
+  ],
+  "reusable_patterns": [
+    "The Resource-vs-Opportunity (static-state vs growth-trajectory) decomposition is a transferable template for ANY 'measure a fuzzy good thing' problem (sustainability, livability, resilience): score the snapshot, then re-score a derived growth/momentum dataset and fuse them",
+    "EWM (objective, data-driven) + AHP (subjective, value-driven) hybrid weighting with an explicit blend parameter alpha is a reusable, defensible recipe for composite indices — pre-empts the 'why these weights?' critique",
+    "Build a 'variation dataset' from chain growth ratios normalized to (-1,1) so you can REUSE an existing scoring pipeline to capture dynamics — avoids inventing a second model",
+    "Collapse a per-unit score distribution into one scalar in [0,1] via a Lorenz-curve fit (y=x^a) and Gini-style integral when you need a single interpretable 'fairness/concentration' headline number",
+    "Ground any speculative-future modeling in a concrete present-day analogy and justify the transfer with an explicit enumerated list of shared characteristics before doing math (high-seas oil <-> asteroid mining)",
+    "Close the loop: run factor analysis on your own index indicators to extract the few levers that matter, then write policy recommendations that map one-to-one onto those factors — makes recommendations visibly model-derived",
+    "Validation triangulation kit for index papers: sensitivity (+/-5% perturbation), a cross-method agreement metric (Rand Index between two models), goodness-of-fit R^2, and a real-world named case study (pick the top-ranked unit and verify it matches reality, e.g., Finland = happiest country)",
+    "Use GM(1,1) grey forecasting for short trend extrapolation from very few data points and report residuals (|eps|<0.1) as the acceptance check",
+    "Tier the population into a small number of role-based segments tied to clustering-derived thresholds, then assign each segment a distinct payoff rule — clean way to model heterogeneous-actor policy effects"
+  ]
+}

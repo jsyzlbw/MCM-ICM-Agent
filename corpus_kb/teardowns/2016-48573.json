@@ -1,0 +1,46 @@
+{
+  "paper_id": "2016-48573",
+  "year": 2016,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2016 MCM Problem B (discrete): build a model to evaluate the performance of an Orbital Debris Removal (ODR) system, determine whether a private firm can profit from commercial space-debris removal, select the best removal method by some quantitative criterion, and—if no commercial opportunity exists—propose an innovative collision-avoidance scheme. This team (\"Will We Survive in the Space Junk?\", Team 48573) answered all three sub-questions: an ODE population-dynamics simulation of satellites vs. debris (with and without cleaners), a time-dependent profit model concluding profitability only after 50–60 years, an AHP-based method-selection model ranking SpaDE #1, and a novel hybrid \"box + collision-probability\" avoidance method.",
+  "models_used": [
+    "Coupled system of ordinary differential equations (Lotka-Volterra / predator-prey-style population dynamics) for satellite and debris populations, split into high-orbit S_h and low-orbit S_l, with a debris equation D; debris loss term -βDS, debris source terms from collisions (βS·D·N), retired satellites ((γ_h+γ_l)ρN), and natural growth λD",
+    "Model II extension: added cleaner population W with cleaning term -θWD on debris and a machinery-damage decay dW/dt=-δWD; explicitly contrasts 'with ODR' vs 'do nothing' trajectories",
+    "Heterogeneous-debris / specialized-cleaner extension: split debris into large D1 and small D2 with removal-difficulty coefficients p1<1<p2, and two cleaner types (heavy θ1 vs light θ2) — a 6-equation ODE system",
+    "Time-dependent profit model: π(t) = (N2(t)-N1(t))·V where N2/N1 are satellite counts with/without ODR and V is average satellite value; compared against a cost function C(t) split into R&D, production/launch, and maintenance; recycling sub-model subtracting recovered-debris value",
+    "Analytic Hierarchy Process (AHP) for cleaner selection across 5 criteria (cost, cleaning efficiency, production cycle, disturbance, life expectancy), using a 1-9 pairwise-comparison judging matrix, principal-eigenvector weights, and CI/CR consistency check (CR<0.1)",
+    "Hybrid collision-avoidance model combining the 'box' method (nested outer/inner surveillance boxes) with the 'collision-probability' method (position vectors R = r + error vector e, predicted minimum distance md = |R_s - R_d|), with three escalation levels and value-tiered box sizes (low-value / commercial / high-value spacecraft)"
+  ],
+  "key_techniques": [
+    "Reusing one core ODE engine and progressively extending it (Model I → +cleaners → +debris sizes/cleaner types → +recycling), so every later result is anchored to a single validated baseline",
+    "Connecting Kessler Syndrome (cited 1978 Kessler reference) to their own simulated exponential debris growth as a qualitative validity check ('result is consistent with the Kessler syndrome')",
+    "Grounding every parameter (β, α, γ, ρ, θ, W, δ, V) in a named real-world source: Satellite Database, ESA/ESOC 2013, NASA SpaDE report, laser-base research — turning a toy model into a defensible quantitative one",
+    "MATLAB numerical integration to produce time-series trajectories for satellites and debris under each scenario",
+    "Two-axis evaluation framing: profitability (pure economics) vs overall performance (AHP), explicitly stated as a strength so judges see breadth",
+    "AHP consistency ratio CR=CI/RI with the standard RI lookup table, demonstrating methodological rigor rather than arbitrary weighting",
+    "Sensitivity analysis on multiple fronts: ODE robustness to β (×2, ×0.5) and N (1000→1500→500,000), and AHP fragility to the pairwise matrix — honestly reporting that AHP weights flip the ranking",
+    "Innovation by hybridization: explicitly merging the strengths of two established avoidance methods rather than inventing from scratch, with a tiered (level-1/2/3) response protocol keyed to spacecraft value"
+  ],
+  "why_it_won": "From a judge's view this paper wins by fully covering the prompt's three demands with distinct, appropriate tools (dynamics → ODE, selection → AHP, novelty → hybrid avoidance) rather than over-investing in one. The ODE-to-profit chain produces a memorable, decision-relevant headline ('no profit for 50+ years'), which is exactly the kind of crisp, defensible conclusion judges reward. Parameters are sourced from real databases and the model self-validates against the named Kessler Syndrome, giving credibility. The team is intellectually honest: sensitivity analysis is run on every model and they openly flag that AHP rankings are unstable under weight changes — judges trust authors who expose their own weaknesses. The progressive extension structure (recycling, specialized cleaners) shows depth without abandoning the validated core, and the closing logic is tight: because ODR isn't profitable now, the collision-avoidance method becomes the actionable recommendation, so all three parts cohere into one argument.",
+  "section_highlights": "Strong scaffolding throughout: a one-page Summary Sheet that states each model and its punchline, a separate Executive Summary aimed at a policy/government reader, and a full table of contents. The Symbols table up front lets judges decode every equation without hunting. Each modeling section follows a clean repeatable rhythm — Assumptions & Justifications → Establishment (equations) → Test (parameter table with sources) → Analysis & Conclusions — so the reader always knows where they are. System diagrams (Figure 4/6 flowcharts) visualize the ODE coupling, and every scenario gets a labeled time-series figure. The AHP section walks the full procedure (judging matrix → eigenvector weights → CI/CR check → per-criterion grade bars → final score table → re-run under modified weights), making the method auditable. A dedicated Strengths & Weaknesses section pre-empts judge criticism, and the Conclusions explicitly thread the three sub-answers back together.",
+  "pitfalls_or_limitations": [
+    "The transcribed figure data tables look inconsistent/garbled (e.g. Figure 5 captioned 'without ODR' yet showing better satellite outcomes than Figure 3 'with ODR'; debris columns of zeros) — the numbers backing the headline conclusions are hard to verify and some appear mislabeled",
+    "Symbol inconsistency in the equations: N appears as both N1 and N2 with conflicting values (N1:1 then N1:0.5), and ρ vs γ are conflated in the prose — sloppy notation that a stricter judge would penalize",
+    "The profit model is thin and almost arbitrary: V=0.101 is plugged in, cost C(t) is asserted ($20B R&D, $2B production, $100-200M/yr maintenance) without a real cost curve, and the 50-60-year crossover rests entirely on these hand-set values",
+    "Exponential debris growth (λD) is acknowledged by the team as 'may be unrealistic' — it guarantees blow-up and drives the dramatic conclusions; no carrying-capacity or saturation term",
+    "Orbit discretization is coarse (only LEO 'low' and GEO 'high'), and 'all debris evenly distributed / identical fragments' assumptions ignore the spatial-density physics that actually governs collision probability",
+    "AHP weights are admittedly the team's own subjective 1-9 judgments; their own sensitivity test shows the ranking reorders (Water Jet drops from #2 to #4) when cost is de-emphasized, so the SpaDE recommendation is fragile",
+    "The collision-avoidance method is described conceptually (boxes, levels, md=|R_s-R_d|) but never simulated or quantified — it's a design sketch, not a tested model"
+  ],
+  "reusable_patterns": [
+    "Single-core-model-with-staged-extensions: build one validated baseline (here an ODE system), then layer complexity (cleaners → multiple debris/cleaner types → recycling) so each new result inherits the baseline's credibility — directly reusable for any population/resource-dynamics MCM problem",
+    "Map each sub-question to a purpose-built method: dynamics→ODE simulation, ranking/selection→AHP (with CI/CR consistency check), novelty→hybridize two known methods. AHP with a 1-9 matrix, eigenvector weights, and the RI table is a plug-and-play template for any 'choose the best alternative' prompt",
+    "Anchor every parameter to a cited real source and validate the model against a named published phenomenon (Kessler Syndrome) — converts assumptions into defensible quantities",
+    "Two-lens evaluation (economic profit vs multi-criteria performance) to demonstrate breadth on open-ended 'is it worth it?' questions",
+    "Per-model sensitivity analysis as a standard closing move, including the courage to report that one model (AHP) is unstable — honesty that judges reward",
+    "Dual-summary structure: a technical Summary Sheet plus a stakeholder-facing Executive Summary, each leading with the punchline",
+    "Repeatable section template (Assumptions→Establishment→Test-with-parameter-table→Analysis) that makes a long paper navigable",
+    "Tiered/escalating decision protocol keyed to asset value (level-1/2/3 response, low/commercial/high-value boxes) as a clean way to present an operational policy"
+  ]
+}

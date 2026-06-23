@@ -1,0 +1,56 @@
+{
+  "paper_id": "2023-2314817",
+  "year": 2023,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2023 MCM/ICM Problem E (sustainability / light pollution). The team built (1) a metric to evaluate the light-pollution risk level of any location, (2) applied it to four location types — protected land (Ordos), rural (Zhaotong), suburban (Qingyuan), urban (Guangzhou), (3) designed three intervention strategies with quantified impacts, and (4) selected the optimal strategy per location. Their answer is a three-layer system: an ESE (Economic-Social-Ecological) decomposition that produces three raw light-pollution indicators (EC, SC, EN), an LPRA model that normalizes and AHP-weights them into a single Risk Level (RL) and K-means-buckets 284 Chinese regions into 4 severity tiers, and an I-ESE model that couples the three subsystems via fitted curves so an intervention in one subsystem propagates to the others — enabling cost-driven strategy simulation over a 20-year horizon.",
+  "models_used": [
+    "ESE three-subsystem decomposition: Economic (EC), Social (SC), Ecological (EN) — the core modeling idea that turns a vague 'risk level' into three computable indicators",
+    "Logistic population growth ODE dN/dt = rN(1 - N/Nm) with closed-form solution N(t), used to project the population driver of economic light pollution forward in time",
+    "Economic light-pollution formula EC = sum over 3 industry sectors of N * PC_i (sector share) * PLP_i (per-capita light pollution) * tm_i (artificial-light hours)",
+    "Social subsystem: per-land-type brightness threshold intervals (commercial 10-20, residential 3-6, administrative 15-25, green <=3, other 2-5), with SC = fraction of land area falling OUTSIDE its threshold (too dark -> crime risk, too bright -> traffic risk)",
+    "Ecological subsystem: indicator-function (1_A) counting model EN = sum of species_density * surface-coverage * 1(light >= melatonin-suppression threshold lm_i) * area, over 7 species in 3 groups (terrestrial/aquatic/human) with per-species lx thresholds from literature",
+    "Radiometric correction of raw DMSP nightlight DN values: L = DN^(2/3) * 10^-10",
+    "Min-max normalization of the three indicators to [0,1] to remove dimensional incommensurability",
+    "Analytic Hierarchy Process (AHP) with the pairwise-comparison matrix populated from Google search-index hotness (econ 63.41 / society 65.46 / ecology 68.47) instead of subjective judgment; eigenvector weights W=(0.3214,0.3316,0.3469), consistency-checked, giving RL = W1*ECL + W2*SCL + W3*ENL",
+    "K-means clustering of 284 regions into 4 severity tiers (Slight/Moderate/Serious/Severe) to turn a continuous score into an interpretable ordinal scale",
+    "I-ESE coupling: nonlinear regression fits between subsystems — quadratic (ECL-ENL both directions), composite/exponential ECL=0.044*9.472^SCL and its logarithmic inverse SCL=log_9.472(ECL)",
+    "Cost-driven intervention mechanics: treatment budget Cost = 0.000843 * GDP (8.43 per-mille of GDP), converted into delta-t (production-hour reduction), Num (smart lamps replaced), or Sq_protect (dark-sky reserve area), each feeding a delta-EC/SC/EN reduction that re-enters the I-ESE chain",
+    "GE Cube (3D ECL-SCL-ENL coordinate cube with an optimal point OP*) as a visualization to compare before/after positions of the three strategies",
+    "Sensitivity analysis varying Cost by +/-50% to show RL trajectory shape is preserved"
+  ],
+  "key_techniques": [
+    "Triadic problem decomposition (Economic/Social/Ecological) that mirrors the sustainability triple-bottom-line — gives every later model a clean three-way structure and makes the whole paper navigable",
+    "Defining a custom physical indicator per subsystem (a pollution 'quantity' EC, a risk-area 'ratio' SC, an affected-organism 'count' EN) rather than borrowing one generic score — each is grounded in real units and literature thresholds",
+    "Replacing subjective AHP judgments with an objective external signal (Google search index) — a clever, defensible answer to AHP's #1 known weakness",
+    "Closing the loop with an Interconnected model: instead of three independent scores, fitting cross-subsystem curves so a single-lever intervention has system-wide, quantifiable ripple effects — this is what makes the strategy section rigorous instead of hand-wavy",
+    "Tying every strategy to a single shared currency (Cost as a fixed fraction of GDP) so strategies are comparable on an equal-budget basis",
+    "Indicator (Heaviside-style) functions 1_A(lg >= lm_i) to encode hard biological thresholds cleanly in summation formulas",
+    "Validating the metric by face-checking outputs against ground truth (Ordos high ENL/low SCL = nature reserve; Guangzhou high ECL/SCL/low ENL = dense city) — using the four diverse locations as a sanity-check, not just a deliverable",
+    "20-year forward simulation of RL under each strategy, producing decision-relevant trajectories rather than a static snapshot"
+  ],
+  "why_it_won": "\"From a judge's view, the paper wins on completeness of the modeling arc and on answering every sub-prompt with a quantitative artifact, not prose. (1) It converts an open-ended 'design a metric' task into three concrete, literature-grounded formulas plus a single defensible aggregate (AHP+K-means), so it fully nails the required deliverable. (2) The Google-search-index AHP is a genuinely original twist that pre-empts the obvious 'your weights are arbitrary' criticism — judges reward that kind of self-aware methodological choice. (3) The I-ESE coupling is the decisive differentiator: most teams treat the three pillars independently and then bolt on generic 'turn off lights' advice; this team made interventions propagate through fitted inter-system curves and simulated RL 20 years out for two cities, so their strategy recommendations are derived from the model rather than asserted. (4) Strong narrative discipline — evocative title/epigraph, a master flowchart, consistent EC/SC/EN -> ECL/SCL/ENL -> RL notation, radar charts per city, the GE Cube, and a polished real-world flyer (required by Problem E) — gives the reader a frictionless path through a genuinely multi-part model. (5) It validates against ground truth and runs a sensitivity sweep, hitting the rubric's robustness expectations.\"",
+  "section_highlights": "\"Summary: dense but complete — names all three models, gives the four cities' RL scores (0.1332/0.1778/0.2574/0.5154) and the Guangzhou before/after (0.5153 -> 0.0309), so a judge knows the whole story in one paragraph. Problem Restatement & Our Work: explicitly pairs each prompt bullet with the corresponding 'Our work' bullet — a clean traceability device that proves coverage. Notations table + master flowchart (Fig 1) front-load the architecture. The four-location application (Sec 6) is the strongest section: each city gets coordinates/population/climate/GDP plus a radar of ECL/SCL/ENL and a paragraph arguing the numbers match reality — turning a deliverable into a validation. The I-ESE section (Sec 7) with Table 4's four fitted equations is the analytical core. The GE Cube optimal-strategy selection (Sec 8.4) and the consumer-facing flyer (Sec 11, '47.3% risk reduced') close strongly. Weaknesses section is honest but thin (only two bullets, both about missing data).\"",
+  "pitfalls_or_limitations": [
+    "Many parameters are admittedly 'semi-educated guesses' (PLP per-capita light pollution, tm artificial-light hours, smart-lamp prices, C_protect) — the model's numeric outputs rest on weakly-sourced constants, so the precise RL values are not trustworthy even if the structure is sound",
+    "The AHP-from-search-index trick is clever but fragile: search hotness for the words 'economy/society/ecology' is a proxy for public attention, NOT for actual contribution to light-pollution harm — the three weights end up near-equal (~0.32 each), so AHP adds little discriminating power here",
+    "The underlying data tables rendered in the markdown are visibly corrupt/placeholder (e.g., flat 7.0e9 population every year, the 284-region scatter collapsing to 1e-10 values, sensitivity tables with constant rows) — suggesting the figures were schematic and the real computation isn't fully reproducible from the paper",
+    "The cross-subsystem fitted curves (e.g., ECL = 0.044*9.472^SCL) are fit on aggregated cross-sectional region data and then used causally for time-forward intervention simulation — conflating correlation across regions with causal dynamics within one city over 20 years",
+    "Assumptions are strong and convenient: fixed industrial structure, constant organism density, agriculture light ignored, no inter-region interaction — each removes a hard part of the real problem",
+    "'GE Cube' is essentially a labeled 3D scatter of the three normalized scores; it's a presentation device, not an analytical method, though it's framed as a model component",
+    "K-means with k=4 was chosen to match the four named severity tiers rather than justified by an elbow/silhouette analysis",
+    "Several internal inconsistencies/typos (e.g., 'plastic waste' left in the severity-scale sentence, ESE flowchart mislabels, 47.3% vs the 20-year numbers) hint at rushed final assembly"
+  ],
+  "reusable_patterns": [
+    "Triple-bottom-line decomposition (Economic/Social/Ecological) is a near-universal template for ANY sustainability/Problem-E task — define one custom indicator per pillar, normalize, then aggregate",
+    "Indicator -> normalize (min-max) -> weight (AHP/entropy) -> single composite score -> K-means into named severity tiers: a reusable, judge-friendly pipeline for any 'build a risk/health/quality index' prompt",
+    "Objectify subjective AHP weights with an external data signal (search index, news frequency, survey counts) and always report the consistency check — directly transplantable and impressive",
+    "Build an 'interconnected' second model on top of independent submodels by fitting cross-variable regression curves, so that single-lever policies produce system-wide effects — the key move that upgrades a static metric into a strategy-evaluation engine",
+    "Express all candidate interventions in a single shared budget currency (Cost = fraction of GDP) and map budget -> physical action -> delta-indicator, so strategies are comparable on equal footing",
+    "Use the required 'apply to diverse cases' deliverable as a built-in validation: pick cases with known opposite characteristics and argue the model's outputs match reality",
+    "Indicator/Heaviside functions 1(value >= threshold) to embed hard literature thresholds into clean summation formulas for counting affected units",
+    "Logistic growth as the standard, low-risk driver for any population/adoption quantity that needs forward projection",
+    "Deliverable-specific polish: when the prompt asks for a flyer/letter/memo, actually produce a designed, jargon-free, audience-appropriate artifact with a headline benefit number",
+    "Consistent layered notation (raw EC/SC/EN -> normalized risk ECL/SCL/ENL -> aggregate RL) so the reader can always tell which layer a symbol lives in"
+  ]
+}

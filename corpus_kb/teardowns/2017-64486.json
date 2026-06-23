@@ -1,0 +1,56 @@
+{
+  "paper_id": "2017-64486",
+  "year": 2017,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2017 ICM Problem F (policy/society planning): design an optimal workforce-economy-education policy for a 10,000-person colony (\"Population Zero\" / UTOPIA:2100 on Mars), balancing three goals — economic output (GDP), education, and social equality (equity) — under sustainability constraints. The team had to define metrics, select the immigrant cohort, simulate societal evolution over time, find optimal minimum wage and parental-leave policy, serve subgroup priorities, and assess impact of phased immigration waves. The team frames the whole answer as a quantitative, simulation-and-optimization-backed policy recommendation to a fictional agency (\"Director of LIFE\").",
+  "models_used": [
+    "Analytic Hierarchy Process (AHP) with Saaty 1-9 pairwise comparison matrices to derive two weight sets (GDP Index vs. Happiness Index); consistency checked via max eigenvalue 3.0044 and CR=0.0043 < 0.1",
+    "Composite index construction: a custom 'Happiness Index' and 'GDP Index' built from a 3-tier (individual/family/societal) parameter hierarchy spanning income, education, equality factors",
+    "Agent-based / microsimulation 'Evolution Model' in MATLAB: per-individual state vectors evolving year-by-year through coupled subsystems (Death, Job, Marriage, Education, Childbirth, Salary/Welfare, Migration); seeded with real PUMS 2015 microdata (1,618,489 records)",
+    "Stochastic death model: logistic hazard p = 1/(1+exp(-0.15(age-70)))",
+    "Marriage-matching model: Euclidean 'distance' between individuals over (age, income), marriage probability Pr = 1 - d_ij/d_max, greedy maximum-probability pairing on an adjacency/path matrix",
+    "Age-dependent fertility: custom pdf f(A) constrained to integrate to 1 and to give mean 2 children over the 20-49 childbearing window; arctan-based birth-probability response to parental-leave pay",
+    "Markov chain class-transition model: 5 income classes (A-E) with transition rates lambda_i / mu_i, stationary-distribution balance equations to compute steady-state class proportions n_k",
+    "Multi-objective optimization solved with a controlled elitist genetic algorithm (NSGA-II style, Deb): maximize average family income (Z1), minimize income std dev (Z2), maximize minimum wage (Z3); Pareto front after 50 iterations -> optimum (65234, 9848, 33526)",
+    "Nonlinear programming for subgroup resource allocation: minimize global-outcome loss plus penalized allocation-inequality terms subject to per-resource budget constraints",
+    "Complex-network model: scale-free (power-law degree) network with Watts-Strogatz small-world property representing interpersonal/employment/parenthood links; used to study immigration-wave impact and scalability",
+    "Principal Component Analysis to identify key drivers of a 'successful society' (high avg family income, high minimum wage, low income std dev)",
+    "Robustness/noise analysis: 1% random noise injected into initial values, 30 independent runs, mean+std of outcomes reported (cites Nissen & Propach on population-based optimization under noise)",
+    "Word-frequency / word-cloud analysis of SSRN corpus to motivate factor weighting"
+  ],
+  "key_techniques": [
+    "Grounding an open-ended policy question in REAL data: pulled actual PUMS 2015 census microdata via SAS/SQL Server, generated a 10,000-person random baseline sample, then a criteria-selected 'Population Zero', and quantitatively compared the two distributions (income, working hours, education, age, sex) to validate selection criteria",
+    "Decomposition of a vague prompt into six concrete, sequentially-building sub-problems (parameters -> selection -> evolution -> trade-offs -> subgroups -> network/scalability)",
+    "Two-weight AHP trick: same parameter hierarchy yields different weights for an economic objective vs. a welfare objective, cleanly operationalizing the GDP-vs-equality trade-off",
+    "Coupling a microsimulation to optimization: simulate the society, then optimize policy levers (minimum wage, parental-leave pay) against simulated outcomes via genetic algorithm",
+    "Closing the loop policy -> mechanism: e.g. min-wage shown negatively correlated with NDP, then equilibrium found where standard deviation (top Happiness driver per AHP) is minimized",
+    "Concrete numeric deliverables: optimal minimum wage = $33,526/yr, optimal parental-leave pay = $50,200/person, immigration of 10k every 10 (or 16) years is sustainable, phased migration beats one-shot",
+    "Robustness as a first-class section: noise perturbation across IP/MW/PLP with 30-run statistics, demonstrating recommendation stability",
+    "Appendix with the full MATLAB evolution script for reproducibility",
+    "Front-loaded one-page policy letter ('Honored Director of LIFE') translating every model result into a plain-language actionable recommendation"
+  ],
+  "why_it_won": "From a judge's view this paper wins on three axes simultaneously. (1) It answers the actual policy question with hard numbers, not hand-waving — every recommendation (min wage $33,526, parental leave $50,200, recruit innovators/under-40s, phased immigration) traces back to a specific model output, which is exactly what Problem F asks for and what most teams fail to deliver. (2) It uses REAL data (1.6M PUMS census records) as the simulation seed, giving the demographic and income claims credibility that a purely invented model lacks. (3) It demonstrates breadth-with-coherence: AHP for metrics, an agent-based microsimulation for dynamics, a genetic algorithm for multi-objective optimization, Markov chains for income mobility, and complex-network theory for scalability — a wide methodological toolkit, yet all feeding one coherent narrative about balancing economy/education/equality. The trade-off handling is the standout: it explicitly finds the equilibrium between GDP and the Happiness Index rather than optimizing one and ignoring the other, directly satisfying the prompt's 'make trade-offs' mandate. Add a polished structure (executive policy letter up front, robustness analysis, reproducible MATLAB appendix) and the package reads as both technically deep and decision-ready.",
+  "section_highlights": "The one-page 'Policy Recommendation' letter to the Director of LIFE is the strongest structural move: it states six concrete strategies (select educated/young immigrants, maximize minimum wage, emphasize education, increase parental-leave pay, eliminate discrimination) and embeds the key numbers and even the robustness caveats before any math appears — a judge can grade the whole answer from page 1. The Section 3 parameter system + AHP is a model of traceability: a 3-tier hierarchy, a full parameter table mapped to PUMS dictionary codes (AGEP, SCHL, PINCP...), and two transparent weight tables with reported CR. Section 4's side-by-side Population-Zero-vs-random-sample demographic plots is a clean validation device. Section 6 (trade-offs) is the analytical core — NDP-vs-minimum-wage curve, Markov class-transition steady state, and the GA Pareto front yielding the headline equilibrium. Section 10's robustness table (30 runs, 1% noise) and the MATLAB appendix signal rigor and reproducibility that judges reward.",
+  "pitfalls_or_limitations": [
+    "Heavy reliance on subjectively-chosen parameters and ad-hoc functional forms (e.g. income function with magic constants, fertility pdf f(A) = -1.875e-4 A^2 - 6.14e-3 A, arctan birth-probability) — the team admits values were set 'subjectively' for lack of references",
+    "Several figures/data tables in the extracted markdown are clearly synthetic/illustrative or garbled (e.g. the long linear scatter ramps, the income-distribution tails to 1e-19), suggesting some plots may be schematic rather than true simulation output — a credibility risk if a judge probes",
+    "Internal inconsistency between stated and coded constants: text says tax 0.15, min wage as low as $5000, parental pay $40,000, retirement 65, death logistic centered at 70 with slope 0.15 — but the MATLAB uses parentincome=44000 and a death logistic 1/(1+exp(-0.3*(age-75))), i.e. code != paper",
+    "Job system explicitly ignores job competition (acknowledged), weakening long-run unemployment realism; no health-care, no Mars resource limits, no natural disasters",
+    "The complex-network 'scale-free + small-world' claim is asserted and used qualitatively but never quantitatively fit (no measured power-law exponent or clustering coefficient reported)",
+    "AHP weights and the SSRN word-cloud justification are convenient but only weakly defensible (word frequency -> factor importance is a stretch)",
+    "Some optimization results stated without showing the constraint feasibility clearly (e.g. nonlinear allocation NLP is formulated but its numeric solution is not really presented)",
+    "English-language and typographic errors throughout (e.g. 'salvation' for 'salvage/welfare', 'Demgraphics'), which do not block an O-award but show it is not about polish-perfection"
+  ],
+  "reusable_patterns": [
+    "Seed open-ended/'invented-world' problems with the closest real dataset (here census PUMS) and validate any selection/design choice by comparing distributions against a random baseline — instant credibility for fuzzy prompts",
+    "Use AHP with TWO weight sets derived from the SAME hierarchy to operationalize a stated trade-off (objective A weights vs. objective B weights), then report the CR to show consistency",
+    "Agent-based microsimulation skeleton: store each individual as a fixed-length attribute vector, iterate year-by-year through ordered subsystems (death -> job -> marriage -> birth -> education -> salary/welfare -> migration -> stats), grow/shrink the array as population changes",
+    "Couple simulation with multi-objective GA: let the microsim be the (noisy) objective evaluator and use NSGA-II/elitist GA to produce a Pareto front of policy levers, then pick the equilibrium point",
+    "Markov-chain income-class mobility with stationary balance equations to get steady-state inequality/Gini-style metrics cheaply",
+    "Robustness section template: perturb each key initial parameter by ~1% noise, run ~30 independent seeds, tabulate mean+std of every headline outcome — cite a noise-robustness reference",
+    "Lead with a standalone executive memo/letter that contains every recommendation AND its numeric backing AND the caveats, so a grader can evaluate the answer before reading the model",
+    "Map every custom parameter to a documented data-dictionary code in a single table for traceability",
+    "Include the actual solver code in an appendix for reproducibility (but keep it consistent with the paper body — a lesson from this paper's code/text mismatch)"
+  ]
+}

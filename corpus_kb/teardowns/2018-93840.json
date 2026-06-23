@@ -1,0 +1,50 @@
+{
+  "paper_id": "2018-93840",
+  "year": 2018,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2018 MCM/ICM Problem E (sustainability / \"Climate change and a country's fragility\"). Team 93840 built a quantitative framework to measure a country's fragility, define tipping points between stability states, and assess how climate change pushes a country toward fragility plus the cost of human intervention to reverse it. They demonstrate the framework on three real countries: Syria (fragile), Cuba (vulnerable), and New Zealand (stable).",
+  "models_used": [
+    "Single-variable ODE dynamical-systems model of a national 'market value' M(t), with dM/dt = positive impact minus negative impact",
+    "Logistic growth term for the positive impact: p'(M) = m1*M*(1 - M/(k*m2)) — natural market growth with a carrying capacity k*m2",
+    "Holling Type-III / spruce-budworm 'predation' term for negative impact: g'(M) = B*M^2/(A^2 + M^2), borrowed directly from Ludwig, Jones & Holling (1978) insect-outbreak model",
+    "Full governing equation dM/dt = m1*M(1 - M/(k*m2)) - B*M^2/(A^2+M^2)",
+    "Nondimensionalization to dx/dτ = r*x(1 - x/s) - x^2/(1+x^2) with x=M/A, τ=Bt/A, r=A*m1/B, s=k*m2/A, reducing the system to two control parameters r and s",
+    "Fixed-point / equilibrium analysis: setting dx/dτ=0 and graphically intersecting r(1-x/s) with x/(1+x^2) to find 1 or 3 nontrivial fixed points",
+    "Saddle-node (fold) bifurcation analysis to locate tipping points, by simultaneously solving the equation and its derivative (tangency condition)",
+    "Parametric bifurcation diagram: r(x)=2x^3/(1+x^2)^2 and k(x)=2x^3/(x^2-1), giving a cusp-shaped curve in the (s,r) plane that partitions it into Stable / Vulnerable / Fragile regions",
+    "Composite fragility index aggregating economic, political, demographic, and climate indicators (modeled on the Fragile States Index / CAST framework) to compute the model parameters k and A",
+    "Linear stability reasoning (stability of fixed points must alternate, x=0 always unstable)"
+  ],
+  "key_techniques": [
+    "Reusing a classic, well-validated ecological model (Ludwig 1978 spruce-budworm outbreak) and re-interpreting its hysteresis/tipping-point behavior in a brand-new domain (country fragility) — analogy transfer",
+    "Nondimensionalization to collapse 5+ physical parameters (m1, m2, k, A, B) into just two dimensionless controls (r, s), making the whole behavior space analyzable on one 2-D plot",
+    "Mapping three qualitatively distinct fixed-point structures (one low equilibrium / one high equilibrium / bistable with three equilibria) onto three intuitive policy states (fragile / stable / vulnerable)",
+    "Building a single bifurcation diagram as the central deliverable that converts any country's data into an (s,r) point whose region instantly classifies it",
+    "Composite-index construction from heterogeneous public datasets (EM-DAT/UNISDR, FAO, World Bank, OECD, IMF, WHO, UN) processed in RStudio, with deliberate pruning of overlapping FSI variables",
+    "Out-of-sample validation by comparing model classification of Syria/Cuba/New Zealand against the independent Fragile States Index ranking",
+    "Counterfactual / sensitivity analysis: removing the climate term and observing the upward shift of the dM/dt curve and the migration of the (s,r) point toward the vulnerable region to isolate climate's contribution",
+    "Translating an abstract parameter (political indicator magnitude) into a concrete dollar cost of intervention (>$12 billion for Cuba by 2025)"
+  ],
+  "why_it_won": "\"From a judge's view, the paper won because it took a vague, hard-to-quantify prompt ('measure a country's fragility and the role of climate change') and produced a single, mathematically rich, falsifiable framework with genuine explanatory payoff. The masterstroke is mapping the three steady-state structures of a bistable ODE onto the three intuitive policy categories (stable/vulnerable/fragile) and capturing 'tipping points' as actual saddle-node bifurcations — this gives the buzzword 'tipping point' a precise, defensible mathematical meaning rather than hand-waving. Nondimensionalizing down to two parameters and producing one bifurcation plot that classifies any country is exactly the kind of clean, generalizable, reusable result judges reward. Borrowing the Ludwig-Holling outbreak model signals modeling maturity and saves them from inventing fragile dynamics from scratch. Crucially, they closed the loop: they validated against an independent index (FSI), ran a climate counterfactual to directly answer the prompt's climate question, and attached a concrete dollar figure to intervention. The three case studies (Syria/Cuba/New Zealand) span the full state space and make the abstract model tangible.\"",
+  "section_highlights": "\"Section 3 (Framework) is the strongest: it crisply defines the three fragility states in plain language BEFORE any math, then derives the ODE and nondimensionalizes it — definitions-first structure that makes the later bifurcation interpretation land. Section 5 (Equilibrium and Tipping Points) is the intellectual core: graphical fixed-point analysis (Fig 1), the dM/dt-vs-M phase picture tying curve shape to country type (Fig 2), and the parametric (s,r) bifurcation plot (Fig 3) that becomes the paper's reusable 'master chart.' Section 6 (Country Analysis) is effective because the three countries are deliberately chosen to occupy the three regions, and each case re-uses the same figure template (current state, climate-removed projection, position on bifurcation plot). The summary sheet is clear and results-forward. The appendix is unusually thorough, documenting every candidate indicator and its data source, and honestly noting which variables were dropped for redundancy.\"",
+  "pitfalls_or_limitations": [
+    "The composite index that produces k and A is under-specified: weighting of economic/political/demographic/climate factors is never given explicitly, so the crucial map from raw data to the (s,r) point is not reproducible — the team itself admits 'the weight of each parameter may be revised'",
+    "No actual parameter values are reported for m1, m2, B, A, or k for any country; the case analyses are qualitative ('the curve shifts upward', 'r increases slightly') rather than quantitatively calibrated, so the bifurcation positions in Figures 4-7 are essentially schematic",
+    "Reducing the entire fragility of a nation to a single scalar M (in US dollars) is a heavy assumption; the model is 1-D and cannot capture interactions among economy, politics, climate (they concede they ignore 'interaction between countries' and inter-factor coupling)",
+    "The nondimensional equation as printed (dx/dτ = rx(1-x/s) - x^2/(1-x^2)) has a sign error vs. the consistent x^2/(1+x^2) form used elsewhere — a transcription/typo inconsistency that a careful judge would notice",
+    "Validation is weak: 'agreement with FSI' is partly circular because the metrics were explicitly modeled on FSI indicators, so matching FSI is somewhat built-in rather than independent confirmation",
+    "The $12 billion Cuba intervention cost is asserted from the model with little shown derivation, so its credibility rests on trust rather than transparent calculation",
+    "Assumption that 'all data are trustworthy because sources are reliable' is stated without any uncertainty or data-quality analysis"
+  ],
+  "reusable_patterns": [
+    "The 'borrow a canonical bistable ODE and re-skin it' pattern: when a problem mentions tipping points, regime shifts, collapse, or resilience, adapt the Ludwig-Holling spruce-budworm model (logistic growth minus Holling Type-III loss) — it gives hysteresis, multiple equilibria, and saddle-node bifurcations for free",
+    "Define qualitative categories (stable/vulnerable/fragile) in words first, then prove the math produces exactly that many regimes — pre-committing to the interpretation makes the bifurcation result feel inevitable rather than reverse-engineered",
+    "Always nondimensionalize a multi-parameter ODE down to the minimum control parameters, then present ONE master diagram in that reduced space that classifies any input case — this is a reliable 'centerpiece figure' strategy",
+    "Validate a novel index against an established external index (here FSI) and span your case studies across the full output range (one example per regime) to demonstrate coverage",
+    "Run a counterfactual by deleting one mechanism (the climate term) and showing the equilibrium/region shift — a clean, visual way to answer 'how much does factor X matter?'",
+    "Convert an abstract model parameter into a concrete, decision-relevant number (dollars of intervention, a year by which a tipping point is reached) so policy-makers get an actionable result",
+    "Document the full menu of candidate indicators and data sources in an appendix, and explicitly justify which you dropped for redundancy — signals rigor and data literacy to judges",
+    "Reuse a single figure template across all case studies (current state + counterfactual + position on master plot) for visual consistency and fast reader comprehension"
+  ]
+}

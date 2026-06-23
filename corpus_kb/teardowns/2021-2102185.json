@@ -1,0 +1,53 @@
+{
+  "paper_id": "2021-2102185",
+  "year": 2021,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2021 MCM Problem F (policy): design a model to measure the \"health and sustainability\" of a nation's higher-education (HE) system, apply it to compare several countries, pick one with room to improve, propose a target vision plus a timed suite of policies, and evaluate whether those policies move the system toward the vision. This team built a 3-dimension / 5-index / 14-factor evaluation scheme, scored Australia, India, Japan, Sweden and the UK, selected India (lowest score), then proposed four five-year plans (2017->2037) with concrete policies and re-scored India over time to show improvement.",
+  "models_used": [
+    "TOPSIS-like multi-criteria evaluation model (vector normalization z_ij = x_ij / sqrt(sum_i x_ij^2), then scaled x20 per index to a 0-100 total) used in two modes",
+    "Crosswise contrast model: cross-country comparison scoring 5 nations on 5 indices for the same year (2017)",
+    "Vertical contrast model: same TOPSIS-like scoring applied across time points (2017,2022,2027,2032,2037) for a single country to track trajectory",
+    "Hierarchical indicator system: 3 dimensions (Cost/Capital, Access/Equity, Academic Level) -> 5 indices (EXP, GEI, ENI, RES, INT) -> 14 underlying factors",
+    "Custom composite index formulas: EXP=EXP1xEXP2; GEI=1-|FMR1/FMR2 - 1|/(FMR1/FMR2); RES=TOPN/UNI; INT=INB/UNI; ENI=ENL",
+    "Borrowed ARWU (Shanghai Ranking) weighting scheme (Alumni 10%, Award 20%, HiCi 20%, N&S 20%, PUB 20%, PCP 10%) as the basis for the research/quality factor",
+    "Scenario / trajectory projection model: assumed growth schedules per index (e.g. enrollment (0.3+0.7k)x113% with k=0.1..0.4; foreign-student growth 7%/11%/~5%; +5/+8/+9/+7 universities into top500 per plan; halve university count) fed into the vertical model",
+    "Local sensitivity analysis: perturb each indicator by +/-5% and +/-10%, observe (linear) response of scores"
+  ],
+  "key_techniques": [
+    "Reframing a vague qualitative prompt ('health and sustainability') into an operational definition: 5 measurable, individually-justified characteristics (govt investment, popularization, academic achievement, international recognition, gender equity)",
+    "Vector normalization to strip units so heterogeneous indicators (% expenditure, ratios, counts) become comparable and summable",
+    "Reusing the SAME scoring machinery for two different questions (cross-country selection vs. time-series progress tracking) — one model, two deployments, which gives narrative coherence",
+    "Relative/comparative scoring framing: explicitly arguing a single system's score is meaningless except relative to peers, which both motivates the normalization and frames country selection",
+    "Grounding every factor in a real, citable open data source (World Bank indicators, ARWU/ShanghaiRanking, Webometrics, Project Atlas) with footnote citations",
+    "Closing the loop: defining shortfalls (ENI, RES, INT) -> setting a quantified vision target -> writing policies mapped one-to-one to each shortfall -> re-scoring to numerically demonstrate effectiveness",
+    "Country-specific policy realism: tying recommendations to India's caste system, tax structure, faculty shortages, red tape, and the 2020 National Education Policy with cited sources",
+    "Honest difficulty discussion: explicitly acknowledging stakeholder resistance, capital needs, and that top universities show little interest in India — required by the prompt and credibility-building"
+  ],
+  "why_it_won": "From a judge's view this paper wins on completeness and discipline rather than mathematical sophistication. It answers every one of the prompt's five sub-questions in order, ties them together with a single reusable scoring engine, and — crucially for a policy problem — produces a numeric before/after (India 24.79 in 2017 -> 57.96 in 2037) that lets the reader SEE the policies working. The indicator system is defended factor-by-factor with real, cited data sources, so the model feels grounded rather than invented. The India case study is genuinely domain-aware (caste, tax incidence, faculty pipeline, NEP 2020), which distinguishes it from teams that propose generic policies. It also self-criticizes credibly (data dependence, subjectivity of chosen parameters, no disaster modeling). The dimension->index->factor figure, radar/stacked-bar visualizations, and appendix showing raw and normalized data make the work transparent and easy to audit — exactly what O-award judges reward in a policy paper.",
+  "section_highlights": "Strong structural choices: (1) An explicit operational definition of 'healthy and sustainable' up front, converting a fuzzy prompt into 5 defensible criteria. (2) A clean hierarchy figure (Figure 1, dimensions->indices->factors) that lets a judge grasp the whole model at a glance. (3) Per-index subsections each giving a formula PLUS a paragraph justifying WHY the index measures health (not just what it computes). (4) A vision section that states quantified 5-year targets and an implementation schedule (Gantt-style figure) before scoring them. (5) Policy subsections organized by the three shortfall indices (enrollment, HEI/research quality, internationalization), each a numbered, actionable list with citations. (6) A radar chart comparing 2017 vs 2037 that visually closes the loop on effectiveness. (7) A dedicated 'practical influence and difficulty' section satisfying the prompt's explicit request to acknowledge difficulty. (8) An appendix exposing raw inputs and normalized matrices for both models — full reproducibility.",
+  "pitfalls_or_limitations": [
+    "Equal implicit weighting: every index is scaled x20 (equal 0-20 ceiling) with no justified weighting scheme (no AHP/entropy weights), so the choice that all five dimensions matter equally is asserted, not derived",
+    "TOPSIS-like in name only: it uses TOPSIS's vector normalization but NOT the actual TOPSIS step (distance to ideal/anti-ideal solutions). Calling it 'TOPSIS-like' and citing a jianshu blog (ref [12]) rather than primary literature is methodologically loose",
+    "Score is sample-dependent and unstable: because normalization divides by the column norm of the chosen countries, a nation's score changes if the comparison set changes — and a country's 'EXP' score can even drop (8.94 vs earlier 10.37) when the basket changes, which is never reconciled",
+    "Vision growth numbers are largely assumed/hand-picked (k=0.1..0.4, +5/8/9/7 top500 universities, 7%/11%/5% foreign-student growth) with thin justification — projections risk looking arbitrary",
+    "Enrollment target of 113% (gross ratio >100%) is used without explaining the gross-enrollment-ratio quirk, and 'top 30% reach 113%' is a strong unvalidated assumption",
+    "GEI formula penalizes only deviation of female/male HE ratio from the national female/male ratio; it can reward a system that under-enrolls both sexes proportionally and is somewhat ad hoc",
+    "Sensitivity analysis is shallow: only +/-5/10% per indicator, and the conclusion ('linear relationship') is essentially guaranteed by the linear scoring formula, so it demonstrates little real robustness",
+    "RES=TOPN/UNI and INT=INB/UNI both divide by university count, and the plan deliberately HALVES UNI — mechanically inflating RES and INT scores via the denominator rather than genuine improvement, a self-reinforcing artifact not flagged",
+    "Internal inconsistency in reported totals (e.g. 23.29/53.8 in section 5 vs 24.79 baseline in section 6) suggests recomputation between sections that isn't explained",
+    "Some text is rough (typos: 'Restatment', 'outrage', 'exigence'), and a few citations ([7] reused for both a data source and a sociology claim) are mislabeled"
+  ],
+  "reusable_patterns": [
+    "Operational-definition opener: for any vague policy prompt, first convert the qualitative target into N measurable, individually-justified criteria — this is the single highest-leverage move for policy problems",
+    "Dimension -> index -> factor hierarchy with a one-figure overview: a clean, reusable template for any multi-criteria evaluation problem",
+    "One scoring engine, two deployments (cross-sectional comparison + longitudinal trajectory): build the model once, apply it to both 'who needs help' and 'is the plan working', giving the paper a unified spine",
+    "Close-the-loop structure: shortfall diagnosis -> quantified vision target -> policy mapped 1:1 to each shortfall -> re-score to prove effect numerically. Make the before/after a single headline number and a radar chart",
+    "Ground every indicator in a named, citable open dataset (World Bank, ARWU, Webometrics, Project Atlas) and footnote it — cheap credibility that judges reward",
+    "Vector normalization (divide by column L2 norm) as a quick, defensible way to make mixed-unit indicators summable into a 0-100 score",
+    "Reuse an established external weighting scheme (here ARWU's published weights) for a sub-index instead of inventing one — borrows authority",
+    "Dedicated 'difficulty / practical impact' section tied to real socio-political context (caste, tax, bureaucracy) — essential for policy-type problems and a differentiator from generic answers",
+    "Appendix with both raw and normalized data matrices for full reproducibility",
+    "WARNING pattern to avoid: do not let an index denominator be something your own policy manipulates (UNI here) without addressing the artifact; and justify your weights (AHP/entropy) rather than defaulting to equal weighting"
+  ]
+}

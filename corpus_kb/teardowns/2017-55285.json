@@ -1,0 +1,51 @@
+{
+  "paper_id": "2017-55285",
+  "year": 2017,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2017 MCM/ICM Problem D (operations research): model the airport security checkpoint process to explain why O'Hare-style checkpoints suffer long, high-variance passenger wait times, then propose and quantitatively evaluate modifications that reduce both the mean and variance of total throughput time, including the effect of TSA Pre-Check, a special-population (elderly/children) policy, and a transfer to Chinese-airport conditions.",
+  "models_used": [
+    "Discrete-event queueing simulation (custom C++ engine) as the backbone — passengers flow through Zone A ID-check queues, Zone B screening lanes, a prepare/screen station, and a Zone D additional-inspection queue, with FIFO queues and shortest-queue join",
+    "Inflow model: passenger inter-arrival times generated as a Poisson process (separate arrival seeds for Pre-Check/VIP vs regular passengers), implemented via an inverse-transform poisson() sampler",
+    "Attributes-generation model: per-passenger random attributes — ID-check time ~ Gaussian(11.31s, 3.70s), millimeter-wave body scan ~ Gaussian(11.64s, 5.82s), luggage count ~ uniform{0..3}, prepare time (45±10s regular / 15±5s Pre-Check, plus 5s per bag), and an error flag (0.01 VIP / 0.03 regular) routing to Zone D ~ Gaussian(120s,20s); Gaussian draws via Box-Muller (gaussrand)",
+    "Screening model: screening time = max(t_milli, t_xray) to capture parallel body-scan and baggage X-ray as the binding constraint",
+    "MPL (Multi-Passenger Linkage) model: a pipelined prepare station holding N_prepare passengers simultaneously (modeled as a bounded buffer / linkage queue) so a new passenger starts preparing as soon as one leaves; optimum found at N_prepare=3",
+    "PBQ (Priority-Based Queuing) model: lanes split into 1 Pre-Check / 2 regular / 1 emergency; passengers tagged by t_ad (time-to-departure) into priority / regular / over-punctual groups with thresholds t_ad1, t_ad2 controlling emergency-lane access — a time-window priority discipline",
+    "SP (Special Population) model: elderly/children modeled as Pre-Check-equivalent passengers carrying no luggage (screening time = body-scan time only)",
+    "Cut-in-line model: China-transfer variant adding per-passenger cut probability R_cut and a uniformly random insertion position to test robustness",
+    "Logistic / 'Natural Growth Model' curve fit y = A/(1+exp(-B(x-C)^D))+E fitted to T_avg vs Pre-Check ratio, R^2 = 0.99, to characterize the S-shaped saturation"
+  ],
+  "key_techniques": [
+    "Calibrating all distribution parameters (means/SDs) directly from the supplied COMAP Excel data via a finite-difference preprocessing pass rather than inventing numbers — a separate C++ utility computes per-process mean/variance from raw timestamps",
+    "Decomposing total time T into its six constituent steps and plotting the percentage breakdown — the single most decisive analytical move (waiting-for-screening = 98.11% of T), which localizes the bottleneck and justifies every downstream modification",
+    "Using variance/standard deviation of T as a first-class objective alongside the mean, directly answering the problem's 'high variance' complaint instead of only minimizing average wait",
+    "Parameter sweeps to optimize design knobs: N_prepare (2-6), R_lane (1:3, 2:2, 3:1), R_passenger (0-10), and a 2D (t_ad1, t_ad2) grid producing heatmaps to locate optima",
+    "Before/after pie charts showing the bottleneck share dropping from 98.11% to 57.21% under MPL — a vivid, self-evident evidence of impact",
+    "Robustness/sensitivity framed as a real-world transfer (US -> China with cut-in-line behavior) rather than abstract perturbation, showing both models retain effectiveness",
+    "Curve-fitting an OR result to a known biological growth law to give an interpretable closed form and saturation argument"
+  ],
+  "why_it_won": "\"It nailed the judge-pleasing arc: a clean, data-calibrated simulation that first DIAGNOSES the problem with a single killer statistic (waiting-for-screening = 98.11% of all time), then proposes targeted, cheap, physically realistic interventions (MPL pipelined prep zone, PBQ time-window priority lane) and proves their effect quantitatively on BOTH mean and variance — exactly the two things the prompt asked to reduce. The modifications are operationally actionable (e.g., 'add a small zone allowing 3 passengers to prepare at once'), not hand-wavy. It went beyond the ask with two thoughtful extensions (evaluating TSA's real elderly/children policy and honestly concluding it barely helps; transferring the model to Chinese airports with cutting-in-line), demonstrating maturity and self-criticism. The fault-tolerance argument for PBQ (works even when t_ad1/t_ad2 are mis-set) shows engineering judgment. Full reproducible C++ source is appended.\"",
+  "section_highlights": "\"Summary sheet leads with the conclusion and names the two deliverable models (MPL, PBQ) plus headline findings — judge can grasp the whole contribution in 30 seconds. Structure follows textbook OR flow: Restatement -> Assumptions+Notations -> Basic (diagnostic) Model -> Modifications -> Evaluation/Sensitivity -> Conclusion with explicit Strengths/Weaknesses and a manager-facing recommendations list. The proportion-of-time pie chart (Fig 3) and the before/after MPL pie pair (Figs 10-11) are the rhetorical spine — they make the bottleneck and the fix visually undeniable. Assumptions are each paired with a justification. A dedicated 'Suggestions to the Security Manager' section translates math into plain operational advice.\"",
+  "pitfalls_or_limitations": [
+    "The transcribed figure data tables are clearly garbled/inconsistent (e.g., Fig 8 NoPrepare values, Fig 13 axis labels, Fig 24 nonsensical t_a values) — chart quality/readability in the original may have been weaker than the prose claims, and several numbers don't cross-check",
+    "Heavy reliance on Poisson arrivals with a single rate ignores time-of-day non-stationarity (real rush-hour surges are non-homogeneous); the model fakes 'peak flow' only by shrinking the arrival interval t_a rather than a true time-varying intensity",
+    "Modeling elderly/children simply as luggage-free Pre-Check passengers is acknowledged as crude and likely drove the (possibly understated) 'policy barely helps' conclusion",
+    "Cut-in-line probability assumed constant and independent of congestion — the authors themselves flag this as unrealistic",
+    "No statistical confidence intervals or replication-count reporting on the simulation outputs; single-run-style curves with no error bars, so 'significant' reductions aren't formally tested",
+    "Emergency/incident scenarios explicitly excluded, so conclusions hold only in 'peaceful' steady operation",
+    "The logistic 'Natural Growth Model' fit is an analogy with no mechanistic basis for the specific functional form beyond a good R^2",
+    "Appendix C++ code is partially corrupted in transcription (mismatched braces, 'posson'/'input' typos), reducing true reproducibility"
+  ],
+  "reusable_patterns": [
+    "Diagnose-then-fix structure: build a faithful baseline simulation first, compute a time/cost breakdown to find the dominant bottleneck, and let that single statistic justify every proposed modification",
+    "Calibrate-from-provided-data discipline: write a small preprocessing script to extract means/SDs from the contest's raw data file instead of guessing parameters, and state each in a notation/assumptions table",
+    "Optimize on mean AND variance whenever the prompt mentions unpredictability or congestion — variance is often the real deliverable",
+    "Parameter-sweep + heatmap/curve to locate optima for each design knob, then report the optimal value plainly (N_prepare=3, R_lane=1:3)",
+    "Before/after pie or bar charts of the bottleneck's share to make impact visually self-evident",
+    "Honesty extension: test the real-world official policy in the problem and report even when it underperforms — judges reward this over cheerleading",
+    "Robustness-as-transfer: re-run the model in a genuinely different real context (different country/behavior) as the sensitivity analysis",
+    "Fault-tolerance argument: show your policy still helps when its tuning parameters are mis-set, proving operational practicality",
+    "End with a plain-language 'recommendations to the decision-maker' section that converts every model result into one actionable bullet",
+    "Append runnable simulation code and a discrete-event engine template (Poisson inflow via inverse-transform, Gaussian via Box-Muller, FIFO queues + shortest-queue join, screening = max of parallel servers)"
+  ]
+}

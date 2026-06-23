@@ -1,0 +1,54 @@
+{
+  "paper_id": "2021-2107870",
+  "year": 2021,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2021 MCM Problem C (data): Given a Washington State dataset of public Vespa mandarinia (Asian Giant Hornet) sighting reports — each with a GlobalID, detection date, free-text notes, lab status (PositiveID / NegativeID / Unverified / Unprocessed), lat/long, and often an attached photo/video — the task is to (a) build a model that ranks/prioritizes which civilian sightings WSDA should investigate (i.e. which are most likely real hornets vs misclassifications), (b) discuss to what precision pest spread over time can be predicted and what would constitute evidence of eradication, and (c) assess how/when the model should be updated with new data. The core difficulties are extreme class imbalance (only ~0.672% of labeled data is PositiveID; only 12 verified positives) and that ~53% of the data is unlabeled.",
+  "models_used": [
+    "Semi-supervised learning pipeline: K-Means clustering (unsupervised label estimation) feeding a supervised CNN",
+    "K-Means Clustering (sklearn) on flattened 224x224x3 images to pseudo-label unlabeled images; k swept 2-20, k=17 chosen by FP/accuracy/variance priorities",
+    "Convolutional Neural Network (TensorFlow/Keras): 3x Conv2D + 3x MaxPooling2D, Flatten, Dense(512)+Dropout(0.5), Dense(1) sigmoid; Binary Cross-Entropy loss; 25 epochs, batch 128; ~44.4M params",
+    "Rule-based / lexicon Semantic Analysis of notes: keyword extraction with fixed +/-0.05 weights per term, plus life-cycle/season-conditioned terms (dead/specimen, live/killed, nest/hive vs detection month)",
+    "Reaction-Diffusion (Fisher / KPP) model for spatial-temporal spread, traveling-wave speed c=2*sqrt(rD); used only to derive worst-case spatial bounds, not fully fitted",
+    "Confusion-matrix probability estimation: P(TN), P(FN), P(TP), P(FP) per track to weight track outputs",
+    "Model Unification Equation: piecewise combination of the two probability mappings weighted by each track's P(TN), with spatial hard-overrides (p=1 outside lat/long bounds, 0.5 with zero info)",
+    "Class-imbalance handling: majority undersampling, minority data augmentation (saturation/value jitter +/-50, 90/180/270 rotations), manual initial bias b0=log(pos/neg)",
+    "K-Fold Cross Validation (k=3) with confusion matrices for sensitivity analysis"
+  ],
+  "key_techniques": [
+    "Framing the deliverable as a probability-of-MISCLASSIFICATION mapping (GlobalID -> p) rather than a hard label, which directly produces a rankable priority score",
+    "Multi-track / multi-modal architecture: separate image, notes+date, and spatial tracks each producing a GlobalID->probability map, then fused",
+    "Using K-Means pseudo-labels to expand a tiny labeled set so the CNN has training signal (the explicitly novel contribution they claim)",
+    "Explicitly engineering around extreme class imbalance: undersampling, augmentation, log-ratio bias init, and rejecting accuracy as a metric in favor of confusion-matrix terms",
+    "Season/life-cycle-conditioned semantic rules (e.g. 'dead specimen' boosts probability only in winter months) — domain biology baked into the text model",
+    "Deriving P(TN) per track and using it as the fusion weight, so a less-trustworthy track contributes less",
+    "Turning an un-fittable Reaction-Diffusion model into something still usable by extracting conservative spatial exclusion bounds and a 'max-interest study area'",
+    "Defining a concrete, falsifiable eradication criterion (all sightings in low-priority interval within 30km of known positives for 2 seasonal cycles)",
+    "Priority intervals derived from mean +/- std of the Positive/Negative/Unlabeled probability distributions rather than arbitrary cutoffs",
+    "Mapping problem assumptions to a single authoritative scientific source (Penn State Extension) and prior Vespa velutina literature (Robinet, Keeling)"
+  ],
+  "why_it_won": "\"It directly and completely answers the actual question asked. The problem is a triage/prioritization problem, and the team delivered exactly that: a single 0-1 misclassification score per GlobalID, mapped to High/Medium/Low investigation intervals, with worked examples and county-level recommendations. Three things stand out from a judge's view. (1) Intellectual honesty: they used every data modality (image, text, date, location, lab status) and, critically, refused to overclaim on the spread model — they openly state the data is insufficient to fit Reaction-Diffusion and instead extract only what the data supports (spatial bounds), which reads as mature rather than weak. (2) Sophisticated handling of the data's real pathology — extreme class imbalance and 53% unlabeled — using a genuinely non-trivial semi-supervised (K-Means -> CNN) approach they position as novel vs the literature, plus correct imbalance remedies (undersampling, augmentation, log-ratio bias init, abandoning accuracy). (3) Closure on every sub-prompt: prioritization, spread precision, a concrete eradication definition, and a model-update cadence, finished with a clear, jargon-free memorandum giving WSDA three named counties to investigate and a form-redesign recommendation. The combination of technical depth, modular architecture, sensitivity analysis (3-fold CV), and decision-maker-ready communication is the Outstanding profile.\"",
+  "section_highlights": "\"Strong structure throughout. The abstract (Summary Sheet) front-loads the entire pipeline and the headline result (eradication = low-priority within 30km over 2 cycles), so a judge knows the whole story in one page. Section 1 includes a focused Literature Review that explicitly motivates the methodological choice (why semi-supervised beats supervised here) and a detailed, reproducible Data Cleaning section (step-by-step image and notes preprocessing). Assumptions (Sec 2) are each justified and tied to a source. The image section transparently shows the k-sweep table (Fig 2) and the decision criteria for choosing k=17. The Model Unification Equation is written as an explicit piecewise function with edge cases (zero-info -> 0.5, out-of-bounds -> 1, clamping to [0,1]). Sensitivity analysis uses real 3-fold confusion matrices and quantifies stability (TN/TP differ by <0.84%/6.06%). Strengths/Weaknesses is candid (admits no image segmentation, fragile keyword matching, high variance in negative-set probabilities). The closing Memorandum is a model of audience-appropriate writing: no equations, plain-language explanation of the 0-1 scale, a priority-criteria table, and actionable short- and long-term recommendations (investigate Whatcom/Skagit/San Juan; fix the submission form).\"",
+  "pitfalls_or_limitations": [
+    "Pseudo-labels are partly 'eyeball'-generated: positives were estimated by eye and FP/TN/accuracy in the k-selection table were judged by the team's own visual ID — circular and not independently validated",
+    "The CNN's reported confusion matrices look near-perfect (e.g. 1059/0, 3/134), almost certainly because it is being evaluated on the same self-/pseudo-labeled distribution it was trained to fit — likely optimistic/leaky, not true generalization",
+    "Semantic track is a brittle fixed-lexicon keyword matcher with uniform +/-0.05 weights and no handling of synonyms/negation/context (they acknowledge the synonym problem with 'forest' vs 'woods')",
+    "K-Means on raw flattened 224x224x3 pixel vectors is a weak image representation (dominated by background/lighting, no learned features); clustering quality is questionable",
+    "Reaction-Diffusion parameters (c, K, r) are borrowed from a different species (Vespa velutina in France) / entomological estimates, not fitted to the data — the spread model is essentially not calibrated",
+    "The Model Unification Equation's spatial override has an internal inconsistency in the stated bound ('lat > -122.06 or long < 46.7' conflates lat/long and signs vs the prose '-121' Cascade bound)",
+    "Priority intervals depend on the mean/std of probability sets that are themselves derived from noisy pseudo-labels, so the thresholds inherit that uncertainty (they note high variance in the NegativeID set undermines eradication certainty)",
+    "No segmentation, so multi-insect images are mishandled (acknowledged); only 12 verified positives means almost everything downstream rests on a tiny ground-truth base"
+  ],
+  "reusable_patterns": [
+    "Probability-as-deliverable: when a problem asks to 'prioritize' or 'rank', output a continuous 0-1 score per entity and bucket it into named priority intervals via mean +/- std of class distributions — instantly satisfies a triage prompt",
+    "Multi-track fusion template: split heterogeneous data by modality (image / text / spatial / temporal), let each track emit the SAME key->probability mapping, then fuse with a piecewise unification equation that handles missing-modality and out-of-range edge cases",
+    "Reliability-weighted fusion: estimate each track's P(TN) (or any confusion-matrix-based trust score) and weight that track's contribution by it",
+    "Semi-supervised bootstrap for tiny labeled sets: cluster the unlabeled majority, pseudo-label it, then train a supervised model on labeled + pseudo-labeled data — the headline 'novelty' framing also wins narrative points",
+    "Imbalance toolkit to cite verbatim: majority undersampling + minority augmentation + log(pos/neg) initial bias + rejecting accuracy in favor of confusion-matrix metrics",
+    "Domain-conditioned rules: condition feature weights on domain knowledge (here, life-cycle/season gating of text cues) to inject expertise cheaply without more data",
+    "Graceful degradation of an un-fittable model: if you can't calibrate a classic model (Reaction-Diffusion), still use it to derive conservative bounds / a region-of-interest and SAY SO — honesty reads as strength",
+    "Falsifiable success criterion: define the asked-for end state (eradication) as a precise, checkable condition tied to the model's own outputs and a spatial/temporal window",
+    "Mandatory closing memorandum: translate the model into a 1-page, equation-free, decision-maker letter with a small criteria table and 2-3 concrete named actions",
+    "Reproducibility signals judges reward: explicit data-cleaning steps, a parameter-sweep table showing the selection criteria, a model-summary table, and K-fold confusion matrices for sensitivity"
+  ]
+}

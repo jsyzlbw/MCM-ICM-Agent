@@ -1,0 +1,52 @@
+{
+  "paper_id": "2025-2510006",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "This paper develops models to forecast medal counts (gold and total) for each country at the 2028 Los Angeles Olympics, providing 90% confidence intervals, analyzing the impact of 'great coaches', and offering strategic recommendations for smaller nations.",
+  "models_used": [
+    "linear regression",
+    "ARIMA",
+    "random forest",
+    "Monte Carlo simulation",
+    "Poisson distribution",
+    "logistic regression",
+    "exponential regression",
+    "Fisher's exact test",
+    "K-means clustering"
+  ],
+  "key_techniques": [
+    "K-means clustering for sport categorization",
+    "ADF test for stationarity verification",
+    "AIC-based ARIMA parameter selection",
+    "residual diagnostics (Ljung-Box, Shapiro-Wilk, QQ)",
+    "ensemble of ARIMA and random forest for prediction intervals",
+    "Monte Carlo simulation for new events",
+    "Poisson approximation for medal distribution",
+    "weighted host effect calculation",
+    "exponential regression for disintegrated countries",
+    "logistic regression for ranking gaps",
+    "Fisher's exact test for coach effect"
+  ],
+  "why_it_won": "The paper demonstrates a sophisticated, multi-model approach that adapts to varying data contexts (host nations, new events, first-time medalists), with rigorous statistical validation (stationarity tests, residual diagnostics, confidence intervals). The clear integration of quantitative predictions with qualitative insights (coach effect, GDP correlation) shows depth and completeness.",
+  "section_highlights": "The paper is meticulously structured with clear task-based sections, consistent notation, and abundant figures/tables that illustrate model diagnostics and results. The summary of predictions and uncertainty analysis for both top and smaller countries effectively communicates key findings.",
+  "pitfalls_or_limitations": [
+    "high prediction uncertainty for countries with fewer medals",
+    "assumption of complete, unaffected participation (no doping or politics)",
+    "Poisson approximation may not perfectly capture medal distribution",
+    "reliance on external authoritative data for new events (e.g., rankings)",
+    "exponential regression for disintegrated countries may oversimplify"
+  ],
+  "reusable_patterns": [
+    "event clustering to reduce sports dimensionality",
+    "using ADF test and AIC to select ARIMA parameters",
+    "ensemble of ARIMA and random forest to generate prediction intervals",
+    "Monte Carlo simulation for unknown event outcomes using ranking data",
+    "Poisson approximation for sum of low-probability events",
+    "separate host nation factor analysis with weighted increment",
+    "exponential regression for declining trends (e.g., first-time medalists from disintegrated nations)",
+    "logistic regression to model win probability from rankings",
+    "Fisher's exact test to quantify coaching impact",
+    "sensitivity analysis for threshold choices"
+  ]
+}

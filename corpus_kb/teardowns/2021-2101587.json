@@ -1,0 +1,54 @@
+{
+  "paper_id": "2021-2101587",
+  "year": 2021,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2021 MCM Problem C (data): Build a model to monitor and control the Asian Giant Hornet (Vespa mandarinia) invasion in Washington State. Using a provided dataset of public sighting reports (with lab status, comments, GlobalID-linked photos, lat/long, dates), the team had to: (1) predict how/where the hornet spreads, (2) screen/prioritize public sighting reports to use scarce expert resources efficiently, (3) define a rule for updating the model as new data arrives, and (4) determine when eradication can be declared. The paper builds an integrated pipeline tying nest-location inference, spread prediction, image classification, a priority-queue triage model, and an extinction/eradication statistic.",
+  "models_used": [
+    "Poisson Distribution for nest location: workers' distance from nest modeled as Poisson; back-trace from confirmed sightings to a probability heatmap of nest location P_pt(long,lat) within a 10km radius of each sighting",
+    "Analytic Hierarchy Process (AHP): 3x3 judging matrix over Distance/Tree/Elevation factors, eigenvalue method giving weights W=(0.285 distance, 0.498 tree, 0.217 elevation), consistency check CR=0.016 (<0.10) computed in Matlab",
+    "Elevation as a geographic proxy: min-max standardized ASL data scraped via Python web crawler from freemaptools elevation-finder; used elevation as a stand-in for tree coverage after observing they coincide on satellite maps",
+    "Hornet Spread Model: same Poisson + AHP machinery re-applied with ~30km annual dispersal to predict next-year nest locations",
+    "Convolutional Neural Network (ResNet-18/34/50, pretrained, fine-tuned to 13 classes in PyTorch): insect image classifier, SGD lr=0.005 weight_decay=1e-4 momentum=0.9, CrossEntropyLoss, 30 epochs",
+    "Natural Language Processing: noun extraction from 'Lab Comments' to identify the 13 insect species and auto-label photos by GlobalID",
+    "Web crawler data augmentation: scraped 200 images/species (13 species) from bugguide.net to enlarge the sparse training set",
+    "Prioritizing (triage) Model: distance-banded weighted-credibility scoring — Group 3 (>70km): c=p_vm only; Group 2 (20-70km): 0.6*p_vm + 0.4*p_spread; Group 1 (<20km): 0.5*p_vm + 0.2*p_spread + 0.3*p_nest; with a c<0.01 cull and resource allocation across groups",
+    "Solow-Roberts nonparametric sighting-record extinction test: p = (t_n - t_{n-1})/(T - t_{n-1}), extended to use average sighting frequency f and a second-order-difference frequency-change term c; eradication declared when p < 0.05"
+  ],
+  "key_techniques": [
+    "Inverse/back-tracing inference: treating observed worker sightings as samples of a Poisson distance distribution and inverting to a spatial likelihood field for the hidden nest",
+    "Domain-knowledge-driven feature engineering grounded in a real entomology reference (Matsura & Sakagami 1973): 2km mean / 8km max forage range, ~30km dispersal, tree-root nesting, May-Nov activity all pulled from literature and baked into parameters",
+    "Proxy substitution under data scarcity: using elevation as a surrogate for unavailable forest-cover data, explicitly justified via satellite imagery",
+    "Reframing an intractable task into a tractable one: instead of binary 'is this the hornet?' (too few positive examples), train 13-class species classifier, then collapse to true/false — boosting accuracy to ~98-99%",
+    "Transfer learning + ablation across model depths (ResNet-18/34/50) and across data conditions (website / uploaded / cropped) reported in honest comparison tables",
+    "Diagnosing and fixing a domain shift: recognizing public photos are blurry/off-center vs. website close-ups, then manually cropping to center the insect to lift uploaded-photo accuracy",
+    "Multi-model fusion via weighted credibility with distance-gated logic (the three groups), letting the photo CNN, spread model, and nest model each contribute by spatial context",
+    "Quantitative validation by back-testing the triage on the real May-Aug data: the 5 true hornet photos moved from ranks [84,138,166,190,1257] of 1400 to [1,2,3,4,16]",
+    "Confusion-matrix error analysis identifying specific failure modes (hornet confused with fly/hornet/bee; cicada killer mistaken for hornet)"
+  ],
+  "why_it_won": "\"It directly and completely answers all four sub-questions of a notoriously open-ended data problem with an end-to-end, operationally usable pipeline rather than disconnected analyses. The standout move is the triage back-test: showing the five real hornet photos jump from buried ranks (84-1257 out of 1400) to the top of the queue (1-4 plus 16) is concrete, verifiable, decision-relevant evidence that the model actually saves overloaded experts time — exactly the WSDA's real pain point. Judges reward this kind of 'does it work on the actual data' proof. The team also showed strong modeling judgment: grounding every parameter in a real entomology paper, handling data scarcity with NLP auto-labeling + web-scraped augmentation, and cleverly reframing the under-sampled binary problem as a 13-class problem to reach ~98% usable accuracy. It is honest (reports the ugly 18-25% multiclass uploaded-photo accuracy alongside the good numbers), it builds a genuinely integrated system (each model feeds the next), it satisfies the self-update requirement with a clear yearly data-refresh rule, and it nails the Solow-Roberts eradication criterion with a defensible p<0.05 threshold. Strong communication — clean memo, a mocked user-interface figure, and clarity that a non-technical reader can follow — seals the Outstanding.\"",
+  "section_highlights": "\"Summary: front-loads the whole pipeline (Poisson nest-locating -> AHP+elevation spread -> NLP+crawler+CNN screening -> Solow-Roberts eradication) and states the headline results (98% photo accuracy, p<0.05 eradication rule). Assumptions section explicitly justifies each assumption AND ties it to the method that needs it (e.g., constant public attentiveness is named as the precondition for valid Solow-Roberts use) — a sophisticated touch. Section 5.3 (Improving Accuracy) is a model of honest iterative debugging: identifies the blurry/off-center domain shift, applies cropping, reports the modest 18.3%->25.23% gain, and doesn't oversell. Section 6.3 (Testing the Effect) is the persuasive core — the ranks [84,138,166,190,1257] -> [1,2,3,4,16] back-test. The Memorandum is plain-language, structured as a 3-step recipe, addressed to the WSDA, and references the included UI mockup (Fig 13) — exactly the requested deliverable. Appendix ships real runnable PyTorch + geopy queueing code, signaling the work is genuine.\"",
+  "pitfalls_or_limitations": [
+    "Mathematical sloppiness in the Poisson usage: P(x)=λ^x/x! e^{-λ} is a discrete PMF but x is a continuous distance in km, and they plug raw geodesic km into x! (factorial of a distance) in both the formula and the code (math.factorial(int(dis))) — dimensionally and statistically incoherent, even though the qualitative 'closer = more likely' shape happens to be reasonable",
+    "Using elevation as a proxy for tree coverage is a convenient but weak substitution; the team itself flags forest-coverage and pine-tree preference as unaddressed in Weaknesses",
+    "Internal inconsistency/typos in the credibility formula: p_next vs p_nest naming, and a Group-2 weighting that arguably should use the new-nest distance — the prose and code don't fully line up",
+    "Multiclass classification on real uploaded photos is genuinely poor (18-25%); the headline 98% only holds for the collapsed true/false task on a tiny 107-photo cropped set that contains all hornet images, so it is optimistic and not cross-validated at scale",
+    "AHP judging-matrix weights are subjectively assigned by the team with no sensitivity analysis on how the final nest map shifts if the weights change",
+    "No formal uncertainty quantification or sensitivity analysis on the spatial predictions or the eradication threshold; p<0.05 cutoff is asserted by convention, not derived for this dataset",
+    "Reproduced figures/tables in the markdown are partly garbled (confusion matrix all-0.95, heatmap labels), but the underlying method descriptions are clear",
+    "Self-update rule is described qualitatively (refresh data yearly, add labeled photos) but never demonstrated or stress-tested"
+  ],
+  "reusable_patterns": [
+    "Decompose-and-chain architecture: turn a vague 'monitor and control X' prompt into a pipeline where each model's output is the next model's input (locate -> predict spread -> classify -> prioritize -> declare eradication), so the paper reads as one coherent system",
+    "When positive examples are scarce, reframe a binary classification into a multi-class problem then collapse it — lifts accuracy and dodges class imbalance",
+    "Cure data scarcity with NLP auto-labeling from free-text comment fields + targeted web scraping for augmentation; document counts (200/species, 13 species)",
+    "Ground every model parameter in a cited domain reference and surface the numbers (forage range, dispersal distance, active months) — turns arbitrary constants into defensible assumptions",
+    "Substitute an available proxy variable for missing data and explicitly justify the substitution (elevation for forest cover via satellite-map coincidence)",
+    "Validate a triage/ranking system by back-testing on the actual provided data and reporting before/after ranks of the known-positive items — the single most convincing evidence type for a data problem",
+    "Use AHP with a consistency check (CR<0.10) to combine heterogeneous, non-commensurable factors into transparent weights",
+    "Distance-gated weighted fusion: bucket records by spatial proximity and apply different evidence-weighting per bucket so each sub-model contributes where it is informative",
+    "Adopt an established statistic from the literature (Solow-Roberts) for the 'when can we declare victory' question rather than inventing one, then extend it with a frequency-change term",
+    "Pair a non-technical memo + a UI mockup figure with the technical body so judges see both rigor and real-world deliverability",
+    "Report failure honestly (ablation tables across model depths and data conditions, confusion-matrix error modes) — honesty reads as competence to judges"
+  ]
+}

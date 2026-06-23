@@ -1,0 +1,51 @@
+{
+  "paper_id": "2024-2406324",
+  "year": 2024,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Analyze Wimbledon 2023 men's match data to model momentum in tennis, identify swings, determine if swings are random, predict momentum changes, and provide actionable advice to players and coaches.",
+  "models_used": [
+    "Exponential Weighted Moving Average (EWMA)",
+    "Sigmoid function",
+    "Run test",
+    "Wavelet filter",
+    "Spearman correlation",
+    "PCA",
+    "K-means clustering",
+    "RNN",
+    "GRU",
+    "LSTM",
+    "Clustered transfer learning",
+    "XGBoost",
+    "SHAP"
+  ],
+  "key_techniques": [
+    "Custom momentum definition with multi-scale EWMA and sigmoid amplification of scoring rates",
+    "Signal processing filters (wavelet) to smooth momentum curves and detect swings via derivatives",
+    "Statistical test (run test) combined with contextual event analysis to assess swing randomness",
+    "Dimensionality reduction using Spearman correlation-guided PCA",
+    "K-means clustering for grouping match types to enable transfer learning",
+    "Comparative training of RNN, GRU, and LSTM for time‑series forecasting of momentum",
+    "Clustered transfer learning to boost LSTM performance on small datasets",
+    "Interpretability via XGBoost and SHAP to identify key factors driving swings",
+    "Sensitivity analysis of LSTM step size and K-means cluster count",
+    "Qualitative validation against known match events (Alcaraz vs Djokovic final)"
+  ],
+  "why_it_won": "The paper delivers a holistic, multi-layered solution: a physics-inspired momentum metric is rigorously validated with both statistical tests and real match narratives. Predictive accuracy is maximised by pairing LSTM with K-means clustered transfer learning, overcoming data scarcity. Interpretability is achieved through a separate XGBoost+SHAP analysis, making the model’s outputs actionable. Thoughtful sensitivity analysis, honest discussion of limitations (gender/team sport transfer), and a practical memo for coaches elevate the work from a purely technical exercise to a complete, impactful study.",
+  "section_highlights": "The writing is exceptionally clear, moving logically from conceptual definition to validation, prediction, and interpretation. Figures are abundant and well-captioned—momentum curves, filter comparisons, prediction overlays, and feature importance plots—all directly tied to the narrative. The inclusion of a real match example and a final memorandum for stakeholders makes the technical content accessible and immediately relevant.",
+  "pitfalls_or_limitations": [
+    "Dataset is small, limiting model generalization and training depth",
+    "Momentum metric tuned for five‑set men’s matches; direct transfer to women’s three‑set matches fails due to set format and physiological/psychological differences",
+    "Transfer to team sports is poor because of strategic timeouts and team dynamics not captured by individual momentum",
+    "Neural network training is insufficient, leading to limited overall accuracy",
+    "Model is not highly convincing for contexts beyond the training data"
+  ],
+  "reusable_patterns": [
+    "Define a contextual metric (momentum) using a hybrid of local and global EWMA with a non-linear activation (sigmoid) to amplify game‑winning/losing effects",
+    "Apply signal‑processing filters (wavelet) to smooth noisy time series and detect critical points via derivative analysis",
+    "Combine deep learning (LSTM) with unsupervised clustering (K‑means) for transfer learning when data per match is scarce but many similar match patterns exist",
+    "Use an interpretable model (XGBoost) and SHAP to explain a black‑box predictor, preserving full feature space while gaining insight into key drivers",
+    "Validate models with both quantitative loss metrics and qualitative alignment with known match narratives",
+    "Conduct sensitivity analysis on sequence length and clustering hyperparameters to guide practical deployment"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "paper_id": "2024-2401445",
+  "year": 2024,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem requires analyzing momentum in tennis using 2023 Wimbledon data: constructing a match flow metric, evaluating whether momentum exists, predicting turning points, and providing coaching advice.",
+  "models_used": [
+    "Gradient Boosting Trees (GBDT)",
+    "Grid Search hyperparameter optimization",
+    "Dynamic Time Warping (DTW)",
+    "Random Forest",
+    "Hidden Markov Model (HMM)"
+  ],
+  "key_techniques": [
+    "Feature engineering using PWOL and composite strength score",
+    "Proof by contradiction via simulation with Gaussian noise",
+    "Sequence similarity measurement with DTW",
+    "Grid search for GBDT and Random Forest hyperparameter tuning",
+    "Probabilistic performance output from classifier as continuous metric",
+    "Linear combination of performance, personal strength, and serving advantage",
+    "Hard voting ensemble combining multiple HMM outputs",
+    "Sensitivity analysis by injecting Gaussian noise into key features",
+    "Feature importance ranking from Random Forest",
+    "Data preprocessing: median imputation and deletion for specific columns"
+  ],
+  "why_it_won": "The paper provides a comprehensive, multi-model solution that addresses every task with quantitative rigor. It creatively proves momentum existence through contradiction and DTW, builds an interpretable turning point predictor, and evaluates generalization across matches and surfaces. The integration of practical coaching advice grounded in model findings demonstrates strong real-world applicability, and the reasoning is well-supported by visualizations and sensitivity analysis.",
+  "section_highlights": "The report follows a logical progression from flow measurement to momentum validation to prediction, with clear section headings and subheadings. Each model is motivated, mathematically defined, and evaluated, while the coaching memo at the end translates technical results into concrete, actionable strategies. Figures and tables effectively illustrate performance, turning points, and model comparisons, enhancing clarity.",
+  "pitfalls_or_limitations": [
+    "HMM model heavily depends on historical data and may not generalize to new players.",
+    "Performance degrades significantly on different court surfaces (US Open).",
+    "Selected features are tennis-specific, limiting transferability to other sports.",
+    "Missing data imputation (median) may introduce bias in player strength evaluation."
+  ],
+  "reusable_patterns": [
+    "Contradiction-based testing of temporal phenomena using simulation and sequence alignment (DTW)",
+    "Using classifier probabilities as a continuous index of advantage and linearly combining domain-specific factors",
+    "Random Forest for feature selection and interpretable importance scores before engineering a sequential model",
+    "Hidden Markov Model to capture individual player reactions and patterns from historical matches",
+    "Hard voting across multiple match-specific HMMs to predict outcome classes for a new match",
+    "Sensitivity analysis with added noise to assess model robustness",
+    "Structuring report with assumptions, notations, models, validation, generalization, sensitivity, and a clear memorandum for stakeholders"
+  ]
+}

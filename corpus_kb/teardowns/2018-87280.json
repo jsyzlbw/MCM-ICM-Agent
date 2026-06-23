@@ -1,0 +1,56 @@
+{
+  "paper_id": "2018-87280",
+  "year": 2018,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2018 ICM Problem F (policy type), titled \"How much is your privacy information?\" — the team (control #87280, Outstanding award) was asked to build a pricing system for the commercialization of personal privacy information. They broke the prompt into 8 sub-tasks: (1) classify personal information into sub-groups, (2) price an individual's privacy, (3) build a market pricing/supply-demand system, (4) state assumptions and make the model dynamic + judge whether privacy is a human right, (5) account for generational/age differences and compare PI vs PP vs IP, (6) model network/data-sharing effects on group leakage, (7) model the impact of large-scale data breaches and compensation, and (8) compile everything into a government policy proposal. The core deliverable is a single composite privacy-price formula CP = I + K + D (expected income value + risk value + information-relevance value) plus a downstream market price B = CP(1+φ), validated on a simulated population of 500 people.",
+  "models_used": [
+    "Indicator system / taxonomy: 26 privacy indices grouped into 5 categories (Citizenship, Personal Assets, Social Contact, Finance, Health/Medical) split along 'individual characteristics' vs 'information field'",
+    "Analytic Hierarchy Process (AHP) — pairwise comparison matrix, sum-product eigenvector method, λmax, CI/RI/CR<0.1 consistency check; used to weight the 10 hard-to-quantify Citizenship indices and to set the per-index risk coefficients r_j",
+    "Income present-value method (accounting/intangible-asset valuation) — treats privacy as an intangible asset and maps the 16 quantifiable indices to monetary proxies (e.g. Total Assets→average deposit, Income→disposable income, Genetic Map→medical research funds)",
+    "Gradient Boosting Decision Tree (GBDT) via sklearn GradientBoostingRegressor — learns the value coefficients ω* = -G_j/(H_j+ψ) for the quantifiable parameters (feature_importances_ used as coefficients)",
+    "Coefficient of variation / probability-theory risk model — Cof = σ/E, risk reward R_j = Σ r_j·Cof, risk value K = Σ I_j R_j",
+    "Gaussian Mixture Model — D(δ)=a·exp(-(δ-μ)²/2σ²) with MLE parameter estimation, models the 'S-shaped' relation between information correlation and information-relevance value",
+    "Price-elasticity-of-demand model + product life-cycle framework (development / maturity / decline stages) for the market pricing system",
+    "MATLAB curve fitting (exponential fit, e.g. r18 = -0.6404·e^(-0.07066t+0.6887), R²=0.9779) to make risk coefficients time-dependent (dynamic model)",
+    "Small-world network model (modified, MATLAB) — simulates group privacy leakage with parameters n (fraction willing to sell) and p (rewiring/leak probability) over a 40-person group",
+    "Dynamic game theory / Prisoner's Dilemma — 2x2 payoff matrix under 'economic man' assumption, concludes a sub-game-perfect Nash equilibrium where everyone sells",
+    "Long-tail effect and bullwhip effect models for the time-evolution of breach impact",
+    "Insurance actuarial model (parametric modeling) for breach compensation U = I + Π",
+    "Z-score standardization + data cleaning (fuzzy matching for missing/outlier values) on 1997–2016 China National Bureau of Statistics census/consumption data",
+    "Independent-samples t-test (SPSS) + Levene's test for the sensitivity analysis"
+  ],
+  "key_techniques": [
+    "Decomposing one fuzzy quantity (privacy price) into three additive, separately-modeled components — income value I, risk value K, relevance value D — then recombining into one closed-form CP formula",
+    "Hybrid weighting: using AHP for the indices that resist monetization (Citizenship) and GBDT for the ones with monetary proxies, instead of forcing one method on all 26 indices",
+    "Building a synthetic validation dataset: simulating 500 individuals as 0/1 indicator vectors across the 26 features and computing I, K, D, CP per person to show distributional behavior ($600–$3000 range; $5578 for all-ones)",
+    "Turning constants into functions of time (risk coefficients r_j → r_j(t)) via empirical curve fitting to convert a static model into a dynamic one — a clean way to answer the 'evolve over time' sub-question",
+    "Reusing the same backbone formula across tasks: the market price B=CP(1+φ), elasticity, dynamic risk, and breach compensation all hang off the Task-2 CP formula",
+    "Closing with a sensitivity/robustness loop: re-eliciting weights from a 50-person questionnaire, repricing all 500 simulated people, and using a t-test to show no significant difference from the original coefficients",
+    "Translating the technical model into a non-technical 'Dear decision maker' policy letter as a standalone deliverable for the policy-problem audience"
+  ],
+  "why_it_won": "\"From a judge's perspective this paper won Outstanding mainly because it fully covered an unusually long 8-part prompt while keeping a single coherent spine: every sub-task plugs into one master formula (CP = I + K + D → B = CP(1+φ)), so the paper reads as one integrated system rather than eight disconnected mini-answers — exactly what graders reward on multi-part policy problems. It is method-rich and visibly quantitative: it pairs a well-known interpretable technique (AHP with a passing CR<0.1 consistency check) with a then-fashionable ML method (GBDT), grounds coefficients in real Chinese statistical-bureau data, and reports a concrete fitted R²=0.9779 — signaling rigor without losing readability. It anticipates the hard, open-ended sub-questions (is privacy a human right? generational differences? network leakage?) with named, defensible models (game-theoretic prisoner's dilemma + small-world network, long-tail vs bullwhip) instead of hand-waving. Crucially for a policy problem, it delivers an actual policy memo to a decision-maker plus actionable government levers (laws, disciplinary punishment, restricting special-group data, breach response). And it self-validates with a sensitivity analysis backed by an SPSS t-test, demonstrating the maturity judges look for.\"",
+  "section_highlights": "\"Summary sheet maps one-to-one onto the 8 tasks, so a judge can immediately see full coverage. Section II builds a clean 26-index/5-category taxonomy with an explicit rationale for each category. Section III is the analytical core: it cleanly separates 'difficult to quantify' (AHP) from 'quantifiable' (present-value + GBDT) indices, presents the full AHP machinery (comparison matrix, λmax, CI/RI/CR), gives the GBDT objective with symbol table, and culminates in the composite CP formula with a complete variable-definition table. Table 3-2 (value + risk coefficient per index) and Table 3-3 (500-person simulation with I/K/D/CP columns, averages, std devs) make the model concrete and reproducible. The dynamic-model section (V) elegantly upgrades constants to time functions with a fitted exponential and stated R². The policy-letter appendix and the explicit 'Advantages/Weaknesses' section show self-awareness. Appendix I ships the actual Python (sklearn) and MATLAB (small-world, risk-fit, Gaussian) code plus the questionnaire instrument — strong transparency.\"",
+  "pitfalls_or_limitations": [
+    "Notational and bookkeeping sloppiness: the income sum is written Σα_i C_i but indexed to j=1..26 while only ~16 indices are GBDT-quantified and 10 are AHP-weighted — the bridge between the two coefficient sets is never made rigorous",
+    "GBDT is used to 'learn coefficients' but the supervised target is essentially fabricated (the model is fit to back out feature_importances_ as coefficients); the printed result has near-zero error (2e-08), strongly implying the GBDT is fitting its own synthetic construction rather than real privacy prices — circular validation",
+    "The 500-person 'validation' is a simulation of random 0/1 indicator vectors, not real transaction data, so it tests internal consistency, not external/predictive accuracy",
+    "The Gaussian-mixture 'information relevance' relationship and its S-curve are asserted from 'practical experience' / literature rather than estimated from data; μ, σ, a are essentially hand-set (gaussmf(x,[1.8 5]))",
+    "Reported sensitivity t-test conclusion is internally contradictory: text says p=0.910<0.05 (it is not) yet still concludes no significant difference — a careless error a sharp judge would catch",
+    "The OCR'd figures for the small-world and long-tail/bullwhip sections are garbled (radar/line charts show meaningless monotonic ramps), and the underlying simulations are described only qualitatively ('with n and p increasing, leakage worsens') with no quantitative leakage metric",
+    "Game-theory and network sections are illustrative rather than calibrated; the 40-person small-world MATLAB code is buggy/idiosyncratic (e.g. N(1:20) indexing)",
+    "Currency/units are inconsistent (¥, $, £ all appear), and the AHP risk-coefficient table mixes scales (some >0.5) without normalization explanation",
+    "Some references are duplicated/mismatched (e.g. [17]=[18], [19]=[20]; ref [11] title-author scrambled), indicating rushed citation management"
+  ],
+  "reusable_patterns": [
+    "Three-component additive decomposition of a hard-to-price quantity: value + risk + interaction/relevance, each modeled independently then summed into one closed-form headline equation — a strong template for any 'put a number on X' policy problem",
+    "Split your feature set by quantifiability: use AHP (with a CR<0.1 consistency check you actually report) for subjective/non-monetary factors, and a data-driven/ML method for the rest — and say explicitly why each method goes where",
+    "Static→dynamic upgrade trick: take your key constants, fit them as functions of time t with a regression toolbox, report the R², then re-plug f(t) into the master formula to answer any 'how does it evolve' sub-question",
+    "Synthetic-population validation: generate N (here 500) realistic agents as indicator vectors, run them through the model, and report the output distribution (range, mean, std) to demonstrate behavior when real data is unavailable",
+    "Robustness loop with a real statistical test: re-elicit your subjective weights from a small survey, re-run the whole pipeline, and use a t-test (state F/p) to argue stability — a credible, low-cost sensitivity analysis",
+    "Keep one backbone formula and let every later task be a transformation of it (market price = base·(1+margin), compensation = base + actuarial term), giving the paper visible structural unity",
+    "For policy-type problems, append a plain-language 'Dear decision maker' memo with concrete, enumerated government actions (legislation, enforcement, restricted categories, breach-response plan) as a distinct deliverable",
+    "Make models reproducible: include the actual sklearn/MATLAB code, the data source URL, and the survey instrument in appendices",
+    "Anchor abstract sub-questions to named off-the-shelf frameworks (prisoner's dilemma, small-world networks, price elasticity, product life cycle, long-tail vs bullwhip, actuarial models) so each open-ended part gets a defensible, recognizable model rather than prose"
+  ]
+}

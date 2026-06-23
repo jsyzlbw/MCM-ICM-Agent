@@ -1,0 +1,52 @@
+{
+  "paper_id": "2011-10496",
+  "year": 2011,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2011 MCM Problem B (discrete/network design): determine the minimum number of VHF radio repeaters needed to serve 1,000 (and then 10,000) simultaneous ham-radio users in a flat circular region of radius 40 miles on the 145-148 MHz band, using 54 available CTCSS \"privacy lines\" and 600 KHz-offset duplex repeaters to manage interference. Team 10496 reframed the vague \"1,000 simultaneous users\" into a tractable definition (\"1,000 people who might make demands,\" with average requests/user as a model parameter) and built a population-density-driven repeater-placement pipeline.",
+  "models_used": [
+    "k-means clustering to place repeaters at cluster centroids in high-density regions (k = number of clusters is the primary design knob, swept 5/10/15/20/25)",
+    "Minimum spanning tree to connect disconnected network components using the fewest extra repeaters (component graph with edge weight d_ij = min inter-component distance; greedy MST in 'Connect Components' Algorithm 3)",
+    "Multivariate (bivariate, independent x/y) Gaussian mixture / 'clumped' distribution to synthesize realistic population data (sigma_x = sigma_y = 20, clump centers uniform in disk), validated against real Southeastern-US density data",
+    "Poisson distribution (lambda=1, over number-of-towers hop distance l) to model call destinations with locality bias (most calls short-range)",
+    "Discrete-event / time-stepped Monte Carlo simulation of transmission requests to compute the quality metric Q = (#transmissions processed)/(#transmissions attempted)",
+    "Graph-theoretic hub selection via closeness centrality (max closeness / min average geodesic distance) plus a BFS-style breadth-first channel-assignment scheme (Algorithm 4) stepping channels A->B->C->D->E outward from the hub",
+    "Line-of-sight propagation model: broadcast radius ~ sqrt(1.5*h); 40-ft antenna => ~9 mi repeater range, ~3 mi handheld range",
+    "Staggered duplex-frequency chaining (A-B-C-D-E and inverse A'-D' for bidirectionality) plus a privacy-line addressing scheme (ingoing/outgoing tone per location) to route traffic directionally and partition the network into non-interfering subnetworks"
+  ],
+  "key_techniques": [
+    "Reframing an ill-posed problem statement: explicitly redefined 'simultaneous users' as a demand-rate parameter, which made the whole simulation tractable and is defensible to judges",
+    "Defining a custom, simulatable success metric Q (fraction of transmissions completed) instead of a vague yes/no, and exposing the acceptance threshold as a tunable parameter",
+    "Strong baseline for comparison: a 'naive' uniform-blanket network, quantifying that the clustered design hits up to ~98% transmission vs ~32% naive — turning the result into a dramatic headline number",
+    "Trade-off framing: more clusters/repeaters => higher transmission capacity and coverage but bounded by privacy lines; presented as a tunable cost/quality curve rather than a single point",
+    "Sensitivity analysis as repeatability: ran the stochastic simulation 10x per scenario and reported standard deviations (<1.5%) to argue the metric is stable across distributions",
+    "Physical grounding of every parameter from the radio domain (sqrt(1.5h) horizon, 9-mi/3-mi ranges, 600 KHz offset => 5 frequency pairs), so abstractions stay tethered to reality",
+    "Layered algorithm decomposition with four named pseudocode algorithms (Measure Quality, Main Generation, Connect Components, Assign Channels) that compose cleanly",
+    "Encoding the engineering constraint (54 privacy lines) as a hard combinatorial cap (~25 repeater locations) and using that smallness to argue a brute-force search over k yields the optimum"
+  ],
+  "why_it_won": "\"It won because it converted an under-specified, interference-heavy engineering problem into a clean, end-to-end, simulatable pipeline and then demonstrated quantified dominance over a credible baseline. Judges reward: (1) a defensible reinterpretation of the ambiguous prompt; (2) a self-consistent metric (Q) that is actually measured via simulation rather than asserted; (3) a head-to-head naive-vs-model comparison with a memorable result (98% vs 32% transmission, ~40 repeaters covering >97% of users at k=15); (4) genuine domain engagement — privacy-line routing that mirrors IP-style addressing, frequency staggering to avoid feedback loops, line-of-sight physics — showing the team understood why interference happens, not just how to cluster points; (5) explicit sensitivity analysis (<1.5% std dev over 10 runs) signaling rigor; and (6) unusually honest, specific limitations and a fully-scoped Future Work section. The combination of physical realism + algorithmic clarity + quantified validation + intellectual honesty is exactly the O-award profile.\"",
+  "section_highlights": "\"Summary leads with the result (98% vs 32% naive) and names every component of the pipeline in order — judges can grasp the whole solution in one paragraph. Assumptions section is exemplary: nine numbered assumptions, each with a real-world justification and an honest flag where they cut a corner (e.g., admitting long-chain 'blind interference' is under-penalized because a temporary simplification 'became permanent'). The Metric section comes BEFORE the model, establishing how success is judged before building toward it. Algorithms are given as clean numbered pseudocode (Algorithms 1-4), making the discrete method reproducible. Results use four tables sweeping k x {Random,5,10,20,40 clumps} for repeater count, uncovered population, transmission capacity, and its standard deviation — a tight factorial design. Discussion proactively answers the prompt's 10,000-user extension (honestly: only ~50% handled) and the mountainous-terrain extension (proposing simulated annealing). Conclusion states the 'eyeball test' plus the concrete sweet spot (k=15 => ~40 repeaters, >97% coverage, ~95% transmission). Worth emulating: metric-first ordering, baseline-vs-model tables, and assumptions that admit their own weaknesses.\"",
+  "pitfalls_or_limitations": [
+    "Long-chain ('blind') interference is not penalized as a failed request — conflicting cross-network signals are merely blocked, so the network is scored more leniently than reality warrants (the team openly admits this simplification 'became permanent')",
+    "k-means is non-deterministic, so the 'optimal' network differs run to run — a weakness for a problem asking for THE minimum; they mitigate by averaging but never get a canonical answer",
+    "Hard scalability ceiling: the privacy-line routing scheme caps the network at ~25 distinct repeater locations, and at 10,000 users only ~50% of transmissions succeed — the design does not actually solve the prompt's stated extension well",
+    "Single-hub architecture is a chokepoint: all cross-subnetwork traffic funnels through the centrality-chosen hub, which saturates first; multi-hub (IP-style) routing is only hand-waved as future work",
+    "Several formulas are typeset incorrectly in the paper as rendered — the bivariate Gaussian exponent is missing its negative sign and 1/2 factors, and the 'Poisson' request formula is written as a binomial-coefficient hybrid (lambda^k vs lambda^l index mismatch), suggesting the math was not carefully proofread",
+    "Real repeater switching/processing delay is ignored (instantaneous-propagation assumption); the paper notes two repeaters rebroadcasting at slightly different speeds could deliver duplicated, offset signals — a real flaw under the privacy-line scheme",
+    "Optimizes only for repeater count: no mechanism to weigh cost of an added repeater against coverage gain, or to impose a penalty for uncovered users; the objective is one-dimensional",
+    "Cannot exactly specify a target repeater count — it is only indirectly controlled via k (a post-processing pruning step is proposed but not implemented)",
+    "Flat-terrain only; mountainous/atmospheric range variation handled only conceptually, not modeled"
+  ],
+  "reusable_patterns": [
+    "Disambiguate-then-parameterize: when the prompt is vague ('simultaneous users'), state your interpretation explicitly and turn the ambiguous quantity into a model parameter (requests/user) — defuses the ambiguity and lets you sweep it",
+    "Density-driven placement pipeline: k-means centroids for facility/sensor/tower placement + MST to guarantee connectivity with minimum added nodes — a transferable template for any 'place N facilities to cover a population' problem",
+    "Always build a deliberately naive baseline and report head-to-head tables; the contrast (98% vs 32%) is what makes the result land with judges",
+    "Synthesize realistic test data (Gaussian-mixture 'clumps') and validate it against a real reference dataset, then run your method across a factorial of scenarios (k x distribution type)",
+    "Define a measurable success ratio Q and compute it by Monte Carlo simulation rather than asserting performance; expose the acceptance threshold as a parameter",
+    "Treat sensitivity analysis as repeatability: re-run the stochastic pipeline multiple times and report standard deviation to prove the metric is stable",
+    "Metric-before-model document ordering: define how you will judge success, then build the model toward it",
+    "Turn a hard engineering constraint into a combinatorial bound and exploit its smallness — here, 54 privacy lines => ~25 locations => brute-force search over k is feasible, so 'optimal within our approach' is achievable",
+    "Map an unfamiliar engineering mechanism onto a familiar analogy for clarity (privacy-line routing explained as IP-address-style traffic routing to hubs)",
+    "Write assumptions that flag their own weaknesses — judges trust honest authors more than ones who hide simplifications, and the flags double as a ready-made Limitations/Future Work outline"
+  ]
+}

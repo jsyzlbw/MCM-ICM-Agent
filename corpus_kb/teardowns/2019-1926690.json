@@ -1,0 +1,52 @@
+{
+  "paper_id": "2019-1926690",
+  "year": 2019,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2019 MCM Problem A (\"How Many Dragons?\") was a deliberately whimsical continuous/open-ended modeling prompt: given three Game-of-Thrones-style dragons released into the real world, model their caloric/energy needs, the land/ecological resources required to sustain them, and how those needs change with the surrounding environment. Team 1926690 (\"Dragon Den Modeling Agency\") answered with a two-scale ecology study — a global agent-based model of dragon spread and a regional differential-equation model of one dragon's growth and ecological footprint — plus a third captivity/zoo sizing model, concluding that uncontrolled dragon release is ecologically catastrophic and recommending management (hunting seasons / zoo confinement).",
+  "models_used": [
+    "Agent-based / individual-based model (ABM), object-oriented in Python: 3 dragons on a 45-cell ecoregion grid with per-agent age, weight, health, fullness state and daily phased decision loop (mine gold -> search den -> hunt -> migrate -> reproduce)",
+    "Logistic-growth ODE for dragon mass modulated by a food-availability ratio: dw/dt = (c*r_opt/w_max) e(t) p(t) w^(2-b) (1 - w/w_max)(c p(t)/w(t)^b - 1)",
+    "Kleiber-style allometric metabolic power law m(t)=a*w(t)^b with a=139065, b=0.889 from Nagy, Girard & Brown (1999) for reptiles — the physical anchor of the whole energy budget",
+    "Modified predator-prey (Lotka-Volterra-like) ODE for the deer/prey population: dp/dt = j p(t) - e(t) p(t) w(t)/w_max, with consumption scaled by dragon mass",
+    "Vegetation/habitat ODE: dv/dt = l*v(t) - g*w(t)v(t)/w_max capturing trampling + fire-breathing damage",
+    "Piecewise time-varying hunting-effectiveness function e(t): linear ramp to maturity then constant",
+    "Weighted-sum 'suitability index' s = mean(d/D + f/F + t/T + n/N + p/P) driving migration decisions in the ABM",
+    "Forward Euler integration (monthly timestep) for the ODE system",
+    "Captivity/zoo resource-sizing model: reuse of the metabolic + feeding equations to back out min/max deer-per-year at capped w_max (e.g. 250 kg -> 158-2627 deer/yr)",
+    "Stochastic / Monte-Carlo style randomized initialization (uniform draws for region traits, prey calorie content, dragon starting attributes)"
+  ],
+  "key_techniques": [
+    "Multi-scale modeling: deliberately pairing a macro (global, spatial, stochastic ABM) with a micro (single-region deterministic ODE) model so each covers the other's blind spots, then a third model spun off from the second to answer the management question",
+    "Grounding a fantasy creature in real biology: anchoring metabolism to the Nagy/Girard/Brown reptile allometric exponent and deer caloric content, so every fantastical number traces to a cited empirical parameter",
+    "Dimensional/units discipline: converting prey 'calorie units' to calories via factor k, collapsing k/a into a single dimensionless parameter c to simplify the ODE",
+    "Extensive one-at-a-time parameter sweeps (c, p0, g, e_max, j, w_max, b, r_opt) presented as families of curves, used to locate qualitative thresholds and bifurcations (e.g. vegetation bifurcation between g=0.05 and g=0.1; j must exceed ~0.15 for the dragon to reach 83% target weight)",
+    "Translating model output into decision-relevant numbers: 2,647 deer/year for a 6000 kg dragon, 58 sq mi of land, zoo feeding tables — concrete, sanity-checked against an African elephant's caloric budget",
+    "Intervention/policy experimentation inside the ABM: tunable forest-restoration and one-dragon-per-region-per-day removal, with a threshold table showing non-monotone effect of intervention timing on final population",
+    "Equilibrium analysis of the ODE system (attempted; honestly reported as not physically meaningful beyond trivial solutions)"
+  ],
+  "why_it_won": "\"It treats an absurd prompt with complete methodological seriousness while never losing the playful register the problem invites. The judges reward (1) the multi-scale architecture — ABM for global spread, ODE for fine-grained ecology, captivity model for the policy answer — which lets the team answer far more of the open-ended prompt than a single model could; (2) the empirical grounding, where every dragon parameter is pinned to a cited biology source (Nagy/Girard/Brown allometry, Komodo parthenogenesis, deer calorie content), making fantasy numbers defensible; (3) exhaustive, well-visualized sensitivity analysis that converts the model into actual insight (threshold growth rates, bifurcation points) rather than a single run; (4) decision-relevant, sanity-checked quantitative conclusions (deer/year, land area, zoo feeding budgets benchmarked against an elephant); and (5) exceptional communication — a strong abstract, a fully in-character client letter to George R.R. Martin, alliterative flair, and candid limitation sections. The combination of rigor + reproducibility + self-criticism + memorable voice is exactly the Outstanding profile.\"",
+  "section_highlights": "\"Abstract + client letter: the summary cleanly previews all three models and their punchline; the in-character letter to G.R.R. Martin translates technical findings into narrative recommendations — a textbook example of audience-appropriate communication that judges love. Modeling Methodology (Sec 4): clean separation of ABM (Table 1 ecoregion parameters, Table 2 action costs, suitability-index formula) from the ODE derivation, which is shown step-by-step from first principles down to the boxed final equation (1), with a full parameter table (value + rationale + citation) — high reproducibility. Results (Sec 5): the initial ODE run is shown as four coupled time series (dragon weight, deer, vegetation, metabolism), then eight parameter studies each with curve families and a one-paragraph interpretation calling out thresholds/bifurcations. Model Analysis (Sec 6): explicit Strengths-and-Insights vs Limitations bullets for each model, unusually candid (e.g. admitting prey regeneration had to be set unrealistically high, that habitat degradation doesn't feed back on prey, that only one parameter was varied at a time). Sec 7 Real-World Applications generalizes the approach to whale sharks, deer management, and climate-change predator-prey work — showing transferability. Appendices add ABM ice/gold data, extra sweeps (b, r_opt), and a joking dragon recipe.\"",
+  "pitfalls_or_limitations": [
+    "One-factor-at-a-time sensitivity analysis only — no joint/multi-parameter or global sensitivity (Sobol, LHS); the team admits this and it hides interaction effects",
+    "No feedback from vegetation/habitat loss back onto prey or onto the dragon, so the predator-prey-vegetation system is only loosely coupled — vegetation is essentially a passive readout, which produces some non-physical results (e.g. exponential vegetation 'blow-up' for small g, flagged as nonsensical)",
+    "Several parameters are tuned to desired outcomes rather than estimated (j=0.25 'chosen to be high', g=0.2 'dragon is 20% destructive', t_mature=21 'can legally drink' — a joke value), weakening empirical defensibility",
+    "ABM structural limitations the team lists: dragons cannot expand range beyond one cell, cavern size is uniform so dragons can't outgrow homes, no dragon-dragon territorial conflict, no dragon-human encroachment dynamics",
+    "ODE solved with plain forward Euler at a coarse monthly step — no check on numerical stability/accuracy, and negative or sub-1 'deer' values appear in some plots",
+    "Equilibrium analysis was attempted but yielded nothing physically meaningful beyond trivial solutions, so the dynamical-systems theory is thin",
+    "Some figures/tables in the extracted markdown are noisy or internally inconsistent (heatmap data garbled), and a few stated numbers (2,647 vs 2,666 deer; 83% target weight) are approximate/rounded inconsistently",
+    "The model is essentially descriptive/exploratory; no validation against any independent data is possible given the fictional subject, so confidence rests entirely on the reasonableness of borrowed biological parameters"
+  ],
+  "reusable_patterns": [
+    "Two-scale (macro ABM + micro ODE) decomposition: use a spatial stochastic agent model for population spread/distribution and a deterministic ODE for fine-grained mechanism, letting each cover the other's weakness — directly transferable to any population/ecology/epidemic/diffusion problem",
+    "Spin off a third 'intervention/management' model from your base model to answer the 'what should we do' part of an open prompt (here: zoo captivity sizing) — judges reward actionable recommendations",
+    "Anchor every speculative parameter to a cited real-world analog and present a parameter table with columns [symbol | interpretation | value | rationale/citation] — turns guesses into defensible assumptions and maximizes reproducibility",
+    "Collapse compound constants (k/a -> c) to reduce free parameters and clarify the ODE before sweeping",
+    "Allometric metabolic power law m = a*w^b (Kleiber/Nagy) as a reusable engine for any 'how much food/energy does creature X need' question",
+    "Build a normalized weighted-sum suitability/desirability index (each factor divided by its max, then averaged) to drive discrete agent decisions like migration",
+    "Run a systematic per-parameter sweep and explicitly hunt for thresholds and bifurcations, reporting them as the model's insight rather than just showing one nominal run",
+    "Convert model outputs into concrete decision units (animals/year, square miles, dollars) and sanity-check them against a known real entity (African elephant caloric budget) to build credibility",
+    "Write an audience-appropriate, in-character cover letter that translates technical results for the stated client — and use playful voice (alliteration, jokes, a recipe appendix) on whimsical prompts without sacrificing rigor",
+    "Include a candid, itemized limitations section per model; admitting what you tuned and what you omitted reads as maturity, not weakness, to judges"
+  ]
+}

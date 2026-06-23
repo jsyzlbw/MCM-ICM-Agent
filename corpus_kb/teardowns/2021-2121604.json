@@ -1,0 +1,56 @@
+{
+  "paper_id": "2021-2121604",
+  "year": 2021,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2021 MCM/ICM Problem D (\"Prioritizing the Influence of Musical Evolution\"). The team had to build directed influence networks from an influence_data set, develop a measure of musical influence, build a music-similarity model from Spotify-style audio features, validate it on within- vs between-genre artists, then use those two basic models to answer a chain of open exploratory sub-tasks: whether influencers actually affect followers, which features are most \"contagious,\" how genres relate and which genre dominates each year, when musical \"revolutions\" occurred and which artists drove them, and how cultural/social/technological context shaped evolution.",
+  "models_used": [
+    "Directed influencer network: decade-layered node-link graph (influencers -> followers as directed edges), node size encodes Music Influence (MI); full network plus Kraftwerk-centered subnetwork for close reading",
+    "Cooling Model (Newton's law of cooling analogy) for Music Influence decay: MI'(t) = -a(MI(t)-MI0), solved to MI(t)=MI(t0)e^{-a(t-t0)} with MI0~0, modeling influence decay over the time interval, not absolute year",
+    "Smoothing-spline delay fit f(t) in MATLAB on avg followers per decade, combined with the cooling decay to produce the final normalized MI coefficient (captures the observed 1st-decade lag before decay)",
+    "PCA dimensionality reduction on ~12 audio characteristics down to 4 principal factors (validated with KMO=0.782 and Bartlett's test of sphericity, p=0.000)",
+    "Cosine similarity on the 4-factor (and 12-dim) eigenvectors as the single unified similarity metric across songs, artists, and genres",
+    "Genre centroid model: average artist eigenvectors within a genre as the genre's representative vector; 20x20 cosine-similarity matrix rendered as a heatmap",
+    "Gravity Model analogy for dominant-genre-per-year: Gravity = G*U / r^2 with similarity substituting for distance (sim_new=(1+sim)/2, Gravity proportional to G*U*sim_new^2), genre popularity as mass; max-gravity genre = year's dominant genre",
+    "Year-over-year cosine similarity of annual 4-factor vectors as a revolution indicator (low similarity = revolutionary leap)",
+    "Influencer follower-count ranking within a time window (1965-1967) to identify revolutionary artists (The Beatles=94, Bob Dylan=64)",
+    "Leave-one-feature-out cosine similarity to identify 'contagious characteristics' per genre (re-compute 11-dim similarity, largest similarity drop = most contagious feature)",
+    "Popularity + song-count ranking to find dynamic influencers of country music per decade; cross-decade similarity to detect genre fusion"
+  ],
+  "key_techniques": [
+    "Two reusable 'basic models' (network + cosine similarity) deliberately built first, then redeployed to solve every downstream sub-task - a building-block architecture rather than a new model per question",
+    "Validation-by-construction: testing the similarity metric on within-genre (~0.6) vs between-genre (~-0.1) artists before using it, giving an empirical sanity check that the metric is meaningful",
+    "Cross-disciplinary physics analogies (cooling model for decay, gravity model for dominance) to turn vague qualitative tasks into closed-form computable quantities",
+    "Substituting cosine similarity for Euclidean distance in the gravity law (sim and distance inversely related), justified explicitly to avoid re-normalization",
+    "Leave-one-out feature ablation to attribute influence to specific audio characteristics per genre",
+    "Decade-layered network layout (concentric rings by start decade) to make a dense graph legible, plus a single-artist subnetwork (Kraftwerk) for an interpretable close-read",
+    "PCA pre-validation with KMO and Bartlett's test to justify dimensionality reduction rather than asserting it",
+    "Sensitivity analysis on the cooling attenuation coefficient alpha (0.1-0.7), identifying the stable operating band 0.1-0.6 and explaining why alpha=0.7 violates the empirical lag",
+    "Triangulating quantitative findings against real music history (R&B vs Jazz/Blues, British Invasion, Cold War / Civil Rights events) to make numbers tell a credible narrative"
+  ],
+  "why_it_won": "\"From a judge's view, three things stand out. First, architectural discipline: the team built exactly two well-justified basic models (a layered influence network with a cooling-decay MI metric, and PCA+cosine similarity) and then answered the entire open-ended problem chain by recombining them, so every later section felt earned rather than ad hoc. Second, validation and self-skepticism: they empirically validated the similarity metric (within-genre ~0.6 vs between ~-0.1) and the influencer-follower claim (~0.8 vs ~-0.1) before drawing conclusions, ran a genuine sensitivity analysis on alpha that bounded the usable range and explained the failure mode at 0.7, and wrote an honest weaknesses section. Third, interpretation: instead of stopping at numbers they tied every result to real music history and to social/political/technological context (British Invasion, Civil Rights, the steady acousticness decline as a proxy for electronic technology), which is exactly the cross-disciplinary storytelling ICM rewards. The creative-but-defensible physics analogies (cooling, gravity) gave the judges a memorable hook while still being computable and parameter-controlled.\"",
+  "section_highlights": "\"The Summary front-loads the whole method stack (network + cosine + cooling + gravity) and previews all four exploratory angles, so a judge knows the arc in one paragraph. Section 3 establishes the two basic models with explicit derivations and an immediate validity test. The MI section is strong because it doesn't just assert decay - it derives the cooling ODE, then empirically discovers and models a first-decade lag via spline fit (confirmed by the Kraftwerk subnetwork showing peak influence in decade 1). Section 4 is organized by the problem's own sub-questions (influencers/followers, genre trends, revolution, external factors), making it easy to grade against the prompt. The Gravity Model section is the signature creative move. The revolution section cleanly reduces a fuzzy concept to year-over-year similarity dips and then names artists by follower counts. The closing 'Document to the ICM Society' reframes the conclusion as a stakeholder letter, matching the problem's framing and showing communication awareness. Figures carry real analytical load (decade timeline of dominant genres, contagious-feature Venn per genre, alpha sensitivity bars).\"",
+  "pitfalls_or_limitations": [
+    "The Gravity Model is dimensionally loose: substituting normalized similarity for 1/distance and writing Gravity proportional to G*U*sim_new^2 is a heuristic dressed in physics notation, not a derived law - it works but is not rigorously grounded",
+    "The cooling attenuation coefficient alpha is self-assigned rather than fit to data; the team admits this. The MI metric's absolute values are therefore somewhat arbitrary even if the trend is robust",
+    "Heavy reliance on a single similarity metric (4-factor cosine) propagates any PCA information loss into every downstream result (genre matrix, gravity dominance, revolution detection, fusion analysis) - a single point of failure they acknowledge only for PCA",
+    "Strong simplifying assumptions: one genre per artist for an entire career, follower influenced only in their start year, dataset perfectly reflects the market - each is convenient but unvalidated",
+    "Cultural/social/political causal claims (Cold War, Civil Rights -> 1965-67 revolution) are narrative speculation with no supporting data, as the team concedes ('need to be further investigated')",
+    "Revolution detection uses a fixed visual threshold (~0.8) on year-to-year similarity with no statistical change-point test, so 'revolution' years are eyeballed",
+    "PCA to exactly 4 factors is asserted without showing the explained-variance/scree justification in-text; only KMO and Bartlett are reported",
+    "The provided markdown renderings of several figures look garbled/auto-extracted (e.g., the genre heatmap and subnetwork tables), so some quantitative claims can't be fully verified from the converted text"
+  ],
+  "reusable_patterns": [
+    "Build-block strategy: invest early in 2-3 rigorously justified 'basic models', then answer every open sub-question by recombining them - signals coherence and saves modeling effort",
+    "Validate a custom metric before using it: construct a case where you know the expected ordering (within-group vs between-group) and show your metric reproduces it",
+    "Borrow a physics/biology law as a computable analogy for a vague concept (decay -> cooling, dominance/attraction -> gravity), but keep one tunable parameter and sensitivity-test it",
+    "Substitute an already-computed quantity (here, similarity) for an expensive/ill-defined one (distance) when they're monotonically related, and justify the swap explicitly",
+    "Leave-one-feature-out ablation to attribute an aggregate effect to individual input variables - generic enough for any feature-importance question",
+    "Layered/concentric graph layout by a time attribute plus a single-node subnetwork for interpretability when a full network is too dense to read",
+    "Pre-justify dimensionality reduction with KMO + Bartlett's test instead of asserting PCA is appropriate",
+    "Centroid representation: average member vectors to get a group vector, enabling group-to-group similarity matrices and heatmaps",
+    "Reduce a 'find the turning points' task to year-over-year similarity dips - a cheap, defensible change-detection proxy",
+    "Frame the conclusion as a letter to the stated stakeholder to satisfy the communication component and mirror the problem's framing",
+    "Always triangulate quantitative outputs against domain facts so reviewers trust the model produced sensible, not coincidental, answers"
+  ]
+}

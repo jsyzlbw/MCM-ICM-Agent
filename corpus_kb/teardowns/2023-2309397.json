@@ -1,0 +1,53 @@
+{
+  "paper_id": "2023-2309397",
+  "year": 2023,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2023 MCM Problem C (data) on Wordle. Teams were given a daily results file (Jan 7 – Dec 31, 2022) with contest number, word, number of reported results, number in hard mode, and the percentage distribution of players solving in 1/2/3/4/5/6/X tries. Five tasks: (1) explain the daily variation in total reported results and give a prediction INTERVAL for the count on March 1, 2023; (2) determine whether word attributes affect the percentage of players in hard mode; (3) build a model to predict the 1-to-X try percentage distribution for a given future date+word, demonstrated on EERIE on 2023-03-01, with uncertainty and accuracy analysis; (4) classify word difficulty into categories and place EERIE; (5) report other interesting dataset features. This O-award paper (Team 2309397) answers each task with a distinct named model and closes with the required letter to the NYT Puzzle Editor.",
+  "models_used": [
+    "Task 1 count forecasting: ARIMA(1,1,0) for the deterministic trend (ADF stationarity test -> first-order differencing -> ACF trailing / PACF 1st-order truncation to pick order; LB white-noise test)",
+    "Task 1 count forecasting: BP (back-propagation) feed-forward neural network as a parallel learner",
+    "Task 1: ARIMA-BP weighted combination forecast — weights set inversely to each model's mean squared prediction error (wA approx 0.406, wB approx 0.594); final point forecast approx 19,944",
+    "Task 1 interval: Bootstrap method — 1000 resamples-with-replacement over the next-60-period forecasts, SD of bootstrap samples + CLT/z-statistic to build 95/90/80% intervals; reported 95% interval (19504.74, 20383.26)",
+    "Task 2: Multiple Linear Regression of hard-mode share Y on 7 engineered word attributes X1-X7 (with dummy coding of the 3 qualitative ones); only X3 (vowel/consonant initial) and X7 (word internal distance) significant at 10%",
+    "Task 3: LSTM network predicting the 7-component try-distribution; inputs = number of players (from Task 1 forecast) + the 7 word attributes; outputs = the spherical-coordinate angles theta2..theta7",
+    "Task 3 pre-processing: spherical-coordinate (hypersphere) transformation of the simplex/compositional percentage data (y_i = sqrt(x_i), arccos chain) to enforce the sum-to-100% constraint",
+    "Task 4: Gaussian Mixture Model (GMM) clustering via EM into 5 difficulty levels, classifying using Mahalanobis distance; EERIE assigned to level III; validated by silhouette values (~0.8)",
+    "Task 4 supporting: AHP (eigenvalue method) to weight the 7 guess-counts for the Relative Difficulty Coefficient (C.R. = 0.0176 < 0.1)",
+    "Task 5: Apriori association-rule mining (support/confidence/lift) on letter co-occurrence; plus positional letter-frequency statistics across the 5 slots"
+  ],
+  "key_techniques": [
+    "Hybrid statistical+ML ensemble: combining ARIMA (handles trend/autocorrelation) and a BP net (handles nonlinearity), weighted by inverse MSE so the better learner dominates while errors partially cancel — a defensible, non-arbitrary weighting rule",
+    "Turning point prediction into INTERVAL prediction with Bootstrap + CLT/z-statistic — directly answers the task's literal demand for a 'prediction interval' that many teams forget",
+    "Heavy domain-specific feature engineering of words: 3 qualitative (part of speech, COCA-corpus uncommonness with a 3000 cutoff, vowel/consonant initial) + 4 quantitative (vowel count, max letter repetition, SenticNet emotional polarity, a self-defined Word Internal Distance = sum of adjacent letter alphabet-position gaps)",
+    "Compositional-data handling: spherical-coordinate transform so the LSTM's 7 outputs naturally (approximately) sum to 100% instead of being clipped/renormalized post hoc — a genuinely elegant constraint-satisfaction trick",
+    "Subjective + objective difficulty index design: 3 subjective (RDC via AHP weights, Try Expectation, Skewness) + 3 objective (word-frequency coefficient, number of orthographic neighbors from MCWord DB, harmony level = word-length/phonetic-length ratio) feeding GMM",
+    "Two-pronged sensitivity/uncertainty analysis: (a) sweeping LSTM batchsize/epoch pairs, (b) injecting scaled Gaussian noise (NF in 0.1-0.3), both summarized by coefficient of variation (COV) and an uncertainty = max(COV)-min(COV) metric (~0.43-0.48)",
+    "Explicit error analysis with MAE/RMSE/R^2 per try-bucket (avg R^2 = 0.978) to quantify trust in the LSTM",
+    "Clustering validation via silhouette score rather than asserting cluster quality",
+    "Every task framed and named as its own self-contained model (e.g. 'ARIMA-BP Interval Prediction Model Based On Bootstrap'), giving the paper a branded, packaged feel"
+  ],
+  "why_it_won": "\"From a judge's view this paper wins on completeness, task-fidelity, and methodological breadth rather than on any single deep model. It answers every sub-requirement literally — an interval (not just a point) for Task 1, an explicit uncertainty AND accuracy treatment for Task 3, a placement of EERIE in Tasks 3/4, and the mandated NYT letter — so the grading checklist is fully satisfied. It demonstrates a wide modeling toolkit (classical time series, neural nets, regression, deep sequence model, mixture clustering, association rules, AHP, bootstrap) deployed appropriately to each task type, signaling mathematical maturity. Two ideas stand out as genuinely clever and memorable to a judge: the inverse-MSE ARIMA-BP weighting and the spherical-coordinate transform that bakes the sum-to-100% constraint into the LSTM. The writing is disciplined: each section states why a model was chosen, names assumptions with reasons, and reports validation metrics (R^2 0.978, silhouette ~0.8, AHP C.R. 0.0176), which reads as rigorous and self-aware. Strong feature engineering of words shows real engagement with the problem domain rather than black-box dumping.\"",
+  "section_highlights": "\"Summary sheet front-loads every result with concrete numbers (the 95% interval, the EERIE distribution [2,11,25,24,19,14,5]%, EERIE = difficulty III) so a skim reader sees all answers immediately. A one-page 'Our Work' mermaid flowchart maps all five tasks to their pipelines. Each model section follows a consistent template: reason-for-model-selection -> assumptions -> construction with equations -> results -> validation. Data preprocessing is explicitly tabulated (deleted 3 bad words like 'marxh'/'clen', fixed 2 entry errors like 2569->22569 and 'rprobe'->'probe'), showing data hygiene. Validation is surfaced visually (silhouette area chart, COV box plots, error table). The required NYT letter is genuine, plain-language, and re-summarizes findings for a lay editor — closing the rhetorical loop the problem asks for.\"",
+  "pitfalls_or_limitations": [
+    "Task 2 regression is statistically weak: the whole-model p-value is only 0.097 (significant just at 10%, not 5%), and the reported equation Y-hat omits an intercept/coefficient set that cleanly maps to 7 vars — interpreting 'effects' from a barely-significant model with mostly insignificant coefficients overstates the conclusion",
+    "EERIE has a repeated letter (E,E) and an unusual structure; the LSTM is trained on the same dataset but the paper never validates out-of-distribution on such degenerate words — the EERIE forecast is asserted, not back-tested",
+    "GMM difficulty levels are partly circular: indicators like RDC, Try Expectation, and Skewness are derived FROM the player try-distribution, i.e. from difficulty itself, so clustering on them partly re-discovers the label rather than predicting from intrinsic word properties; level IIIII shows a silhouette near 0 (Figure 16), contradicting the claim that all clusters are ~0.8",
+    "BP net is described only by pseudo-code; no architecture, hidden-layer sizes, train/test split, or overfitting guard is reported, and the text even concedes the BP model 'may be overfitted'",
+    "Bootstrap interval is built on the MODEL's own 60-period forecasts, not on real residuals, so it captures forecast-path dispersion but understates true predictive uncertainty; the resulting interval (+-~440 around 19944) is implausibly tight for a 60-day-ahead extrapolation",
+    "Numerous transcription/consistency issues: '356' vs '357' vs '255' word counts, 'Marxist/Marxian distance' for Mahalanobis, ROC misused for RDC — sloppiness that survived into an O paper",
+    "Spherical transform enforces sum-to-1 on sqrt-space but the inverse mapping's normalization is not shown to guarantee exactly 100%; the EERIE row still needs eyeballing (2+11+25+24+19+14+5=100 happens to work)"
+  ],
+  "reusable_patterns": [
+    "Map one named, branded model to each sub-task and label it explicitly (e.g. 'X Model Based On Y') — gives structure and makes the contribution legible to judges",
+    "For any 'predict a count' task, always escalate to an INTERVAL via Bootstrap + CLT; don't stop at a point estimate",
+    "Inverse-error weighting to combine two heterogeneous forecasters (classical + ML): w_i proportional to the OTHER model's MSE share — simple, justifiable, no hyperparameter tuning needed",
+    "For compositional/percentage outputs that must sum to 100%, transform to spherical coordinates (sqrt then arccos chain), model the angles, and invert — a clean alternative to softmax/post-hoc renormalization",
+    "Build difficulty/quality indices from BOTH subjective (player-behavior-derived) and objective (intrinsic property) indicators, weight subjective ones with AHP (report C.R. < 0.1), then cluster with GMM and validate with silhouette",
+    "Standard validation triad to bolt onto any predictive section: MAE + RMSE + R^2 per output channel, plus a table",
+    "Two-method sensitivity analysis as a reusable template: (a) sweep model hyperparameters, (b) inject scaled Gaussian noise, summarize both with coefficient of variation and a range-based uncertainty metric",
+    "Domain feature-engineering checklist for text/word problems: part of speech, corpus frequency (COCA) with a threshold, vowel/consonant structure, repetition counts, sentiment (SenticNet), orthographic neighbors (MCWord), and a custom distance metric",
+    "Always include and tabulate explicit data-cleaning decisions (which rows deleted/imputed and why) — cheap credibility",
+    "Close data-story problems with the requested stakeholder letter written in plain language that restates each finding"
+  ]
+}

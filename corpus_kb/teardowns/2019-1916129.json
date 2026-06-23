@@ -1,0 +1,54 @@
+{
+  "paper_id": "2019-1916129",
+  "year": 2019,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2019 MCM/ICM Problem E (sustainability): build a model to quantify the true environmental/ecosystem-service cost of land-use development projects, use it to run a cost-benefit analysis on real projects, and evaluate the model's effectiveness and timeliness. This team (1916129, Outstanding) framed it as an environmental-accounting problem: decompose the \"true economic cost\" into (1) natural resource consumption, (2) cost of environmental pollution, and (3) cost of environmental degradation, then feed all three into a modified cost-benefit ratio that compares traditional vs. ecosystem-aware decisions on a House, a Subway, and a Steel Mill.",
+  "models_used": [
+    "CASA model (Carnegie-Ames-Stanford Approach) to estimate Net Primary Production NPP = APAR x epsilon, with APAR from FPAR/SOL and epsilon from max light-use efficiency x temperature/water stress factors",
+    "Modified Cobb-Douglas production function Y = A*L^alpha*K^beta*N^lambda, adding NPP (N) as a fourth factor of production to make ecosystem input visible in output",
+    "Shadow price of NPP via partial derivative dY/dN to value 'market consumption' of natural resources (marginal contribution of NPP to output)",
+    "Ecological-value (replacement/opportunity-cost) accounting for non-market resource value: fixed CO2 & released O2 (carbon-tax + oxygen-cost method), soil conservation, water purification, dust/pollutant absorption",
+    "Pollution-control cost model: per-ton abatement-cost coefficients for water (COD/cyanide/metals), air (SOx/CO2/NOx/dust/smoke), and industrial waste (general + hazardous, treatment + storage)",
+    "Derivative-effects loss model for greenhouse effect / ozone hole / acid rain (e.g. L_GH = alpha * E_c via marginal rate of substitution of capital for CO2)",
+    "Land-degradation cost via RUSLE-style soil-loss equation A = R*K*LS*(1-C*P) times opportunity cost of nutrients + sediment control cost",
+    "Shannon-Wiener diversity index H = -sum P_i ln(P_i) to quantify biodiversity decrease, mapped to tabulated unit service values by H range",
+    "OBP (One-way Back Propagation) neural network — a self-simplified BP net with a single 'mother'/output influence — trained on 20 engineering datasets to learn factor weights instead of using AHP",
+    "Long-Term Ecological Self-Recover Model: a discrete-time negative-feedback recurrence (E_{m+1} = sum E_n*f(m+1-n,gamma) + new emissions) treating ecosystem self-purification like a feedback loop, with collapse threshold k/2 and dynamic-equilibrium condition",
+    "Discounted cash-flow / present-value cost-benefit analysis (construction-time and operation-time costs, linear depreciation, present value of annuity) with traditional ratio r=C/I vs. ecosystem-aware ratio r=(C+C_e)/(I+I_s)",
+    "Extension models: Pigou tax T_p = C_deg + C_d for externalities, and a redefined Green GDP (EDP = GDP - C_pol - C_deg)"
+  ],
+  "key_techniques": [
+    "Hierarchical cost decomposition: split an unmeasurable quantity ('environmental cost') into three layers, each into named sub-costs, each with its own formula and cited unit-cost constants — turns a fuzzy prompt into an additive accounting tree",
+    "Market vs. non-market split for resource consumption, valued two different ways (shadow price for market, ecological replacement cost for non-market) — shows methodological awareness",
+    "Monetization-by-proxy: every intangible service (clean air, biodiversity, soil) is converted to dollars via a defensible economic surrogate (abatement cost, opportunity cost, carbon/oxygen price), so everything lands in one comparable currency",
+    "Repurposing BP-network backpropagation as a metaphor/mechanism for ecosystem negative feedback, then deriving a time-evolution recurrence with a collapse threshold (k/2) and equilibrium condition",
+    "Data-driven weighting: training a (simplified) neural net on 20 project datasets to learn factor weights, explicitly rejecting subjective AHP",
+    "Life-cycle staging: projects split into 5 cycles (planning, raw-material, construction, operation, end-of-life) so emission/recovery dynamics are modeled per stage",
+    "Counterfactual decision framing: the House flips from 'worth building' (traditional r=0.49) to 'not worth building' (ecosystem-aware r=1.03) — a single concrete sign-change that proves the model matters",
+    "Sensitivity analysis via 1% input noise propagated to output cost across all four project types; plus a stress test lowering k/2 to force ecosystem collapse and visualize the threshold"
+  ],
+  "why_it_won": "\"It converted a vague sustainability prompt into a rigorous, fully monetized accounting framework where every term has a formula, a literature-sourced unit cost, and a clear economic justification (shadow price, opportunity cost, abatement cost). Judges reward a complete, self-consistent pipeline from raw inputs to an actionable decision, and this paper delivers it end-to-end: CASA->NPP->shadow price, ecological value, pollution/degradation costs, all flowing into a discounted cost-benefit ratio. The standout move is the counterfactual result — the House project reverses its build/no-build decision once ecosystem cost is included — which directly answers 'why does this model matter' with a crisp, memorable number. It also layers in genuine modeling creativity (the OBP-net-based ecological self-recovery model with a collapse threshold) and connects the work to real policy levers (Pigou tax, redefined Green GDP), demonstrating depth and breadth. The work is grounded in 10 real references and concrete numeric constants rather than hand-waving, and includes sensitivity analysis and an honest weakness section — the hallmarks judges look for.\"",
+  "section_highlights": "\"Summary sheet is exceptionally well-structured: it walks the three-part cost decomposition in the same order as the body and states the punchline case results (House not worth building under the new model) up front. The body has a clean top-down skeleton — Section 2 (resource consumption) -> 3 (pollution) -> 4 (degradation) -> 5 (recovery dynamics) -> 6 (cost-benefit + 3 cases) -> 7 (sensitivity) -> 8 (strength/weakness) -> 9 (Pigou tax + Green GDP extensions). Heavy, consistent use of equation-then-symbol-definition-then-constants-table format makes every formula reproducible. Three concrete worked cases (House / Subway / Steel Mill) of escalating scale, each with cost and benefit tables and a traditional-vs-new ratio, give the abstract framework tangible grounding. Figures show the self-recovery curves with a turning point separating construction-phase pollution buildup from operation-phase self-purification, which visually validates the recovery model. A full appendix data sheet lists every per-project ecosystem-service and pollution cost line item, signaling transparency.\"",
+  "pitfalls_or_limitations": [
+    "The OBP / 'One-way Back Propagation' network is under-specified and idiosyncratic: the backprop chain-rule equations (23-27) are notationally muddy/likely erroneous (e.g. reusing W_11 on both layers, the 'only one mother' description), and the 20-sample training set is tiny and never shown — the net is more rhetorical than rigorous",
+    "The self-recovery recurrence (eqs 28-30) leaves the core functions f(a,b), gamma=g(sum E), lambda=h(sum E) as unspecified black boxes; the collapse threshold k/2 is asserted without derivation or units, so the dynamics aren't actually reproducible",
+    "Unit-cost constants are borrowed from disparate Chinese-region ecological studies (refs 4-10) and applied globally with no localization, currency-year, or transferability justification; values like oxygen at $198.6/kg look suspect",
+    "Self-admitted: ignores inflation, cannot do zone-specific analysis, and the steel-mill case was cherry-picked for high profit rate, making its favorable ratio unrepresentative",
+    "Cost-benefit results are oddly insensitive for Subway (0.83->0.84) and Steel Mill (0.13->0.13) — the ecosystem cost barely moves the decision except for the House, so the model's claimed importance rests on essentially one of three cases",
+    "Sensitivity analysis only perturbs inputs by 1% and reports tiny output changes; it never stresses the large, uncertain unit-cost constants or the model-structure assumptions, so 'robustness' is overstated",
+    "Some derivative-effect terms (ozone hole L_OH, acid rain L_AR) are introduced in formulas but never actually quantified or given coefficients",
+    "Notation/OCR noise throughout (NNP vs NPP, garbled symbols) and at least one figure (Results with Different K) has implausible axis values"
+  ],
+  "reusable_patterns": [
+    "Decompose-then-monetize template: for any 'value the unmeasurable' prompt, split the target into a named additive cost/benefit tree, then attach to each leaf a monetization proxy (shadow price, opportunity cost, replacement/abatement cost, market value) so everything reduces to one currency",
+    "Market vs. non-market valuation split — use marginal/shadow pricing where a market exists and replacement/opportunity cost where it doesn't; naming this distinction signals economic literacy to judges",
+    "Augment a classic equation to expose the missing factor: adding N^lambda to Cobb-Douglas is a clean, defensible way to inject the problem's key variable into established theory, then differentiate to get a price",
+    "Counterfactual decision flip as the headline result: run the SAME case under baseline vs. your model and surface a sign/decision change — it's the single most persuasive way to justify a new model's value",
+    "Escalating multi-case validation: pick 3 instances spanning small/medium/large scale (House/Subway/Steel Mill) so reviewers see the model behaves sensibly across regimes",
+    "Equation -> symbol-definition -> constants-table -> citation, repeated uniformly for every formula, makes a paper feel rigorous and reproducible and is easy to template",
+    "Borrow a mechanism from another field as a metaphor-with-math: framing ecosystem self-recovery as a negative-feedback recurrence (a la neural-net backprop / control theory) with a collapse threshold yields originality points — but specify the functions concretely to avoid the black-box pitfall this paper fell into",
+    "Always close with policy/real-world extensions (Pigou tax, Green GDP redefinition) to demonstrate the model's broader applicability and address the 'so what / timeliness' part of the prompt",
+    "Life-cycle staging of a project (construction vs. operation phases) to model time-varying dynamics, paired with discounted present-value cash flows for honest time-cost accounting"
+  ]
+}

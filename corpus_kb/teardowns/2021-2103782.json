@@ -1,0 +1,47 @@
+{
+  "paper_id": "2021-2103782",
+  "year": 2021,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2021 MCM Problem A (continuous): build a model for how multiple fungal species decompose woody fibers/ground litter, driven by two focal fungal traits — hyphal growth rate and moisture tolerance — incorporating inter-species interactions, the effect of environmental (humidity/temperature) fluctuations, the relative advantages of single species vs. species combinations across climates, and the role of fungal biodiversity in sustaining decomposition (and thus the carbon cycle). Paper 2103782 (titled \"Tiny Fungi: The Defender of Carbon Cycle Balance\") answers all sub-tasks with two coupled models plus a clustering-based prediction layer.",
+  "models_used": [
+    "Logistic growth model for mycelial radius: dr/dt = v_ex * r * (1 - r/R_m), solved in closed form r(t) = R_m / (1 + (R_m/r0 - 1) exp(-v_ex (t-t0))) — fungus treated as concentric-circle radial spread of hyphae",
+    "Multi-species competitive Lotka-Volterra-style extension: dr^(k)/dt = v_ex^(k) (1 - r^(k)/R_m - Σ_i σ_i^(k) r^(i)/R_m) r^(k), where competition coefficient σ_i^(k) = Rank_D^(i)/Rank_D^(k) is the ratio of competitive-ranking traits",
+    "Decomposition-rate (mass-loss) model: per-species d(ΔM_L^(k))/dt = α1 · v_F^(k) · exp(α2 · MT^(k)); aggregated with a saturation/carrying-capacity factor d(ΔM_L)/dt = (1 - ΔM_L/ΔM_Lmax) · Σ_k [α1 v_F^(k) e^(α2 MT^(k))]",
+    "Relative moisture tolerance defined as MT^(k) = Rank_D^(k) - Width_M^(k) (dominance minus moisture-niche width, range [-1,1]), encoding the dominance–tolerance trade-off",
+    "Empirical functional forms from data: linear fit growth-rate vs hyphal-extension-rate vs decomposition rate; logarithmic relation ln(decomposition rate) ∝ MT",
+    "Linear regression of growth rate on standardized ambient humidity (three fitted lines y=ax+b per species) to couple climate to the ODE system",
+    "K-means clustering of all 34 fungi on (hyphal extension rate, relative moisture tolerance) into 4 trait clusters used as representative species archetypes for prediction",
+    "Grid-search parameter estimation for α1, α2 (step 0.01 over [0,0.5], two-stage coarse-then-fine) minimizing RMSE on a 6-group training set"
+  ],
+  "key_techniques": [
+    "Reframing biology as a coupled ODE dynamical system — reusing the classic logistic/competition equation but reinterpreting carrying capacity as max mycelial radius and the competition coefficient as a ratio of given trait values (Rank_D), so the interaction term needs no extra free parameters",
+    "Reducing the whole decomposition law to just TWO fitted parameters (α1, α2), making estimation tractable and enabling a clean sensitivity analysis",
+    "Two-stage grid search with a held-out test combination (3 fungi) to validate — reported 5.5% relative error (33.48% predicted vs 29.61% actual)",
+    "Trait-based dimensionality reduction: using K-means to collapse 34 species into 4 archetype clusters, then reasoning about climates using only cluster centers",
+    "Coupling environment to dynamics through a real precipitation dataset (Mumbai annual precipitation, normalized to [0,1] humidity) and linear humidity→growth-rate fits",
+    "Scenario-based qualitative prediction engine: sweeping humidity level, humidity change-rate, and specific climates (arid, semi-arid, tropical rainforest, temperate marine/monsoon) to extract 4 named Predictions",
+    "A controlled 'manual intervention' experiment (dropping humidity to 0.01 after day 175) to demonstrate biodiversity's buffering role on the carbon cycle"
+  ],
+  "why_it_won": "\"From a judge's view it wins on completeness, traceability, and disciplined parameter economy rather than mathematical novelty. Every sub-task of the prompt is explicitly answered and tied back to the carbon-cycle narrative. It grounds the model in the competition's own provided dataset (Maynard et al. 34-species data) and the cited literature, reusing the literature's empirical trade-offs (dominance–tolerance, moisture niche width) instead of inventing unsupported relationships. The model is parsimonious (only α1, α2 free) and is actually validated out-of-sample with a concrete 5.5% error number — judges reward a model that is fit, tested, AND quantified. The clustering layer lets it make crisp, falsifiable named predictions (Prediction 1–4) across named real climates, which reads as insight, not just curve-fitting. Strong literature review, honest weaknesses section, and the required textbook 'Article' chapter round out a paper that does everything asked and communicates it cleanly.\"",
+  "section_highlights": "\"Summary is layered point-by-point ('Firstly… Secondly…') mirroring the sub-tasks, so a judge can map answers to the prompt in seconds. A whole-paper mermaid/flowchart (Figure 1) shows the two-model + clustering pipeline up front. Standard front-matter done well: numbered Assumptions WITH justifications, a Notations table, clear model-build progression (single logistic → add competition → add traits → aggregate with saturation). Model Solving spells out a 4-step reproducible procedure and reports RMSE. Predictions are boxed as numbered, quotable statements. Dedicated Sensitivity Analysis varies α1 and α2 separately and concludes the model is sensitive to α1, robust to α2. Honest Model Evaluation lists concrete strengths and three concrete weaknesses. The required college-textbook 'Article' chapter restates the science in accessible prose.\"",
+  "pitfalls_or_limitations": [
+    "Only two drivers (growth rate + moisture tolerance); temperature is acknowledged in figures but folded away as constant within a patch — endogenous/exogenous factors explicitly ignored (paper admits this)",
+    "Competition coefficient σ uses a fixed shared R_m and a crude ratio of Rank_D values; using cluster-center trait values as representatives introduces error the authors flag themselves",
+    "Calling the model 'sensitive to α1' is spun as a strength ('strong adaptability, easier to popularize'), but high sensitivity to a fitted parameter is actually a robustness concern — the framing oversells it",
+    "Validation is a single 3-fungus test combination, not cross-validation; RMSE of 123.42 in Table 3 is large and never reconciled against the 5.5% relative-error claim",
+    "Humidity is proxied purely by normalized precipitation with min-max scaling to [0,1], which is climate-specific and not physically calibrated; growth-rate humidity range [-5,0] rescaled to [0,1] is opaque",
+    "Predictions are qualitative ('dominant', 'coexist') — the paper concedes biological prediction here is only qualitative; no uncertainty quantification",
+    "Some figures/data tables appear synthetic or idealized (e.g., perfectly linear scatter, flat plateaus), and OCR/figure captions are inconsistent (Figure 5/6 labels swapped)"
+  ],
+  "reusable_patterns": [
+    "Repurpose the logistic-competition ODE skeleton for ANY 'multiple agents share a finite resource' problem: reinterpret carrying capacity and set competition coefficients from GIVEN trait ratios so you add interactions without adding free parameters",
+    "Keep free parameters to a tiny number (here 2) and pair coarse-then-fine grid search with an explicit held-out test case + reported relative error — a clean, judge-friendly fit-and-validate ritual",
+    "Use K-means on the two key trait dimensions to turn a large messy dataset into a handful of named archetypes, then do all downstream scenario reasoning on cluster centers",
+    "Drive the dynamical model with a REAL public dataset normalized to [0,1] (precipitation→humidity) to make 'environmental fluctuation' concrete and credible",
+    "Generate quotable, numbered Predictions by sweeping one environmental axis at a time (level, rate-of-change, specific named climates) and naming each finding",
+    "Run a small controlled in-silico intervention (perturb one variable mid-simulation) to demonstrate the headline qualitative claim (biodiversity buffers the carbon cycle)",
+    "Structure the Summary as an explicit 1-to-1 walkthrough of the problem's sub-tasks; lead with a full-pipeline flowchart; close with separate Sensitivity and honest Strengths/Weaknesses sections",
+    "Mine the cited literature for empirical relationships (e.g., dominance–tolerance trade-off, moisture-niche width) and bake them directly into model structure rather than fitting them blind"
+  ]
+}

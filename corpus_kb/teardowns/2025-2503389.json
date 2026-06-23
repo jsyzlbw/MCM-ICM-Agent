@@ -1,0 +1,47 @@
+{
+  "paper_id": "2025-2503389",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asks to develop models to forecast 2028 Olympic medal counts with uncertainty and identify factors influencing performance, predict first-time medalist countries, assess the strategic importance of sports, quantify the 'great coach' effect, and provide original insights and recommendations to national committees.",
+  "models_used": [
+    "Multiple Linear Regression",
+    "Feedforward Neural Network",
+    "Bootstrap Ensemble",
+    "Logistic Regression",
+    "Random Forest",
+    "Principal Component Analysis",
+    "Breakpoint Regression (Regression Discontinuity)",
+    "Monte Carlo simulation"
+  ],
+  "key_techniques": [
+    "Feature engineering (host boost, athlete pool, competitiveness index, historical momentum with exponential decay)",
+    "Weighted model fusion based on mean squared prediction error",
+    "Uncertainty quantification using bootstrap percentile intervals",
+    "Correlation analysis and heatmaps",
+    "Data cleaning and standardization (country names, sport merging)",
+    "Sankey diagram for medal flow exploration",
+    "PCA-based importance weighting for strategic sports",
+    "Breakpoint regression to isolate coach intervention effect",
+    "Monte Carlo simulation for validating first-medal predictions",
+    "Sensitivity analysis"
+  ],
+  "why_it_won": "The paper comprehensively addresses all problem requirements with a well-justified blend of interpretable linear models and flexible machine learning. Robust uncertainty is captured via bootstrapping and simulation, and domain-aware feature engineering (host boost, momentum decay) strengthens the forecasting. Original insights like the host spillover effect and tailored strategic recommendations demonstrate creativity and depth beyond the explicit tasks.",
+  "section_highlights": "The writing is exceptionally well-structured, mirroring the problem tasks in clear sections with explicit model-selection justifications. Visualizations (Sankey diagram, correlation matrix, heatmaps, coefficient tables) significantly aid communication, and every model output is immediately followed by interpretation and actionable conclusions.",
+  "pitfalls_or_limitations": [
+    "High MAPE (51.1%) indicates poor relative accuracy for countries with very low medal counts.",
+    "Reliance on only three Olympic cycles may limit generalizability and fail to capture longer-term trends.",
+    "Assumption that Russia and Belarus are excluded may be invalid if sanctions change by 2028.",
+    "Athlete pool feature was not statistically significant (p=0.188) but retained in the linear model.",
+    "Breakpoint regression may not fully isolate causality of coaching from other simultaneous changes."
+  ],
+  "reusable_patterns": [
+    "Constructing a 'host boost' feature as the median historical medal rate increase when a nation hosts",
+    "Fusing a linear regression with a neural network using inverse-MSE weights to balance interpretability and non-linear capacity",
+    "Applying bootstrap to generate 95% prediction intervals from an ensemble of model replicates",
+    "Pairing logistic regression and random forest for first-medal classification to leverage both interpretability and complex interaction detection",
+    "Using PCA on performance metrics to derive an aggregate strategic importance score for sports per nation",
+    "Quantifying intervention effects (e.g., coach arrival) with breakpoint regression around a policy change",
+    "Including a spillover analysis (host effects on neighboring countries) as an 'other insight' to add originality"
+  ]
+}

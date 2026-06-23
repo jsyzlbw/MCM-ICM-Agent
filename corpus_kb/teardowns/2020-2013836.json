@@ -1,0 +1,54 @@
+{
+  "paper_id": "2020-2013836",
+  "year": 2020,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2020 MCM Problem B (discrete): design the best 3-D geometric shape for a sandcastle foundation that lasts longest against ocean waves/tides and rain, find the optimal sand-to-water mixing ratio, analyze how rain changes the optimal shape, and propose additional durability strategies. The team (2013836) reframed this open-ended shape-optimization problem as a discrete spatiotemporal evolution problem solved by cellular automata, letting an erosion simulation converge to an emergent optimal shape rather than parameterizing and searching a shape family directly.",
+  "models_used": [
+    "Cellular automata (CA) as the core engine: sandcastle discretized into cubic cells (a = 5mm), each cell carrying coordinates (X,Y,Z), sand-to-water ratio K, local gradient s', critical gradient s'_c; state updated by rules each time step rather than PDEs",
+    "Sandpile / Self-Organized Criticality (SOC) model (Bak-Tang-Wiesenfeld) for collapse: local gradient s'(X,Y)=max{H(X,Y)-H(X±1,Y±1)}; slide probability P_s is a step function of s' vs critical gradient s'_c (1 if s'>s'_c, P_0 at equality, 0 below), with chain-reaction avalanches",
+    "Tide model: sea level fitted as a sum of sinusoids (different frequency/magnitude), period bounded under 24h, with morning/evening tides and beach hours 6:00-22:00",
+    "Shallow-water wave-speed model: c=sqrt(h*g); arrival vs departure speeds v1=sqrt(gh), v2=sqrt(g(h - l*sinθ)) from beach dig angle θ; averaged front/back speeds",
+    "Viscous (cohesion) force model: piecewise Gaussian-type exponential f = f0*A*exp(-(k-k_bar)^2/k_i) of water-to-sand ratio, peak cohesion at k_bar≈0.445 (1:1 molar sand:water)",
+    "Impact/scouring force via Stokes' Law: per-grain drag F_i0=3πηuD summed to a cell, reduced to F_i=γu; cell removed when impact exceeds case-specific cohesion threshold",
+    "Lift/floatation via Bernoulli's principle: F_lift = (1/2)ρu²S + ρgV; cell floats when F_lift exceeds gravity + surrounding viscous bonds",
+    "Case-based neighbor force balance: 8 scouring cases and 5 floatation cases enumerated by which neighbor cells are present, each giving an explicit removal inequality (e.g. Case 2 scour: (√2/2)F_i > 3f)",
+    "Water-to-sand ratio dynamics: Δk = α·e^{-k} for seawater wetting; Δk ∝ β·λ uniform for rain (λ = relative rainfall)",
+    "Rain impact model: surface cells split into category I (only top exposed, absorbs water) vs category II (≥2 sides exposed, washed away on raindrop impact)",
+    "Residual ratio R = (remaining cells)/(initial cells) as the durability objective function compared across shapes at fixed time"
+  ],
+  "key_techniques": [
+    "Reframing shape OPTIMIZATION as shape EMERGENCE: instead of searching a parametric shape space, they let the CA erosion dynamics relax to a self-organized stable attractor, exploiting SOC so the simulation itself finds the optimum",
+    "Fixed-point iteration on the embryo: (1) generate foundation from arbitrary embryo, (2) erode for fixed time, (3) build a new embryo geometrically similar to the eroded stable cross-section, (4) repeat until convergence to an ideal shape (the 3-part A/B/C shell)",
+    "Parameterizing initial shapes by a single gradient s = n/w (layers per shrinkage width), giving a clean one-knob family of test foundations of equal volume",
+    "Discretizing length/height/distance all in units of cell length a (e.g. d=2cm → d=4) to keep the CA grid dimensionless and simple",
+    "Neighbor-case enumeration to convert continuous force analysis into a finite, programmable rule table (8 scour cases, 5 lift cases) — the bridge between physics and the CA update rule",
+    "Borrowing a probabilistic critical-state rule (P_s step function with P_0 at criticality) to model avalanche chain reactions rather than deterministic collapse",
+    "Using residual ratio R over a FIXED time window as a fair, threshold-free durability comparator across shapes and ratios",
+    "Identifying and naming an emergent phenomenon ('ladder effect' — staircase residual curves indicating metastable shapes) and using its plateaus as the place to read off stable shapes"
+  ],
+  "why_it_won": "\"From a judge's perspective, the paper won because it made a genuinely hard, ill-posed 'best 3-D shape' question tractable with one elegant modeling decision: cellular automata + SOC let the optimal shape EMERGE from simulated erosion instead of being guessed. That is both novel and well-matched to the discrete problem type. The CA framework naturally fuses every physical sub-model (tides, waves, viscous cohesion, Stokes scouring, Bernoulli lift, rain) into one coherent simulation engine, and the iteration loop gives a clean, repeatable solution procedure. Crucially the emergent answer is interpretable and matches real-world intuition — a shell-shaped cross-section with a gentle wave-facing buffer (A), a steep cutoff (B), and a bulk reservoir (C) — which the team explicitly cross-checked against 'common sense of life.' It answers ALL four sub-questions (shape, sand-water ratio 2.63, rain-modified shape and ratio 2.70, plus three practical strategies), includes a sensitivity analysis on rainfall λ over 0.3–3.0, and is honest about weaknesses. The mechanism (emergent optimization that converges regardless of starting embryo) is exactly the kind of 'surprising but sensible' result judges reward.\"",
+  "section_highlights": "\"Summary is concrete and result-forward: it names the method (CA), the emergent 3-part A/B/C shell shape, and the headline numbers (2.63, 2.70 in rain) up front. Model-building section is layered logically: discretization → environmental forcing (tides/waves) → internal forces (viscous, sandpile collapse) → external forces (scour, lift) → rain extension → ratio dynamics, so each model builds on the last. The neighbor-case figures (8 scour cases, 5 lift cases) with worked examples (Case 2, Case 4) and summary condition tables make an otherwise messy force analysis legible and clearly programmable. The 'ladder effect' observation is a strong narrative device — naming an emergent phenomenon and then using its plateaus to extract the stable shape. The A/B/C functional decomposition of the final shape gives readers a memorable, physically-grounded takeaway. The mandatory 'Fun in the Sun' magazine appendix is genuinely accessible (plain-language, gives the practical 1 L sand : 0.38 L water rule) and shows audience awareness. Honest strengths/weaknesses section explicitly flags oversimplified grain-level force analysis and weak empirical grounding of the water-sand ratio.\"",
+  "pitfalls_or_limitations": [
+    "Heavy reliance on uncalibrated parameters: f0, A, k1, k2, γ, α, β, P_0 are introduced with little to no data fitting — the team admits the optimal water-sand ratio formula is 'inferred from insufficient experience'",
+    "Force analysis is physically shaky: treating each sand cell as a single Stokes sphere and applying Bernoulli lift to a buried cube is an acknowledged oversimplification of granular mechanics",
+    "Quantitative results look fabricated/illustrative: several data tables (e.g. Figure 10 residual curves) show identical values across all gradients s, and unit/value inconsistencies appear (sand-to-water vs water-to-sand ratio reciprocals, K=2.63 from k=0.38 doesn't reconcile cleanly), suggesting plots were schematic rather than true simulation output",
+    "Critical-gradient mapping s'_c(f_N) is an arbitrary 5-step staircase with no justification for the thresholds (0.2/0.4/0.6/0.8)",
+    "Convergence of the embryo iteration to a unique optimum is asserted ('all initial foundations transfer to similar structure') but never demonstrated with a convergence metric or multiple-seed evidence",
+    "Symbol hygiene issues: K and k (sand-to-water vs water-to-sand) are conflated in several equations and figure captions, and the peak-cohesion value k_bar=0.445 vs reported optima 0.38/0.37 are not reconciled",
+    "2-D cross-section reasoning is implicitly extended to 3-D shape claims without fully validating the third dimension's behavior",
+    "Tide and wave models are presented but barely connected to the final shape result — the wave timing only resurfaces in the 'build at 9-10am' strategy"
+  ],
+  "reusable_patterns": [
+    "Emergence-over-search: when a problem asks for an 'optimal shape/structure', consider a rule-based dynamical simulation (CA, agent-based, SOC) that lets the optimum self-organize, instead of parameterizing and brute-forcing a shape family",
+    "Discretize the domain into a cell grid with per-cell state and local update rules — turns intractable 3-D continuum PDE problems into programmable, easy-to-implement iteration",
+    "Fixed-point shape iteration loop: erode/evolve → extract the stable cross-section → re-seed with a similar embryo → repeat until convergence; a clean recipe for any 'what shape survives' question",
+    "Neighbor-case enumeration to derive update rules: list all local neighbor configurations and write an explicit force-balance inequality per case, producing a finite rule table that bridges physics and code",
+    "Single-knob shape family (gradient s = n/w) at constant volume for fair comparison of candidate designs",
+    "Threshold-free objective via a ratio at fixed time (residual ratio R) instead of an arbitrary failure cutoff",
+    "Name and exploit emergent phenomena (the 'ladder effect') — read solution states off the plateaus of a staircase response curve",
+    "Functional decomposition of a result (A buffer / B cutoff / C bulk) to make a complex emergent shape memorable and physically interpretable for judges",
+    "Layered model assembly: separate environmental forcing, internal cohesion, external loads, and extensions (rain) into distinct sub-models that all feed one simulation engine",
+    "Borrow a canonical physics model wholesale when it fits (Bak-Tang-Wiesenfeld sandpile/SOC for granular collapse; Stokes drag for fluid impact; Bernoulli for lift) and cite it — fast credibility for force/dynamics terms"
+  ]
+}

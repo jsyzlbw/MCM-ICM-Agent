@@ -1,0 +1,252 @@
+{
+  "problem_type": "data",
+  "paper_count": 81,
+  "common_models": [
+    {
+      "name": "Random Forest",
+      "papers": 6
+    },
+    {
+      "name": "XGBoost",
+      "papers": 5
+    },
+    {
+      "name": "Monte Carlo simulation",
+      "papers": 5
+    },
+    {
+      "name": "Spearman correlation",
+      "papers": 3
+    },
+    {
+      "name": "K-means clustering",
+      "papers": 3
+    },
+    {
+      "name": "Logistic regression",
+      "papers": 3
+    },
+    {
+      "name": "ARIMA",
+      "papers": 3
+    },
+    {
+      "name": "Kalman filter",
+      "papers": 2
+    },
+    {
+      "name": "LSTM",
+      "papers": 2
+    },
+    {
+      "name": "SHAP",
+      "papers": 2
+    },
+    {
+      "name": "Runs test",
+      "papers": 2
+    },
+    {
+      "name": "Chi-square independence test",
+      "papers": 2
+    },
+    {
+      "name": "Principal Component Analysis (PCA)",
+      "papers": 2
+    },
+    {
+      "name": "Grid-Search Random Forest (GSRF)",
+      "papers": 2
+    },
+    {
+      "name": "Random Forest regression",
+      "papers": 2
+    }
+  ],
+  "common_techniques": [
+    {
+      "name": "Bootstrap confidence intervals",
+      "papers": 2
+    },
+    {
+      "name": "Defining a domain-appropriate objective (ROI = ΔY/ΔX) instead of accepting the problem's vague 'best improve performance' — turns an open-ended ask into a maximizable quantity",
+      "papers": 1
+    },
+    {
+      "name": "Causal-chain framing to dodge endogeneity: donation does NOT regress directly on performance; instead donation -> performance-contributing variables -> performance index, with an explicit assumption (A5) justifying it",
+      "papers": 1
+    },
+    {
+      "name": "Tiered missing-data handling by missing rate (>50% drop, 10-50% imputation/model-based, <10% mean fill) rather than one blanket method",
+      "papers": 1
+    },
+    {
+      "name": "Using PCA not just for dimension reduction but as an objective, weight-assignment mechanism for the composite index, with external validation (top-10 list matches QS ranking)",
+      "papers": 1
+    },
+    {
+      "name": "post-LASSO specifically (LASSO for selection, OLS for honest coefficients) to avoid LASSO's shrinkage bias while still pruning 108->~5 variables and avoiding overfit",
+      "papers": 1
+    },
+    {
+      "name": "Filtering selected variables by actionability — dropping tuition and Carnegie classification because donation can't move them, keeping only the 3 donation-susceptible levers",
+      "papers": 1
+    },
+    {
+      "name": "Splitting impact into a homogeneous (population-level fitted curve) and heterogeneous (institution-specific deviation) component to inject per-institution realism from cross-sectional-only data",
+      "papers": 1
+    },
+    {
+      "name": "Discretizing the decision variable (donations in $0.5M steps up to $10M) to make ROI a finite set per institution, enabling a clean exhaustive/greedy optimization",
+      "papers": 1
+    },
+    {
+      "name": "Turning a static model into a multi-year strategy via calibration update rules, and addressing fairness via ROI discounting",
+      "papers": 1
+    },
+    {
+      "name": "Treating a 'data' problem as a pipeline (focus → select → optimize) rather than one monolithic model — each stage has a distinct, defensible method",
+      "papers": 1
+    },
+    {
+      "name": "Using EXTERNAL data (FC1000 foundation grant distributions, Gates Foundation grant database) both to define strategy and to validate it, going beyond the supplied dataset",
+      "papers": 1
+    },
+    {
+      "name": "Anti-duplication as the core value proposition: explicitly invest where other foundations DON'T (small, poor, minority-serving colleges) — directly addressing the 'charitable identity' framing of Problem C",
+      "papers": 1
+    },
+    {
+      "name": "PCA justified specifically because the 68 indicators interact, so naive index-summing would double-count — a concrete reason for the method, not method-for-its-own-sake",
+      "papers": 1
+    },
+    {
+      "name": "Economically-motivated concavity argument: utility MUST be concave (∂²y/∂x² < 0), otherwise the optimum degenerates to dumping all $100M on one school — used to justify the log form",
+      "papers": 1
+    }
+  ],
+  "recurring_pitfalls": [
+    {
+      "name": "The central causal claim is correlational dressed as causal: the GAM fits performance-contributing variables against TOTAL donation amount across institutions, then treats the slope as the marginal effect of Goodgrant's NEW donation — a cross-sectional association read as a dose-response/intervention effect (the team admits time-series is needed)",
+      "papers": 1
+    },
+    {
+      "name": "The tuning parameter P_i is essentially invented: its 0-2 range, its shape, and the piecewise-linear endpoints (at min/half/quarter of deviations) are asserted from intuition with no data fit or calibration, undercutting the 'fully data-based, no arbitrary criterion' claim the paper repeatedly makes",
+      "papers": 1
+    },
+    {
+      "name": "Internal inconsistencies/sloppiness: 'GAM' is called 'Generalized Adaptive Model' (it's Additive); LASSO is cited to Tibshirani while the LARS/post-LASSO attributions are loose; summary says 5 variables then says 3, and the figure shows 6; one Year-3 ROI of 3.16% looks like an unexplained outlier/typo",
+      "papers": 1
+    },
+    {
+      "name": "PCA-based index weighting only captures variance/correlation structure, not normative importance — a variable can dominate the index for statistical reasons unrelated to what the foundation actually values",
+      "papers": 1
+    },
+    {
+      "name": "The greedy two-step allocation maximizes per-institution then fills the budget top-down; this is not guaranteed globally optimal under the budget knapsack and ignores interactions, though discretization makes it tractable",
+      "papers": 1
+    },
+    {
+      "name": "Imputation choices (random-similar-record, 'distribution diagram' substitution) are vaguely described and not validated for bias; dropping >50%-missing variables may discard informative but sparsely-reported fields",
+      "papers": 1
+    },
+    {
+      "name": "ROI values (~19-22%) are presented without uncertainty bounds or sensitivity analysis on the penalty factor, the P_i shape, or the imputation method",
+      "papers": 1
+    },
+    {
+      "name": "x_0 = 0 assumption: sets every school's prior/baseline investment to zero 'because of limited data,' which removes the diminishing-returns interaction across schools' existing funding and weakens the ROI realism the model otherwise prides itself on",
+      "papers": 1
+    },
+    {
+      "name": "The MRS constant k is invented to make units of earnings (m·M·N, ~10^? dollars) and graduation rate g (a 0–1 fraction) commensurable, but has no data basis — it is set ad hoc (ratio of mean earnings to mean grad rate) and is the model's single biggest unjustified knob; sensitivity analysis only perturbs ±10%, not the order-of-magnitude uncertainty",
+      "papers": 1
+    },
+    {
+      "name": "Mean-imputation of many NULLs is acknowledged as 'a main source of errors' — for a dataset with heavy missingness this can systematically distort PCA loadings and rankings",
+      "papers": 1
+    },
+    {
+      "name": "Capital-demand blind spot: the team admits investing LESS in high-grant subjects (Health/Education/Human Services) confuses supply with demand — the financing GAP is what matters, and they skip it 'reluctantly'",
+      "papers": 1
+    },
+    {
+      "name": "PCA on a mix that includes deliberately chosen 'focus' indicators risks circularity: components partly encode the criteria the team pre-selected, so the 'objective' ranking is less independent than claimed",
+      "papers": 1
+    },
+    {
+      "name": "PCA score signs/directions are not shown — combining 68 indicators with different desired directions into a single additive score needs sign alignment that the paper doesn't document",
+      "papers": 1
+    },
+    {
+      "name": "LA_PSO_GT is taken wholesale from a single Chinese master's thesis (Ref [7]) and reproduced in the appendix; the team applies rather than understands-from-first-principles it, and PSO's own weaknesses (premature convergence, weak local search) are acknowledged as limiting output accuracy",
+      "papers": 1
+    },
+    {
+      "name": "Utility log(m·M·N + k·g) adds dollars and a rate inside one log, which is dimensionally awkward and means the 'utility' has no interpretable unit (the paper concedes it is 'abstract')",
+      "papers": 1
+    }
+  ],
+  "reusable_patterns": [
+    {
+      "name": "When the target outcome isn't directly in the data, build a mediating causal chain (treatment -> actionable mediators -> constructed outcome index) and state an explicit assumption licensing it — a clean way to handle endogeneity in modeling-contest data problems",
+      "papers": 1
+    },
+    {
+      "name": "Construct a composite outcome index via PCA/PCF weighting, then validate it against an external known ranking to earn judge trust",
+      "papers": 1
+    },
+    {
+      "name": "Use post-LASSO (LASSO-select then OLS-refit) as a go-to for high-dimensional variable selection that yields both a sparse model and reportable, significant coefficients; pick the penalty by CV-MSE and show both the coefficient-path and CV-error plots",
+      "papers": 1
+    },
+    {
+      "name": "After statistical selection, add an actionability filter — keep only variables the decision-maker can actually move — to connect the model to the real decision",
+      "papers": 1
+    },
+    {
+      "name": "Decompose effects into a population-level homogeneous component (a fitted curve) plus an institution/unit-specific heterogeneous adjustment to extract individualized predictions from cross-sectional-only data",
+      "papers": 1
+    },
+    {
+      "name": "Discretize the decision variable to convert a continuous optimization into a finite-set greedy/exhaustive search that is easy to implement and explain",
+      "papers": 1
+    },
+    {
+      "name": "Define a single maximizable objective (ROI) and a simple two-step rank-and-fill allocation under a budget constraint",
+      "papers": 1
+    },
+    {
+      "name": "Deliver the answer in the stakeholder's format (a CFO letter plus an attached, ready-to-act funding table), and extend the baseline along the prompt's explicit extra dimensions (time, geography) with concrete update rules",
+      "papers": 1
+    },
+    {
+      "name": "Tier missing-data treatment by missing rate rather than one global method, and state the thresholds explicitly",
+      "papers": 1
+    },
+    {
+      "name": "Three-stage data-problem pipeline: (1) decide FOCUS/objective from domain + external data, (2) REDUCE/select entities via dimensionality reduction, (3) OPTIMIZE allocation with a constrained program — a clean template for any MCM resource-allocation 'data' problem",
+      "papers": 1
+    },
+    {
+      "name": "Bring external data to define and validate strategy: scrape the real-world landscape (here: who else already funds what) to give your model a defensible point of view and an independent validation check",
+      "papers": 1
+    },
+    {
+      "name": "Anti-duplication / counterfactual-impact framing for any 'where should we invest/intervene' problem — target where marginal impact is highest, not where absolute metrics are best",
+      "papers": 1
+    },
+    {
+      "name": "Justify dimensionality reduction by the interaction argument: when indicators are correlated, state that simple summing double-counts and PCA is the principled fix",
+      "papers": 1
+    },
+    {
+      "name": "Concavity-by-contradiction: argue a utility/objective must be concave because a linear/convex one yields a degenerate corner solution — a reusable way to motivate log/diminishing-returns forms",
+      "papers": 1
+    },
+    {
+      "name": "Telescoping-sum trick for multi-period allocation: when per-period rewards are differences of a state value, the horizon sum collapses to (end − start), shrinking variable count dramatically",
+      "papers": 1
+    }
+  ]
+}

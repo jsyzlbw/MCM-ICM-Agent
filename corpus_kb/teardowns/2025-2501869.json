@@ -1,0 +1,47 @@
+{
+  "paper_id": "2025-2501869",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Predict 2028 Olympic medal counts (including first-time winners) and quantify the effect of 'great coaches' on medal gains, using historical data, and derive policy insights for National Olympic Committees.",
+  "models_used": [
+    "Hurdle model (two-stage: Logit classification + truncated count distribution)",
+    "Tobit model (truncated regression)",
+    "XGBoost",
+    "Random Forest",
+    "Bayesian change-point detection",
+    "Two-stage least squares (2SLS) causal regression",
+    "Principal component analysis (PCA)",
+    "Revealed Comparative Advantage (RCA) index"
+  ],
+  "key_techniques": [
+    "Feature engineering (athlete number discretization, RCA index, PCA for medal dimension reduction, lagged host/medal terms)",
+    "Model complementation (Hurdle for sports powers, Tobit for weak/zero-medal countries)",
+    "Zero-inflated and right-censored data handling via Hurdle-Tobit fusion",
+    "Instrumental variable design and 2SLS to correct endogeneity in coach effect estimation",
+    "Memory-enhanced sliding window data preprocessing for Bayesian change-point detection",
+    "Model validation with MSE, R², 95% confidence interval coverage, and prediction accuracy stratified by medal count",
+    "Sensitivity analysis on binary classifier choice within Hurdle (random forest, decision tree, logistic regression)",
+    "Variable reconstruction to separate host country strategic event additions (RCA_add) from long-term competitiveness (RCA_usual)",
+    "Identification of nonlinear threshold effects via discretizing athlete counts and NAE categories"
+  ],
+  "why_it_won": "The paper expertly addresses the core statistical challenges of Olympic medal prediction—zero inflation, overdispersion, and heterogeneity—with a well-justified fusion of Hurdle and Tobit models. It demonstrates clear superiority over machine learning baselines through rigorous validation and extends the analysis with innovative causal inference (2SLS) and change-point detection to quantify the 'great coach effect'. The integration of all three tasks into a cohesive narrative, grounded in data-driven insights and actionable policy recommendations, demonstrates exceptional modeling depth and practical relevance.",
+  "section_highlights": "The writing is exceptionally well-structured, with each section building logically from data processing to comparative modeling, validation, and policy insights. Tables and figures (RCA heatmaps, change-point plots, coefficient tables) are effectively used to communicate complex results visually. The paper excels in interpreting coefficients in economic/strategic terms (e.g., host effect attenuation, double-edged sword of sport breadth), making the analysis accessible and impactful.",
+  "pitfalls_or_limitations": [
+    "Reliance on historical data may not capture emerging sports, sudden policy changes, or political bans.",
+    "Small sample of host country observations (only ~1% of data) limits the statistical power of host effect estimates.",
+    "Discretization of athlete numbers into categories sacrifices some granular information.",
+    "Coach effect identification via Bayesian change-point detection may attribute non-coach-related breakthroughs to great coaches (false positives).",
+    "Collinearity between host country variable and other predictors (NAE, RCA) may partially dilute the host effect in some models.",
+    "Assumption of normal Olympic holding conditions (no postponements or cancellations) restricts generalizability."
+  ],
+  "reusable_patterns": [
+    "Adopting a two-stage Hurdle model to separately model the probability of winning any medal (binary) and the count of medals given success (truncated count), ideal for zero-inflated count data.",
+    "Applying Tobit model for left-censored outcomes (zero medals) while capturing continuous latent performance, and comparing with Hurdle to leverage model complementarity across different data segments.",
+    "Constructing a Revealed Comparative Advantage (RCA) index to quantify sport-specific dominance as a predictive feature.",
+    "Using Bayesian change-point detection on preprocessed sport-level time series to identify structural breaks indicative of intervention effects (e.g., coach changes).",
+    "Employing two-stage least squares (2SLS) with an instrument derived from historical performance indices to estimate causal impacts while mitigating endogeneity.",
+    "Discretizing continuous predictors (athlete counts, experience measures) into categories to capture nonlinear effects and handle future prediction uncertainty.",
+    "Conducting a sensitivity analysis of model components (e.g., choice of binary classifier in the first stage of Hurdle) to verify robustness."
+  ]
+}

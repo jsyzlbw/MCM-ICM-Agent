@@ -1,0 +1,252 @@
+{
+  "problem_type": "interdisciplinary",
+  "paper_count": 33,
+  "common_models": [
+    {
+      "name": "Discrete-time iterative deterministic compartmental model: #aids(t) = newInfections(t) + #aids(t-1) - deaths(t), stepped yearly with t0 = year 2000 and negative indices seeded from historical data",
+      "papers": 1
+    },
+    {
+      "name": "R0 (basic reproductive number) framing as the conceptual backbone — epidemic grows iff R0>1, and a 'treatment' only counts as preventative if it lowers R0 (cites Velasco-Hernandez 2002)",
+      "papers": 1
+    },
+    {
+      "name": "Gender-stratified force-of-infection / mass-action transmission term for heterosexual sex: intercourseT(t) = rho * riskSexCons * (1 - condomRate) * #aids_oppositeGender(t-1) * (1 - %aids_susceptibleGender), with male->female transmission set 2x female->male",
+      "papers": 1
+    },
+    {
+      "name": "Separate additive transmission channels: needle/IV-drug term needleT(t)=rho_d*riskDrugCons*#HIV-negativeDrugUsers*0.35*%HIV+drug (80/20 male/female split, 35% dirty-needle rate); mother-to-child birthT(t)=birthRate*#aids_women(t-1)*riskBirth (1-5% first world, up to 35% undeveloped); a homosexual-intercourse term with its own per-act risk constant (used mainly for the USA)",
+      "papers": 1
+    },
+    {
+      "name": "Fixed-delay feedback death model: deaths(t) = newInfections(t - averageDeath) with averageDeath ~9 years (no age tracking; everyone assumed to die of AIDS)",
+      "papers": 1
+    },
+    {
+      "name": "ARV sub-model via two tunable input parameters: arvFactor in [0.25, 1] (multiplier on transmission of treated patients, encoding the unresolved literature debate on whether ARV reduces transmission) and arvPortion (fraction treated); newInfections split into treated vs untreated cohorts",
+      "papers": 1
+    },
+    {
+      "name": "Drug-resistance (MDR) sub-model: newInfections_resistant(t) = %onARV * (1 - adherenceRate) * chanceToMutate, with resistant carriers tracked separately so they no longer benefit from ARV (adherence 85-95%)",
+      "papers": 1
+    },
+    {
+      "name": "Logistic adoption curve for vaccine rollout: %vaccinated grows logistically from 0% (starting 2015) to a country-specific steady state proxied by the WHO tetanus-toxoid 2nd-dose coverage rate; susceptible term becomes (1 - %aids - %vaccinated)",
+      "papers": 1
+    },
+    {
+      "name": "Five-criterion qualitative country-selection scoring framework (prevalence trend, infected demographic, education/awareness level, transmission routes, data integrity/availability)",
+      "papers": 1
+    },
+    {
+      "name": "Economic cost-benefit model with discounting: Cost_{p,t} = sum_{t=1..n} 1100p/(1+r)^{t-1} (present value of ARV cost at $1100/person/yr); Savings = GDP_{p,t} + netExternalities_{p,t} - GDP_t; NetBenefit = Savings - Cost; optimum found where partial derivatives wrt p and t equal zero, then matched against rich-country investment maturities",
+      "papers": 1
+    },
+    {
+      "name": "Model A — Age- and HIV-adjusted life expectancy: uses 'person-years' as the accounting unit; computes Γ0 (age-adjusted life expectancy by multiplying each age cohort's population by the life expectancy of its birth year) and Γ_HIV (weighted life expectancy of infected, blending untreated ~12yr / treated ~20yr survival via ARV-coverage fraction T), then a set-theoretic Γ_A formula adding back person-years lost to premature HIV death.",
+      "papers": 1
+    },
+    {
+      "name": "Custom 'criticality' metric: ζ(α,β,γ,δ,ε)=α(γ+δ)+β(ε), a linear functional combining loss-of-life-expectancy for untreated (α) and treated (β) cases against prevalence terms (current untreated γ, new untreated δ, new treated ε). Defined as both Relative Criticality (per-capita life-expectancy loss over 5 yrs) and Absolute Criticality (×population). Deliberately excludes already-treated current cases.",
+      "papers": 1
+    },
+    {
+      "name": "Model B — Logistic growth (dP/dt = rP(1-P/K)) fit to historical HIV counts for 12 world regions; novel parameter-estimation trick: rewrite as (1/P)(dP/dt)=a+bP, estimate P'(t_i) by secant-line slope of neighboring points, then linear-regress to recover a=r and b=-r/K. Used to project new cases 2005→2010.",
+      "papers": 1
+    },
+    {
+      "name": "Model C — Agent-based / individual discrete-event simulation (the centerpiece): ~1000-person representative community run weekly (52 cycles/yr) over 50 yrs, with a 10-yr 'burn-in' to build a relationship web before seeding infection. Implemented in Java with Person objects, Virus objects, and AvailabilityPool matchmaking. Models heterosexual/homosexual/bisexual, monogamy/casual/prostitution behavior pools, IV-drug 'drug-buddy' relationships, mother-child (vertical + breastfeeding) transmission, births, and age-proportional natural death.",
+      "papers": 1
+    },
+    {
+      "name": "Aging sub-model: assumes death hazard proportional to age, -(dP/dt)/P = kt, which integrates to a half-Gaussian survival curve P=P0·exp(-½kt²); k solved numerically in Maple by matching the implied mean age-of-death to each country's measured life expectancy.",
+      "papers": 1
+    }
+  ],
+  "common_techniques": [
+    {
+      "name": "Calibration / historical back-fitting against the most reliable available dataset (South African antenatal prevalence 1995-2005) before any forecasting, tuning only 3 parameters (lifespan 9->7, risky-sex constant up, rising condom rate) — and showing the fit table",
+      "papers": 1
+    },
+    {
+      "name": "Encoding scientific uncertainty as a tunable parameter rather than picking a side: arvFactor spans the full range of the contradictory ARV-transmission literature (Anderson 1992 vs Krieger 1991 vs Royce 1997), so the model reports BOTH outcomes",
+      "papers": 1
+    },
+    {
+      "name": "Archetype/representative-case selection: one country per continent each isolating a different dominant transmission vector (SA = heterosexual/no drugs, Russia = IV drug use, USA = MSM/homosexual, India = scale + mixed, Australia = imported cases) to demonstrate generality without modeling every nation",
+      "papers": 1
+    },
+    {
+      "name": "Systematic per-section assumption ledgers with explicit 'worst-case scenario' justification (static condom rate, 100% condom efficacy, all carriers die of AIDS, fixed 9-yr delay) — pre-empting judge objections",
+      "papers": 1
+    },
+    {
+      "name": "One-factor-at-a-time sensitivity analysis on condomRate (0/30/50/100%), arvPortion (0/20/50%) under both arvFactor regimes, and MDR adherence (85/95/100%), with a sanity check that each response matches intuition",
+      "papers": 1
+    },
+    {
+      "name": "Self-flagging of model artifacts: explicitly calls out the ~2020 spike as an artifact of the instantaneous-lifespan-extension assumption, and notes the 100%-condom plateau not reaching zero is due to death-rate rounding in early iterations",
+      "papers": 1
+    },
+    {
+      "name": "Layering an economic/policy layer (discounted cost-benefit, positive/negative externalities including cross-border infection) on top of the epidemiological model to directly answer the resource-allocation question",
+      "papers": 1
+    },
+    {
+      "name": "Narrative framing device ('Quest for the Holy Grail of AIDS') and a stand-alone UN white paper translating math into actionable, tiered policy recommendations",
+      "papers": 1
+    },
+    {
+      "name": "Reframing an ambiguous qualitative word ('most critical') into a defensible quantitative objective — cumulative person-years of life lost — rather than the naive 'highest prevalence'.",
+      "papers": 1
+    },
+    {
+      "name": "Linearizing the logistic ODE via division by P and secant-slope derivative estimation to fit r and K with plain linear regression — a cheap, transparent calibration that avoids nonlinear solvers.",
+      "papers": 1
+    },
+    {
+      "name": "Two-tier modeling strategy: a fast, auditable logistic model for the 108-country screen, then a high-fidelity agent-based simulation reserved only for the 6 selected critical countries (right tool at the right scale).",
+      "papers": 1
+    },
+    {
+      "name": "Object-oriented agent design with 'availability pools' as a matchmaking abstraction — lets heterogeneous demographic behaviors (orientation, commitment level, sex work, drug use) compose without a combinatorial explosion of equations.",
+      "papers": 1
+    },
+    {
+      "name": "Deriving model parameters from a closed-form analytic identity rather than guessing — e.g., recognizing the age-proportional-hazard ODE yields a half-Gaussian and back-solving k from observed life expectancy.",
+      "papers": 1
+    },
+    {
+      "name": "Intervention modeling by toggling a single mechanistic switch (ARV-treated agents become non-transmitting) instead of re-deriving aggregate equations.",
+      "papers": 1
+    },
+    {
+      "name": "Parameter sourcing discipline: explicitly cited sources (CIA World Factbook, UNODC, Penguin Atlas of Human Sexual Behavior, Global Fund, Lancet) and described the unit-conversion math (fertility/woman/lifetime → births/sex-event ≈ thousandths).",
+      "papers": 1
+    }
+  ],
+  "recurring_pitfalls": [
+    {
+      "name": "The published chart data is badly garbled in this markdown extraction (e.g. Figure 4/5 tables show nonsense like '1156227', '2e-6', '1.4E+7' year offsets) — the underlying figures presumably were fine, but it's a reminder that quantitative results live in plots that can be lost; the prose conclusions don't always let a reader reconstruct the numbers",
+      "papers": 1
+    },
+    {
+      "name": "Self-admitted modeling artifact: the instantaneous, population-wide lifespan extension when ARV 'switches on' (~2015-2020) produces a non-physical spike in cases around 2020 — a discretization/step-function artifact rather than real dynamics",
+      "papers": 1
+    },
+    {
+      "name": "Crude death model: a single fixed delay (everyone dies exactly averageDeath=9 years after infection, and everyone is assumed to die of AIDS) ignores age structure, individual survival variance, and non-AIDS mortality — the team acknowledges this",
+      "papers": 1
+    },
+    {
+      "name": "Countries modeled as isolated, closed populations with no migration — a real weakness given that the paper's own economic section hinges on cross-border (imported) infection in Australia/USA",
+      "papers": 1
+    },
+    {
+      "name": "The headline economic model is entirely abstract — it specifies Cost/Savings/NetBenefit and a first-order optimality condition but never plugs in GDP or externality data, so it yields no actual numbers or recommended (p*, t*)",
+      "papers": 1
+    },
+    {
+      "name": "Several strong simplifying assumptions (condoms 100% effective, vaccine 100% effective, constant 35% dirty-needle rate, static condom usage) are defended as 'worst case' but stack up and are not independently stress-tested together",
+      "papers": 1
+    },
+    {
+      "name": "Vaccine steady-state coverage is proxied by tetanus-toxoid 2nd-dose rates — a clever stand-in but an unvalidated analogy for HIV-vaccine uptake behavior",
+      "papers": 1
+    },
+    {
+      "name": "Sensitivity analysis is one-factor-at-a-time only; no joint/interaction or Monte Carlo uncertainty quantification, and no confidence bands on the 2050 forecasts",
+      "papers": 1
+    },
+    {
+      "name": "The model has many hand-set parameters (risk constants, rho=160-200 acts/yr, 80/20 drug split) drawn from heterogeneous sources; no formal uncertainty propagation from those inputs to outputs",
+      "papers": 1
+    },
+    {
+      "name": "Transmission probability hard-coded to 1.0 per sexual encounter or needle-share — produces an unrealistic ~3-year saturation of the adult population, which the team admits contradicts real HIV history; this undermines quantitative credibility of the 50-yr simulation outputs.",
+      "papers": 1
+    },
+    {
+      "name": "Models D-F were under-exercised: the team states 'due to time constraints, we were unable to collect a significant amount of data' from the modified simulations, so the headline treatment/vaccine/resistance conclusions rest more on qualitative reasoning than on extracted simulation data.",
+      "papers": 1
+    },
+    {
+      "name": "Heavy reliance on assumed/guessed parameters with thin empirical grounding (99% annual full-adherence, 5% resistance chance below 90% adherence, vaccine-discovery probability 0.03(t-10), 100% ARV adherence and 100% vaccine efficacy, 1/20-of-1% of GDP on HIV) — many are admitted to have 'no data at present time'.",
+      "papers": 1
+    },
+    {
+      "name": "100% ARV adherence is assumed in the criticality model (Model A) while Model F is entirely about adherence failure — an internal tension between the screening assumptions and the resistance analysis.",
+      "papers": 1
+    },
+    {
+      "name": "Representativeness leap: a single ~1000-person community is assumed to stand in for an entire country; initial infection is seeded by random selection rather than realistic demographic targeting, which the team notes could bias the explosive-spread artifact.",
+      "papers": 1
+    },
+    {
+      "name": "Logistic carrying capacity K is a curve-fit artifact with no mechanistic meaning (the team explicitly wanted it to 'arise naturally' but it does not in Model B); short historical series for some regions make r,K estimates fragile.",
+      "papers": 1
+    }
+  ],
+  "reusable_patterns": [
+    {
+      "name": "Discrete-time state-update template: State(t) = inflows(t) + State(t-1) - outflows(t), seeded with historical data at negative indices — a simple, judge-legible alternative to ODE compartment models that is trivial to code and extend",
+      "papers": 1
+    },
+    {
+      "name": "Parameterize controversy: when the literature disagrees on a coefficient, make it an input parameter spanning the disputed range and report results across the whole range instead of choosing one value",
+      "papers": 1
+    },
+    {
+      "name": "Validate-then-forecast: always back-fit the model to the single most reliable historical dataset you can find and SHOW the fit table/plot before presenting any forward prediction",
+      "papers": 1
+    },
+    {
+      "name": "Per-section assumption ledger with 'worst-case' framing: after each sub-model, list every assumption and argue why it is conservative/bounds the answer — pre-empts the most common judge criticism",
+      "papers": 1
+    },
+    {
+      "name": "Archetype case selection with an explicit scoring rubric: instead of modeling all entities, pick a small set of representative cases that each isolate one dominant mechanism, and justify the choice with a stated multi-criterion framework",
+      "papers": 1
+    },
+    {
+      "name": "Additive, modular transmission channels: build a basic single-channel model first, then add independent terms (needles, births, MSM, vaccine, resistance) each gated by its own toggle parameter so scenarios switch on/off cleanly — gives easy ablation and sensitivity sweeps",
+      "papers": 1
+    },
+    {
+      "name": "Self-audit of artifacts: proactively identify any non-physical features of your output (spikes, non-zero plateaus) and attribute them to specific assumptions — turns a flaw into evidence of rigor",
+      "papers": 1
+    },
+    {
+      "name": "OFAT sensitivity-with-intuition-check: sweep each key parameter over a few values and explicitly confirm the response direction matches physical intuition",
+      "papers": 1
+    },
+    {
+      "name": "Cap a technical model with a decision layer: add an economic cost-benefit/discounted-value model and a non-technical 'white paper' that converts the math into tiered, actionable recommendations for the stated stakeholder (here, the UN)",
+      "papers": 1
+    },
+    {
+      "name": "Use a memorable framing/title and a conclusion-first abstract to make the paper stick with tired judges",
+      "papers": 1
+    },
+    {
+      "name": "Turn a vague qualifier in the prompt into an explicit, defensible scalar objective (here 'criticality' = person-years of life lost) and pre-argue the counterintuitive cases it produces — this is what separates O-papers from the pack.",
+      "papers": 1
+    },
+    {
+      "name": "Two-stage funnel: cheap transparent model to screen a large set (108 countries via logistic + criticality), then an expensive high-fidelity model on the short-listed few. Communicates judgment about computational budget.",
+      "papers": 1
+    },
+    {
+      "name": "Linearize-then-regress for ODE calibration: rewrite a nonlinear growth law into y=a+bx form and use secant-slope derivative estimates so you can fit with ordinary linear regression — fast and explainable.",
+      "papers": 1
+    },
+    {
+      "name": "Agent-based 'availability pool' matchmaking pattern for any contact/network process (epidemics, social spread, markets): represent actors as objects, route interactions through typed pools, and let macro behavior emerge — captures heterogeneity that compartmental models cannot.",
+      "papers": 1
+    },
+    {
+      "name": "Burn-in period before the intervention: run the simulation to a steady relationship/network state before injecting the shock (disease), so initial conditions are realistic rather than arbitrary.",
+      "papers": 1
+    }
+  ]
+}

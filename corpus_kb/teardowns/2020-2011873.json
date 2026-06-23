@@ -1,0 +1,52 @@
+{
+  "paper_id": "2020-2011873",
+  "year": 2020,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2020 MCM Problem B (discrete): determine the optimal 3D geometric foundation shape for a sandcastle to maximize \"lasting time\" against wave/tide erosion and rain, then extend to optimal sand-to-water mixing ratio and the effect of rain. This O-award paper (team 2011873) frames the whole problem around a single stability proxy — the soil internal friction angle phi — and declares the cuboid the winner with a roughly 50 min lasting time (extended to ~64.43 min at 15% water content).",
+  "models_used": [
+    "Airy (linear) wave theory: free-surface elevation eta(x,t)=a*cos(kx-wt), with a=0.15m, lambda=8.5m, T=10s, giving wave velocity u and acceleration u-dot",
+    "Morison Equation for total in-line wave force F = rho*Cm*V*u-dot + 0.5*rho*Cd*A*u|u|, using shape-dependent drag coefficients Cd (cube 1.05, sphere 0.47, cone 0.50, etc.)",
+    "Mohr-Coulomb Yielding Criterion as the failure check: tau_n = C + sigma_n*tan(phi); with cohesionless sand C=0 so phi=arctan(tau_n/sigma_n); collapse when externally-induced phi exceeds the sand's stable angle g(w)",
+    "Empirical quadratic fit g(w) = -140w^2 + 56w + 28.5 relating internal friction angle to water content (peaks near w=15%)",
+    "Horton's infiltration equation f(t)=fc+(f0-fc)e^(-kt) for seawater/rain infiltration rate (fc=1mm/min, k=2, f0=0)",
+    "Van Genuchten soil water-retention model theta(psi) to convert infiltration into water content over time (theta_s=0.3, theta_r=0.05, alpha=0.01, n=3)",
+    "Sinusoidal tide-height regression h(t) fit from real Sandy Hook tide-gauge data (two-term sine fit)",
+    "Raindrop terminal-velocity model Vm(d) combined with median-diameter-vs-rain-intensity power law d50=2.52*i^0.32, re-expressed as Vm(i); plus momentum/energy q=mVm, E=0.5mVm^2",
+    "Sartor-Boyd scour model dP/dt = K2*P*r (K2=0.201) for volume of sand washed away by rain runoff",
+    "Second linear phi-vs-water-content fit phi=0.8462w+5.256 (MATLAB regression) used specifically in the rain regime",
+    "ANSYS finite-element simulation (static structural: stress, strain, deformation clouds) as independent verification of the rain-scour theoretical results across all six shapes"
+  ],
+  "key_techniques": [
+    "Reducing a messy multi-physics problem to ONE scalar decision variable (internal friction angle phi) so every sub-model feeds a single go/no-go collapse criterion g(w) >= phi",
+    "Model chaining/composition: tide regression -> Airy/Morison force -> Mohr-Coulomb stress -> Horton infiltration -> Van Genuchten water content -> g(w) friction angle, so outputs of each model become inputs of the next",
+    "Staged decomposition of the physical process into 3 tide phases (not flooded / partially flooded / fully submerged) to make the time-evolution tractable",
+    "Brute-force parameter traversal ('programming traversal') over aspect ratio and over initial water content to locate optima (narrow water-facing width is best; w~15%)",
+    "Comparative screening of 6 candidate geometries under identical volume+height constraints, ranked by lasting time and 'effective wave height in stage 1'",
+    "Independent cross-validation: theoretical collapse/stress results checked against ANSYS FEA simulation and reported as 'very similar'",
+    "Sensitivity analysis on cuboid length-width ratio to show monotone trend and physical plausibility",
+    "Heavy reliance on literature-sourced empirical constants (Cd table, fc, k, K2, VG parameters) with citations to fill gaps where the team had no data"
+  ],
+  "why_it_won": "\"From a judge's view, this paper wins on COHERENCE and CLOSURE rather than rigor. It assembles a genuinely impressive chain of named, citable, domain-appropriate models (Airy, Morison, Mohr-Coulomb, Horton, Van Genuchten, Sartor-Boyd) and welds them together so the whole pipeline terminates in one clean, defensible failure criterion. It answers every sub-task with a concrete number (cuboid, ~50-64 min, 15% water, narrow face), grounds Task 1 in real Sandy Hook tide data, runs sensitivity analysis, AND adds an independent ANSYS FEA verification — the trifecta of 'real data + analytic model + numerical simulation agreeing' is exactly the signal judges reward. The Strengths/Weaknesses section is candid and the plain-language 'Article' (a beach how-to letter with an environmental-responsibility message) shows communication maturity. It reads as a complete, self-aware, well-organized engineering story.\"",
+  "section_highlights": "\"Strongest structurally: (1) the explicit symbol table and 'Our work' roadmap up front; (2) Task 1's three-stage tide decomposition with a worked cuboid example (0.4x0.3x0.3 m, stage-1 = 40 min to reach castle, stage-2 = 10 min to submerge) that makes the abstract criterion concrete; (3) the seepage-process flowchart (Fig 11) that makes the rain logic auditable; (4) the ANSYS verification gallery; (5) the lay 'Article' that translates findings into actionable beach advice and closes on environmental ethics. The comparison Table 1 (lasting time + effective wave height for all 6 shapes) is the decisive, scannable payoff that justifies the cuboid choice.\"",
+  "pitfalls_or_limitations": [
+    "Two CONTRADICTORY phi-vs-water-content relations are used: g(w)=-140w^2+56w+28.5 (peak ~31.7 deg near 15%) in Tasks 1-2 versus a monotone-increasing phi=0.8462w+5.256 in the rain task — these disagree wildly at high w (e.g. w=60% gives ~56 deg vs the quadratic which is negative), and the switch is never reconciled",
+    "Internal friction angle is misused as the unifying quantity: phi=arctan(tau_n/sigma_n) is a derived stress ratio, but the paper treats an 'externally generated friction angle' and compares it to the material's g(w) as if they are the same physical object — conceptually shaky",
+    "Many pivotal constants are borrowed wholesale with little justification (Cm=1.5, fc=1mm/min, k=2, K2=0.201, VG alpha/n), and key geometric/loading choices (placing castle at max tide 45cm, a=0.15m, lambda=8.5m) are essentially assumed",
+    "Several figures appear broken or placeholder: the raindrop kinetic-energy chart (Fig 9) is all zeros, and the ANSYS cloud captions are OCR garbage with implausible units — results are asserted as 'very similar' without quantitative comparison",
+    "Gravity of the sandcastle is explicitly disregarded, and seepage is assumed spatially uniform (the team admits surface>interior water content is more realistic)",
+    "Airy theory assumes constant-amplitude sinusoidal waves (no attenuation/breaking), unrealistic in the surf zone where sandcastles actually erode",
+    "Volume 'washed away' from Sartor-Boyd is computed but never tied back quantitatively into the lasting-time number; rain task ends in 'effective height' comparison rather than an updated time",
+    "Only 6 prismatic/conic shapes tested under same volume AND height — the optimum is constrained by that arbitrary candidate set, not a true shape optimization"
+  ],
+  "reusable_patterns": [
+    "The 'single scalar failure criterion' pattern: pick one physically meaningful quantity (here phi) and force every sub-model to either produce it or feed it, so the final answer is a clean threshold comparison g(.) >= phi",
+    "Model-chaining pipeline: data-driven regression (tide) -> physical forcing model (Airy+Morison) -> failure theory (Mohr-Coulomb) -> hydrology (Horton+Van Genuchten) -> empirical strength law — a template for multi-physics MCM problems",
+    "Candidate-set screening under fixed invariants (same volume + height) plus a ranked comparison table as the decision artifact — clean way to handle 'which shape/option is best' discrete problems",
+    "Triangulation for credibility: real-world data + analytic model + numerical (FEA/ANSYS) simulation, reported as mutually confirming",
+    "Parameter-traversal ('grid search') to locate continuous optima (aspect ratio, water content) once the discrete shape choice is fixed",
+    "Sensitivity analysis presented as a monotone trend curve with a one-line physical sanity check ('consistent with the actual situation')",
+    "Dual-audience writing: rigorous technical body + a separate plain-language 'Article'/letter that gives practical advice and a values-based closing (environmental responsibility) — strong communication score booster",
+    "Honest, specific Strengths/Weaknesses section naming exactly which assumptions are weakest (Airy constant amplitude, uniform seepage, tilted rain) — signals self-awareness to judges"
+  ]
+}

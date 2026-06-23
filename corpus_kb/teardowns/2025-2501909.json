@@ -1,0 +1,58 @@
+{
+  "paper_id": "2025-2501909",
+  "year": 2025,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2025 MCM Problem A (continuous) — \"Stair Wear: Traces of History.\" Teams must build a math model that, from the wear pattern of a worn staircase, infers (Task 1) usage frequency, favored direction of travel, and how many people walked side-by-side, all via non-destructive measurement; and (Task 2) wear-vs-archive consistency, stairwell age with reliability bounds, whether repairs/renovations occurred, the provenance of the stone material, and typical-day usage. This O-award paper (control 2501909) frames the whole solution around a single \"Stair Wear Model\" decomposed into a Wear Volume Model and a Wear Distribution Model, demonstrated end-to-end on a set of ancient Edinburgh sandstone steps.",
+  "models_used": [
+    "Wear Volume Model (WVM) — physics-based wear-depth integral d_avg = (1/A_ceff) ∫ T·N_d·D(x,y)·G·k_m dx dy, inverted to solve age T and daily usage frequency N_d for each other (T=A·d_avg/(N_d·G·k_m))",
+    "Archard Wear Law as the mechanistic core: wear coefficient k_m = K·d/H linking sliding distance, applied load and material hardness to material removal",
+    "Hardness-decay (weathering) sub-model H(t) = H_0·e^(-p·t) with time-integrated hardness HT = ∫H(t)dt, p a weathering/corrosion rate constant; wood variant H(t)=H_0·e^(-(0.0015T+0.02·RH)t)",
+    "Gravity Assessment Model: expected pedestrian weight W = Σ u_i·q_i over six demographic groups (minors/adults/elderly × M/F) from WHO weight data → G = W·g",
+    "Wear Distribution Model (WDM): rasterize step top-view into m×n grid, build wear matrix D^measure, factor D(x,y)=D_X·D_Y (diagonal covariance), take marginal sums D_X^measure(x)=Σ_y, D_Y^measure(y)=Σ_x",
+    "Gaussian Mixture Model fit of the marginals — Y-direction = 2-component GMM (up vs down) giving direction/ratio from peak weights; X-direction = n-component GMM giving number of parallel walking lanes from peak count",
+    "Central Limit Theorem justification that cumulative footstep wear converges to a (mixture of) normal distribution(s)",
+    "Custom 'Gauss Mixtual Algorithm' — gradient-descent EM-style iterative fit of mixture params θ=[m_i,μ_i,σ_i] minimizing ‖P(D|θ)−D_marginal‖ until loss<1e-3",
+    "KL-divergence-based consistency/correlation operators: PA for D^available vs D^measure, and RS(d1,d2) for step-to-step wear similarity (repair detection)",
+    "Brinell hardness scale repurposed non-destructively: H_test = 0.102·2G/(π·d̄(d̄−√(d̄²−A_ceff))) to back out per-step hardness for repair/provenance checks",
+    "F-distribution (Clopper–Pearson-style) confidence interval for age reliability CI from counts of accepted (RA) vs rejected (RC) age estimates",
+    "Monte Carlo simulation of typical-day traffic: 1000 time-steps, P_o controlling one-vs-two person arrivals, mapping crowd volume Q to X-direction σ",
+    "Least-squares logarithmic/exponential fit linking σ_x to number walking side-by-side: N_pass = 0.339·e^(0.13125·σ_x)+0.92338 (R²=0.9999)"
+  ],
+  "key_techniques": [
+    "Inverse modeling: write a forward wear-physics equation, then algebraically invert it so age T and frequency N_d become solvable for one another given the measured wear depth",
+    "Dimensionality reduction by marginalization: turning a 2-D wear matrix into two independent 1-D problems (X = how many parallel, Y = which direction) via row/column sums and a diagonal-covariance assumption",
+    "Mapping abstract distribution features to physical meaning: peak COUNT in X = number of side-by-side walkers, peak POSITION/WEIGHT in Y = up/down ratio, σ in X = crowd density",
+    "Borrowing established laws across domains (tribology's Archard law, metallurgy's Brinell test, information theory's KL divergence) and re-deriving them for an archaeology context",
+    "Grounding free parameters in real literature/data (WHO weights, published sandstone/marble/wood Brinell hardness, gait-cycle plantar-pressure studies) rather than inventing numbers",
+    "Reliability quantification with a statistical CI (F-distribution on accept/reject counts) instead of a bare point estimate for stairwell age",
+    "Simulation-as-validation: re-simulating the four candidate materials and matching the simulated 3-D wear surface back to the observed one to confirm provenance",
+    "Two-method redundancy for repair detection (Step-Age method + Brinell/KL method) to cross-check a noisy inference",
+    "End-to-end worked case study on one concrete artifact (Edinburgh sandstone) carrying numeric results through every section"
+  ],
+  "why_it_won": "\"It nailed the implicit grading rubric for a Problem-A continuous model. (1) Mechanistic foundation: instead of curve-fitting, it anchored everything in Archard's wear law, giving physical interpretability to every parameter (load G, hardness H, wear coefficient K) — judges reward a model that *explains* wear, not just describes it. (2) Clean problem decomposition: the WVM/WDM split cleanly separates the two questions the prompt actually asks — 'how much/how long' (volume) vs 'who walked how' (distribution) — and the X/Y marginal trick turns a hard 2-D inference into two intuitive 1-D readings (peak count = lanes, peak skew = direction). This decomposition is elegant and immediately legible to a judge skimming the summary. (3) It answered the non-destructive constraint head-on, repeatedly tying measurement methods (3D scanning/photogrammetry, literature hardness lookup) back to the prompt's 'minimum cost, fewest tools' requirement — judges look for whether teams honored the stated constraints. (4) Full coverage of every Task-2 sub-question with a *named* method each (consistency PA, reliability CI, two repair-detection methods, provenance η, typical-day Monte Carlo), so nothing is left hand-waved. (5) It carried a single real artifact (Edinburgh sandstone) through the entire paper with concrete numbers (century-old, 261 people/day, 3 lanes, 3:2 up:down), proving the model is operational, plus sensitivity/robustness analysis across hardness, weathering rate, and four countries. (6) Strong framing and writing: the poetic 'hard stones have their method to record history, and we have the model to read them' bookends give it memorability that tired judges reward.\"",
+  "section_highlights": "\"Summary page is exemplary — it states the model name, both sub-models, the methods, AND the concrete numeric answers for the Edinburgh case (century old, 3 abreast, 3:2 up:down ratio, 261/day) in one dense paragraph, so a judge knows the payoff before reading further. The Assumptions section justifies each of 4 assumptions with a cited rationale (single-step strategy, uniform environmental wear, repair = full-replace-or-same-fill, vertical-only load) rather than asserting them. Figure 5/6 are the structural keystone: side-by-side they pair each wear-distribution shape (1 peak / 2 peaks, skewed) with a cartoon of the corresponding human behavior, making the inference instantly readable. A dedicated 'Parameters to Be Measured' table (Table 3) with measurement methods operationalizes the model for the archaeologist 'client.' The Gauss Mixtual Algorithm is written out as explicit pseudocode. Sensitivity analysis is genuinely critical — it admits the model is insensitive to weathering rate p over ~4 centuries but highly sensitive over 20 centuries, scoping its own validity window honestly. Self-aware Strength/Weakness section names the single-p-for-all-climates oversimplification.\"",
+  "pitfalls_or_limitations": [
+    "Several core equations are dimensionally/notationally inconsistent or sloppy: the wear integral mixes T·N_d·D·G·k_m without clear units, the Brinell-repurposing formula H_test plugs average wear depth d̄ in as the indenter diameter D_p and √A_ceff as indentation diameter d_p — a physically arbitrary mapping that wouldn't survive a dimensional check; √(d̄²−A_ceff) is generally imaginary for realistic numbers",
+    "The 'KL divergence' operators PA and RS are not actual KL divergences — they are D(x,y)·Σ log(d_ava/d) forms, missing the probability-weighting inside the sum; the labeling is aspirational",
+    "Internal numeric contradiction: text says 3 people walk side-by-side (3 X-peaks) and reports an average of 1.14 / 'about 3', yet the typical-day formula yields 1.14 people side-by-side — the two estimates of the same quantity disagree and aren't reconciled",
+    "The age result is presented two ways that don't match cleanly (a 'century ago' vs '36492 days ago' at 260 people/day) and the inversion T↔N_d is underdetermined — you must assume one to get the other, which the paper papers over",
+    "Age-reliability CI is reported as a very wide 0.359–0.996 from only 6 sampled steps (5 within 5%), which is statistically weak but presented as validation",
+    "Single global weathering/corrosion rate p ignores microclimate and seasonal cycles (the paper admits this) and demographic weight mix W=62.8kg is assumed constant over a century of history",
+    "Many figures appear to be auto-generated/garbled placeholder data (e.g., Figure 13's weathering chart degrades into 'Total (P=5)' noise rows), suggesting some plots were not carefully produced — a presentation risk that apparently didn't sink it but is a real flaw",
+    "Assumption that lateral and longitudinal footstep position are uncorrelated (diagonal covariance) is convenient but unverified and would break for diagonal/turning traffic"
+  ],
+  "reusable_patterns": [
+    "Decompose a single phenomenon into a 'magnitude' model and a 'distribution' model (here Volume vs Distribution) so each maps to a distinct subset of the prompt's questions",
+    "Inverse-modeling template: build a forward physical equation, then solve it backward for the unknown the problem actually asks about; if it's underdetermined, state the extra assumption explicitly",
+    "2-D field → two 1-D marginals via row/column sums + diagonal-covariance assumption, then fit a Gaussian mixture to each marginal; read PEAK COUNT and PEAK POSITION/WEIGHT as physically meaningful quantities",
+    "Anchor every free parameter to a citable real source (WHO, materials handbooks, biomechanics papers) and present them in a single 'Key Parameters' table — buys credibility cheaply",
+    "Carry ONE concrete real-world instance (a named artifact/dataset) through every section so each abstract method immediately yields a number",
+    "Build redundant cross-checking methods for any noisy inference (two independent repair-detection methods that must agree) to demonstrate robustness",
+    "Use a 'Parameters to Be Measured' + measurement-method table to operationalize the model for the problem's stated client and honor stated constraints (non-destructive / low-cost)",
+    "Report inferences with an explicit reliability/confidence interval (F-distribution on accept/reject counts) rather than a bare point estimate",
+    "Scope your model's validity window honestly in the sensitivity analysis (e.g., 'insensitive to p under 4 centuries, sensitive beyond 20') — turns a limitation into a sign of rigor",
+    "Use a simulate-then-match validation: simulate each candidate hypothesis (four materials) and visually/numerically match the simulated output back to the observed data to justify a choice",
+    "Bookend the paper with a short evocative theme sentence in Summary and Conclusion for memorability with fatigued judges"
+  ]
+}

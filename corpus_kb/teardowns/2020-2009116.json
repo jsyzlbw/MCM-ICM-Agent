@@ -1,0 +1,55 @@
+{
+  "paper_id": "2020-2009116",
+  "year": 2020,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2020 MCM/ICM Problem C (\"data insights\") for the Sunshine Company: using Amazon review data on three products (pacifier ~17k reviews, hair dryer ~11k, microwave ~1.5k), the team must analyze star ratings, helpfulness votes, and free-text review bodies to (a) extract usable information from text, (b) identify the relationships among star rating / review sentiment / helpfulness and build a composite measure to flag potentially successful products, and (c) study how time and extreme reviews influence product reputation, then recommend products to Sunshine. Team #2009116's answer chains a lexicon-based sentiment scorer, a PCA-derived composite satisfaction index (CR -> CS -> COM_S), ARIMA forecasting of star/sentiment trends, and non-parametric tests + K-means to study extreme-review interactions.",
+  "models_used": [
+    "Lexicon-based (dictionary) sentiment analysis using three dictionaries: Harvard-IV General Inquirer, Henry's Financial, Loughran-McDonald Financial; sentiment score computed as (pos-neg word count)/active word count, reported as 'SentimentQDAP'",
+    "Data preprocessing pipeline in SAS: PROC SORT NODUPKEY (dedup), PROC MEANS NMISS / PROC FREQ (missing & abnormal value checks), PROC SQL macro variables for char vs numeric types, TRANWRD/TRANSLATE for punctuation removal & lowercasing, length-based junk filtering (drop reviews < 20 chars)",
+    "Pearson correlation screening (|r| >= 0.3 threshold) over 7 candidate variables",
+    "Principal Component Analysis (PCA) validated by KMO (0.524) and Bartlett sphericity test (p<0.001); retained 3 components (eigenvalue>1, cumulative 69.7% variance) interpreted as F1=voting info (helpful_votes, total_votes), F2=review content (SentimentQDAP, star_rating, number), F3=customer identity (vine, verified_purchase)",
+    "Custom composite indices: Customer Reviews CR = weighted sum of F1,F2,F3; Customer Satisfaction CS = 0.3*D + 0.3*F1 + 0.1*F2 + 0.3*F3 (D = review 'age' in days via SAS INTCK to 01/01/2016), 0-1 MinMax normalized to CS*; Comprehensive Satisfaction COM_S = mean of CS* per product_parent",
+    "ARIMA(p,d,q) time-series forecasting: monthly aggregation of cumulative dynamic mean, stationarity check, ACF/PACF parameter selection; forecast Sep/Oct 2015 star ratings (e.g. microwave 3.40, hair dryer 4.08, pacifier 4.27) and 3-month sentiment trends",
+    "Autoregressive (AR) and Moving Average (MA) component models presented as ARIMA building blocks",
+    "Non-parametric tests: Jonckheere-Terpstra (J-T) trend test, Wilcoxon signed-rank (paired before/after extreme reviews), Mann-Whitney U (extreme-word groups vs star_rating) — chosen because data is non-normal",
+    "K-means clustering: 3-cluster on (star, before/after one-star sentiment change) and 8-cluster on COM_S/votes/vine/verified_purchase/NEG/POS to flag potential fake/manipulated reviews",
+    "Descriptive statistics + word clouds (top-50 words per product) and time-series visualizations of cumulative star/review/helpful-vote trends"
+  ],
+  "key_techniques": [
+    "Threshold-driven variable selection: drop variables with |Pearson r| < 0.3, then justify PCA with KMO + Bartlett before applying it — shows statistical discipline rather than blindly running PCA",
+    "Mapping abstract PCA components back to business meaning (voting / content / identity) so the math stays interpretable to a non-technical marketing director",
+    "Engineering a time-decay-aware 'age of review' feature (D via SAS INTCK to a fixed 2016-01-01 anchor) and folding it into CS with an explicit weight, mirroring Amazon's real weighted star algorithm",
+    "Two-stage aggregation CR -> CS -> COM_S that converts per-review signals into a single per-product score usable for ranking and recommendation",
+    "Deliberate use of non-parametric tests after explicitly testing/justifying non-normality — matching the test (J-T for ordered trend, Wilcoxon for paired before/after, Mann-Whitney for two-group) to the question",
+    "Time-weighted interaction operator 1/[(date_after - date_before)+1] to discount the influence of temporally distant reviews, with +1 guarding divide-by-zero — documented in pseudocode/flowchart",
+    "Using K-means clusters of extreme-word presence (NEG/POS) plus vote/identity features to surface suspected fake or astroturfed reviews — a creative extension beyond the literal prompt",
+    "Tool pragmatism: SAS for heavy data wrangling, sentiment dictionaries for text, SPSS-style outputs for PCA/tests — using the right tool per subtask under contest time pressure"
+  ],
+  "why_it_won": "\"From a judge's view it wins on completeness, interpretability, and decision-relevance, not on algorithmic novelty. It answers every sub-question of Problem C and ties them back to a concrete deliverable: a ranked successful/unsuccessful product list per category plus a clean executive letter to the marketing director. The modeling chain is coherent and each step is justified before use (correlation threshold before PCA, KMO/Bartlett before factoring, normality check before choosing non-parametric tests, ACF/PACF before ARIMA orders) — judges reward this 'show your statistical reasoning' habit. It grounds the composite satisfaction index in Amazon's real weighted star algorithm, giving the otherwise-arbitrary CS weights a plausible narrative. It goes beyond the literal ask by using K-means + extreme-word clustering to discuss potential fake reviews, which reads as insight. And it is honest: a substantial, model-by-model limitations section signals self-awareness. The writing is structured, the notation table and assumptions are explicit, and the final recommendations are actionable.\"",
+  "section_highlights": "\"Structure that judges like: Summary -> one-page Letter to the Marketing Director with the concrete recommendation table up front (successful vs unsuccessful brands per category) -> Notations table -> explicit Assumptions list -> Task 1/2/3 each with Problem Analysis / Methodology / Problem Solving -> per-model Limitations & Strengths -> numbered Conclusion -> References. Strongest sections: (1) the executive Letter, which delivers the answer and product list immediately; (2) Task 2's PCA write-up, which validates the method (KMO/Bartlett), reports variance explained, and translates components into business categories before building CR/CS/COM_S; (3) the Model Evaluation section, which lists specific, credible limitations per model rather than generic hedging. Visual support: word clouds per product, cumulative trend line charts, ACF/PACF and ARIMA forecast plots, and a pseudocode flowchart for the time-weighted interaction computation.\"",
+  "pitfalls_or_limitations": [
+    "The CS weight vector (0.3*D, 0.3*F1, 0.1*F2, 0.3*F3) is asserted, not derived or sensitivity-tested — the headline composite index rests on hand-picked weights, and there is no robustness/sensitivity analysis anywhere in the paper",
+    "PCA loadings (0.996, 0.995, 0.801, ...) are plugged directly into F1/F2/F3 as if they were regression coefficients, conflating component loadings with a weighting scheme; F1 ends up dominated by helpful_votes/total_votes which are themselves 0.994 collinear (double-counting nearly the same signal)",
+    "KMO = 0.524 is barely above the 0.5 floor (generally considered 'miserable'), yet PCA is applied anyway — a reviewer could challenge whether the data is really factorable",
+    "Lexicon sentiment is crude: review sentiment = simple average of sentence scores, no handling of negation, degree adverbs, sarcasm, emoticons, or 'derogatory-word-as-positive' — the team acknowledges this but the whole pipeline inherits the error",
+    "Mixing per-review variables of very different natures (binary vine/verified_purchase, counts, sentiment in [-1,1], day-age) into PCA without clearly stated standardization for all, then into a linear CS, risks scale-dominance artifacts",
+    "ARIMA forecasts are presented to absurd precision (e.g., 4.268717 vs 4.268825 for Sep vs Oct pacifier) — the near-flat, essentially constant forecasts suggest the models reduced to near-trivial mean predictors, with no confidence intervals or error metrics reported",
+    "The 'fake review' K-means interpretation is speculative storytelling on cluster centers with no validation against any ground truth",
+    "Microwave (n~1536) is treated with the same machinery as the 17k-review products despite far thinner, noisier data, and the paper leans on this for forecasts",
+    "Heavy reliance on finance-specific dictionaries (Henry, Loughran-McDonald) for consumer-product reviews is a questionable domain match",
+    "Some sloppiness/typos (mislabeled section numbers '3.2.1' under Task 2, garbled chart data, 'crude oil star algorithm') slightly hurt polish"
+  ],
+  "reusable_patterns": [
+    "The validate-before-you-apply discipline: gate PCA with correlation screening + KMO + Bartlett, gate ARIMA with stationarity + ACF/PACF, gate test choice with a normality check. Reusable as a checklist for any data-type MCM problem.",
+    "Per-record signal -> composite index -> aggregate-per-entity -> rank pipeline (CR -> CS -> COM_S -> ranked product list). A clean template for any 'score and recommend' data problem.",
+    "Anchor an arbitrary composite to a real-world system (here, Amazon's weighted star algorithm) to give weights a defensible narrative even when not formally optimized.",
+    "Feature-engineer recency/time-decay explicitly (review 'age' to a fixed date; 1/[(Δdate)+1] interaction weight) and document it in pseudocode/flowchart — judges credit reproducibility.",
+    "Translate every abstract component/cluster back into plain-language business meaning so a non-technical reader can follow.",
+    "Lead with an executive Letter/memo containing the concrete answer and recommendation table before the technical body — strong for problems that ask for a stakeholder deliverable.",
+    "Pair each model with an explicit, specific Strengths/Limitations subsection — converts known weaknesses into evidence of rigor.",
+    "Use clustering on engineered features (extreme-word flags + vote/identity) as a creative 'extra insight' (anomaly/fake-review detection) that exceeds the literal prompt.",
+    "Tool-per-subtask pragmatism under time pressure: SAS for ETL, sentiment dictionaries for NLP, standard stats outputs for PCA/tests/ARIMA. Future teams should pre-build a reusable preprocessing+EDA SAS/Python script.",
+    "IMPROVE ON THIS PAPER: add a sensitivity analysis on the composite weights and report forecast error bars/intervals — the two biggest credibility gaps a future O-aspirant should close."
+  ]
+}

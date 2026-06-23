@@ -1,0 +1,252 @@
+{
+  "problem_type": "policy",
+  "paper_count": 48,
+  "common_models": [
+    {
+      "name": "Minimum-cost network flow / transportation assignment LP: decision variable x_ij = number of refugees moved from source A_i (5 origin countries) to sink B_j (11 receiving countries); supply constraints sum_j x_ij = n_i, capacity (ceiling) constraints sum_i x_ij <= m_j",
+      "papers": 1
+    },
+    {
+      "name": "Floyd-Warshall all-pairs shortest path to convert adjacent-node transport accessibility into the least-accessibility-cost matrix d_ij between every origin and receiving country over the abstracted route graph",
+      "papers": 1
+    },
+    {
+      "name": "Accessibility Index as a custom edge weight: A_ij = T_ij / (1 - alpha*D_ij), combining transport time T and route death rate D with a risk-appetite parameter alpha (set =1), constrained by alpha*D_ij < 1",
+      "papers": 1
+    },
+    {
+      "name": "Principal Component Analysis (PCA) to compress 5 receiving-country metrics (GDP per capita, cereal production, pension spending, healthcare spending, doctors per 1000) into a single 'living quality index' c_j; first PC Y1 retained 81.2% of variance and the explicit linear loading equation is reported (c_i(0) = -4.286 + 0.515 z1 + 0.132 z2 + 4.403e-5 z3 + 0.1 z4 + 0.24 z5)",
+      "papers": 1
+    },
+    {
+      "name": "Weighted-sum multi-objective model (Model 1): min w1*sum(x_ij*d_ij') + w2*sum(x_ij*c_j') after standardizing both objectives, with sum w_i = 1",
+      "papers": 1
+    },
+    {
+      "name": "Goal Programming model (Model 2): preemptive/priority goal programming that first computes single-objective goal values g1 (min accessibility cost) and g2 (max living quality), then minimizes weighted deviations p1*e1+ + p2*e2- with transport accessibility set as the first-priority level",
+      "papers": 1
+    },
+    {
+      "name": "System Dynamics / iterative dynamic model: time-stepped (monthly, t=0..12, 11 iterations) re-optimization where living-quality c_i(t) degrades as refugees pour in via per-capita dilution z_1i(t)=z_1i(0)/(1+ (m_i(t)/M_i)*1.5) plus an added penalty function f(m_i(t)) capturing social friction; flow-conservation constraints carry refugee stocks between European countries each step",
+      "papers": 1
+    },
+    {
+      "name": "Spearman rank correlation (rho ≈ 0.6) used as a validation device to show receiving-country capacity correlates with observed arrivals",
+      "papers": 1
+    },
+    {
+      "name": "Capacity ceiling rule M_i = 0.5% of national population as the hard upper bound on refugees a country can receive (later also referenced as a 10% variant)",
+      "papers": 1
+    },
+    {
+      "name": "Gravity Model (Newtonian I = P_i*P_j / D_ij^a) adapted into a comprehensive node attraction/weight index M_ij^t",
+      "papers": 1
+    },
+    {
+      "name": "I. S. Lowry regression migration model (job-opportunity-driven migration) cited as inspiration for the weight formulation",
+      "papers": 1
+    },
+    {
+      "name": "Hierarchical cluster analysis on average node-to-startpoint distances (matrix D, height values K1/K2/K3) to partition 11 origin nodes into 3 distance layers",
+      "papers": 1
+    },
+    {
+      "name": "Network/graph node model with layered directed flow (initial-layer -> propagation-layer -> terminal-layer -> 6 route start points)",
+      "papers": 1
+    },
+    {
+      "name": "Cellular Automaton dynamic simulation of period-by-period (quarterly) migration with feedback (capacity saturation, weight re-normalization)",
+      "papers": 1
+    },
+    {
+      "name": "Cobweb Model relating node pass-rate P to passed population N to argue capacity-vs-stability for the policy recommendation",
+      "papers": 1
+    }
+  ],
+  "common_techniques": [
+    {
+      "name": "Two-layer modeling: a graph-theoretic layer (Floyd-Warshall on the route network) feeds a clean LP transportation layer, so the messy geography is pre-collapsed into a d_ij cost matrix before optimization",
+      "papers": 1
+    },
+    {
+      "name": "Index engineering: every qualitative factor (route danger, living quality) is turned into a single scalar — Accessibility Index fuses time+death rate, PCA fuses 5 welfare metrics — so a multi-attribute problem reduces to two clean objectives",
+      "papers": 1
+    },
+    {
+      "name": "Handling conflicting objectives two independent ways (weighted-sum AND goal programming) and comparing the resulting allocations, which doubles as a robustness/sensitivity check",
+      "papers": 1
+    },
+    {
+      "name": "Abstraction of the real map: 5 representative origin nodes A1-A5 chosen by refugee volume, 11 major receiving nodes B1-B11, edges weighted by accessibility not geographic distance",
+      "papers": 1
+    },
+    {
+      "name": "Making a static optimization dynamic by re-solving on a monthly rolling horizon with state carried forward (refugee stocks) and parameters (living quality) updated endogenously via resource-dilution + penalty terms — turns one LP into a 12-step simulation",
+      "papers": 1
+    },
+    {
+      "name": "Direct parameter-perturbation for scenario analysis: model exogenous shocks (Hungary-Austria border closure, Belgium capacity -30%, terror attacks) by editing specific d_ij/c_j entries and re-running, then reporting the objective-value jump (2.41e8 -> 3.44e8) as evidence of impact",
+      "papers": 1
+    },
+    {
+      "name": "Tight model-to-policy traceability: each of the 5 policy recommendations is justified by which model parameter it moves (sea patrol -> lowers death rate D -> lowers A_ij; infrastructure -> raises c_j; border cooperation -> preserves d_ij connectivity)",
+      "papers": 1
+    },
+    {
+      "name": "Iterative model-refinement narrative: started with a random/equal-weight migration model, showed it FAILED to match data (R=0.6543, p>0.05), then explicitly revised it with the Gravity model (R=0.9914), then added Cellular Automaton feedback (R=1.0). The refutation of their own first model is a deliberate persuasion device.",
+      "papers": 1
+    },
+    {
+      "name": "Layered abstraction of geography into nodes whose resolution is tunable to a policymaker's jurisdiction (county/state/nation) - directly ties the model to the policy audience",
+      "papers": 1
+    },
+    {
+      "name": "Compositing many qualitative policy factors (safety, environmental/cultural acceptance, transport convenience, repatriation ratio, entry-point count) into one log-linear weight: ln M_ij = ln S + ln Conv - ln B + K_a",
+      "papers": 1
+    },
+    {
+      "name": "Quantitative validation at every stage using correlation coefficient R and significance p against real 2014 IOM/UNHCR/Eurostat/FRONTEX-FRAN route-share data",
+      "papers": 1
+    },
+    {
+      "name": "Encoding shocks as toggle/indicator variables: war beta in {0,1}, weather gamma in {-2c,-c,0,c}, sea-vs-land crossing x1/x2, so exogenous events (disease, terrorism, GO/NGO funding +/-0.2) plug into the same safety/weight equations",
+      "papers": 1
+    },
+    {
+      "name": "Sensitivity analysis quantified as elasticity bands: +/-5% capacity -> +/-2% output, >+/-10% capacity -> >4.7% output",
+      "papers": 1
+    },
+    {
+      "name": "Honest scalability stress test: applied model to USA/Canada/China, got absurd results (7 refugees to Canada), and used the FAILURE to surface a real modeling insight (planimetric distance ignores the Himalayas and Atlantic barriers)",
+      "papers": 1
+    },
+    {
+      "name": "Multi-tool implementation: MATLAB for static weight simulation, C++ for the cellular-automaton dynamics, JavaScript for animated visualization of flows (circle-area = population)",
+      "papers": 1
+    }
+  ],
+  "recurring_pitfalls": [
+    {
+      "name": "Heavy reliance on the M_i = 0.5%-of-population ceiling, and the model explicitly cannot allocate the overflow once demand exceeds total capacity — exactly the failure mode the 10x-scalability sub-question probes, which they acknowledge but do not solve",
+      "papers": 1
+    },
+    {
+      "name": "Internal inconsistency / data hygiene issues: Table 2's 'total' equals A1's value (14078) not the actual sum; result tables (Table 4 vs Table 5) are both captioned 'Model 1'; several B_j row totals in the goal-programming table don't match the cell sum (e.g., B3, B7), and the rendered map/figure tables are garbled (repeated 'Finland', 'French Republic (North)') — sloppy presentation that could cost polish points",
+      "papers": 1
+    },
+    {
+      "name": "The risk-appetite parameter alpha is set to 1 for all refugees with no calibration or sensitivity sweep, and the Accessibility Index form A=T/(1-alpha*D) is asserted rather than derived from behavior data",
+      "papers": 1
+    },
+    {
+      "name": "The dynamic model's key magic numbers — replacing the benign 0.5% dilution with a *1.5 factor and adding an unspecified penalty function f(m_i(t)) — are introduced with hand-wavy 'system dynamics estimated' justification and no actual SD stock-flow diagram or equations shown, so the 'System Dynamics Model' label is somewhat aspirational",
+      "papers": 1
+    },
+    {
+      "name": "Self-admitted unmodeled drivers: country policy, cultural/religious acceptance, language, and NGO/UNHCR effects are all excluded from the quantitative model even though they dominate the real crisis and the policy section leans on them",
+      "papers": 1
+    },
+    {
+      "name": "PCA living-quality index is computed once from 2013 data and frozen; refugees-as-rational-utility-maximizers assumption (Assumption 1) ignores family/network herding effects that the literature (their own cited refs) says matter",
+      "papers": 1
+    },
+    {
+      "name": "Exogenous-event analysis is a few one-off perturbations (one border pair, one -30% capacity cut) rather than a systematic distributional or worst-case robustness study",
+      "papers": 1
+    },
+    {
+      "name": "Distances are straight-line (planimetric) - the model ignores geographic barriers, which the team admits broke the USA/Canada/China scalability test (Himalayas, Atlantic)",
+      "papers": 1
+    },
+    {
+      "name": "EB (Eastern Borders) route and its nodes were dropped entirely because all sampled origins are in Africa/Middle East, so a whole real migration channel is excluded",
+      "papers": 1
+    },
+    {
+      "name": "Several formulas are under-specified or contain typos/inconsistencies (e.g., the entry-point Bernoulli P(x=n_i) cases, the changed-weight expression w'_i2 = pi*W_i2, the M_ij factor list f(...) vs the final ln M_ij dropping C_ij and Point terms) - dimensional/notational rigor is loose",
+      "papers": 1
+    },
+    {
+      "name": "Many coefficients (danger coefficients c1-c4, adjusting coefficients, GO/NGO impact range +/-0.2, weather constant c) are asserted without derivation or calibration source",
+      "papers": 1
+    },
+    {
+      "name": "Claims like R=1.0000 are implausibly perfect and suggest overfitting to a tiny number of route-share points rather than genuine predictive validation",
+      "papers": 1
+    },
+    {
+      "name": "OCR/text artifacts aside, the model conflates 'optimal route for refugees' with 'observed route shares' - it validates against where refugees DID go, which weakens the normative 'optimal policy' claim",
+      "papers": 1
+    },
+    {
+      "name": "Redistribution of refugees after entering Europe and illegal stowaways are omitted, and the team acknowledges the data for these is missing",
+      "papers": 1
+    },
+    {
+      "name": "The Cobweb-model policy argument is asserted qualitatively from two schematic figures rather than simulated, so the central capacity-stability policy claim is the least rigorously supported part",
+      "papers": 1
+    }
+  ],
+  "reusable_patterns": [
+    {
+      "name": "Index-then-optimize pipeline: collapse multi-attribute edge costs and node desirabilities into single scalars (a fused safety/time index for edges, a PCA composite for nodes) so any messy real problem becomes a clean LP/network problem the judges recognize",
+      "papers": 1
+    },
+    {
+      "name": "Use Floyd-Warshall (or any APSP) as a preprocessing step to turn a sparse adjacency-weighted map into a dense origin-to-destination cost matrix that an assignment/transportation LP can consume directly",
+      "papers": 1
+    },
+    {
+      "name": "Solve a multi-objective trade-off two ways (weighted-sum after standardization, and priority goal programming) and present both — instant built-in robustness narrative and shows methodological range",
+      "papers": 1
+    },
+    {
+      "name": "PCA-as-justification template: report the % variance captured by PC1 (here 81.2%) and the explicit loading equation to defend reducing N correlated indicators to one composite, then reuse those loadings to make the composite time-varying",
+      "papers": 1
+    },
+    {
+      "name": "Static -> dynamic upgrade by rolling-horizon re-optimization: re-solve the LP each period, carry state (stocks) forward via flow-conservation constraints, and let parameters degrade endogenously (per-capita resource dilution + a congestion/social penalty) — a cheap, defensible way to add 'systemic dynamics'",
+      "papers": 1
+    },
+    {
+      "name": "Capacity-ceiling-as-percentage-of-population as a simple, policy-grounded hard constraint (cite that the EU itself used population-based quotas)",
+      "papers": 1
+    },
+    {
+      "name": "Scenario analysis by direct parameter surgery: model a shock by editing the specific matrix entries it would change (cut an edge, shrink a capacity) and report the resulting objective-value delta as quantitative evidence of impact",
+      "papers": 1
+    },
+    {
+      "name": "Model-to-policy traceability matrix: write each policy recommendation as 'lever X changes parameter Y which improves objective Z' so the recommendations are provably grounded in the model rather than generic — and frame the deliverable in the required format (UN letter)",
+      "papers": 1
+    },
+    {
+      "name": "Validate a key modeling assumption against real data with a lightweight nonparametric stat (Spearman rho between modeled capacity and observed arrivals) instead of leaving it asserted",
+      "papers": 1
+    },
+    {
+      "name": "The 'build-it, break-it, fix-it' validation arc: deliberately present a naive baseline model, quantitatively show it fails (report low R / high p), then motivate each refinement with the gap to data. This turns model selection into a persuasive story judges love.",
+      "papers": 1
+    },
+    {
+      "name": "Composite-index pattern: fold many incommensurable qualitative factors into a single log-linear weight derived from a named classical model (here Gravity), so policy concerns become tractable math while staying interpretable.",
+      "papers": 1
+    },
+    {
+      "name": "Tunable-resolution abstraction: define your unit (node) so its granularity can be set by the decision-maker's jurisdiction - an easy, high-value move for any policy problem.",
+      "papers": 1
+    },
+    {
+      "name": "Layered network + cellular-automaton + feedback as a general template for any spatial diffusion/flow problem over time with capacity limits and saturation thresholds.",
+      "papers": 1
+    },
+    {
+      "name": "Encode shocks/scenarios as indicator and toggle variables (war 0/1, weather levels, +/-20% capacity) plugged into the SAME core equations, so 'exogenous events' and 'sensitivity' sections reuse one model instead of new ones.",
+      "papers": 1
+    },
+    {
+      "name": "Report a single headline correlation R (and p) at each modeling stage and put the climbing sequence in the summary sheet - a compact, judge-friendly proof of progress.",
+      "papers": 1
+    }
+  ]
+}

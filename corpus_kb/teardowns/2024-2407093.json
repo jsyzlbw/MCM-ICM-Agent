@@ -1,0 +1,54 @@
+{
+  "paper_id": "2024-2407093",
+  "year": 2024,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2024 MCM Problem A (continuous): model the population dynamics of sea lampreys, whose juvenile-growth-rate-dependent sex differentiation lets the sex ratio shift with the environment. Tasks: (1) model lamprey growth/reproduction with variable vs. fixed sex ratio; (2) advantages/disadvantages of variable sex ratio to the population itself; (3) impact on ecosystem stability; (4) whether variable sex ratio benefits other species in the ecosystem. This team built a sex- and age-structured discrete population model (\"BFM Model\") and coupled it to predator/host/parasite sub-models, then used control-theory feedback analysis and quantitative stability/diversity indices to answer all four tasks.",
+  "models_used": [
+    "BFM Model: a custom 3-compartment (juvenile B, adult female F, adult male M) sex- and age-structured population model, built by extending the Logistic growth model with a sex differentiation ratio alpha and a juvenile development time tau",
+    "Logistic population growth model as the base for juvenile dynamics (carrying capacity K)",
+    "Difference-equation (discretized) formulation with 1-month time step to capture annual/seasonal cyclicity, including a delay/age-structure term where maturation at month t sums over cohorts born at month i satisfying t = i + tau_i",
+    "Sex-separated 'Advanced Lotka-Volterra' predator-prey model (lampreys as prey vs. Esox lucius), with sex-specific predation difficulty (epsilon_F, epsilon_M) and energy yield (theta_F, theta_M)",
+    "Nicholson-Bailey host-parasitoid model used two ways: lampreys-as-parasite on Crucian carp host (H_{t+1}=r_H H_t e^{-(beta_F F + beta_M M)}), and Lepeophtheirus parasites on lampreys (J_{t+1}=F(1-e^{-gamma_F J})+M(1-e^{-gamma_M J}))",
+    "Linear empirical sub-models calibrated by data fitting: alpha = c*tau + d (c=-0.009, d=0.764) and tau = k*B + b (k=-0.000844, b=35.678), derived from an energy-accumulation argument",
+    "Control-theory Feedback Model: positive-feedback loop (constant alpha) vs. negative-feedback loop (variable alpha), explaining stability via self-excited oscillation vs. limit-cycle behavior",
+    "Sinusoidal-plus-impulse mortality model mu_t = A0 + A1*sin(2pi/T) + A2*delta(t-t0) to inject seasonal and shock perturbations",
+    "Simpson Diversity Index (D = 1 - sum p_j^2) and Shannon-Wiener Index (H = -sum p_j log2 p_j) as biodiversity metrics",
+    "Custom ecosystem-stability functionals: resistance S1 = sup|f1-f2| (L-infinity / Chebyshev distance between perturbed and baseline curves), resilience S2 = recovery time, comprehensive stability S = integral of |f1-f2| dt (area between curves)"
+  ],
+  "key_techniques": [
+    "Reformulating a multi-task open prompt into a dependency-ordered solving plan: they explicitly noted Tasks 1 and 4 are coupled and answered in order 1, 4, 2, 3 rather than sequentially",
+    "Building ONE core model (BFM) and reusing it across every task by swapping the alpha/tau terms between constants and time-varying functions, then plugging it into interaction sub-models",
+    "Mechanistic derivation of the tau-B linear law from an energy-budget inequality (accumulate fixed energy W at efficiency eta until maturation), then simplifying via the steady-state approximation B_t ~ const for t>100",
+    "Sex-disaggregation of every interaction coefficient (epsilon, theta, beta, gamma) to make the 'sex ratio matters' thesis mechanistically active rather than decorative",
+    "Using control theory (positive vs. negative feedback loops, self-excited oscillation, limit cycle) as the EXPLANATORY layer for why variable sex ratio confers stability, backed by F-B-t phase-trajectory plots showing a 'trumpet' (diverging) vs. converging limit cycle",
+    "Quantifying the vague word 'stability' three distinct ways (resistance = max deviation, resilience = recovery time, comprehensive = area between curves) plus biodiversity indices, giving numeric tables (Table 3, Table 4) instead of hand-waving",
+    "Honest counter-finding: defining a breeding success rate G = Rate_F * Rate_M and showing variable sex ratio LOWERS it (0.2114 vs 0.2467), then tying it to lampreys being evolutionary 'living fossils' (Fisher's sex-ratio theory)",
+    "Turning sensitivity analysis into management policy: sweeping r_H, K, and mortality parameters A0/A1/A2 to map onto real control levers (TFM lampricide reduces K; continuous fishing = A0; seasonal chemical control = A1; concentrated culling = A2), and finding that mass culling timed to the female-population minimum is most effective"
+  ],
+  "why_it_won": "\"It answered all four tasks with a single coherent, custom-built mechanistic model rather than bolting on disconnected sub-models, and the sex ratio was load-bearing everywhere (sex-specific predation/parasitism coefficients, the alpha-tau-B feedback chain). Judges reward a model that is clearly the team's own. The standout move is layering EXPLANATION on top of simulation: the control-theory feedback model plus phase-trajectory plots explain WHY variable sex ratio stabilizes the population (negative feedback -> limit cycle) rather than just showing curves that differ. It quantified the famously vague notion of 'ecosystem stability' three rigorous ways and reported actual numbers, satisfying the modeling-and-results bar. It demonstrated intellectual honesty by surfacing a genuine disadvantage (lower breeding success rate) and connecting it to a real biological fact (lampreys as living fossils), which signals deep engagement. Finally, the sensitivity analysis was converted directly into actionable, mechanism-grounded invasion-control recommendations (TFM, timed culling), giving the paper real-world payoff that judges look for in a complete report.\"",
+  "section_highlights": "\"Summary clearly names the model (BFM) and front-loads all four task conclusions in plain language. The 'Our Work' flowchart (Figure 2) maps the entire solution architecture at a glance. Assumptions are each paired with a literature-cited justification (papers [3]-[5]), not asserted. The deliberate task-reordering note (1,4,2,3) shows the team thought about dependencies. The Feedback Model section is the intellectual core: it pairs schematic feedback diagrams (positive vs. negative) with F-B-t phase-trajectory 'trumpet vs. limit cycle' visualizations, giving both qualitative and quantitative explanation. Tables 2-4 deliver crisp numeric comparisons (G, S1/S2/S, Simpson/Shannon) of constant vs. variable alpha. The sensitivity section explicitly maps each parameter to a real control strategy. The Model Evaluation honestly flags the feedback model as only 'semi-quantitative' and proposes the exact follow-up (compute feedback coefficients from the differential dynamical system).\"",
+  "pitfalls_or_limitations": [
+    "The feedback model is admittedly semi-quantitative: positive/negative feedback is asserted from loop topology and matched to simulation shapes, never proven via an actual stability/Jacobian analysis or computed feedback coefficients (the team flags this themselves in Weaknesses)",
+    "The two key calibration laws alpha=c*tau+d and tau=k*B+b rest on single secondary-source fits and an idealized energy-budget derivation that assumes B_t is constant after t>100; parameter provenance is thin and not independently validated",
+    "Plots are simulation outputs with no real lamprey time-series data fitted or validated against, so claims like 'coevolution' and 'coexistence' are interpretations of the team's own simulation rather than empirical findings",
+    "Interaction sub-models are each single-species (one predator, one host, one parasite) and the BFM substitutes for Nicholson-Bailey on the host side, so the coupled multi-species ecosystem is simplified; biodiversity indices are computed over only ~4 species",
+    "The mortality impulse uses a Dirac delta delta(t-t0) inside a discrete difference equation, which is dimensionally/conceptually loose; effectively it's a one-step spike",
+    "Some result tables/figures show monotone or suspiciously linear trends (e.g., several sensitivity charts) suggesting illustrative/schematic plotting rather than raw simulation dumps",
+    "Resistance stability S1 defined as a sup-norm (single worst-case point) is sensitive to noise/outliers and can disagree with the area-based comprehensive measure S"
+  ],
+  "reusable_patterns": [
+    "Build ONE custom core model and reuse it across all tasks by toggling a single mechanism (here: constant vs. time-varying alpha/tau) - gives coherence and lets every task be a controlled A/B comparison",
+    "Name your model (BFM) and open the Summary with the model name plus all task conclusions in plain English",
+    "Reorder tasks by dependency and say so explicitly when tasks are coupled",
+    "Disaggregate interaction coefficients along the dimension your thesis depends on (here sex: epsilon_F vs epsilon_M, beta_F vs beta_M) so the central variable is mechanistically active everywhere, not just narrated",
+    "When the prompt uses a vague word ('stability', 'advantage'), define it 2-3 distinct quantitative ways and report a numeric comparison table",
+    "Add an EXPLANATORY layer (control-theory feedback loops + phase-trajectory plots) on top of simulation so you explain WHY, not just show that curves differ - a strong differentiator",
+    "Deliberately include an honest disadvantage backed by domain fact (breeding success rate down + 'living fossil') to demonstrate balanced, deep analysis",
+    "Convert sensitivity analysis directly into policy by mapping each parameter to a real-world control lever (K<->lampricide TFM, A0/A1/A2<->continuous/seasonal/concentrated fishing), so the math yields actionable recommendations",
+    "Derive empirical sub-laws from a first-principles argument (energy-budget inequality) then simplify with a justified steady-state approximation, rather than fitting a black-box curve",
+    "Discretize a continuous ODE model to a monthly difference equation when the system has natural seasonal cyclicity, making perturbation injection and age-structure delays trivial to implement",
+    "State each assumption with a cited justification immediately beneath it",
+    "Use a single 'Our Work' architecture flowchart so judges grasp the whole solution structure at a glance"
+  ]
+}

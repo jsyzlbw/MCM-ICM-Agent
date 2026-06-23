@@ -1,0 +1,55 @@
+{
+  "paper_id": "2023-2301192",
+  "year": 2023,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2023 MCM Problem C (data type): analyze ~359 days of New York Times Wordle player-report data. Tasks: (1) explain and forecast the daily number of reported results (predict the count for 2023-03-01, including the share played in Hard Mode); (2) determine whether word attributes affect the proportion of Hard-Mode reports, and predict the full distribution of guess counts (1,2,3,4,5,6,X tries) for a given future word (\"EERIE\"); (3) classify solution words by difficulty and relate difficulty to word attributes; (4) surface other interesting features of the dataset. This team built a four-model pipeline (Prophet+SIRS, multiple linear regression, BP neural network, K-Means++) plus auxiliary analyses, and packaged conclusions in a letter to the NYT editors.",
+  "models_used": [
+    "Prophet (Facebook) multiplicative time-series model with piecewise-linear trend g(t), weekly Fourier seasonality s(t), holiday term h(t); 60 changepoints, changepoint scale tau=0.8, changepoint range 0.9, 5 holiday dates; fit on log-transformed report counts",
+    "SIRS compartmental epidemic model (ODE system) used as a MECHANISTIC EXPLANATION of the Prophet trend term: S=ordinary Twitter users, I=active Wordle players, R=tired players, with infection rate lambda, fatigue rate beta, re-engagement eta, natural removal theta",
+    "Multiple linear regression (OLS / least-squares) of Hard-Mode proportion on word attributes, with F-test of overall significance (F=1.058, p=0.379, R^2=0.129 -> not significant)",
+    "BP (back-propagation) feed-forward neural network for multi-output prediction of the 7-bin guess-count distribution: 1 hidden layer, 1024 ReLU units, dropout 0.5, L2 loss, Adam, lr=0.05, Xavier init, 80/20 split",
+    "GloVe pre-trained word embeddings + PCA + MinMaxScaler feature engineering feeding the BP network (word2vec features concatenated with scaled/PCA-reduced attribute features)",
+    "K-Means++ clustering (k=3 via elbow/SSE) to label words easy/medium/hard, benchmarked against PAM and GMM using Silhouette and Calinski-Harabasz scores",
+    "PCA on the 7 try-count features to validate cluster separation (first 2 PCs explain 82.88% variance) plus one-way ANOVA F-tests on cluster feature means",
+    "Binomial hypothesis test (k~B(n,0.2), alpha=0.05) to identify which initial letters yield disproportionately hard/easy words",
+    "Isolation Forest anomaly detection + first-order difference sign to find 'upward mutation' days (words that spiked report counts)",
+    "Random Forest regression used as the vehicle for sensitivity analysis (5-fold CV, RMSE vs n_estimators/max_features/max_samples/max_depth)"
+  ],
+  "key_techniques": [
+    "Pairing a black-box statistical forecaster (Prophet) with a mechanistic model (SIRS) so the trend is both accurately fit AND causally interpreted -- the analogy maps playing=infection, sharing=transmission, fatigue=recovery, return=re-susceptibility",
+    "Log-transforming report counts before time-series fitting to stabilize variance / remove heteroscedasticity",
+    "Explicitly injecting holiday dates (Valentine's, Easter, Halloween, Thanksgiving, Christmas) as Prophet regressors and decomposing trend/weekly/holiday components to narrate behavior (weekday play, holiday dips)",
+    "Engineering interpretable, domain-grounded word attributes from external corpora: NDLW (number of distinct letters), SLF (sum of letter frequencies, defined formula), BU (breadth of usage across 100 corpora), Freq (Google Books frequency via Wolfram), per-letter counts a-z, and 18 part-of-speech dummies",
+    "Using an F-test to deliver a confident NEGATIVE result (word attributes do NOT predict Hard-Mode share) and giving a sensible causal reason: players pick mode before seeing the word",
+    "Multi-output regression with a single BP network to predict all 7 distribution bins jointly rather than 7 separate models; post-processing outputs (clip negatives to 0, renormalize to sum 100%) to make them valid percentages",
+    "Choosing difficulty labels from the OUTCOME distribution (1..X try percentages) rather than from word attributes, then separately studying attribute<->difficulty relationships -- avoids circularity",
+    "Validating unsupervised clusters three ways: ANOVA F-tests on bin means, PCA 2D separation plot, and Silhouette/CH benchmarking vs PAM and GMM",
+    "Binomial test framing for the 'hardest initial letter' sub-question -- turning a curiosity into a rigorous significance statement",
+    "Isolation Forest + differencing to mine 'virality' words, turning leftover data into an actionable recommendation for the client"
+  ],
+  "why_it_won": "\"From a judge's seat, the paper wins on three axes. (1) Model-fit-to-task coverage: every sub-question gets a purpose-built, named model, and the models are stitched into one coherent narrative (the SIRS-explains-Prophet move is genuinely elegant and rare -- it shows the team understood WHY the curve looks the way it does, not just how to fit it). (2) Intellectual honesty rewarded: the team reports a NON-significant regression (R^2=0.129, p=0.379) and embraces it with a convincing mechanistic explanation instead of torturing the data into a 'result' -- judges trust authors who report null findings cleanly. (3) Validation discipline: clusters are checked by ANOVA + PCA + Silhouette/CH against two competing algorithms; the forecaster is checked with R^2/MSE/RMSE/MAPE; the final model has a real sensitivity analysis via Random Forest CV. Add a strong summary sheet, an explicit notation table, a flow chart, an 'Interesting Surprise' section that delights (mummy is the 2nd-hardest word; words starting with e/f/w are hard), and a client-facing letter with concrete numbers and a confidence interval -- this reads like a complete, trustworthy, and engaging consulting deliverable.\"",
+  "section_highlights": "\"Strong structure: Summary names all five methods and the headline findings up front; a Notations table and a whole-paper flow chart orient the reader. Each model section follows a clean rhythm -- motivation -> formulation (with equations) -> parameter table -> fit figure -> multi-metric evaluation. Standout sections: (a) Section 3.3, where SIRS state-transition diagram and ODEs are used to *explain* the Prophet trend, with seasonal/holiday decomposition narrated in plain language; (b) the 'Interesting Surprise' section (6.1-6.3), which converts spare analysis into memorable, client-pleasing insights (mummy/watch/catch are deceptively hard; binomial test on initial letters; Isolation-Forest 'virality' words like 'judge', 'watch', 'nasty'); (c) the closing Letter to the NYT editors, which restates each conclusion in lay terms with the 2023-03-01 prediction and a 95% interval. Evaluation tables (Prophet R^2=0.9924/MAPE=4.8%; cluster F/P-values all 0.000; K-Means++ Silhouette 0.372 vs PAM/GMM) make claims auditable.\"",
+  "pitfalls_or_limitations": [
+    "The SIRS model is presented as an explanatory analogy but the actual fitted ODE parameters (lambda, beta, eta, theta) and how the player count was scaled to report count are never reported -- the 'fit' figure even shows a suspicious flat tail (5125 repeated), so this is more illustrative than rigorously calibrated",
+    "The headline March-1-2023 forecast is internally inconsistent: Section 3.2 gives 14534 with interval (13175,16128), but the Letter quotes a much wider (10452,21454) -- a reproducibility/consistency red flag a sharp judge would catch",
+    "Difficulty labels are derived from the try-count distribution and then 'predicted' from word attributes via a separately-trained BP net, while EERIE's difficulty is judged by feeding its predicted distribution back in -- there is a mild circularity / leakage risk between the distribution model and the difficulty model that is not fully addressed",
+    "BP network on only ~359 words with 1024 hidden units is heavily over-parameterized; reliance on dropout and 'train many times, keep the best' acknowledges instability but selecting the best model on limited data risks optimism in the reported MAE~3.2",
+    "Sensitivity analysis is performed on a Random Forest surrogate, not on the BP network or Prophet that produced the actual answers -- so it doesn't directly establish robustness of the deliverables",
+    "Assumptions are strong and unexamined (all Twitter users are potential players; daily word is uniformly random over all 5-letter words; reporters are a random sample) -- self-selection in who shares on Twitter is never quantified",
+    "Several embedded figures appear to be schematic/placeholder data (e.g., the correlation-matrix and SIRS-fit tables look synthetic), which would weaken trust if a judge scrutinized the underlying numbers"
+  ],
+  "reusable_patterns": [
+    "Forecaster + mechanistic-explainer pairing: fit with a flexible model (Prophet/ARIMA) for accuracy, then overlay a domain ODE/compartmental model (SIRS/SIR/Bass diffusion) to *explain* the trend -- a repeatable way to score both accuracy and interpretability points",
+    "Decompose-and-narrate: always split a time series into trend/seasonal/holiday and write a sentence of real-world meaning for each component",
+    "Engineer a small set of interpretable, externally-sourced features with explicit definitions and cite the data source for each (Wolfram, Google Books, letter-frequency tables) -- judges reward provenance",
+    "Report null results honestly and back them with a causal story (mode chosen before word is seen) instead of p-hacking",
+    "Single multi-output neural net for joint distribution prediction, with post-hoc clipping+renormalization to enforce a valid probability vector",
+    "Triangulate clustering quality: ANOVA on cluster means + PCA 2D separation plot + Silhouette/Calinski-Harabasz benchmarked against >=2 alternative algorithms (PAM, GMM)",
+    "Use the elbow/SSE plot plus domain reasoning to justify k, and tie cluster labels to an external outcome metric (avg 5+ try rate) so labels are meaningful",
+    "Turn a vague 'interesting features' sub-question into rigorous mini-results with hypothesis tests (binomial test for initial-letter difficulty) and anomaly detection (Isolation Forest for viral words)",
+    "Sensitivity analysis as a dedicated section with k-fold CV sweeping each hyperparameter one-at-a-time and reporting stable RMSE",
+    "Client-facing letter that restates every technical conclusion in plain language with concrete numbers and confidence intervals -- a near-universal Problem-C deliverable pattern",
+    "Front-matter scaffolding: Summary that names every model + headline result, a Notations table, and a one-figure whole-paper flow chart"
+  ]
+}

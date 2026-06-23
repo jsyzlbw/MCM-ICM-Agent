@@ -1,0 +1,56 @@
+{
+  "paper_id": "2020-2003723",
+  "year": 2020,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2020 MCM/ICM Problem D (operations research / sports analytics): using event-level passing data for the \"Huskies\" football team across 38 matches, the team had to (1) build passing networks and identify structural patterns, (2) quantify how team cooperation/structure/strategy affects match outcome, (3) give the Huskies concrete coaching/structural-strategy suggestions, and (4) generalize the framework to teams beyond football. This paper attacks it through a social-network-science lens, framed as a four-stage pipeline: \"identify cooperation network -> expand cooperation model -> explore influence effect -> propose suggestions.\"",
+  "models_used": [
+    "Directed weighted complex network (passing network): players as nodes, directional passes as weighted arcs, adjacency matrix A_ij; built per-match for both Huskies and opponent",
+    "Network motif / subgraph analysis: dyadic configurations ('double pass' i->j->others vs 'single pass' i->j->i) and triadic configurations (the 16 directed triad types, picking the highest-frequency triad per match)",
+    "Network structural metrics: clustering coefficient C_i (weighted), closeness centrality and its std (X4), shortest-path length d, player dispersion X5 (mean distance of players to network centroid), eigenvector centrality",
+    "Team-formation visualization: players placed at the average (x,y) of their pass positions on a pitch schematic, arc thickness = pass count; used to classify formation as offensive/balanced/defensive",
+    "AHP (Analytic Hierarchy Process): subjective weighting of action-type x position importance, judgment matrix with CR<0.1 consistency check (solved via max-eigenvalue eigenvector in MATLAB)",
+    "Entropy weight method: objective weighting of the same position/action scoring grid from data dispersion",
+    "Combined subjective-objective player scoring sub-model: equal-weight average of AHP and entropy weights, score s_i = sum_j w_ij * N_ij; feeds two regression variables (mean grade Z1, std of grades Z2)",
+    "Multinomial / binary logistic regression: Outcome ~ individual contribution + team structure + strategic layout + environment variables (13 predictors)",
+    "Multicollinearity diagnostics + stepwise regression: VIF = 1/(1-R^2) (caught avg-grade VIF=15.1, std-grade VIF=12.5) and stepwise variable elimination",
+    "Heterogeneity / grouped regression: split the 38-match dataset by opponent formation type (offensive/balanced/defensive) and re-ran logistic regression per subgroup to recover conditional (counter-strategy) effects",
+    "Time-dimension exploration: tracking centroid vertical/horizontal movement ratio and std-closeness over match minutes to capture dynamic strategy shifts"
+  ],
+  "key_techniques": [
+    "Reframing 'teamwork' as a directed weighted graph so that abstract cooperation becomes measurable network metrics (clustering, closeness, dispersion, shortest path)",
+    "Borrowing biology vocabulary (gene-coding 'binary/ternary structures', motifs/subgraphs) to make network-motif analysis legible and novel-sounding to judges",
+    "Position-aware contribution scoring: explicitly rejecting a single uniform scoring rule, instead deriving 4 positions x 4 action-types (attack/guard/pass/fault) weight grids so a forward's pass and a defender's pass count differently",
+    "Fusing subjective (AHP) and objective (entropy) weights by equal-weight averaging to defend against the 'AHP is arbitrary' criticism",
+    "Converting strategy into categorical regressors: formation -> {offensive=1, balance=2, defensive=3}, offensive style -> {left, right, middle}, then later refining offensive style from 3 to 5 categories as a robustness check",
+    "Using robustness as narrative: re-running the model with 3-vs-5 category offensive style and showing coefficients stay significant to claim the model is robust",
+    "Out-of-sample-style validation flex: predicting outcomes for 76 data points with only 3 wrong (96.1% accuracy) as a headline credibility number",
+    "Heterogeneity matrix to deliver actionable counter-strategy advice (e.g. vs balanced opponent, choosing balanced gives ~4x win odds vs offensive; defensive gives 0.19x)",
+    "Tying every general-extension claim back to a specific network metric (closeness std -> communication coverage, clustering -> communication frequency, shortest path -> org hierarchy flatness)",
+    "Including real reproducible code (R igraph for motifs/closeness/transitivity, MATLAB for entropy + AHP eigenvector) in the appendix"
+  ],
+  "why_it_won": "\"From a judge's seat, this paper wins on three fronts. (1) Right tool, fully committed: it correctly identifies that Problem D is fundamentally a network-science problem and goes all-in on directed weighted passing networks with proper motif/centrality machinery, rather than treating it as generic stats. (2) It closes the loop the prompt demands: it does not stop at descriptive network metrics; it builds an inferential logistic-regression layer that actually answers 'what affects winning,' then translates regression coefficients into concrete, defensible coaching advice (play 4-5-1/5-4-1 defensive counter-attack, attack down the right, spread player positions). Judges reward papers that turn analysis into decisions. (3) Methodological credibility signals are everywhere: AHP+entropy fusion, AHP consistency CR<0.1, VIF multicollinearity check that visibly caught two bad variables, stepwise regression, a 3-vs-5 category robustness re-run, heterogeneity (counter-strategy) analysis, and a 96.1% prediction accuracy headline. The result is a paper that looks rigorous, self-critical, and useful. It also nails Part 4 (generalization) substantively by mapping each network metric to an organizational analogue and citing leadership/gender/culture literature, which many teams handle only superficially.\"",
+  "section_highlights": "\"Strong, scannable IMRaD-plus structure with a 4-problem summary in the abstract that mirrors the 4 sub-questions, giving judges an instant map. The signature framework slogan 'identify cooperation network -> expand cooperation model -> explore influence effect -> propose suggestions' is repeated as a spine. Section 4 (network) is visual-first: per-match passing-network pitch diagram, dyad/triad motif schematics, bar charts comparing Huskies vs opponent on classical metrics (shots, possession, passes) and on 3 network parameters, plus a time-series figure for dynamics. Section 5 cleanly layers the model: a contribution sub-model (AHP + entropy, with full weight tables for all 4 positions) feeds named variables into the regression, with the regression equation written out explicitly. The strengths/weaknesses section is honest and specific (small sample, simplistic two-player interaction, no opponent-obstruction / GPS data). Reproducible R + MATLAB code in the appendix and a per-match metrics summary table reinforce transparency. Suggestions are organized into 'structural strategy' vs 'network analysis' buckets, each tied to a regression result.\"",
+  "pitfalls_or_limitations": [
+    "Severe small-sample problem: ~38 matches against 13 predictors. Their own rule-of-thumb (>10x observations per predictor) is violated; with R^2=0.71-0.82 and 13 vars on so few rows, the logistic regression is at high risk of overfitting, which makes the 96.1% accuracy almost certainly in-sample and inflated (no held-out test set or cross-validation).",
+    "Logistic regression on 76 'data points' with 13 predictors is statistically fragile; reported coefficients like -550 (std closeness) and -61 (possession) are huge and suggest separation/scaling instability that VIF alone does not fix.",
+    "Causal language ('possession has a negative effect on winning') is overreached from a small observational regression; correlation is dressed as actionable causal advice.",
+    "AHP judgment matrix is built 'according to the rule of experience' with no shown pairwise-comparison matrix or RI source, so the subjective layer is a black box despite the CR<0.1 claim.",
+    "Internal inconsistency / sloppiness in figures and tables: Figure6 lists 'coach' twice (should be coach/opponent/side); some metric values look placeholder-ish (clustering 0.9 for both teams, shortest path 2.0 for both); text references 'figure 2'/'Table9' where 'Table8' is meant.",
+    "Static-network simplification acknowledged but not solved: it ignores opponent positioning/pressure and treats pass interactions pairwise; instantaneous spatial context is dropped.",
+    "Formation classification (offensive/balanced/defensive) and 'longest-duration formation' assumption flatten in-match tactical variation, and the offensive-style direction (left/right/middle) is coarsely derived.",
+    "Generalization section, while broad, becomes qualitative hand-waving once it leaves football (leadership/gender/culture dimensions are cited but never integrated into a runnable model)."
+  ],
+  "reusable_patterns": [
+    "Pipeline framing as a memorable 4-stage slogan that mirrors the 4 sub-questions and is repeated throughout - gives judges a navigational spine.",
+    "Two-layer modeling: a descriptive layer (network metrics) feeding an inferential/predictive layer (regression) so you both characterize AND explain/predict - then convert coefficients into concrete recommendations.",
+    "Subjective+objective weight fusion (AHP + entropy weight, equal-average) as a defensible, reusable scoring sub-model for any 'rate the contribution/importance' subtask - and always include AHP's CR<0.1 check.",
+    "Context-aware scoring grids: when a single uniform metric is illogical (different roles), build a small position x action weight matrix instead of one number.",
+    "Bolt-on credibility checklist that reviewers look for: VIF/multicollinearity, stepwise selection, a robustness re-run with an alternative categorization, and a headline prediction-accuracy figure.",
+    "Heterogeneity/grouped regression to surface conditional 'counter-strategy' advice (split data by an opponent/condition variable, re-fit, report odds ratios) - turns one model into situational guidance.",
+    "Metric-to-analogue mapping for the generalization part: take each domain metric and explicitly state its organizational meaning (closeness std -> communication coverage; clustering -> communication frequency; shortest path -> org-chart flatness).",
+    "Visual-first network section: per-instance graph diagram on a domain-meaningful coordinate system (pitch), motif schematics, and side-by-side bar comparisons vs a baseline/opponent.",
+    "Reproducibility move: drop the actual library calls (R igraph: graph.motifs, closeness, transitivity, shortest.paths; MATLAB entropy + eig-based AHP) into the appendix to signal the analysis is real.",
+    "Honest, specific weaknesses section (name the exact data you lacked - GPS positions, opponent obstruction - and the exact statistical risk - sample-to-parameter ratio) rather than generic caveats."
+  ]
+}

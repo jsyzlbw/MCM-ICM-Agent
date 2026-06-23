@@ -1,0 +1,49 @@
+{
+  "paper_id": "2025-2510862",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asked to predict gold and total medal counts for the 2028 Los Angeles Olympics, identify countries likely to win their first Olympic medals, analyze relationships between event participation and medal performance, and quantify the impact of exceptional coaches on medal outcomes.",
+  "models_used": [
+    "LightGBM",
+    "SVM",
+    "XGBoost",
+    "Random Forest",
+    "Stacking ensemble (meta-learner: logistic regression)",
+    "Bootstrap",
+    "SHAP",
+    "PSM-DID",
+    "K-Means clustering",
+    "Pearson correlation",
+    "Linear interpolation"
+  ],
+  "key_techniques": [
+    "Feature engineering (lagged medal averages, host country indicators, athlete counts by sport)",
+    "5-fold and 10-fold cross-validation",
+    "Bootstrap confidence intervals",
+    "SHAP for model interpretability",
+    "Balance and sensitivity tests for PSM-DID",
+    "Trend line fitting to create binary investment indicator",
+    "Weighted features for first-time medal breakthrough sports",
+    "Pearson correlation heatmap for event impact"
+  ],
+  "why_it_won": "The paper combines a high-performing stacking ensemble (R²=0.88) with rigorous causal inference (PSM-DID) and interpretable machine learning (SHAP), addressing all problem dimensions comprehensively. It provides actionable strategic insights, such as specific countries for first medals and which nations would benefit from hiring great coaches, backed by robust validation. The clear structure, effective visualizations, and interdisciplinary approach (data science, economics, sports analytics) distinguish it as an outstanding entry.",
+  "section_highlights": "The paper opens with a summary flowchart that visually unifies all tasks, then proceeds in a logical task-by-task format, making complex methods easy to follow. Each model is explained with equations and justification, and results are immediately interpreted with practical implications. Visual aids like heatmaps, SHAP plots, and prediction tables are used strategically to enhance communication without clutter.",
+  "pitfalls_or_limitations": [
+    "The assumption that coaching effects remain constant over time simplifies real-world dynamics.",
+    "Linear interpolation to estimate 2028 athlete numbers may ignore nonlinear trends or shocks.",
+    "The PSM-DID model for great coach effect relies on a single coach intervention and may not generalize to other sports or contexts.",
+    "First-time medal predictions have accuracy around 70-88%, implying uncertainty remains significant.",
+    "The model does not account for geopolitical events that could alter participation (e.g., bans, boycotts)."
+  ],
+  "reusable_patterns": [
+    "Use lagged averages of past medals to capture momentum in sports forecasting.",
+    "Apply stacking ensemble of diverse base learners (tree-based, boosting, SVM) to improve prediction stability.",
+    "Quantify uncertainty with bootstrap prediction intervals for any forecast.",
+    "Adopt SHAP to interpret which features (e.g., specific sports) drive predictions for individual entities (countries).",
+    "Employ PSM-DID to isolate the causal effect of an intervention (e.g., coach arrival) in panel data.",
+    "Create binary indicators from trend slopes (e.g., participation growth) to capture qualitative shifts.",
+    "Use K-Means clustering to identify peer countries for comparative analysis and policy recommendations.",
+    "Combine Pearson correlation with SHAP to move from general associations to country-specific feature importance."
+  ]
+}

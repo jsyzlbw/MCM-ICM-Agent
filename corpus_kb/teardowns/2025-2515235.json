@@ -1,0 +1,51 @@
+{
+  "paper_id": "2025-2515235",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Predict each country's gold, silver, bronze, and total medal counts for the 2028 Olympics, evaluate the 'Great Coach' effect on performance, and provide strategic recommendations based on event type and quantity influences.",
+  "models_used": [
+    "Tobit regression with Mundlak correction",
+    "Hurdle model (binary choice + Poisson)",
+    "Dynamic Difference-in-Differences (event-study DID)",
+    "Inverse Probability Weighting (IPW)",
+    "Double Robust Estimator (DR)",
+    "SARIMAX",
+    "ARIMA",
+    "Logistic regression",
+    "Particle Swarm Optimization (PSO)"
+  ],
+  "key_techniques": [
+    "Handling truncated data via Tobit regression and Hurdle model",
+    "Mundlak correction for time-invariant country effects",
+    "Dynamic Difference-in-Differences with staggered treatment timing",
+    "Inverse Probability Weighting for covariate balance",
+    "Double Robust Estimator for treatment effect",
+    "Feature engineering of dynamic and constant country characteristics",
+    "Event count prediction using SARIMAX and ARIMA with host-country exogenous variables",
+    "Particle Swarm Optimization for model parameter tuning",
+    "Validation against 2024 data and accuracy reporting by medal-count groups",
+    "Sensitivity analysis via error in total medal count estimation",
+    "Sport Contribution Score (SCS) for event impact quantification"
+  ],
+  "why_it_won": "The paper seamlessly integrates econometric models for zero-inflated, truncated data with causal inference frameworks to isolate the 'Great Coach' effect. Rigorous validation, including separate accuracy measures for high- and low-medal countries and first-time medalists, demonstrates reliability. Comprehensive visualizations and sensitivity analyses reinforce the robustness of findings and actionable insights.",
+  "section_highlights": "Clear problem restatement and flowchart overview guide the reader. Model construction is logically justified (Tobit for truncation, Mundlak for unobserved heterogeneity, Hurdle for zero barrier) with explicit formulas. Results are presented with comparative tables, heatmaps, and line graphs that effectively communicate predictions, country progress, and coach effects.",
+  "pitfalls_or_limitations": [
+    "Assumes athletes active after 2020 are at peak performance",
+    "Cannot capture sudden external shocks (political bans, doping scandals)",
+    "Coach effect analysis is limited to selected sports and may suffer from selection bias",
+    "Merging historical countries (e.g., Soviet Union to Russia) may introduce inaccuracies",
+    "Predicting medals for zero-history countries relies on probability thresholds with limited observable data"
+  ],
+  "reusable_patterns": [
+    "Combine Tobit and Hurdle models to handle truncated and zero-inflated medal counts simultaneously",
+    "Apply Mundlak correction by including time-averaged covariates to control for unobserved heterogeneity",
+    "Use dynamic DID with event-study design for staggered interventions, reinforced with IPW and Double Robust estimation",
+    "Engineer separate dynamic (time-varying) and constant (time-invariant) country features",
+    "Validate model accuracy separately by medal tiers (≥10, <10, first-time) to highlight strengths and weaknesses",
+    "Predict future event counts with SARIMAX including host-country exogenous effects",
+    "Assess sensitivity by comparing aggregate predicted gold/silver/bronze against direct total medal prediction",
+    "Define a Sport Contribution Score (SCS) to quantify sport-specific impact and inform strategic recommendations",
+    "Visualize country performance changes over time using heatmaps and bar charts for clear communication"
+  ]
+}

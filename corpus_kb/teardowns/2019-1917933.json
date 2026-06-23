@@ -1,0 +1,50 @@
+{
+  "paper_id": "2019-1917933",
+  "year": 2019,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2019 MCM Problem A (continuous): the \"dragon\" problem. Given the dragons of Game of Thrones, the team had to model (a) the dragons' growth and caloric/energy requirements over their lifespan, (b) the land/ecosystem footprint needed to sustain them, (c) how different climates (temperature and arid/water-scarce environments) change those requirements, and (d) the level of human intervention (riders, security, food production) needed to keep three dragons in the modern world. The core challenge is quantifying a fictional creature with almost no hard data, so the entire approach rests on biological analogy to real animals plus scaling laws. Team 1917933, Outstanding award.",
+  "models_used": [
+    "von Bertalanffy growth equation reformulated for weight: W(t)=W_inf*(1-e^(-K(t+t0)))^3, fit so growth never reaches the asymptote within the 250-year lifespan to mimic indeterminate (limitless) growth",
+    "Allometric (Kleiber-style) metabolic scaling: BMR per unit mass proportional to M^(-1/4), giving total caloric need C(t)=k*W(t)^0.75; calibrated two ways (human anchor 65.3*M^0.75 vs blue-whale anchor 177.4*M^0.75) to bound the estimate",
+    "Cube-square scaling law for size estimation: length scales x, volume/weight scales x^3 (used to scale a crocodile/pterosaur/Komodo dragon up to Balerion's mass)",
+    "Harris-Benedict activity multipliers (1.2 sedentary to 1.9 extra-active) applied on top of BMR to convert basal needs to total daily energy expenditure",
+    "Apex-predator-per-biome carrying-capacity model: N = (W*1490)/A (sustainable calories/sq mi from a biome's apex predator), then land L = C(t)/N per biome (wolf, tiger, lynx, coyote, lion)",
+    "Metabolic-water / catabolism model for arid travel: borrowed g H2O per kJ of fat/protein oxidation from migratory-bird physiology, anchored to a Game-of-Thrones feeding scene (49.46 kg water from a human) to derive a 7.5-hour max waterless flight time",
+    "Logistic function with the activity-multiplier extremes (1.2x to 1.9x BMR) as horizontal asymptotes to map caloric demand vs temperature",
+    "Steady-state livestock-replacement model (no population-growth ODE needed): 1798x cows per dragon to hold a constant herd, plus a land/labor formula N=(A*Y)/(0.04*W*365) yielding ~61x+48 people for three dragons"
+  ],
+  "key_techniques": [
+    "Anchoring every fictional quantity to a real biological analog (crocodile/pterosaur/Komodo for size, blue whale for max-size metabolism, migratory birds for water, apex predators for land, cows for food) instead of inventing parameters",
+    "Bounding rather than point-estimating: deriving a plausible range (1.32 to 40.46 cows/day) then defending a middle value (3.6 cows/day) with a physical argument (heat-dissipation surface-area-vs-volume reasoning)",
+    "Cross-validation against in-universe canon events: checking the model against specific show scenes (S5E5 'don't want to overfeed them' human-feeding) to sanity-check calorie and water estimates",
+    "Explicitly rejecting an over-flexible model: declining a high-order polynomial fit to the growth points because it 'has no physical basis,' and rejecting a pure sigmoid because it imposes an asymptote the lore forbids",
+    "Inventing an intuitive unit ('cows per day') to make gargantuan calorie numbers human-readable and comparable",
+    "Calibration to a single observed data point when no dataset exists (the human-as-water-source scene becomes the anchor for the whole water model)",
+    "Per-section sensitivity analysis tied to the most fragile assumption (e.g., cubic sensitivity of weight to length, lynx territory range 196-642 cal/sq mi, activity-level swing of 216 sq mi)",
+    "Reframing modeling choices to dodend complexity: keeping the cow herd constant to avoid needing a population-growth model entirely"
+  ],
+  "why_it_won": "From a judge's perspective this paper wins because it turns a data-starved, whimsical prompt into a chain of defensible, physically-grounded sub-models, and it never lets the fantasy override the science. Every number is traceable to a real animal or a cited physiological study, so the work reads as biology applied to dragons rather than arbitrary fantasy math. It consistently does the thing judges reward: gives a range, then justifies a specific value within it with an independent physical argument (the 3.6 cows/day reconciliation via heat dissipation is a standout). It cross-checks its own outputs against canonical events in the source material, demonstrating self-criticism and validation. It picks the von Bertalanffy form for a principled lore-consistent reason (no true asymptote) and explicitly argues against the easier polynomial/sigmoid alternatives, showing modeling maturity. The voice is confident, witty, and engaging (the 'hard fantasy' opening, the cows unit, the letter to G.R.R.M.) without sacrificing rigor, which makes it memorable to tired judges. Finally it closes the loop on real-world relevance: the BMR-by-size method and the cow-per-human framing are pitched as conservation and sustainability tools, giving the whimsical problem genuine weight.",
+  "section_highlights": "The structure is textbook-strong and the writing is a major differentiator. A one-page Executive Summary states each sub-model and its punchline number up front (3.6 cows/day, 7.5 hr waterless flight, 61x+48 people). Every model section follows an identical, easy-to-grade skeleton: Defining the Problem -> Assumptions and Justifications (each assumption gets an explicit cited justification, never bare) -> Approach/derivation -> Sensitivity Analysis -> Strengths and Weaknesses -> Extensions. Equations are introduced with all variables defined immediately after. The global assumptions are factored out into their own section so they aren't repeated. The required deliverable, a Letter to G.R.R.M., is genuinely well-written: it restates findings as concrete writing recommendations (don't fly dragons >7.5 hr in arid zones; feed more in the cold North) and pivots to real-world conservation impact, ending on the memorable line that the cows we farm feed 'the dragons of our world: us.' The tone is playful but the rigor underneath is constant.",
+  "pitfalls_or_limitations": [
+    "The land model double-counts incorrectly: it assumes a dragon simply replaces the biome's apex predator, but the paper itself admits the dragon is an ADDITIONAL strain on the ecosystem rather than a substitute, so the sustainable-land numbers are systematically optimistic",
+    "Extreme parameter fragility: because weight scales as length cubed, the entire calorie/land chain inherits cubic sensitivity to a single eyeballed length estimate of Balerion (from 'teeth as long as longswords')",
+    "The whole water model hangs on one cherry-picked show scene (S5E5) and the assumption the dragon extracted 100% of a human's water at 100% efficiency, an acknowledged but uncorrected overestimate",
+    "Mixed/loose units and arithmetic in places (kJ vs kcal slippage in the metabolic-water calculation; some BMR coefficients like 65.3 vs 20.65 are used inconsistently between sections)",
+    "Hand-waving away dragon flight and physics via assumption rather than modeling it, which is defensible per the prompt but means lift/energetics of flight (a huge real caloric cost) are never actually computed",
+    "The temperature sub-model is barely developed: a logistic curve is asserted between two activity-multiplier asymptotes with no calibration data, making it the weakest quantitative section",
+    "Heavy reliance on non-peer-reviewed web sources (Yahoo Answers, hobbyist animal-fact sites, a BMR calculator webpage) for load-bearing parameters",
+    "Self-acknowledged scarcity of reliable data points means several curves are fit to as few as three anchor points (0, 1, and 220 years)"
+  ],
+  "reusable_patterns": [
+    "Analogy-anchoring framework: when a quantity is unmeasurable, explicitly name a real-world analog organism/system and inherit its empirical parameters, then state the analogy as a named, justified assumption",
+    "Bound-then-justify-a-point-value: compute a wide plausible range from first principles, then defend a single working value with an independent physical argument (surface-area vs volume, etc.) so reviewers see both rigor and a usable answer",
+    "Validate against the prompt's own narrative/data: harvest concrete events or figures embedded in the problem statement as free calibration/sanity-check points",
+    "The six-part section template (Define -> Assumptions+Justifications -> Approach -> Sensitivity -> Strengths/Weaknesses -> Extensions) applied uniformly to every sub-model for instant gradeability",
+    "Factor global assumptions into one shared section to keep per-model sections clean and avoid repetition",
+    "Invent a human-scale unit (cows/day) to communicate otherwise-incomprehensible magnitudes",
+    "Justify model-form selection by ruling out alternatives on principled grounds (reject polynomial = overfit/no physics; reject sigmoid = wrong asymptote behavior) rather than just presenting the chosen model",
+    "Avoid unnecessary machinery deliberately and say so (holding a livestock herd at steady state to eliminate the need for a population-growth ODE)",
+    "Use the required communication deliverable (the letter) to both restate results as actionable recommendations AND elevate the whimsical problem to real-world significance"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "paper_id": "2023-2315018",
+  "year": 2023,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2023 MCM Problem F policy: assess implications of switching the primary economic-health metric from GDP to Green GDP (GGDP). Four tasks: pick a GGDP calculation model with measurable climate-mitigation impact; estimate the global climate-mitigation effect of the switch; cost-benefit whether the switch is worthwhile globally; pick a country (they chose China) and analyze sector-level impacts plus a policy roadmap. A qualitative policy prompt the team forced into fully quantified, monetized form end to end.",
+  "models_used": [
+    "GGDP subtractive accounting model, GGDP equals GDP minus NRDC minus EDC, where NRDC is energy plus water plus soil depletion and EDC is industrial three-wastes treatment cost plus environmental protection inputs",
+    "Resource valuation sub-methods: energy price-index correction; water willingness-to-pay coefficient alpha piecewise in income; soil earnings-multiplier method on arable land with multiplier beta of sixteen",
+    "GGDP Index GI, the ratio of GGDP to GDP, for cross-country comparison",
+    "IEW-TOPSIS composite Climate Index from five indicators (forest area, renewable share, sea level, surface temperature, greenhouse-gas emissions) using Entropy Weight Method weighting plus TOPSIS relative-closeness scoring",
+    "Linear regression of CI on GGDP, goodness of fit R-squared near 0.987, used as the economics-to-climate transmission bridge",
+    "Counterfactual switch simulation assuming GGDP grows at the historical GDP growth rate; the gap between predicted and actual delta-CI yields the headline 31.57 percent slowdown in degradation",
+    "Cost-benefit model: Potential Upside (monetized climate benefit via the inverted regression) versus Potential Downside (GDP loss plus a multilateral resistance correction term P-t)",
+    "K-means clustering with four groups over 178 countries on GGDP-per-capita versus climate deterioration to predict national attitudes, plus a bespoke distance-out-of-the-red-region algorithm to monetize resistance",
+    "EPS Energy-Policy-Simulation system-dynamics model, China-adapted, for the case study over 2020 to 2050; outputs 1.89 million avoided premature deaths per year worth RMB 1.6 trillion via value of statistical life, plus RMB 2.9 trillion climate benefit",
+    "Sectoral environmental-cost ratio ECR across 26 Chinese sectors, finding the top four sectors account for 89.2 percent of environmental cost"
+  ],
+  "key_techniques": [
+    "Chaining models so each output feeds the next into one coherent pipeline rather than disconnected sub-answers",
+    "Monetizing normally-unquantifiable things such as diplomatic resistance and avoided deaths via value of statistical life, for a single dollar comparison",
+    "Using a regression as a transmission bridge between economics and a physical climate index, then inverting it to monetize climate change back into money",
+    "Objective Entropy Weight weighting instead of subjective AHP to pre-empt the where-did-the-weights-come-from critique",
+    "Counterfactual reasoning via one clean simplifying growth-rate assumption that makes the what-if computable",
+    "Clustering as political-economy segmentation, with named exemplar countries per group",
+    "Scaling from global to single-country using a real named tool (EPS) rather than a hand-rolled model",
+    "Repeated 178-country and over-90-percent-of-nations coverage framing as a robustness selling point"
+  ],
+  "why_it_won": "It converted a vague policy prompt into a fully quantified, end-to-end pipeline producing decisive headline numbers (31.57 percent degradation slowdown; RMB 1.6 and 2.9 trillion China benefits). It addressed every task explicitly and in order, with each model feeding the next so the cost-benefit verdict was earned, not asserted. It paired standard judge-recognized methods (entropy-weight TOPSIS, regression, K-means) with one memorable creative move the summary foregrounds: monetizing multilateral diplomatic resistance via clustering plus a distance-based algorithm. The China case study used a real, citable policy tool (EPS), and the deliverable letter to China's leader was tailored, on-prompt, and policy-literate. Broad coverage and an honest, specific weaknesses section signaled scientific maturity.",
+  "section_highlights": "The summary walks the four tasks in order and front-loads every headline number (over 90 percent of countries, 31.57 percent, 89.2 percent of cost in four sectors, RMB 1.6 and 2.9 trillion), giving a judge the whole story on one page. Two flowcharts make the model architecture legible at a glance. The CI regression with R-squared near 0.987 is showcased as the analytical centerpiece. Figure 8's K-means scatter with named countries (Qatar and Gulf states in the resistance cluster) makes an abstract concept concrete. The China section is a decade-by-decade policy schedule (2020 to 2030 carbon peak, 2030 to 2040 green urban and rural, 2040 to 2050 carbon neutral) with quantified targets (18 percent then 72 percent carbon-intensity cuts). The Strengths and Weaknesses section is specific and self-critical. It closes with a genre-appropriate non-technical memo addressed to the Leader of China.",
+  "pitfalls_or_limitations": [
+    "The core CI-GGDP regression treats correlation as a causal transmission mechanism; an R-squared near 0.987 on aggregated time-series almost certainly reflects shared monotonic time trends, not a real GGDP-to-climate causal lever",
+    "The assumption that GGDP grows at exactly the historical GDP growth rate essentially assumes the policy outcome to make the counterfactual computable, pre-baking the answer",
+    "Multilateral resistance monetization is admittedly subjective; the distance-out-of-the-red-region algorithm has no external validation, which the team itself flags",
+    "Embedded chart data look inconsistent or garbled in places (Figure 7 GGDP versus GDP delta-CI columns are nearly identical despite the 31.57 percent claim; Figure 12 shows identical values across all sectors), so the figures do not cleanly support the stated numbers",
+    "The assumption that all nations switch simultaneously within about one year is unrealistic for a treaty-level global change and used mainly for tractability",
+    "EPS model inputs come from heterogeneous studies with non-uniform assumptions, weakening the China benefit estimates",
+    "Valuation constants such as the soil multiplier beta of sixteen and the water alpha piecewise function are borrowed from single sources and applied globally with little sensitivity testing",
+    "The subtractive GGDP definition structurally excludes ecosystem-service value creation, a defensible but unexamined modeling bias"
+  ],
+  "reusable_patterns": [
+    "Pipeline skeleton for any should-we-adopt-policy-X problem: measurement model, then composite index, then regression bridge, then counterfactual, then monetized cost-benefit, then single-country deep-dive",
+    "Entropy-Weight plus TOPSIS as a go-to objective composite-index builder for heterogeneous indicators without subjective weights",
+    "Use a regression as a translation layer between two domains, then invert it to monetize the other domain",
+    "Make the unquantifiable quantifiable with a concrete proxy such as clustering distance or value of statistical life, a transparent monetization formula, and an honest caveat",
+    "K-means to segment actors into a small typology, then name real exemplars per cluster to make it tangible",
+    "Counterfactual via one clean simplifying assumption stated explicitly as a justified Assumption",
+    "Borrow a real named domain tool such as EPS for the case study instead of hand-rolling, for instant credibility and citable parameters",
+    "Summary-first writing that opens with all headline numbers in task order, plus delivering the required genre artifact such as a tailored leadership memo fully on-prompt",
+    "A specific, self-critical Strengths and Weaknesses section naming concrete failure modes rather than generic hedges"
+  ]
+}

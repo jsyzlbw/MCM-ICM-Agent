@@ -1,0 +1,59 @@
+{
+  "paper_id": "2008-3694",
+  "year": 2008,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2008 MCM Problem A (\"The Sea Level Problem\"): predict the consequences of the Greenland Ice Sheet melting over the next 50 years and assess the economic/human impact on Florida. This Outstanding paper builds a temperature-driven, physics-first sea-level-rise (SLR) model that couples (a) Greenland ice-sheet mass balance, (b) ocean thermal expansion, and (c) local trend correction, then feeds the resulting SLR into a raster-based GIS submersion simulation of Florida to count displaced population and submerged land area under three IPCC carbon-emission scenarios (IS92c/a/e, low/medium/high).",
+  "models_used": [
+    "1D heat equation (diffusion) for ice-sheet melting, solved analytically: steady-state + transient split U = Us + V, separation of variables, cosine Fourier series (first 100 terms), thermal diffusivity k=0.0104",
+    "Neumann boundary-value formulation of the heat equation: subtract steady-state Us(x)=Tl+(Ta-Tl)/S * x to get homogeneous BCs for the residual V, then root-find U(k,t)=0 for the melt depth k via MATLAB fzero",
+    "Sublimation mass-flux model from kinetic theory (Hertz-Knudsen form S0 = e_sat(T)*sqrt(Mw/(2 pi R T))) with Buck's saturation-vapor-pressure equation and a deposition factor d=0.01",
+    "Accumulation model: linear-in-time snowfall, empirical 0.30 m/yr (0.025 m/month) constant rate from Knight/Huybrechts",
+    "Mass-balance synthesis M = M_ac - M_ab = 0.025*LD - (h-k)*LD, converted to SLR via 360 Gt water = 1 mm rule",
+    "Thermal-expansion model: Wigley/Raper-style upwelling-diffusion reduced to single empirical relation dz = 6.89*dT*k^0.221 (cm)",
+    "Local-trend correction (localization): local(t) = normalized(t) + trend*(t-2008), with Florida historical rate sampled uniformly U(0.21,0.24) cm/yr to avoid double-counting global signal",
+    "EdGCM (NASA GISS-II based) Global Climate Model run by the team to generate global surface-air-temperature time series for three IPCC IS92 carbon forcings; downscaled to Greenland via dT_Greenland = 2.2*dT_global (Chylek et al)",
+    "Seasonal temperature synthesis: monthly forcing = annual mean + sinusoid -15*cos(pi*month/6) to impose seasonality",
+    "Archimedes' Principle calculation to justify neglecting floating Arctic sea ice (shows ~0.0015 mm, negligible)",
+    "Raster/GIS submersion model on a GTOPO30 1-arc-minute (~2 km) elevation matrix, refined in sensitive low areas with USGS NED data",
+    "Flood-fill / connected-components hydrological connectivity: iterative neighbor-growing of below-sea-level pixels connected to the Atlantic/Gulf, so landlocked low basins are NOT counted as submerged",
+    "City-impact overlay: nearest-grid-cell lookup of 24 Florida cities (lat/lon + Census 2000 population) to tally displaced population and submerged km^2 per decade"
+  ],
+  "key_techniques": [
+    "Single-driver reduction: deliberately collapsing every sub-model down to a function of temperature (and time) only, so the whole 50-year forecast is driven by one interpretable variable",
+    "Analytic PDE solution instead of finite-element/mesh: solving the heat equation in closed form (Fourier series) and only using numerics (fzero) for the final scalar root, keeping runtime tiny",
+    "Scenario engineering: generating their own controlled temperature data with EdGCM under three IPCC IS92 emission scenarios, enabling clean comparison of carbon policy effects",
+    "Order-of-magnitude pruning: using an Archimedes-principle back-of-envelope to formally justify discarding floating sea ice and Antarctica, focusing modeling effort on Greenland",
+    "Empirical bridging relations to import literature physics cheaply: Chylek's 2.2x Greenland/global ratio, Wigley's dz=6.89 dT k^0.221 thermal expansion, Buck's vapor-pressure equation",
+    "Double-counting avoidance in the localization step (normalize global signal before adding local trend) with uncertainty injected via uniform random sampling of the Florida historical rate",
+    "Verification by extreme-case stress tests of the GIS engine at 0 m, 10 m (~all-Greenland-melt), and 100 m SLR to confirm physically sensible behavior before trusting decade outputs",
+    "Connectivity-aware submersion (flood-fill from the ocean) to avoid the classic 'bathtub' GIS error of flooding disconnected interior depressions",
+    "End-to-end pipeline from carbon emissions -> GCM temperature -> ice physics + thermal expansion -> local SLR -> raster submersion -> population/economic impact -> policy recommendation"
+  ],
+  "why_it_won": "\"From a judge's view, this paper wins because it does real, defensible physics end-to-end while staying computationally lean and self-aware. It (1) derives rather than asserts: the heat equation is solved analytically with shown Fourier coefficients, and even the decision to ignore sea ice/Antarctica is backed by an Archimedes calculation, so a judge sees a team that earns each simplification; (2) builds an actually-runnable, reproducible system (four MATLAB appendices: SLR solver, raster builder, flood-fill submersion, city data) that produced concrete, validated numbers; (3) validates against authority - the 50-year projection lands within 10 cm of IPCC/NRC/EPA estimates and the GIS engine passes 0/10/100 m sanity checks; (4) closes the loop to decision-making with a real cost-benefit (a ~$264k Miami Beach sand-wall vs. flood damage) and a policy conclusion that low emissions measurably slow SLR; and (5) is honest about its own weaknesses (temperature-sensitivity, homogeneity assumptions, no economics) without undermining confidence. It hits the MCM trifecta: rigorous modeling, working computation, and a clear answer to the question asked.\"",
+  "section_highlights": "\"Structure follows the canonical MCM arc and uses it well. The Introduction front-loads the Archimedes sea-ice calculation, which immediately signals analytical maturity and scopes the problem to Greenland. An explicit Assumptions list (5 numbered, each with a physical justification - permafrost base => convection-only, steady-state linear temperature => solvable Neumann problem, sublimation/melting temporally isolated => separable) makes every later simplification traceable. A clean flow diagram (Figure 1) maps the whole pipeline carbon->GCM->mass balance/thermal expansion->local trend->SLR->submersion->recommendations, so the reader holds the architecture before the math. The Methods section derives the heat-equation solution step by step (Us, V, a0, an, the 100-term series, the fzero root for melt depth). Results are tabulated per decade per scenario (Table 1) plus per-city displacement tables, and crucially include the 0/10/100 m verification figures. Discussion explicitly compares to IPCC/NRC/EPA and devotes real space to limitations. Recommendations are concrete and costed (sand wall numbers, Key Largo/Miami Beach named as priority buffer zones). All four code appendices are included for reproducibility.\"",
+  "pitfalls_or_limitations": [
+    "Geometry is grossly simplified: Greenland is a homogeneous rectangular box with spatially uniform surface temperature; no spatial variation, no real topography, no ice dynamics (calving, glacier flow) - the authors concede a true 3D energy-mass-balance grid was infeasible",
+    "A clear numerical/physical error slips through: the computed ice-sheet height h = Vol/Area = 2.6e6 km^3 / 1.736e6 km^2 is written as '1498 km' (should be ~1.5 km / 1498 m); the code correctly uses h=1498 m, but the paper text shows km - a units slip a sharp judge would catch",
+    "Total temperature-sensitivity: every downstream result depends on the EdGCM/IS92 temperature input, and the unknown melt depth sits inside a Fourier series, so the SLR-vs-temperature dependence cannot be obtained in closed form and can't be cleanly differentiated/analyzed - the authors flag this as the model's main weakness",
+    "EdGCM is an educational low-fidelity GCM; using it as the sole forcing source limits credibility of the absolute temperature trajectories",
+    "Population model is coarse: metro-area population is lumped into a single principal-city grid cell, so a whole metro 'displaces' in one binary step when its center cell floods - this produces stair-step, all-or-nothing displacement counts rather than a continuous population surface",
+    "Economic analysis is thin: only a single sand-wall cost estimate; no quantification of erosion, saltwater intrusion, shoreline retreat, or land value, all acknowledged as out of scope",
+    "Localization uses Florida-averaged historical rates and assumes past local trends simply continue, which may not hold over 50 years",
+    "Deposition factor d=0.01 and the seasonal sinusoid amplitude (-15*cos) are somewhat ad hoc / lightly justified",
+    "Vertical resolution mismatch: GTOPO30 vertical accuracy and Florida NED mean error (+/-4.3 ft) are comparable to the sub-meter SLR being modeled in early decades, so early-decade submersion signals are near the noise floor"
+  ],
+  "reusable_patterns": [
+    "Reduce a multi-physics problem to a single interpretable driver (here: temperature), then justify each dropped term explicitly - makes the model both analyzable and defensible",
+    "Use a back-of-the-envelope (Archimedes / order-of-magnitude) calculation early to formally eliminate tempting-but-negligible factors, and put it in the paper to show rigor",
+    "Prefer an analytic PDE solution (steady-state + Fourier-series transient) and reserve numerics for a single scalar root - keeps runtime small and the derivation auditable; pattern: split BVP into easy steady state plus homogeneous-BC residual",
+    "Import expensive literature physics via cheap empirical bridging relations (downscaling ratio, single-equation thermal expansion, Buck's equation) rather than re-deriving everything",
+    "Scenario-driven forecasting: run low/medium/high input scenarios (IPCC IS92) to turn a point forecast into a policy-comparison tool and a natural sensitivity analysis",
+    "Validate a simulation engine with extreme/known cases (0, full-melt, absurdly large) BEFORE trusting its nuanced outputs",
+    "For any flooding/inundation problem, use ocean-connected flood-fill (connected components) instead of a naive elevation threshold to avoid spuriously flooding interior basins - directly reusable for coastal/hydrology problems",
+    "Couple a quantitative core model to a GIS raster overlay (elevation grid + city/population point data) to translate an abstract scalar (SLR) into human-impact metrics judges care about",
+    "Inject input uncertainty with a uniform-random parameter (here Florida rate U(0.21,0.24)) so the model naturally produces a band rather than a single line",
+    "Always close the loop to a costed, named, actionable recommendation (specific cities, specific structure, specific dollar figure) and ship runnable code appendices for reproducibility",
+    "Pair every simplifying assumption with a one-line physical reason in a numbered Assumptions list - cheap to write, high credibility payoff"
+  ]
+}

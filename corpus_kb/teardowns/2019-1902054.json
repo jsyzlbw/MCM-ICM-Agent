@@ -1,0 +1,48 @@
+{
+  "paper_id": "2019-1902054",
+  "year": 2019,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2019 MCM/ICM Problem E (sustainability): \"What is the Cost of Environmental Degradation?\" The task is to build a model that measures the true economic cost of land-use projects by quantifying their impact on ecosystem services (the benefits humans derive from functioning ecosystems), and to apply it across different land-use scenarios. This paper (2019-1902054, Outstanding award) frames the problem as monetizing ecological-service value before and after a project, decomposing land value into an original ecological-value term plus a project-impact term, and tests it on three contrasting Chinese cases: Kubuqi Desert greening (remediation), China Baowu Steel Group (pollution), and Wolong National Nature Reserve (preservation/improvement).",
+  "models_used": [
+    "Additive value decomposition: V(A) = E(A) + I(A), splitting total land value into original ecological value E and project influence I, both as functions of area A",
+    "Coefficient-set valuation for E(A) = (sum of alpha_i) * A_0, where each alpha_i is a per-unit-area monetary coefficient for one ecological service category (can be positive or negative)",
+    "Millennium Ecosystem Assessment (MA) taxonomy used to structure the coefficient set into four service categories: provisioning, regulating, cultural, supporting services across air/water/land media",
+    "Logistic (Verhulst) growth ODE for project impact: dI/dA = C0 * I * (1 - I/K), solved analytically by separation of variables / partial fractions to I(A) = K / (K * e^(-C0*A) + 1)",
+    "Carrying-capacity interpretation of K: sign of K classifies project type (K>0 improves, K=0 neutral, K<0 pollutes), magnitude is max achievable value change; C0 controls per-area impact rate",
+    "Classification taxonomy of land-use projects by combining sign of E (positive/negative initial system) with sign of K (six qualitative project archetypes)",
+    "Cost-benefit analysis layer added in the Kubuqi case: Net(A) = E + I - cost C(A) - benefit terms, with linear cost C(A) = -800 - 0.5A and linear income B(A) = 0.2A, used to find break-even and value-maximizing area"
+  ],
+  "key_techniques": [
+    "Reusing the logistic/Verhulst model in a non-population context: area A replaces time as the independent variable, and 'value impact' replaces population, giving a saturating impact curve with a tipping point",
+    "Full analytical derivation of the logistic solution shown step-by-step (separation of variables, partial fractions 1/I + 1/(K-I), integration, exponential rearrangement) rather than just citing the closed form",
+    "Sign-of-coefficient framework that lets a single equation represent improvement, pollution, and neutrality by flipping signs of E-sum and K",
+    "Anchoring abstract coefficients to an authoritative standard (the UN Millennium Ecosystem Assessment) for credibility and to organize the four service categories",
+    "Three deliberately contrasting case studies chosen to exercise each model regime: negative-E/positive-K (desert remediation), positive-E/negative-K (steel pollution), positive-E/positive-K (nature reserve)",
+    "Extracting model parameters (area, coefficient sum, K, C0) directly from real reported figures and news/journal sources for each case",
+    "Identifying and reporting decision-relevant outputs: the break-even area (V=0 at ~2091 km^2), the value-saturation area (~4500 km^2), and the cost-benefit-optimal area (~5980 km^2) for Kubuqi",
+    "Self-critique that names the uniformity assumption as the key weakness and proposes a fix (partition area into homogeneous sub-regions and sum sectional models)"
+  ],
+  "why_it_won": "\"From a judge's perspective, the paper wins on conceptual clarity and a clean, defensible modeling spine rather than on heavy computation. It gives a single, interpretable master equation V(A) = sum(alpha_i)*A_0 + K/(K*e^(-C0*A)+1) whose every term and sign has a concrete ecological meaning, and it shows the full logistic derivation so the math is transparent and verifiable. The borrowing of the Verhulst logistic model to capture 'accumulating-but-saturating' ecological impact is a genuinely elegant modeling choice that matches the qualitative physics (initial impacts compound, then carrying capacity caps them) and yields an interpretable tipping point that is directly useful to planners. The three contrasting real-world cases (greening, steel, panda reserve) demonstrate the model's generality and that its outputs agree with reality (steel value falls with area; reserve stays neutral; desert flips from deficit to surplus). The Kubuqi cost-benefit extension turns the abstract value model into an actionable recommendation (an optimal greening area), which is exactly the practical, decision-oriented framing Problem E rewards. Finally, it is honest about limitations and proposes a concrete improvement, which judges read as modeling maturity.\"",
+  "section_highlights": "\"Strong structure: a results-first Summary Sheet and Abstract that state the framework, the three cases, and the key finding up front. Section 4 ('The model') is the backbone — it builds V = E + I, defines the coefficient-set E, then derives the logistic I from ODE to closed form with every intermediate step shown, ending in one master equation. Section 5 grounds the coefficients in the MA four-category taxonomy. Section 6 is a clever bridge: a 2x3 classification of project types (sign of E times sign of K) with two illustrative charts (Figures 1-2) showing how value trajectories diverge, which makes the model's flexibility visible before any case is run. Section 7's three case studies are the proof, each with a fitted equation and a plotted value-vs-area curve; the Kubuqi case is the richest, layering cost C(A) and benefit B(A) onto the value model and producing break-even/optimum areas plus a cost-benefit stacked-bar visualization. Section 8 cleanly states what works, names the uniformity assumption as the central limitation, and proposes the sectional-summation fix. The narrative consistently pairs each equation with a real place and a plain-English interpretation.\"",
+  "pitfalls_or_limitations": [
+    "Parameters are essentially asserted, not estimated: coefficient sums (-0.8, 1, 5000, etc.), K, and C0 are hand-picked to make plots 'look right' with no fitting, sensitivity analysis, or data calibration — the quantitative results are illustrative, not validated",
+    "Dimensional/units inconsistency: alpha_i is 'monetary value per unit area' yet E(A) = sum(alpha_i)*A_0 multiplies by area while V also adds I which has different scaling; the monetary units of K, C0, and the coefficients are never reconciled",
+    "Using area A as the logistic independent variable is conceptually shaky — impact accumulating along area (not time or intensity) is asserted rather than justified, and conflates 'how much land' with 'how much damage per land'",
+    "Equation/figure mismatches and likely typos: e.g. case 3 equation (16) has e^(1*A) which would explode, and several embedded chart data tables (Figures 4, 5, 10) do not cleanly correspond to the stated equations",
+    "The four MA service categories are described qualitatively but never actually decomposed into separate numeric alpha_i values in any case — the rich taxonomy is decorative rather than operational",
+    "The uniform-value-across-area assumption (acknowledged) makes the model unrealistic for heterogeneous real land; the proposed sectional fix is never implemented",
+    "No uncertainty, no error bars, no comparison against any baseline valuation method (e.g. real ecosystem-service-value literature dollar figures), so accuracy claims are unsupported"
+  ],
+  "reusable_patterns": [
+    "Additive value decomposition V = baseline + intervention-impact (E + I) as a clean way to separate 'status quo' from 'project effect' in any cost/value modeling problem",
+    "Repurposing the logistic/Verhulst saturating-growth model whenever a quantity accumulates from compounding effects but is bounded by a carrying capacity — gives an interpretable tipping point and saturation level for free",
+    "Encoding scenario type into the SIGN of model parameters (E-sum sign for initial state, K sign for direction of change) so one equation covers improvement/neutral/harm without separate models",
+    "Building a 2-axis classification matrix of cases (here sign of E vs sign of K) to demonstrate model generality and pick contrasting case studies that each exercise a different regime",
+    "Choosing 3 deliberately contrasting real-world cases that span the model's regimes and showing outputs 'agree with reality' as informal validation",
+    "Layering a cost-benefit module (linear C(A), B(A)) on top of a value model to convert descriptive output into an actionable optimum (break-even and value-maximizing decision variable)",
+    "Anchoring subjective coefficients to an authoritative framework (UN Millennium Ecosystem Assessment categories) to give soft parameters credibility and organization",
+    "Showing the full ODE-to-closed-form derivation (separation of variables + partial fractions) to make the math auditable, then closing with one consolidated master equation",
+    "Honest limitations section that names the single most fragile assumption (spatial uniformity) and proposes a concrete generalization (partition into homogeneous sub-regions and sum), signaling modeling maturity to judges"
+  ]
+}

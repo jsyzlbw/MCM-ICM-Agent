@@ -1,0 +1,52 @@
+{
+  "paper_id": "2023-2305794",
+  "year": 2023,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2023 MCM/ICM Problem F (policy): evaluate the global impact of replacing GDP with Green GDP (GGDP) as the primary economic indicator, assess the effect on climate mitigation, weigh the benefits vs. downsides, and advise one country (the team chose Peru, a copper-mining economy) on whether to make the shift. This O-award paper (\"Beyond GDP: Green GDP Revolution\") is structured around four tasks: (1) define a GGDP accounting formula and forecast global GGDP to 2050; (2) build an evaluation model for climate-mitigation impact; (3) quantify upsides/downsides across industries; (4) a Peru case study with a game-theoretic recommendation.",
+  "models_used": [
+    "GGDP accounting formula based on Adjusted Net Income / 'Adjusting GDP for environmental damage' (ANI): GGDP = GDP - c(CO2) - c(Ele) - c(Wa) - c(RD), deducting four environmental-damage terms (carbon emissions x carbon price, energy/thermal-power pollution, waste-disposal opportunity cost, natural resource depletion as % of GNI)",
+    "'Ratio Life Cycle Law / Curve' — an original construct: the GGDP/GDP ratio follows an S-shaped three-stage life cycle (initial / growth / maturity) approaching a slowly rising theoretical upper limit; used to classify countries and drive forecasting",
+    "Time-series forecasting: GDP forecast then multiplied by the life-cycle ratio to project GGDP to 2050; ARIMA used to build a counterfactual 'natural growth' GGDP (G) to isolate the policy treatment effect ΔG = Ĝ - G",
+    "AHP (Analytic Hierarchy Process) indicator system for climate mitigation: 6 first-level + 15 second-level indicators, with pairwise comparison matrix, eigenvalue/eigenvector weights, and consistency test (CI, CR = 0.044 < 0.1, RI = 1.26 for n=6)",
+    "Entropy Weight Method (EWM) for objective weighting of second-level indicators (entropy E_i -> weight w_i)",
+    "Group Decision Method (GDM) for subjective expert weighting of first-level factors",
+    "Combined subjective+objective weighting via Minimum Relative Information Entropy optimization, solved with Lagrange multipliers (w_j proportional to sqrt(alpha_j * beta_j))",
+    "Nonlinear Programming Model of Production Factors Flow: maximize total output across 6 industries (3 'sunset' + 3 'sunrise') subject to capital/labor flow constraints, with Cobb-Douglas ('Douglas') production function Q = A*K^alpha*L^beta; iterative year-by-year solve over a 10-year horizon",
+    "Game theory for Peru-Chile copper duopoly: Cournot duopoly equilibrium (q* = (a-c)/3) for the complete-information static game, and a Supergame / repeated-game model with discount/time factors (mu_c, mu_d) yielding the cooperation condition pi_c/(1-mu_c) >= pi_d - F + mu_d*pi_p/(1-mu_d)"
+  ],
+  "key_techniques": [
+    "Counterfactual isolation of a policy 'treatment effect' (ΔG = Ĝ - G) by differencing a policy-shock forecast against an ARIMA natural-growth baseline — a clean causal-style framing for a vague policy question",
+    "Decomposing the aggregate treatment effect ΔG evenly across the four environmental-damage components to back out concrete physical quantities (CO2 reduction, TWh saved, waste reduction, resource savings) that feed the AHP indicators",
+    "Coupling models so outputs cascade: GGDP forecast -> ΔG -> climate AHP scores AND -> capital flow driver in the nonlinear program — one quantity (ΔG) ties three tasks together",
+    "Hybrid subjective+objective weighting (EWM + GDM combined via minimum-relative-entropy optimization) to defend against the 'AHP is too subjective' critique",
+    "Sunset/sunrise industry framing to make an abstract structural-transition question tractable as a 3x3 factor-flow optimization",
+    "Branching the game analysis on the opponent's type ('Rational Chile' static game vs. 'Brave Chile' supergame) to cover strategic uncertainty",
+    "Consistency test reported explicitly (CR = 0.044) to certify the AHP comparison matrix",
+    "Sensitivity analysis on the two estimated NLP parameters (lambda labor-fluctuation, eta total capital flow) showing monotone, logical response"
+  ],
+  "why_it_won": "\"From a judge's view it wins on coverage, coupling, and concreteness. It answers every sub-task of a deliberately open-ended policy prompt with a distinct, named model rather than hand-waving, and—crucially—the models are interlocked (the single quantity ΔG flows from the GGDP forecast into both the climate-AHP evaluation and the industry-flow optimization), giving the paper the 'coupled system' feel judges reward. It converts a fuzzy 'what is the impact' question into hard, decision-relevant numbers (26.6% CO2 cut, 49.7% NOx cut, 44% climate-score gain, specific TWh/tonnes saved) and isolates the policy effect cleanly via an ARIMA counterfactual. It defends its weakest methodological point (AHP subjectivity) by fusing EWM+GDM through an entropy-optimization, signaling methodological self-awareness. The original 'Ratio Life Cycle Law' is a memorable, named contribution that gives the whole paper a narrative spine and a reusable forecasting device. The Peru case study escalates from a static Cournot duopoly to a repeated supergame, producing a nuanced, non-obvious recommendation (shift cautiously, don't reveal position first, ally with Chile) that reads like genuine policy advice, capped by a plain-language report to Peru's leaders.\"",
+  "section_highlights": "\"Strong: (1) The framework flowchart (Figure 1) up front maps every task to its model and shows the data flow between them — judges grasp the whole architecture in one glance. (2) The 'Ratio Life Cycle' section is the standout — a clearly-named original construct with a clean three-stage story (initial/growth/maturity), an upper-limit assumption, and a directly actionable 3-step forecasting procedure. (3) The treatment-effect logic (Eq. 11, ΔG = Ĝ - G) is explained crisply and then reused as connective tissue. (4) Results are quantified and benchmarked against an external authority (IPCC 1.5°C target), lending credibility. (5) The Peru section is well-narrativized ('How Peru Survives The Shift'), escalating Cournot -> supergame, and ends with an Appendix 'Report to the leaders of Peru' that satisfies the policy-advice deliverable in accessible prose. Standard-but-solid: explicit notation tables, named data sources (World Bank, OECD, UN, BEA), a three-step data-cleaning description, AHP consistency test, and a parameter sensitivity analysis.\"",
+  "pitfalls_or_limitations": [
+    "The 'Ratio Life Cycle Law' is asserted from the mean curve of just 10 hand-picked high-ratio countries, not statistically fit or validated — it is a stylized narrative dressed as a law, and the same upper-limit/three-stage shape is imposed on all countries",
+    "Selection bias: global conclusions are extrapolated from the 10 countries with the highest GGDP/GDP ratio, which the team admits but does not correct for",
+    "Evenly distributing ΔG across the four environmental-damage components is an arbitrary modeling choice with no justification; the headline per-component numbers (CO2, waste, resources) inherit this arbitrariness",
+    "Internal inconsistencies and sloppiness: CO2 reduction quoted as both 26.61% (summary) and 27.61% (body); the summary states 'GGDP will reach 144 billion $ in 2050' while figures are in trillions; typos ('qw', 'Socsail', 'varieble'); the supergame text says 'Chile chooses to cooperate with Chile' (should be Peru); Eqs. 13/14 both labeled 'cooperation'",
+    "The nonlinear program's headline claims are weakly evidenced: it asserts output eventually 'exceeds the reference line' from a 10-year solve whose own chart barely crosses it, and the figure data tables look schematic/illustrative rather than genuine solver output",
+    "Sensitivity analysis is thin — only two parameters varied, and the eta-sensitivity chart shows literally no change across 0.9-1.5x, which is suspicious rather than reassuring",
+    "Many indicators (public environmental awareness 'reflected through questionnaires', carbon-capture capacity, building energy efficiency) lack stated data sources, undermining the 'data-driven' claim",
+    "The Douglas/Cobb-Douglas parameters are fit from only the last 5 years per industry, a very short window for a 10-year structural-transition projection",
+    "Causal language ('the shift will reduce CO2 by X') overstates what a correlational ratio-times-GDP forecast can support"
+  ],
+  "reusable_patterns": [
+    "Treatment-effect-by-counterfactual: for any 'impact of policy X' prompt, build a with-policy forecast and a no-policy baseline (e.g., ARIMA) and difference them; the gap IS your impact metric and can be decomposed downstream",
+    "One connective quantity that threads all tasks: design the modeling so a single derived value (here ΔG) is both an output of an early task and an input to later tasks — produces the 'coupled models' quality judges reward",
+    "Hybrid weighting to neutralize the subjectivity critique: combine an objective weight (EWM) and a subjective weight (AHP/GDM) via a minimum-relative-entropy / geometric-mean fusion, and report the AHP consistency ratio explicitly",
+    "Name your construct: coining a memorable label (e.g., 'Ratio Life Cycle Law', 'sunset/sunrise industries') gives the paper a narrative identity and makes the contribution quotable in the summary and abstract",
+    "Lifecycle/stage classification as a forecasting engine: bin entities into a few stages with stage-specific dynamics, then forecast by stage and stage-transition — a lightweight alternative to fitting one global model",
+    "Structural-transition-as-flow-optimization: model an economy-wide shift as capital/labor flowing between a small set of 'losing' and 'gaining' sectors, with a Cobb-Douglas objective and flow constraints solved iteratively year by year",
+    "Branch strategic analysis on opponent type: present a simple equilibrium (Cournot) for the complete-information case, then escalate to a repeated/supergame to capture trust and information asymmetry — richer and more defensible than one game",
+    "Front-load a task->model->data flowchart and close the country case with a plain-language 'letter to leaders' appendix to directly satisfy a policy-advice deliverable",
+    "Anchor quantitative results to an external authoritative benchmark (IPCC 1.5°C) to borrow credibility for your projections"
+  ]
+}

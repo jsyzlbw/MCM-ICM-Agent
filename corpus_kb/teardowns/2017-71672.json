@@ -1,0 +1,44 @@
+{
+  "paper_id": "2017-71672",
+  "year": 2017,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2017 MCM/ICM Problem E (sustainability) asked teams to design 30-year \"smart growth\" plans for two cities and to define a metric measuring how well a plan embodies smart growth, applying it to current vs. proposed plans and stress-testing against a hypothetical 50% population increase. Team 71672 chose Boulder, CO (USA) and Canberra, ACT (Australia), built a single quantitative success metric from the EPA's 10 smart-growth principles, scored each city's current plan, designed 5 concrete initiatives per city, re-scored, and assessed robustness to 50% growth.",
+  "models_used": [
+    "Composite scoring metric built on the EPA's 10 smart-growth principles, with one sub-metric defined per principle (ratios, percentages, or subjective 0-1 ratings)",
+    "van Rijsbergen information-retrieval effectiveness measure E = 1 - 1/(alpha/P + (1-alpha)/R), repurposed as a harmonic-mean combiner S_{a,b} = 2/(1/a + 1/b) with alpha=0.5 to fuse correlated principle pairs",
+    "Pairwise correlation grouping of principles (1&4 mixed-use/walkability, 2&8 compactness/transit, 5&7 neighborhood character/redevelopment, 9&10 development decisions/community engagement)",
+    "Normalized aggregate success level L = S_tot / S_opt, comparing summed score against an 'optimal achievable' reference (S_opt = 4.1875)",
+    "One-at-a-time sensitivity / marginal-contribution analysis (delta-L per individual initiative) used to rank the 5 initiatives per city",
+    "Scenario / stress test: re-running the plan logic under a hypothetical 50% population increase vs. projected ~21-25% growth"
+  ],
+  "key_techniques": [
+    "Operationalizing a qualitative policy framework (10 EPA principles) into computable per-principle metrics tied to publicly available census/city-plan data",
+    "Borrowing the harmonic-mean structure of van Rijsbergen's E-measure to combine two interacting sub-metrics so a low value in either drags the pair down (penalizes imbalance, like an F-score)",
+    "Setting explicit 'optimal achievable' target values per principle (e.g., 0.15 mixed-use land ratio, 0.25 walk-to-work share, 0.75 open-space ratio) to normalize heterogeneous units onto a 0-1 success scale",
+    "Explicit correlation pairing to avoid double-counting related principles and to justify the fusion step",
+    "Marginal contribution table (delta-L) that surfaces counterintuitive results - e.g., mixed-use rezoning (A) and residential redevelopment (B) score NEGATIVE in Boulder because they erode neighborhood-character sub-metrics",
+    "Two-city contrast (one US, one Australian) to demonstrate the metric generalizes across very different urban contexts"
+  ],
+  "why_it_won": "\"From a judge's perspective the paper wins on a clean, defensible, and reproducible answer to the hardest part of Problem E: it actually DEFINES a smart-growth metric instead of hand-waving. The metric is grounded in an authoritative external framework (EPA's 10 principles), each sub-metric is explicitly tied to obtainable data with a stated optimal target, and the aggregation uses a recognizable, citable mathematical object (van Rijsbergen's effectiveness measure) rather than an arbitrary weighted sum. The team then closes the full loop the prompt demands - score current plan, propose concrete initiatives, re-score, rank initiatives by marginal effect, and stress-test 50% growth - so every sub-question is answered with numbers. The delta-L sensitivity table is the standout: it produces a genuinely interesting, non-obvious finding (some 'good' smart-growth moves lower the score by hurting neighborhood character), which shows the model can generate insight, not just a number. Honest, specific discussion of weaknesses (equal weighting, subjectivity) signals modeling maturity judges reward.\"",
+  "section_highlights": "\"Section 2 (A Metric for Smart Growth) is the strongest section and the paper's spine: it walks all 10 principles one-by-one, states the chosen sub-metric, the data source, and the optimal value, then derives the fusion formula and the normalized L. The per-city sections (3-4) mirror this same 10-point structure for current and proposed plans, giving the reader a consistent, scannable template. Five summary tables (Tables 1-4 = metric vectors per plan; Table 5 = delta-L per initiative) make every claim checkable at a glance and let the reader see scores move from current to proposed (Boulder 0.7753 to 0.8338; Canberra 0.5882 to 0.7443). The Comparing Initiatives subsection turns Table 5 into a ranked narrative (E>C>D>A>B for Boulder). The Strengths/Weaknesses section is candid and specific. Real, cited sources (20 references incl. actual city comprehensive plans and census travel-to-work data) anchor every number.\"",
+  "pitfalls_or_limitations": [
+    "Equal weighting of the four fused pairs plus two standalone metrics is arbitrary and, as the team admits, makes community-engagement weigh as heavily as mixed-use land or transit - distorting which initiatives 'win'",
+    "Several sub-metrics (P5 neighborhood character, P7 redevelopment, P9 development decisions) are subjective 0-1 ratings read off plan wording, so scores hinge on the team's interpretation and aren't reproducible by another team",
+    "'Optimal achievable' target values (0.15, 0.25, 0.75, S_opt=4.1875) are asserted from the two studied cities with weak justification, making L sensitive to those anchors",
+    "Sample size of two cities; the metric is calibrated on the same cities it evaluates, risking circularity",
+    "The harmonic-mean fusion is applied to only 4 of 10 principles with thinly justified pairings; principles 3 and 6 are summed raw, mixing two aggregation logics inconsistently",
+    "The 50% growth stress test is qualitative/narrative, not re-computed through the metric - the plans are declared 'inefficient' for 50% growth without a quantified L under that scenario",
+    "Proxy validity is shaky in places (e.g., population density / 2000 as a compactness measure; counting 'unique ways to give feedback' / 12 as community engagement)"
+  ],
+  "reusable_patterns": [
+    "Anchor a custom metric to an authoritative external framework (here EPA's 10 principles) so the scoring scheme is defensible rather than invented from scratch",
+    "Per-criterion table template: criterion -> chosen quantitative proxy -> data source -> optimal target value -> normalized score; repeat identically for baseline and proposed scenarios",
+    "Reuse a citable mathematical object (van Rijsbergen / F-measure-style harmonic mean) to combine interacting sub-metrics so imbalance is penalized; cite the source to add credibility",
+    "Normalize a heterogeneous sum against an 'optimal' reference to get a single interpretable 0-1 score (L = S_tot/S_opt)",
+    "Marginal-contribution / one-at-a-time delta tables to rank interventions and surface counterintuitive trade-offs - powerful for the 'recommend and prioritize' part of any policy problem",
+    "Close the full prompt loop: baseline score -> intervention -> re-score -> rank -> stress-test, so every sub-question maps to a number",
+    "Write an explicit, specific Strengths & Weaknesses section naming the exact modeling choices (equal weighting, subjectivity, anchor values) that could bias results - this reads as maturity to judges",
+    "Pick two deliberately contrasting cases (different countries/contexts) to demonstrate generalizability of the same metric"
+  ]
+}

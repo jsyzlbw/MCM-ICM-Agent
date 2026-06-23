@@ -1,0 +1,53 @@
+{
+  "paper_id": "2023-2320131",
+  "year": 2023,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2023 MCM/ICM Problem E (sustainability/environmental, \"Light Pollution\"). The team had to (1) build a broadly applicable metric to measure the light-pollution risk level of a location, (2) apply it to four location types (protected land, rural, suburban, urban), (3) propose intervention strategies, and (4) evaluate/select strategies for a chosen region. The team picked Saskatoon, Canada as the test bed, built a grid-based \"Light Pollution Risk Index\" (LPRI) model with spatial spillover, and compared three intervention strategies. Also produced a promotional flyer (\"Restore the Starry Sky\").",
+  "models_used": [
+    "Rasterization / grid method: divided each region into a 2D grid of typed cells (commercial, residential, industrial, depopulated) per the city planning map",
+    "Logistic / Volterra-type ODE for 'light damage degree' p: dp/dL = L(1 - L/N) + alpha*L + beta*L, with alpha (chromaticity) and beta (strobe) correction factors estimated per region type",
+    "Brightness Balance Index cr = (L - Lmin)/Lmax to capture spatial luminance contrast/uniformity",
+    "Illumination-time index t via a 3-way threshold scoring table (>=12h ->1, 8-12h ->0.67, <8h ->0.33)",
+    "Entropy Weight Method (EWM) to objectively weight the three sub-indicators into a narrow composite LPI* (weights came out 85.73% damage, 4.82% balance, 9.45% time)",
+    "2D convolution with a 3x3 spatial kernel (center factor CF + neighbor light-pollution coefficients LF) to model inter-grid light spillover, producing the spatial LPI'",
+    "Cobb-Douglas-style coupled light-economy production function EI = c*K^(1-a)*L^a - r*LPI, parameters fit by maximum likelihood in MATLAB",
+    "Gleason ecological diversity D = S/ln A as a baseline, modulated by a logistic suppression curve BDI = B0 - B0/(1+e^(-10*LPI+6.5))",
+    "Linear human-health index HHI = sigma*LPI*rho (sigma=2 for residential, population-density weighted)",
+    "Analytic Hierarchy Process (AHP) with judgment matrix + consistency ratio to weight EI/BDI/HHI into the final LPRI (beta1=0.5032, beta2=0.3112, beta3=0.1856)",
+    "K-means clustering to bin grid LPRI values into 5 risk classes (Safe/Low/Moderate/High/Extreme) with data-driven cutoffs",
+    "Simulated Annealing for the 'grid movement' optimization: swap grid cells to minimize total LPRI subject to same-type-neighbor constraints (5000-iteration cooling schedule)",
+    "Strategy intensity factor gamma in {1..5} with geometric parameter decay FA' = FA*(1-Theta)^gamma to model regulatory vs compensation (tax) strategy intensity"
+  ],
+  "key_techniques": [
+    "Two-level weighting design: objective EWM for the physical sub-indicators (LPI), subjective AHP for the impact-domain indicators (EI/BDI/HHI) — and they explicitly justified WHY each method fits its layer (data variability vs expert judgment)",
+    "Treating the city as an image and using a CNN-style convolution kernel to inject neighbor spillover (light trespass from commercial to residential), with a self-normalizing kernel (CF = 1 - sum of neighbor LFs) so weights sum to 1",
+    "Borrowing structural forms from other disciplines: Volterra/logistic ODE for saturation of damage, Cobb-Douglas for economics, Gleason index for ecology — gives the model academic credibility cheaply",
+    "Reframing 'propose strategies' (open-ended) into a single tunable knob — the strategy intensity factor gamma — so two qualitatively different policies (regulation vs taxation) become directly comparable on one axis",
+    "Using K-means to convert a continuous risk score into actionable discrete risk tiers, then mapping the tier distribution onto known heuristics (Pareto principle) for a sanity check",
+    "Honest negative result: they investigated 'social stability / crime vs lighting', cited Riegel and an FBI study showing no causal link, and DROPPED the indicator — disciplined scoping that signals rigor",
+    "Sensitivity analysis with fixed step length on the subjectively-chosen convolution coefficient (0.04-0.06, step 0.002), concluding the model is stable and self-dominated",
+    "Validation-by-narrative: every numeric result (commercial > residential > industrial, city > suburb, optimized layout = concentric commercial/residential/industrial rings) is cross-checked against real urban-planning common sense"
+  ],
+  "why_it_won": "\"It nails the judge-facing fundamentals for an O-paper: a complete, self-consistent pipeline from raw inputs to a single interpretable index (LPRI), then to discrete risk tiers, then to comparable strategies, with a concrete real-city application (Saskatoon) and a tidy regulation-vs-compensation conclusion. The convolution-kernel spillover model is a genuinely original, problem-specific touch that distinguishes it from the generic 'compute a weighted index' crowd — it directly addresses the physics of light trespass between zones. The team layered objective (EWM) and subjective (AHP) weighting and justified the choice, showing methodological maturity. They demonstrated judgment by dropping the crime indicator with cited evidence rather than padding. Results are continually validated against urban-planning intuition and the Pareto principle, so the model never feels like a black box. The strategy-intensity-factor abstraction turned the vague Task 3/4 into a clean quantitative comparison with a nuanced, defensible takeaway (regulate hard, tax moderately — over-taxing rebounds risk by killing the economic term). Plus required deliverables (flyer) are present and polished. Strong figure program (heat maps, stacked bars, flowcharts) makes it skimmable for tired judges.\"",
+  "section_highlights": "\"Section 5 (model build) is the spine and best part: clean progression rasterization -> three sub-indicators -> EWM composite LPI* -> convolution spillover LPI' -> four impact indices -> AHP-weighted LPRI. The convolution-kernel subsection (5.3.2) with the self-normalizing center factor is the signature innovation. Section 5.4.4 (Social Stability) is a standout for judgment: a literature-backed decision to discard an indicator. Section 6 (application to Saskatoon) delivers the concrete numbers judges want (protected 0.0655, rural 0.1529, suburban 0.2726/0.30, urban 0.3397/0.41) plus the K-means 5-tier classification (cutoffs 0.2778/0.3512/0.4455/0.8411) and an LPRI heat map. Section 7-8 (strategies) is strong because of the unifying strategy-intensity-factor and the insightful rebound finding for Strategy III (over-taxation depresses EI and paradoxically raises modeled risk). The flyer at the end (with a headline '23.17% reduction at the source') is well-executed required deliverable. Strengths/Weaknesses (Sec 10) is appropriately self-aware (single case study, heavy data/compute).\"",
+  "pitfalls_or_limitations": [
+    "Parameter fabrication / weak justification: many key numbers are dropped in with no derivation — the alpha/beta correction factors per region (Table 3), the LF spillover coefficients (Table 5), the logistic constants -10 and +6.5 in BDI, and the flat 1%/3% decay steps in the intensity factor are all asserted, not fit or sourced",
+    "Internal inconsistency in the economic fit: Table 6 reports alpha = 345.4 while the model requires 0 < alpha < 1 (it's an exponent in a Cobb-Douglas form), and r = -5.007 with a minus sign that conflicts with the '-r*LPI' loss term — these are red flags a sharp judge could catch",
+    "EWM weighting collapsed to near-degeneracy (85.73% on light damage), meaning brightness-balance and illumination-time barely matter — the multi-indicator framework is largely cosmetic, and they don't interrogate why",
+    "Only ONE city validated (Saskatoon), and rural/protected areas were evaluated only as bulk averages (no internal grid), so the 'widely applicable' claim is under-supported; they admit this",
+    "The simulated-annealing 'move the grid' strategy is physically unrealistic (you can't relocate city blocks) — they acknowledge it, but it consumes space for a strategy they then disrecommend",
+    "Some figures appear schematic/illustrative rather than computed (e.g., the heat map and sensitivity-line data look stylized), and the BDI 'fast decrease point' claim is asserted without showing the fit",
+    "Notation sloppiness: equation auto-numbering restarts (multiple 'Eq.1's), and a couple of variable definitions are truncated/garbled in the text"
+  ],
+  "reusable_patterns": [
+    "The two-tier weighting template: EWM (objective, data-driven) to fuse physical sub-metrics, then AHP (subjective, expert) to fuse impact-domain metrics — and always write a sentence justifying why each method belongs at its layer",
+    "Convolution-kernel spatial spillover: when a problem is on a grid/map and neighbors influence each other, model it as a 2D conv with a self-normalizing kernel (center factor = 1 - sum of neighbor weights). Reusable for pollution, disease, noise, heat, market diffusion",
+    "Single-knob policy comparison: collapse multiple qualitatively different interventions into one tunable 'intensity factor' with geometric/linear parameter decay so policies become comparable on one axis and you can plot a clean dose-response curve",
+    "Borrow a canonical equation per domain: logistic/Volterra ODE for saturating harm, Cobb-Douglas for economic output, an ecology diversity index (Gleason) for biodiversity — instant credibility and a citation hook for each sub-model",
+    "Continuous-score -> K-means -> discrete risk tiers -> map to a known heuristic (Pareto): a repeatable recipe to make an index actionable and to sanity-check the distribution",
+    "Deliberately drop a tempting indicator with cited counter-evidence (the crime/social-stability move) to demonstrate scoping discipline — judges reward this",
+    "Sensitivity analysis on the most subjectively-chosen parameter with a fixed step length, framed as evidence of stability and of which inputs dominate the output",
+    "Validation-by-common-sense: explicitly state the expected ordering (commercial>residential>industrial, city>suburb) and confirm the model reproduces it before trusting any downstream result"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "paper_id": "2016-44173",
+  "year": 2016,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2016 MCM Problem D (\"Information & Network Science\" — how information is communicated and how its speed/value changes). This team (Control #44173, O-award) decomposed the open-ended prompt into three sub-problems: (1) model how information spreads through a population and predict 2050 network characteristics; (2) filter/classify which information becomes \"news\"; (3) model how public opinion changes through a social-network graph. Each sub-problem got its own model, validated against named real datasets (US media circulation history, the Facebook SNAP social-graph, and the UCI Online News Popularity dataset).",
+  "models_used": [
+    "SIIR information-flow model — an extended compartmental SIR ODE system with susceptible s(t), infected split into i1(t)/i2(t), recovered r(t), plus a fixed 'hot transmission node' fraction i0 representing mass media; dual contact rates lambda1 (media/hot nodes) and lambda2 (ordinary users) and immune probability mu; solved numerically in MATLAB",
+    "Aggregate media contact-rate weighting lambda1 = sum_i lambda_i * P_i over five media (newspaper, radio, TV, computer, mobile/online) built from US historical adoption data 1850-2012",
+    "Multiple regression / trend extrapolation on per-medium daily contact rates to project media mix forward and feed the SIIR model for a 2050 prediction scenario",
+    "Radial Basis Function (RBF) neural network for information filtering, framed as binary classification (shares >1400 = 'significant news')",
+    "Hybrid 'K-means + RLS' training procedure: K-means to place Gaussian hidden-unit centers (unsupervised), Recursive Least Squares to fit the linear output layer (supervised); shared Gaussian width sigma = d_max / sqrt(2K)",
+    "SN-SIR model — a degree-based (k-dependent) mean-field SIR on a complex network with separate transition probabilities P_si (contact infection), alpha (non-contact/external infection), P_ir (loss of interest -> recovered), P_sr (direct susceptible->recovered), coupled through the network-edge infection probability theta(t) = sum_k k P(k) i(k,t) / <k>"
+  ],
+  "key_techniques": [
+    "Disease-spread analogy: explicitly mapping information propagation onto epidemiological SIR compartments, then justifying the analogy before extending it",
+    "Introducing a named modeling primitive — the 'hot transmission node' — to capture mass media as super-spreaders, giving the model a distinguishing conceptual hook",
+    "Splitting the infected compartment (i1 from hot nodes, i2 from ordinary nodes) so media-driven vs peer-driven spread are separable",
+    "Grounding every model in a specifically named real dataset: Facebook SNAP graph (4039 nodes, 88234 edges), UCI Online News Popularity (39240 records, 27908 train / 11332 test), and US media adoption time series",
+    "Reusing the SIR backbone across two of the three sub-models for conceptual unity (information flow and public opinion both SIR-derived)",
+    "Reporting a confusion matrix with train (75.1%) and test (74.3%) accuracy and a ROC curve as classifier evidence",
+    "Extensive one-parameter-at-a-time sensitivity sweeps (lambda1, lambda2, mu, P_si, P_ir, alpha, P_sr, initial degree k0) each with its own figure and verbal interpretation",
+    "Using a forward prediction scenario (2050 vs 2012: ~25% faster propagation, cycle 60->50 days) to turn an abstract model into a concrete, quotable answer"
+  ],
+  "why_it_won": "\"For a deliberately vague, qualitative ICM information-science prompt, this team imposed a clean three-part quantitative structure and attached each part to a recognized, named dataset rather than hand-waving. The standout move is the 'hot transmission node' extension of SIR: it is a small, intuitive, defensible modification that directly answers the 'how does media accelerate spread' question and gives judges a memorable signature idea. Reusing the SIR backbone gives coherence, while the RBF classifier shows methodological range (dynamical system + machine learning + network theory in one paper). Heavy, figure-rich sensitivity analysis and explicit validation against the Facebook graph and the news dataset signal rigor and real-world grounding. The 2050 prediction produces concrete numbers a judge can quote. The breadth, named-data validation, and the distinctive modeling hook outweigh the rough English and the loose derivations.\"",
+  "section_highlights": "\"Structure: a one-page summary that states all three models and their headline results up front; a contents page; a short Assumptions section; then one self-contained section per model each following the same Build -> Solve -> Validate -> Sensitivity rhythm; ending with explicit Strengths/Weaknesses. The summary sheet is strong — it names the model (SIIR), the technique (K-means+RLS RBF), the datasets, and the quantitative results (74.3% test accuracy, 2050 prediction) in a few lines, so a judge knows the whole arc immediately. Each model is introduced with a plain-language framing ('information filtering is essentially a classification problem') before the math, which lowers the barrier for a skimming reader. Figures are abundant and each parameter sweep is paired with a short interpretive sentence rather than left to the reader.\"",
+  "pitfalls_or_limitations": [
+    "Poor English throughout (grammar, garbled tokens, typos) — survived because the modeling was strong, but is a clear risk factor, not a model to imitate",
+    "SIIR parameter values are physically implausible/unnormalized: lambda1=1000, lambda2=245 are used as raw 'contact rates' in an ODE where s,i,r are fractions, with no clear units or normalization, undermining the quantitative credibility of the curves",
+    "Many figures appear inconsistent or auto-extracted with garbled axes/values (e.g. tables of all-0.1 or all-1.0 rows), suggesting plots were not carefully checked",
+    "The 2050 prediction rests on naive trend extrapolation of media adoption plus hand-set parameter bumps ('we boost the number of hot transmission nodes'), so the headline '25% faster' number is suggestive, not derived",
+    "RBF classifier at ~74% test accuracy is mediocre and presented with no baseline comparison; feature list includes a leakage-prone 'number of shares' which is essentially the label",
+    "SN-SIR mean-field equations contain transcription errors (e.g. P_ir multiplies s(k,t) instead of i(k,t)) and the s+i+r=1 constraint is asserted but not reconciled with the separate P_sr/alpha terms",
+    "Sensitivity analysis is qualitative one-at-a-time only; no joint/global sensitivity, no uncertainty quantification, and several monotonicity claims read off idealized hand-drawn curves"
+  ],
+  "reusable_patterns": [
+    "Decompose an open ICM prompt into 3 crisp sub-questions and give each its own model, then reuse one backbone (here SIR) across sub-models for narrative unity",
+    "Take a textbook model (SIR) and add ONE named, intuitive extension (the 'hot transmission node') that directly targets the prompt's key phenomenon — a distinctive hook is worth more than a generic complex model",
+    "Frame a fuzzy task as a standard problem type to unlock known tools ('filtering = binary classification' -> RBF/ML)",
+    "Always bind each model to a specifically named public dataset (SNAP Facebook graph, UCI Online News Popularity, historical adoption tables) — naming the dataset and its size signals rigor",
+    "Adopt a fixed per-section template: Build the model -> Solve (state the solver, e.g. MATLAB ODE) -> Validate on data -> Sensitivity sweep with a figure+sentence per parameter",
+    "Turn the model into a concrete, quotable forward prediction scenario (2012 vs 2050 with percentage deltas) so judges get a memorable answer",
+    "Report classifier results as a confusion matrix + ROC + train/test accuracy split — the conventional, expected evidence package",
+    "Write the summary sheet to name model + method + dataset + headline numbers so the entire contribution is graspable in the first paragraph",
+    "End with an honest, itemized Strengths/Weaknesses list that pre-empts the obvious criticisms (region, platform, data availability)"
+  ]
+}

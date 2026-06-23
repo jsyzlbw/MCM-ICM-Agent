@@ -1,0 +1,52 @@
+{
+  "paper_id": "2010-6947",
+  "year": 2010,
+  "problem": "C",
+  "problem_type": "interdisciplinary",
+  "problem_summary": "2010 MCM/ICM Problem C (interdisciplinary): the marine debris / Great Pacific Garbage Patch problem. Teams were asked to analyze the floating-plastic pollution problem and recommend government policies/practices to mitigate its negative effects. This team narrowed the open-ended problem to a sharp, answerable question: which TYPES of floating plastic are most dangerous to marine organisms (their \"risk degree\"), and how should policy be tiered by that risk. They used Moore's 1999 North Pacific Central Gyre survey data (abundance by mesh-size and by plastic type) to rank fragments and thin plastic films as the two most harmful types (~93.6% of total risk combined), then translated this into a 3-tier (HRP/MRP/LRP) policy framework with graded tax rates, reuse mandates, and littering fines.",
+  "models_used": [
+    "Multi-Attribute Decision Making (MADM) over two attributes: total abundance (factor A) and mesh-size (factor B) of plastic",
+    "Rank Reciprocal Weighting (RRW) to assign attribute weights: w_i = (1/i) / sum(1/i); yielded w_abundance = 2/3, w_size = 1/3 from a simple rank ordering of the two attributes",
+    "Grey System Theory / Grey Multi-Attribute Decision to normalize raw data into effect-measurement values and to perform 'valid data selection' (rejecting low-contribution alternatives 1 and 2)",
+    "Upper-limit effect measurement r_ij = s_ij / max_j(s_ij) for the benefit-type attribute (abundance, larger = riskier)",
+    "Lower-limit effect measurement r_ij = min_j(s_ij) / s_ij for the cost-type attribute (mesh-size, smaller = riskier)",
+    "Weighted linear aggregation: [w1 w2] x decision matrix D to score each mesh-size band (alternative)",
+    "Mean-normalization / regularization r(k) = x(k) / (sum(x(k))/4) to put the four retained alternatives on a comparable scale before the final risk-degree multiplication",
+    "Final matrix product of the per-alternative weight vector against the by-type abundance matrix (Table 5) to produce a per-plastic-type risk score",
+    "A small decision rule for compound/mixed-material products: Condition 1 (p/q vs omega2/omega1 threshold for HRP vs MRP) and Condition 2 (>90% LRP threshold) to classify multi-material plastic goods"
+  ],
+  "key_techniques": [
+    "Reframing an open, qualitative policy prompt into a quantitative ranking question ('risk degree of plastic types') that the available data can actually answer",
+    "Driving the entire model from one real, citable dataset (Moore 2001 / 1999 North Pacific gyre survey) rather than fabricated numbers — abundance by mesh-size (Table 2) and abundance by plastic type (Table 4)",
+    "Two-attribute MADM where the attributes (abundance, size) are physically motivated by the ingestion mechanism, not arbitrarily chosen",
+    "Directional normalization: choosing upper-limit measurement for the 'more is worse' attribute and lower-limit for the 'smaller is worse' attribute, encoding domain semantics into the math",
+    "'Valid data selection' — using the grey-decision scores to drop the two lowest-contribution mesh bands (alts 1 and 2) and re-running on the surviving four, presented as an accuracy-improvement step",
+    "Cross-validating the chosen 0.355–2.799 mm size window against independent literature (Bourne & Imber 1982; Azzarello & Van Vleet 1987; Moore 2001) showing this is the range most marine organisms ingest",
+    "Translating a numeric ranking into a concrete, actionable 3-grade policy taxonomy (HRP/MRP/LRP) with a specific lever table: graded tax rates, reuse-rate floors (>=85/75/60%), littering fines ($50k/40k/30k per day anchored to US environmental law), and research funding tiers",
+    "Explicit assumptions list that pre-empts judge objections (ingestion-only, ingestion count as proxy for harm, uniform feeding behavior) and openly states what each assumption buys"
+  ],
+  "why_it_won": "\"From a judge's perspective this paper wins on three things rather than mathematical sophistication. (1) Problem narrowing and answerability: it converts a sprawling, qualitative 'recommend government policy' prompt into a single crisp, decision-relevant quantity (risk degree by plastic type) that real data can resolve — and it delivers a clear, defensible headline answer (fragments + thin films = ~93.6% of risk). (2) Data-grounded credibility: nearly every number traces to a cited survey (Moore 1999), and the chosen particle-size band is independently corroborated by three other papers, so the result feels empirical rather than invented. (3) The full pipeline closes the loop from data -> model -> ranking -> tiered, lever-specific policy (tax/reuse/fines/funding), with a generalizability argument (the framework ports to other sea areas and time periods). The model is simple enough to be fully transparent and reproducible by a reader — every matrix is shown numerically — which judges reward over opaque complexity. The honest, mechanism-linked assumptions and an explicit weakness section signal modeling maturity.\"",
+  "section_highlights": "\"The Summary states the headline result up front (fragments and thin films are the top-two risk types; tiered policy follows). The Analysis section builds the causal chain (ingestion >> entanglement, citing Costa/Monica F 2009 and Spear 1995) that justifies modeling ingestion only — every later assumption is pre-loaded here. The Terminology + Variables table (Table 1) defines risk degree, abundance, size-as-mesh-size, attribute, and weight before any math, so notation never surprises the reader. The Modeling flowchart (Figure 2) shows the whole pipeline. The strongest structural move is that the math is shown in full: the decision matrix D, the weight vector, and every matrix product are printed with actual numbers, making the work auditable. Figure 1 (rising abundance 1975->2001) establishes urgency; Figure 3 (risk-degree bar chart) delivers the punchline visually. The Discussion converts numbers into the HRP/MRP/LRP grades and Table 6 maps each grade to concrete policy levers — the bridge from analysis to recommendation that ICM judges specifically look for. Separate, honest Strength and Weakness sections bracket the result.\"",
+  "pitfalls_or_limitations": [
+    "Risk-degree weights come from Rank Reciprocal Weighting applied to just two attributes ranked by 'common sense' (abundance > size) — the 2/3 vs 1/3 split is essentially asserted, not derived or sensitivity-tested; with only two attributes RRW adds little rigor",
+    "No sensitivity analysis at all: the final ranking's robustness to the weight choice, to dropping alternatives 1 and 2, and to the normalization scheme is never tested — a major omission for a winning-caliber model",
+    "'Grey System Theory' is named but barely used in its real sense; the actual operations are simple max/min normalization and weighted averaging, so the grey-theory framing is more label than substance",
+    "Harm is proxied purely by ingested-piece count; the model explicitly ignores toxicity (PCBs/nonylphenol — which the paper itself cites from Mato 2001), particle shape, and color, so a chemically nastier but less abundant plastic is underweighted",
+    "Single-dataset dependence: everything rests on Moore's 1999 North Pacific Central Gyre snapshot, assumed 'accurate and random enough' — no other gyres, years, or surveys are used, limiting generality despite the generalizability claim",
+    "Uniform-feeding-behavior assumption (all marine organisms ingest identically and randomly) is biologically unrealistic and acknowledged but not bounded",
+    "The 'valid data selection' step that discards alternatives 1 and 2 is somewhat circular — alternatives are dropped because their model-computed contribution is small, which can bias the surviving ranking",
+    "Policy levers (tax grades, $50k/40k/30k fines, >=85/75/60% reuse floors) are plausible but essentially hand-set; there is no cost-benefit or economic model justifying the specific thresholds",
+    "Minor data/notation inconsistencies (e.g. a mesh-size value '4.759--2.800' vs '4.706' in adjacent tables; the final risk-degree matrix product result cell is left blank in the markdown)"
+  ],
+  "reusable_patterns": [
+    "Open policy prompt -> pick ONE quantifiable decision variable: when an ICM problem says 'recommend policy', invent a sharp scalar (here 'risk degree by type') that ranks options and that real data can compute — judges reward a crisp answerable question over broad hand-waving",
+    "Anchor the whole model to one real, citable dataset and show every number, so results are auditable and credible instead of invented",
+    "Map attribute direction to normalization type: use upper-limit (s/max) for benefit attributes and lower-limit (min/s) for cost attributes — a clean reusable trick for encoding 'more is better' vs 'less is better' into a decision matrix",
+    "Two-stage normalize-then-aggregate MADM: build a decision matrix of effect measurements, apply a weight vector, score alternatives, then re-normalize and aggregate again to project onto the final categories of interest",
+    "Justify modeling simplifications by the dominant mechanism (ingestion >> entanglement) with literature citations, so each assumption reads as a defensible scope decision rather than a shortcut",
+    "Cross-validate a model-internal result against independent literature (the 0.355–2.799 mm ingestion window confirmed by three other papers) to externally legitimize the output",
+    "Close the analysis-to-policy loop with a discrete tier system (HRP/MRP/LRP) plus a lever table mapping each tier to specific instruments (tax / reuse floor / fine / funding) — the concrete deliverable ICM judges want",
+    "Add explicit edge-case decision rules for the messy real world (compound/mixed-material products: Condition 1 ratio test and Condition 2 >90% threshold) to show the framework is operational, not just illustrative",
+    "Always pair Strength and Weakness sections and a generalizability claim (ports to other regions/periods) — and, as the missing-but-needed lesson here, add the sensitivity analysis this paper lacked to make a strong model bulletproof"
+  ]
+}

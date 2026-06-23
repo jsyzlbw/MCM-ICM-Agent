@@ -1,0 +1,57 @@
+{
+  "paper_id": "2019-1900007",
+  "year": 2019,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2019 MCM/ICM Problem D (\"Time to Leave the Louvre\"): design an emergency evacuation model that empties a complex 5-storey museum in the fastest and safest manner, identifies congestion bottlenecks, allows emergency personnel to enter, and generalizes to other multi-storey buildings under varied threats. Team 1900007 attacked it with two complementary models: an abstract 2D graph-search optimization model (the \"Island-Bridge Model\") plus a concrete software-driven 3D agent simulation (Cellular Automata via Pathfinder), then cross-validated the two.",
+  "models_used": [
+    "2D Island-Bridge Model (2D-IBM): abstracts the multi-storey building into a graph where each floor is an 'island' and each staircase is a 'bridge', then runs graph shortest-path search over discretized nodes",
+    "Dimensionality Reduction Method: planarizes 3D stair motion into equivalent 2D horizontal segments using a distance-weighted 'junction point' equivalent-length formula (eta_i normalization, Length_eq = (L/n)*sum eta_i)",
+    "Spatial Discretization Method: tiles the planarized U-shaped floor into ~3700 dense nodes stored as a coordinate matrix (node.mat / NodeFormation.m)",
+    "Basic Searching Model: modified Dijkstra shortest-path where edge weights = geometric distance, but set to infinity if beyond an individual's visual range V_range or inside the deadly zone R_dead; run 4x (one per exit) per evacuee and take the min",
+    "Exit-capacity balancing rule: a max usage ratio alpha_exit^(s) per exit caps how many evacuees a given exit absorbs, forcing load spreading across the 4 main exits",
+    "Danger Index (DI) Model / Field-based Model: per-mesh weighted sum DI = a*w_density + b*w_emergency + c*w_exit, combining crowd density (people per mesh area), inverse distance to danger source, and distance to nearest exit; visualized as a 3D heat map",
+    "Population-weighted average evacuation-time formulas differentiating elderly / youth / disabled by walking speed (v=1.03/1.28/0.78 m/s) and population share",
+    "3D Cellular Automata Model (3D-CAM): AutoCAD-built 3D Louvre run in Pathfinder simulation software over a triangular cellular space, using SFPE Mode (closest-exit, mirrors Basic Searching Model) and Steering Mode (density-aware dynamic routing, mirrors Danger Index Model)",
+    "Sensitivity analysis sweeping rho_people, R_dead, and alpha_exit^(s) to test robustness of evacuation times",
+    "Mentioned-but-not-implemented: Fuzzy Sets / Monte Carlo to calibrate the additional-exit opening thresholds (a, b, c)"
+  ],
+  "key_techniques": [
+    "Island-Bridge graph abstraction: turning a vertical multi-floor topology into a single connected 2D graph so one shortest-path engine handles the whole building",
+    "Stair-equivalence reduction: collapsing many parallel staircases between two floors into one weighted equivalent 'bridge' segment",
+    "Encoding hazard and human-vision constraints directly into Dijkstra edge weights (infinity for danger zone and out-of-sight nodes) rather than as a separate constraint layer",
+    "Running single-destination Dijkstra four times (once per exit) and taking the minimum to convert a single-source/single-target algorithm into multi-exit choice",
+    "Capacity-aware greedy assignment in code: a running counter e(1,index) per exit compared against Contain = alpha*N*density blocks an exit once saturated, redirecting evacuees",
+    "Composite weighted index (Danger Index) fusing three heterogeneous physical drivers (density, hazard proximity, exit distance) with tunable coefficients a,b,c that the manager can re-weight as the emergency evolves over time",
+    "Cross-validation by independent methods: showing the DI heat map (2D analytic) and the Pathfinder evacuation-time heat map (3D simulation) share the same spatial trend to mutually corroborate",
+    "Population-segmented timing: separating average evacuation time by mobility class (elderly/disabled/youth) to surface equity of the plan",
+    "Re-using the same two models to answer the secondary sub-questions (additional exits, emergency personnel entry by reversing the DI gradient from low to high danger)"
+  ],
+  "why_it_won": "\"It pairs an abstract, self-built, fully-explained optimization model (2D-IBM) with a concrete, professional-software simulation (Pathfinder 3D-CAM) and then explicitly cross-validates them against each other — judges read this as both mathematical depth and real-world credibility. The Island-Bridge dimensionality-reduction idea is a genuinely elegant, memorable modeling insight (a named, intuitive abstraction with the 'shadow of leaves' analogy) that distinguishes it from generic Dijkstra-on-a-floor-plan entries. The team answered every part of the prompt (optimal routes, bottlenecks, additional exits, letting responders in, generalization), grounded constants in real Louvre data (visitor counts, 6.8% disabled share, real exit names), ran a genuine sensitivity sweep that demonstrated robustness, and delivered the required communication artifact (a clean letter of advice). Working MATLAB code in the appendix proves the models were actually executed, not just sketched. The visual density (route plots, exit pie charts, 3D DI heat maps, floor bottleneck maps) makes the work skimmable and convincing at judging speed.\"",
+  "section_highlights": "\"Section 3.2 (Dimensionality Reduction Method) is the intellectual centerpiece: the 'sun through leaves casting a shadow' analogy plus the eta_i-weighted equivalent-stair-length formula makes a hard 3D-to-2D simplification feel natural and rigorous. Section 1.2 (Literature Review) cleanly taxonomizes the field into network/particle/cellular/ant-based models with citations, then positions the team's two models within it — a strong scholarly framing. The Strengths/Weaknesses section is honest and specific (admits Dijkstra's high time complexity from repeated calls, and that node-discretization replacing continuous motion 'deserves further justification'). The closing letter of advice translates models into concrete operational steps (add density sensors, push optimal routes through the existing 'Affluences' app, keep stairs/exits clear). Section 4.2's comparison of the Pathfinder heat map against the 2D DI heat map ('the same trend, which indirectly proves our Danger Index Model is reasonable') is a high-value cross-validation move.\"",
+  "pitfalls_or_limitations": [
+    "Severe geometric oversimplification: each floor reduced to a 'U' of three rectangles with EVERY point assumed walkable (exhibits/walls ignored), so the optimal routes do not reflect the Louvre's actual labyrinthine galleries — bottlenecks may be badly mislocated in reality",
+    "No true crowd dynamics in the 2D model: evacuees are routed independently as if alone; density only enters as a post-hoc Danger-Index weight, not as a feedback that actually slows movement or causes queueing/clogging at exits and stairs (Helbing-style social-force interactions are cited but not modeled)",
+    "Static danger source and static routing in 2D-IBM: the hazard is a fixed circle; routes are computed once, not re-planned as the crowd moves or danger spreads",
+    "The 'visual range cuts edges to infinity' rule is questionable — it can fragment the graph and make Dijkstra's global shortest path inconsistent with a person who can only see locally (mixing a greedy local-vision idea with a globally-optimal algorithm)",
+    "The additional-exits opening rule (Eq. 13) and its thresholds a,b,c are hand-waved — calibration deferred to 'Fuzzy Sets or Monte Carlo' but never actually done due to 'lack of data'",
+    "Danger Index coefficients a=100, b=10000, c=1 (from the code) are unjustified magic numbers with mismatched units across the three weights, making DI values not physically interpretable",
+    "The Basic-Search flowchart (Figure 6) is garbled/repetitive (a chain of identical 'node i in safety zone?' branches), suggesting the figure was auto-generated or rushed",
+    "3D-CAM is largely a Pathfinder push-button result: the cellular-automaton mechanics are the software's, not the team's, so analytic insight there is thin",
+    "Self-admitted high time complexity: Dijkstra is re-invoked 4 times per evacuee for ~1471 people, which is computationally wasteful (a single multi-source pass or A* would suffice)",
+    "Cross-validation is qualitative only ('same trend'), with no quantitative error metric between the 2D and 3D results"
+  ],
+  "reusable_patterns": [
+    "Two-model strategy: pair a from-scratch analytic/optimization model you fully control and explain with an established-software simulation, then cross-validate them — gives both 'we understand the math' and 'it matches a trusted tool' to judges",
+    "Name your abstraction: branding the core idea ('Island-Bridge Model', 'Danger Index') makes the paper memorable and easy for judges to refer back to",
+    "Dimensionality reduction with an intuitive physical analogy to justify a big simplification (3D stairs -> equivalent 2D segment), backed by an explicit weighting formula",
+    "Encode constraints into edge weights (infinity for forbidden/unsafe/out-of-view nodes) so a stock shortest-path algorithm solves a constrained problem without custom logic",
+    "Composite tunable index (weighted sum of normalized heterogeneous factors with manager-adjustable coefficients) to fuse multiple drivers into one map-able scalar, and to let the SAME index answer multiple sub-questions",
+    "Reverse the gradient for the dual problem: evacuees flow from high to low Danger Index, responders flow low to high — one field serves two opposite routing tasks",
+    "Segment the population by attributes (speed/mobility class) and report per-segment metrics to address equity and edge cases",
+    "Reuse one core model to answer every sub-prompt (additional exits, responder entry, generalization) instead of inventing a new model per question",
+    "Sensitivity sweep over the few free parameters and explicitly state the stable operating range, then claim robustness only where data supports it",
+    "Close with the prompt-requested communication artifact (letter/memo) that converts model outputs into concrete, actionable operational recommendations tied to real infrastructure (the existing 'Affluences' app, sensors)",
+    "Put runnable code in the appendix to prove the models were actually executed"
+  ]
+}

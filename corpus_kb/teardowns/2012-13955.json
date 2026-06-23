@@ -1,0 +1,43 @@
+{
+  "paper_id": "2012-13955",
+  "year": 2012,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2012 MCM Problem B (discrete/\"Big Long River\"): schedule oar-rafts (4 mph) and motorized boats (8 mph) on a 225-mile river with Y campsites over a 6-month (180-day) season, where trips last 6-18 nights and no two groups may share a campsite on the same night. Goal: maximize the number of trips (the river's \"carrying capacity\") and determine an optimal daily launch schedule. This paper (Control #13955) is an Outstanding/O-award solution.",
+  "models_used": [
+    "Greedy discrete-event scheduling simulation: the river is an array of campsites; the season is simulated day-by-day for 180 days. Each day the algorithm sweeps campsites from the Final Exit upstream to First Launch, repeatedly filling the furthest empty campsite.",
+    "Priority heuristic P_i = (d_i/t_i)/(l_i/225): ratio of fraction-of-trip-elapsed to fraction-of-distance-covered. P>1 = behind schedule, P<1 = ahead, P=1 = exactly on schedule. Drives which group gets moved to a contested campsite (the most-behind group wins).",
+    "Reachability set G_c = { g_i : m_i + l_i >= c }: only groups whose current location l_i plus max daily travel m_i (36 mi/day oar, 72 mi/day motor, from a 9-hour 8am-6pm travel window) can reach campsite c are candidates.",
+    "Waitlist queue model: groups not yet launched sit at virtual campsite c_0 with P=1; an always-open sink campsite c_final lets any number of groups exit the river per day.",
+    "Carrying-capacity search: sweep groups/day upward until 'late trips' and 'waitlist backlog' appear; the largest groups/day with zero late/waitlist is declared peak capacity M.",
+    "Best-fit surface M = f(Y, R) fitted to a 5x5 grid of simulated capacities (scattered X-Y-Z data fit), visualized as a contour plot to expose the R=1:1 ridge."
+  ],
+  "key_techniques": [
+    "Custom greedy constructive heuristic instead of a generic optimizer: fill furthest-downstream empty campsite first, then among reachable groups pick the highest priority (most behind schedule), with tie-break/override rules.",
+    "Three explicit movement rules that make the heuristic correct: (1) if P_i>1 move group to campsite c; (2) if P_i<1 (ahead) only advance it far enough that d_i*a_i >= location of c so it stops being ahead; (3) never move a group to c_final unless d_i = t_i, guaranteeing every trip lasts exactly its planned length.",
+    "Self-correcting dynamics: priority converges P_i -> 1 as d_i -> t_i, demonstrated empirically in the day-by-day trace (Figs 3.1-3.3), so groups land at Final Exit on exactly night t_i.",
+    "Real-world calibration/validation via Grand Canyon case study (226 mi, 235 campsites, 6-mo season, 6 launches/day) used as a stand-in for the fictional Big Long River.",
+    "Two-axis sensitivity analysis: M vs (R, Y) and M vs (R, D) presented as labeled grids, surfacing the actionable findings that R=1:1 maximizes M for an even duration mix, and skewing toward shorter trips (D~6-12) raises capacity.",
+    "Manager-facing memo translating the math into plain-language operational recommendations (ratio guidance, how many more groups to launch)."
+  ],
+  "why_it_won": "\"It nailed the core MCM virtues for a discrete problem: a clean, original, self-invented algorithm (no off-the-shelf solver) whose rules are individually justified and whose emergent behavior (priority -> 1, trips finishing on exactly t_i nights) is demonstrated rather than asserted. The single priority formula P=(d/t)/(l/225) is elegant and intuitive, and the furthest-empty-campsite sweep is a smart greedy framing of a hard combinatorial scheduling problem. The team then did what most teams skip: validated against a real river (Grand Canyon), ran a genuine carrying-capacity search showing the phase transition where late trips/waitlists appear (capacity ~18 groups/day, ~3000 trips), and performed honest two-variable sensitivity analyses yielding concrete, defensible recommendations (R=1:1 ridge). Crucially, it confronted its own 3000-vs-real-1000 discrepancy and attributed it to omitted environmental/flow constraints rather than hiding it, which reads as scientific maturity to a judge. Strong narrative arc, a worked day-by-day example, and a polished manager memo round out a complete, trustworthy package.\"",
+  "section_highlights": "\"Methods (Sec 2) is the strongest section: it defines vocabulary up front (open campsite, moving, waitlist, off-the-river), then builds the algorithm incrementally and illustrates each priority decision with small worked campsite diagrams (Figs 2.1-2.3) before giving the full flowchart (Fig 2.4). The Scheduling Simulation (Sec 3) is excellent verification writing - a concrete 4-group trace on day 25 with a full campsite/priority table and two plots showing positions climbing to mile 225 and priorities converging to 1. The Case Study (Sec 4) reads like real validation: an 11-row table sweeping 6->21 groups/day that visibly locates the capacity knee. The Limitations section (Sec 6) is candid and specific (capacity overestimation, environmental degradation, neglect of river speed and high-flow campsite flooding). The closing manager memo is a clean, jargon-free executive translation.\"",
+  "pitfalls_or_limitations": [
+    "Greedy heuristic gives no optimality guarantee: 'furthest empty campsite + highest priority' is a reasonable rule but is never proven (or even argued via a bound/LP relaxation) to maximize total trips, so 'maximum carrying capacity' is really 'best the heuristic found.'",
+    "Large unexplained validation gap: model predicts ~3000 Grand Canyon trips vs the real ~1000. They attribute it to environmental factors, but that is a 3x error that undercuts the quantitative claim; they never model the binding constraint that actually limits real rivers.",
+    "Heavy simplifying assumptions narrow the problem: durations forced to {12,18} for oar and {6,12} for motor; constant daily max travel (36/72 mi); uniform campsite spacing; downstream-only moves; river speed/weather/high-flow ignored - several of which they admit drive the error.",
+    "Sensitivity tables (Figs 4.2, 4.4) show non-monotone, noisy entries (e.g., capacity bouncing around across R rows) suggesting the single-run simulation has stochastic/edge artifacts and no averaging or confidence reported.",
+    "The best-fit surface M=f(Y,R) is admitted to be complex and to extrapolate poorly, so it is effectively abandoned in favor of re-running the simulation - a dead-end subsection.",
+    "Carrying capacity is defined by a soft threshold (first appearance of late trips/waitlist) rather than a rigorous objective, and end-of-season groups still on the river are simply 'ignored,' a boundary effect that biases counts."
+  ],
+  "reusable_patterns": [
+    "Model a discrete scheduling/packing problem as a day-by-day greedy fill: represent the resource as an array, sweep in a fixed order (here furthest-downstream first), and place the best candidate at each open slot.",
+    "Design a single normalized 'priority' / pacing scalar that compares progress-in-time to progress-in-space (here (d/t)/(l/225)); make it self-correcting so it converges to a target value, then prove convergence empirically with a trace.",
+    "Separate the candidate-generation step (reachability set G_c from a physical speed/time budget) from the selection step (priority) - a clean two-stage greedy pattern.",
+    "Find a 'carrying capacity' / saturation point by ramping the load until a failure metric (late trips, backlog) first becomes nonzero; tabulate the ramp so the knee is visible.",
+    "Validate a fictional/abstract problem against a real-world analog with published data (Grand Canyon) and cite primary sources (NPS management plans, campsite lists).",
+    "Run grid-based two-variable sensitivity analysis and visualize as a contour/surface to expose ridges and optimal regions; turn the ridge into a one-line operational recommendation.",
+    "Lead the model section with a defined vocabulary and small worked-example diagrams before the full flowchart; close the paper with a plain-language stakeholder memo that states actionable thresholds.",
+    "Write a specific, self-critical limitations section that names the omitted binding constraint and quantifies/explains any validation gap rather than concealing it."
+  ]
+}

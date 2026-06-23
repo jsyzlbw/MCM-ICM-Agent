@@ -1,0 +1,55 @@
+{
+  "paper_id": "2020-2010638",
+  "year": 2020,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2020 MCM Problem C (data/\"big data\" track): Sunshine Company is entering the online marketplace for three products (microwave ovens, hair dryers, baby pacifiers) and provided Amazon review data (star_rating, review text, helpful_votes/total_votes, vine, verified_purchase, dates). The team had to (a) mine star ratings, helpfulness ratings, and review text to recommend a data-driven sales strategy, (b) identify which reviews/ratings indicate product success vs failure and how they combine into a reputation measure, (c) detect whether reviews are influenced by prior ratings/reviews over time, and (d) determine whether specific text quality-descriptors are tied to rating levels. The paper decomposes this into four chained models plus a brand-recommendation scoring system and a manager letter.",
+  "models_used": [
+    "Model 1 - Multinomial (ordinal-style) Logistic Regression: helpfulness rating bucketed into 4 classes, regressed in 3 nested blocks on star rating, star rating squared (SS), review length (count), length squared (CS), emotional compound score, plus vine and verified_purchase dummies. Finds U-shaped star->helpfulness and inverted-U length->helpfulness.",
+    "NLTK VADER sentiment analysis: rule/lexicon-based SentimentIntensityAnalyzer producing a 'compound' score in [-1,1] for every review, used as a feature across all four models.",
+    "Pearson correlation analysis + correlation heatmaps among star rating, compound, count, helpfulness rating as exploratory groundwork before regression.",
+    "Model 2 - LDA (Latent Dirichlet Allocation, Blei 2003) topic model: run separately on positive and negative review subsets per product to extract 3 latent topics x top-10 words; topics hand-mapped to 5 product attributes (quality, price, size, service, appearance).",
+    "Cosine text-similarity scoring engine ('traversing/ergodic search' over an undirected complex network of reviews): per attribute, pick the highest-VADER-score review as a 'SIGNIFICANT REVIEW', score every other review by cosine similarity to it; vine/verified reviews up-weighted x2. Produces per-attribute index scores.",
+    "AHP (Analytic Hierarchy Process): expert-scored 6x6 judgment matrix over the 5 attributes + star rating, eigenvector weighting with CI/CR consistency test (<0.1), giving per-product attribute weights.",
+    "Hierarchical/System clustering (Q-cluster, Euclidean distance + cosine similarity, SPSS): clusters product 'parents' into 10 grades on the weighted attribute scores; class-1 brands recommended to the company.",
+    "Model 3 - Time series: reputation defined as 0.7*mean compound + 0.3*mean star rating; AR(1) autoregression fit by MLE with ACF/PACF order identification, AIC/BIC over- and under-fitting checks, additive seasonal decomposition; forecasts seasonal reputation peaks per product.",
+    "Model 4 - Distributed Lag Model via Almon method: 2nd-order Almon polynomial, lag 3, regressing current review compound on current and lagged star ratings (Z-transform to alpha_0..alpha_2) to show current reviews are influenced by past ratings/reviews; ties text descriptors to rating synchrony.",
+    "Sensitivity analysis: varied the 0.7/0.3 reputation weighting to 0.6/0.4 and 0.8/0.2, showing AR(1) coefficients shift <1.8%."
+  ],
+  "key_techniques": [
+    "Heavy, problem-specific text preprocessing: non-alphabetic/emoji tokens mapped to 'five stars', PyEnchant spell correction, lowercasing, and cosine-similarity redundancy removal that drops off-topic reviews below a similarity threshold (e.g. blanket/basket reviews under a pacifier).",
+    "Feature engineering of squared terms (SS, CS) specifically to test and reveal non-monotonic U / inverted-U relationships rather than assuming linearity.",
+    "Nested/block regression (Model 1->2->3 adding intuitive, content, then reviewer-credibility features) so each variable group's marginal contribution is visible.",
+    "Constructing a derived target variable Hr = helpful_votes/total_votes and a composite reputation = 0.7 compound + 0.3 star.",
+    "Mapping unsupervised LDA topics onto a fixed 5-attribute business taxonomy (quality/price/size/service/appearance) so the model output is directly actionable.",
+    "Credibility weighting: vine + verified_purchase reviews doubled in the index-scoring engine and used as regressors, operationalizing the trust assumptions.",
+    "AHP consistency test (CI/CR<0.1) to defend otherwise-subjective expert weights.",
+    "AR-order discipline: ACF/PACF identification confirmed by AIC/BIC minimization at p=1.",
+    "Almon polynomial transform to reduce multicollinearity among lagged regressors in the distributed-lag model.",
+    "Closing the loop to the prompt: a manager Letter translating negative LDA topic words ('heavy','noise','smoking','hot','small','service') into concrete redesign recommendations."
+  ],
+  "why_it_won": "\"It directly and completely answers every sub-question of Problem C with a distinct, named model, then ties all four back into business deliverables (brand recommendations, seasonal sales timing, review-management advice) and a manager letter. Judges reward this kind of explicit prompt-coverage plus an end-to-end pipeline (raw data -> preprocessing -> sentiment -> topics -> weighted scoring -> clustering -> forecasting -> lag causality). The team showed genuine data-science breadth across the C-track skill set (NLP, regression, unsupervised topic modeling, MCDM weighting, clustering, time series, econometric lag models) while keeping each step interpretable and decision-relevant. Strong signals of rigor stand out: significance stars on every coefficient, AHP consistency testing, AIC/BIC order selection, a real sensitivity analysis on the reputation weights, and the counter-intuitive but defended U-shaped finding that they explicitly contrast with prior literature (Mudambi & Schuff). The actionable, attribute-level redesign advice derived straight from negative-topic words is exactly the 'so what' judges look for.\"",
+  "section_highlights": "\"Summary front-loads all four findings (U-relationships, brand scoring/clustering, seasonal reputation forecast, lag influence) so a triage judge sees the whole arc in one paragraph. A two-tier flowchart (Figure 1) and a dedicated data-preprocessing flowchart give a visual roadmap. Each model gets its own numbered section with a consistent rhythm: motivation -> equations -> table of fitted coefficients with significance -> interpretation. Heavy use of visuals (correlation heatmaps, box/stacked-bar plots, word clouds, sequence/forecast charts) keeps a data-heavy paper readable. A standalone Sensitivity Analysis section and an explicit Strengths/Weaknesses self-assessment signal maturity. The Letter to the Marketing Director is concrete and per-product, converting model output into named defects and fixes, which makes the work feel deployed rather than academic.\"",
+  "pitfalls_or_limitations": [
+    "The helpfulness-rating dependent variable is bucketed by 'compound' thresholds in Equation 4 (0-0.25, ... 0.75-1), not by Hr — an internal inconsistency between the stated target (Hr) and the cut-points used, suggesting a mislabeled/confused dependent variable.",
+    "AHP weights come from an expert-scored judgment matrix — the team admits this is subjective; weights are essentially asserted, not learned from data, which weakens the brand-ranking objectivity.",
+    "Vine and verified_purchase were kept as regressors even though the team notes almost no vine members exist in the sample, so those coefficients carry little real information (kept for 'completeness').",
+    "Time series uses only monthly aggregates and an AR(1)/additive-seasonal model; it ignores holidays and special events and the team concedes long-horizon reputation forecasts are unreliable.",
+    "Reported R^2 ~0.90-0.95 on the AR(1) reputation series is suspiciously high for monthly review aggregates and likely reflects autocorrelation/trend rather than predictive skill.",
+    "The distributed-lag 'causality' claim is correlational: Almon regression of compound on lagged stars shows association, not that prior ratings cause current reviews.",
+    "Aggressive preprocessing choices (mapping all emoji to 'five stars', similarity-thresholded review deletion) can inject bias and discard signal, with the threshold never reported.",
+    "Cosine-similarity index scoring against a single highest-sentiment 'significant review' per attribute is ad hoc and sensitive to that one anchor review.",
+    "Star ratings are treated as a cardinal numeric variable (squared, averaged) despite being ordinal."
+  ],
+  "reusable_patterns": [
+    "Four-model decomposition mapped one-to-one onto the prompt's sub-questions — a clean template for any multi-part data problem.",
+    "Standard text pipeline for review-mining problems: clean/normalize -> VADER compound score -> LDA topics -> map topics to a fixed business attribute taxonomy -> per-attribute scoring.",
+    "Composite-index recipe: derive target (Hr), build a weighted multi-attribute score, fix the weights with AHP+consistency test, then cluster entities into quality tiers for a ranked recommendation.",
+    "Add squared feature terms whenever you suspect (or want to surface) U-shaped / saturating effects, and interpret the sign pair to claim the shape.",
+    "Nested/block regression to expose each feature group's incremental effect and to justify model complexity.",
+    "Time-series discipline checklist: define composite metric, ACF/PACF order ID, confirm with AIC/BIC, decompose seasonality, then forecast and read business timing off the peaks.",
+    "Almon polynomial distributed-lag setup as a ready tool for 'does the past influence the present' sub-questions.",
+    "Always include a sensitivity analysis on any hand-set weight (here the 0.7/0.3 reputation split) and report the % change to defend robustness.",
+    "End with a stakeholder Letter that converts negative-topic keywords into named, per-product design fixes — the actionable 'so what' that wins C-track."
+  ]
+}

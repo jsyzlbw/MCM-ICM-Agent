@@ -1,0 +1,45 @@
+{
+  "paper_id": "2025-2507817",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Predict the 2028 Summer Olympics medal table (gold and total), identify which previously non-winning countries will win their first medals, determine the most important sports for each country and the effect of host country event selection, and quantify the impact of 'great coaches' on medal counts, using historical Olympic data.",
+  "models_used": [
+    "Grid-Search Random Forest (GSRF)",
+    "Logistic Regression (binary classification)",
+    "Lasso Regression",
+    "ARIMA (initial, not used for final predictions)"
+  ],
+  "key_techniques": [
+    "Feature engineering (athlete count, historical medals, event count, host status)",
+    "10-fold cross-validation",
+    "Grid search for hyperparameter optimization",
+    "Data standardization",
+    "Normality testing of residuals (Shapiro-Wilk) and t-distribution prediction intervals",
+    "Sigmoid function and cross-entropy loss for logistic regression",
+    "L1 regularization (Lasso)",
+    "Model evaluation metrics (R², MAE, RMSE, AUC-ROC, confusion matrix, sensitivity/specificity)",
+    "Sensitivity analysis by input perturbation",
+    "ISO country code mapping for data integration"
+  ],
+  "why_it_won": "The paper addresses all problem tasks with a clear, multi-model methodology, each supported by rigorous validation (cross-validation, confidence intervals, sensitivity analysis) and appropriate performance metrics. Visualizations such as flowcharts, radar charts, and error bars enhance interpretability. The team demonstrates deep understanding by discussing model limitations (e.g., ARIMA's poor fit) and providing original, actionable insights for the IOC.",
+  "section_highlights": "Each task is presented in a dedicated section with its own workflow flowchart, making the modeling process easy to follow. A unified symbols table and consistent equation numbering improve clarity. Evaluation tables, radar charts for feature importance, and prediction interval visualizations directly connect results to the narrative, strengthening the paper’s professional appearance.",
+  "pitfalls_or_limitations": [
+    "ARIMA model provided low R² (0.218-0.494) and was not used for final predictions.",
+    "Assumed constant number of athletes, events, and participating countries for 2028, which may not hold.",
+    "Interdependencies among input variables were ignored for simplicity.",
+    "Logistic regression for non-winning countries found historical participation insignificant (p>0.05) and excluded it.",
+    "Residuals failed normality test; prediction intervals based on t-distribution may not fully capture uncertainty.",
+    "Data from dissolved or banned countries (e.g., USSR, Russia) was excluded, potentially losing historical context."
+  ],
+  "reusable_patterns": [
+    "Use Grid-Search Random Forest for regression tasks with limited features to balance performance and interpretability.",
+    "Convert a probability prediction problem into binary classification using logistic regression with a sigmoid function and cross-entropy loss.",
+    "Quantify expert/coach impact via Lasso regression to isolate variable effects.",
+    "When residuals are non-normal, apply t-distribution prediction intervals as an alternative to normal-based intervals.",
+    "Preprocess heterogeneous data sources with ISO standard country codes and standardization.",
+    "Evaluate models comprehensively with multiple metrics (R², MAE, RMSE for regression; AUC, accuracy, recall for classification).",
+    "Visualize feature importance from tree-based models with radar charts to communicate model drivers intuitively.",
+    "Perform sensitivity analysis by perturbing key input variables to test model robustness."
+  ]
+}

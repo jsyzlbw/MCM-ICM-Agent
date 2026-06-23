@@ -1,0 +1,50 @@
+{
+  "paper_id": "2007-2053",
+  "year": 2007,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2007 MCM Problem B (discrete optimization): determine the fastest way to board a commercial airplane, comparing boarding schemes (back-to-front, outside-in, etc.) and recommending an optimal procedure that handles real-world passenger variability across planes of different sizes (DC9 through A380). Team 2053's paper, titled \"Boarding at the Speed of Flight,\" is the Outstanding (O-award) winner.",
+  "models_used": [
+    "Best-case (lower-bound) analytical model: a modified outside-in 'pipelined' boarding algorithm yielding a closed-form ideal boarding-time formula (Eq 5.1), piecewise on whether bag-stow time B exceeds 2R/v",
+    "Queuing-theory / stochastic-process network model: airplane modeled as a chain of per-row M/M/1-style processors with unit-capacity queues; converted from open to closed network via Jackson's Theorem, solved for product-form stationary distribution rho = prod (1-rho_j) rho_j^k_j with rho_j = lambda/mu_j to locate the bottleneck",
+    "Probabilistic combinatorics for interference counting: Lemma 1 derives expected row (seating) interferences = k(k-1)/4 via indicator variables and linearity of expectation over all k! boarding orders",
+    "Longest-increasing-subsequence model for baggage holdups: Lemma 2 uses the asymptotic 2*sqrt(k) expected LIS length to estimate how many of k passengers can stow bags simultaneously, giving zone boarding-time estimates (Eqs 5.13, 5.14) for dense vs sparse row distributions",
+    "Agent-based discrete-event simulation engine inspired by Stochastic Petri Nets, finite-time-step simulation, and cellular automata; grid-of-seats plane with single aisle, per-passenger stochastic seating delays, compartment-filling and row-out-of-order penalties, and an aisle pass-rate probability",
+    "A learning/heuristic optimization layer: run the fast unassigned-seat simulation, record seat fill order, then cluster seats into zones by fill time — producing the novel 'Parabola' boarding scheme (parabolic iso-time contours of the random-greedy fill pattern)"
+  ],
+  "key_techniques": [
+    "Multi-layered / multi-resolution attack: idealized analytical lower bound first, then queuing theory for bottlenecks, then combinatorial interference lemmas, then a full simulation — each layer's insight seeds the next",
+    "Deriving a lower bound (Eq 5.1) to bound the achievable, rather than only comparing given heuristics",
+    "Using Jackson's Theorem to make an otherwise-intractable open queuing network solvable in closed product form, then reading off the bottleneck as the largest rho_j",
+    "Indicator-variable + linearity-of-expectation proof to get a clean k(k-1)/4 interference count without enumerating permutations",
+    "Mapping a physical phenomenon (simultaneous bag stowage without blocking) onto a known combinatorial result (expected LIS length 2*sqrt(k))",
+    "Letting the fast unassigned model 'teach' an assigned-seat scheme: reverse-engineering an emergent optimal pattern (the Parabola zones) from simulation output",
+    "Sensitivity analysis across all parameters (walking speed, bag time, entry rate, intra-row time, pass rate) to RANK levers by impact, identifying bag-stow time and entry rate as the only two critical factors",
+    "Robustness analysis via 500-trial histograms: judging schemes on variance/worst-case time range (min), not just mean — connecting reliability to schedulable extra flights",
+    "Generalization-by-decomposition: first/multi-class, multi-door, multi-aisle, multi-level planes all reduced to sums/maxes of the base single-aisle simulation"
+  ],
+  "why_it_won": "\"It demonstrates rare modeling maturity: instead of just simulating and ranking, the team built a tower of independent models (analytical bound, queuing network, combinatorial lemmas, simulation) that mutually corroborate the same physical insights — the aisle entrance is the bottleneck, pipelining is essential, and seats must be spread sparsely across rows. The queuing-theory bottleneck result and the two interference lemmas are genuinely rigorous, non-obvious mathematics that most teams would not attempt. The Parabola scheme is a creative, original contribution derived (not guessed) by letting the fast random model train an assigned-seat zoning. Crucially, the team answered the question the JUDGES and the CLIENT actually care about: they ranked the CONTROLLABLE factors by impact (bag time and entry rate matter; walking speed and intra-row time do not), and they evaluated reliability via worst-case time spread, tying it to real airline revenue (extra daily flights). The executive summary is genuinely actionable and business-literate, and the writing is confident, witty (the Samuel L. Jackson framing), and well-structured. Strong analysis + originality + client-focused, decision-relevant conclusions = Outstanding.\"",
+  "section_highlights": "\"Executive Summary (lines 5-22): client-facing, leads with the two controllable levers (entry speed, bag-stow time) and a tiered scheme ranking with concrete 10-30% gains and a 50%-smaller variance claim — exactly what an airline exec needs. Section 5.1 Best-Case Algorithm (84-208): establishes the ideal pipelined lower bound and extracts the framing concepts (continuous-aisle, pipelining) that govern the whole paper. Section 5.2 Queuing Theory (210-301): the analytical centerpiece — Jackson's-Theorem closed-network solution proving the front-of-aisle is always the bottleneck and bottleneck severity is linear in row count. Section 5.3 Interference Lemmas (303-373): the two probabilistic lemmas (k(k-1)/4 interferences; 2*sqrt(k) LIS) that justify sparse-row zoning. Section 8 Deriving the Parabola Scheme (487-498): the original contribution, a learned zoning from the random-fill simulation. Section 9 + 9.6 Sensitivity (499-599): ranks parameters by impact and produces the speed ordering Outstanding/Meritorious/etc. Section 10 Robustness (600-622): 500-trial histograms and the time-range table elevating reliability to a first-class metric. Section 11 Generalization (640-665) and Section 12 (667-802): extend to multi-aisle/level/class real planes with a concrete results table. Section 13 (804-833): candid weaknesses plus crisp, prioritized recommendations.\"",
+  "pitfalls_or_limitations": [
+    "The queuing-theory model is ultimately discarded as the primary model (the authors admit it cannot enforce that each row holds only C passengers), so it provides qualitative bottleneck intuition but does not directly produce the headline numbers",
+    "Heavy reliance on estimated parameters 'based on critical thinking' (seating delay U[10,20], 3.0p compartment penalty, 15.0p row penalty, 0.05 pass rate, 5s entry delay) — several are guesses rather than data-derived, which the team acknowledges",
+    "Idealized assumptions: passengers walk at one speed, board independently (no families/groups moving together), have perfect knowledge of their seat, never overshoot, and always stow luggage directly above their seat; jet-bridge assumed to deliver passengers at constant rate (ignores stairs/buses)",
+    "Comparison is simulation-based and non-exhaustive — the authors concede a better untested scheme could exist, and they skipped real-world variants (single-zone random, rotating row-group zones) and never varied the number of zones called",
+    "The Parabola scheme, despite being the original contribution, performs essentially the same as the simpler Outside-In and Pyramid schemes; the team itself recommends Outside-In as the practical representative, so the novel method yields little marginal benefit",
+    "On large multi-aisle/level planes (747-400, A380) the schemes converge and Back-to-Front nearly ties Outside-In; the authors attribute this to inadequate entry rate, somewhat hand-waving the result",
+    "Several embedded figures/flowcharts are garbled in this markdown extraction (e.g., Figure 1 mermaid), so the visual evidence is hard to verify from the text alone",
+    "Validation is internal/self-consistent (models agree with each other) rather than against real airline boarding data; no ground-truth calibration"
+  ],
+  "reusable_patterns": [
+    "Build a tower of models at increasing detail (analytical lower bound -> coarse queuing model -> combinatorial sub-lemmas -> full simulation) so each layer's insight motivates the next and the layers cross-validate the same conclusions",
+    "Always compute a theoretical lower/upper bound for a discrete optimization problem to know how much improvement is even possible before comparing heuristics",
+    "Use indicator variables + linearity of expectation to get clean closed-form expected-count results (interferences, collisions) without permutation enumeration",
+    "Map a messy physical process onto a known named combinatorial/probabilistic result (longest increasing subsequence, Jackson networks) to import existing theory and citations",
+    "Let a fast/idealized model 'train' a practical one: simulate the unconstrained optimum, record the emergent pattern, then cluster it into deployable rules/zones (the learn-then-zone trick that produced Parabola)",
+    "Run one-factor-at-a-time sensitivity sweeps and RANK the parameters by impact, separating controllable from uncontrollable levers — gives the client a prioritized to-do list, not just an answer",
+    "Judge solutions on variance / worst-case, not only the mean, and tie that reliability metric to a concrete business outcome (schedulable extra flights = revenue)",
+    "Generalize by decomposition: handle complex configurations (multi-aisle/door/level/class) by splitting into copies of the base model and combining via sum or max",
+    "Write an executive summary that leads with the actionable levers and quantified gains in client (business) language before any math",
+    "Be candid about limitations in a dedicated section while explicitly arguing why the strengths outweigh them — signals modeling maturity to judges"
+  ]
+}

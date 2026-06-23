@@ -1,0 +1,53 @@
+{
+  "paper_id": "2022-2203120",
+  "year": 2022,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2022 MCM Problem C (data): starting with $1000 on 2016-09-11, build a model that uses ONLY the daily price stream up to each day to decide buy/hold/sell across a [Cash, Gold, Bitcoin] portfolio over a 5-year window (gold trades only on market days, bitcoin daily), with commissions (gold 1%, bitcoin 2%). Deliverables: (1) best daily strategy + final value of the $1000; (2) evidence the strategy is best; (3) sensitivity to transaction costs; (4) a 2-page memo. This team (Team #2203120) combined an ARIMA price-forecasting front-end with a parameterized dynamic-programming / threshold trading rule, reporting a final portfolio of $132,089.11.",
+  "models_used": [
+    "ARIMA(p,d,q) rolling time-series price forecaster — gold ARIMA(2,1,1), bitcoin ARIMA(2,1,2); fit on 30-day windows, forecast next 3-day cycle, training window slides by 3 days",
+    "Augmented Dickey-Fuller (ADF) unit-root test for stationarity; first-order differencing (d=1) to stationarize (gold P 0.6734->0.0043, bitcoin 0.9921->0.0000)",
+    "ACF / PACF inspection to select AR order p and MA order q (truncation rule)",
+    "White-noise (residual) test on ARIMA residuals to confirm model adequacy",
+    "Risk-penalized dynamic-programming / sequential decision model: objective max_{w_j,m_j} A_j - lambda*S_j (total assets minus lambda times rolling 30-day asset standard deviation as risk term)",
+    "Threshold-based trade trigger rule using predicted vs. realized price change relative to increase/decrease thresholds e=beta*A, f=gamma*A",
+    "Decision coefficient R^2 (per-cycle fit) used to size the buy proportion (w_H when model stable, w_L otherwise); Hit-rate DS (directional accuracy) used as a gating constraint DS>=0.5",
+    "Inflation-comparison baseline model A = a*(1+r-I)^5 (r=0.5% deposit rate, I=7% inflation) to argue real-return superiority",
+    "Sensitivity metric defined as mean relative change in transaction frequency over 10 cost perturbations"
+  ],
+  "key_techniques": [
+    "Two-stage pipeline: forecast first (ARIMA), then feed the per-cycle prediction into a decision rule — cleanly separates prediction from policy",
+    "Cycle discretization: 3-day trading cycle with a 'cycle 0' (2016-09-11 to 2016-11-11) as a no-trade experience-accumulation/warm-up period, giving n=588 cycles — keeps the model strictly causal (only past data used)",
+    "Causal rolling-window training (30-day train / 3-day test, step 3) that mirrors the 'only data up to today' constraint of the problem",
+    "Risk modeled explicitly as standard deviation of recent total assets and folded into the objective via a regularization coefficient lambda (return-risk tradeoff in one scalar)",
+    "Parameterization as the core idea: a tunable parameter list (beta, gamma, w_H, w_L, m, q) turns ONE model into three trader personas (insurance / common / radical) — this directly answers 'best strategy' as a family rather than a point",
+    "Two-tier accuracy gating: directional hit-rate DS gates whether to trade at all; per-cycle R^2 sizes how aggressively to trade",
+    "Separate handling of gold vs bitcoin trading calendars (empty gold prediction = no-trade day)",
+    "Robustness shown by perturbing w_H, w_L, m and showing total assets stay flat (~$125k) across perturbations",
+    "Sensitivity-to-cost study with directional cases (cost up/down for gold/bitcoin separately) tying frequency, return, and risk changes together"
+  ],
+  "why_it_won": "\"From a judge's view, the paper nails the three things Problem C rewards. (1) It respects the hard causality constraint — the warm-up cycle 0, rolling 30/3 windows, and per-cycle forecasting make it visibly 'only past data,' which many teams violate. (2) It reframes 'prove your strategy is best' — an unfalsifiable ask — into a tractable, defensible argument built on three pillars (generalization via the three trader types, robustness via parameter perturbation, and yield via an inflation/bank-deposit baseline showing $1000 grows to ~$132k vs a $139 real bank value). (3) Its parameterized single-model-many-personas design is elegant and reusable, and it produces concrete deliverables judges can check (final value, transaction counts, [C,G,B] end states). The pipeline is simple, transparent, and explainable, the writing is well-structured with per-problem framing, real cited literature, validation metrics (R^2 0.86/0.93, ADF p-values, hit rate), and a clean two-page memo that translates math into trader language. The combination of correct constraint handling + a clear evidentiary structure for 'optimality' + strong communication is what carries it to Outstanding.\"",
+  "section_highlights": "\"Summary block gives per-problem results up front (final $132,089.11; three-persona returns $14,312 / $50,040 / $132,089; cost sensitivities gold 0.0422 vs bitcoin 0.0658). Problem Analysis explicitly justifies model choice (ARIMA over LSTM/RNN/BP because endogenous-only, simple, efficient) — judges like seeing alternatives rejected with reasons. ARIMA section is a textbook-clean walkthrough: ADF stationarity table, ACF/PACF order selection, white-noise residual check, then validation with R^2. The strategy section lays out the objective max A - lambda*S with full s.t. constraints (non-negativity, DS>=0.5, cash floor C>=A*q, fixed commissions). Two decision flowcharts (Fig 6 'whether to trade', Fig 7 'how much to trade') make the policy auditable. Problem 2 structures the 'best' proof into generalization/robustness/yield with a results table (transactions, SD, R^2 per persona) and an inflation baseline. Problem 3 defines a clean sensitivity metric and uses directional cost cases. The memo restates the strategy as when/what/how-much to trade in plain language. Notation table and explicit assumptions appear early.\"",
+  "pitfalls_or_limitations": [
+    "The 'dynamic programming' label is loose — there is no real Bellman recursion / value-function optimization over states; it is a greedy per-cycle threshold rule with a risk-penalized objective. A rigorous judge could dock this mislabeling.",
+    "Heavy ARIMA forecasting math is somewhat decorative: actual trades trigger on threshold comparisons of predicted vs realized change, so the elaborate model selection does less work than its page count suggests.",
+    "The objective max A_j - lambda*S_j is never actually optimized via a solver — lambda and the trade proportions are hand-set/tuned, so 'optimal' is asserted, not solved. Best-strategy claim rests on the three-pillar argument, not a proof of optimality.",
+    "Severe in-sample overfitting / look-ahead risk: parameters (beta, gamma, w_H, q, lambda) are tuned on the same 2016-2021 path whose return they report; no out-of-sample/walk-forward holdout validates the headline $132k.",
+    "Several equations are internally inconsistent or typo-ridden (e.g. Eq. 7-8 define B_i in terms of G_{i-1}; R^2 formula in Eq. 3 looks malformed; w_H/w_L appear swapped in Eqs. 14-15), suggesting the written model does not exactly match the code.",
+    "Robustness figures are suspiciously flat (every perturbation gives ~$125,000), which reads as under-resolved plotting rather than genuine evidence of stability.",
+    "Inflation baseline formula a*(1+r-I)^5 is economically crude and the $139 figure is used rhetorically; comparison to bank deposit is a weak benchmark vs buy-and-hold gold/bitcoin.",
+    "No transaction-cost-aware optimization of trade size beyond a fixed threshold; mixed gold+bitcoin purchase in one cycle admitted as not handled (stated in Improvements).",
+    "Authors self-disclose limited finance knowledge; risk is proxied only by asset-value standard deviation, ignoring drawdown, Sharpe, etc."
+  ],
+  "reusable_patterns": [
+    "Forecast-then-decide two-stage architecture: a causal rolling-window time-series forecaster feeding a rule/optimization policy — generic template for any 'decide each day from past data' problem.",
+    "Warm-up / experience-accumulation period (cycle 0 with no action) to honor strict causality and avoid cold-start look-ahead — reusable whenever 'use only data up to t' is a hard constraint.",
+    "Single parameterized model -> multiple personas: expose a small parameter list and instantiate conservative/balanced/aggressive variants to answer 'find the best strategy' as a tunable family rather than one number.",
+    "Three-pillar 'prove it's best' rhetorical structure: generalization (parameter sweeps make different valid strategies), robustness (perturb parameters, show output stays bounded), and yield (beat a transparent baseline). Directly transplantable to any 'show your model is optimal/robust' sub-question.",
+    "Risk-penalized scalar objective: optimize value - lambda*(volatility proxy) so a single knob trades off return vs risk and generates the persona spectrum.",
+    "Two gating signals: a directional-accuracy gate (hit rate DS) to decide whether to act, plus a fit-quality signal (per-window R^2) to decide how strongly to act.",
+    "Sensitivity defined as mean relative change of an output (here trade frequency) across N perturbations of an input — a clean, reportable sensitivity number for the cost sub-question.",
+    "Standard ARIMA validation choreography (ADF -> difference -> ACF/PACF order pick -> white-noise residual check -> R^2/hit-rate report) as a ready checklist for any time-series MCM problem.",
+    "Closing memo that recasts the model as when/what/how-much decisions in stakeholder language — strong template for the required communication deliverable."
+  ]
+}

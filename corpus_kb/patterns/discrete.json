@@ -1,0 +1,252 @@
+{
+  "problem_type": "discrete",
+  "paper_count": 83,
+  "common_models": [
+    {
+      "name": "Discrete-event Monte-Carlo simulation of one ride over a 10-hour day, advanced group-by-group on arrival events (the core engine all policies plug into)",
+      "papers": 1
+    },
+    {
+      "name": "Poisson arrival process for group inter-arrival times: constant rate lambda in the basic model, upgraded to a time-varying (non-homogeneous) Poisson process whose rate is a 4-piece piecewise-linear function of time (ramp up, peak plateau M=5 groups/min between hours 2.5-6, ramp down, low-tail plateau)",
+      "papers": 1
+    },
+    {
+      "name": "Group-size model: Poisson(mean 3.6) + 1 minimum, giving mean group size 4.6 and P(1-6 people)=84.4%; chosen over Normal deliberately to skew toward small groups",
+      "papers": 1
+    },
+    {
+      "name": "Anti-backward-time QuickPass clock rule: t_start = max(t_NL, t_syst) with a monotonically non-decreasing system clock t_syst, incremented by 5 min after every ~20 passes — directly eliminates defect #1",
+      "papers": 1
+    },
+    {
+      "name": "Utility-based group decision model: quadratic willingness-to-wait function f(d) through (0,0),(1,T),(-1,T) mapping a Normal(0.5, 0.1938^2)-sampled 'desire' d to acceptable normal-line wait, with a 0.3 discount factor on the QuickPass virtual wait; group picks min(N,Q)",
+      "papers": 1
+    },
+    {
+      "name": "Policy 1 (Vary #QP): fix boarding ratio alpha, dynamically choose how many passes to issue per 15-min interval; projects future queue length N_f from current+predicted flow rates and solves issuance count n to keep QP wait < 20 min and NL wait < 2.5 hr",
+      "papers": 1
+    },
+    {
+      "name": "Policy 2 (Vary alpha): fix passes issued, dynamically solve the boarding ratio alpha=1-kappa each interval by minimizing a dimensionless weighted sum of normalized queue wait-times, which reduces to a closed-form cubic in kappa solved for its real root in (0,1)",
+      "papers": 1
+    },
+    {
+      "name": "Policy 3 (Vary both): run the #QP-issuance optimizer and the alpha optimizer concurrently for a fully self-tuning controller (notes sensitivity to initial alpha)",
+      "papers": 1
+    },
+    {
+      "name": "Policy 4 (Three-tier queueing): a designed-but-unimplemented Priority-I 'reservation' queue with absolute boarding priority, 15-min return windows, chi-squared(2)-distributed chosen return times, capped at 600 passes/day",
+      "papers": 1
+    },
+    {
+      "name": "Flow-rate estimation + polynomial/linear regression on the last 3 flow data points to forecast near-future inflow/outflow and smooth noisy wait-time estimates (t_wait = N_bar / f_out)",
+      "papers": 1
+    },
+    {
+      "name": "Model 1 — Basic Car-Tracking discrete-event queue simulation: cars arrive per the Fourier-fit influx, each booth serves with an Exponential(mean 12 s = 5 cars/min) service time; cars pick the soonest-vacated booth; tracks per-car wait time in line. Bottlenecking is deliberately omitted so the model yields a provable UPPER BOUND on optimal B. Optimal B chosen by 'marginal-utility threshold analysis': stop adding booths once the next booth reduces max wait by less than one service time (0.2 min).",
+      "papers": 1
+    },
+    {
+      "name": "Model 2 — Macroscopic cost-minimization model: treats traffic as continuous flow. Average wait W = W1 (queue) + W2 (service = 1/r) + W3 (bottleneck). W1 and W3 are computed as DOUBLE integrals over the day of max(LFi(t) - Br, 0) and max(Fo(t,B) - K, 0) respectively, where K is a bottleneck outflux threshold taken linear in L and independent of B. Cost C(B) = WαNγ + QB minimized by setting dC/dB = 0 (quartic fits make dW/dB cubic, solved numerically in Mathematica; for L=6, minimum at B=10.84 -> 11 booths).",
+      "papers": 1
+    },
+    {
+      "name": "Model 3 — Two-dimensional stochastic Cellular Automata (Nagel-Schreckenberg-style) traffic model in MATLAB: plaza encoded as a matrix of occupied (1), vacant (0), and forbidden (-888) cells with a stair-step fan-out/merge geometry. Per time step rules: advance forward with probability p (driver attentiveness), lane-change flagged cars with probability q (random lane priority permutation), booth service modeled as a 3-5 time-step incrementing delay. Optimal B from the same cost function; independently validates Models 1 and 2.",
+      "papers": 1
+    },
+    {
+      "name": "Fourier series demand model: an 8-harmonic Fourier series F(t)=a0+Σ a_n cos(nωt)+b_n sin(nωt), ω=2π/24, fit to hourly NJ parkway influx data, R^2=0.9997. Chosen over a quartic polynomial specifically because it is periodic (F(0)=F(24)) and gives a value at every minute.",
+      "papers": 1
+    },
+    {
+      "name": "Queueing theory (referenced/rejected): M/M/s queue considered as a baseline but rejected because it cannot represent bottlenecking or multi-lane merge geometry.",
+      "papers": 1
+    }
+  ],
+  "common_techniques": [
+    {
+      "name": "Reframing a vague design prompt into a concrete, measurable control problem with two explicit service-level targets (QP wait < 20 min, NL wait < 2.5 hr) that act simultaneously as design constraints AND evaluation metrics",
+      "papers": 1
+    },
+    {
+      "name": "A 'ladder of models': start with a deliberately broken basic model, show its failure plots, then introduce each improvement (variable arrival rate, utility decision rule, dynamic alpha, dynamic #QP) as a motivated fix — making the whole paper a narrative of diagnosis-and-repair",
+      "papers": 1
+    },
+    {
+      "name": "Encoding the system's real-world bug as a hard invariant (monotone non-decreasing clock via max(t_NL, t_syst)) rather than just simulating around it — they engineered the defect out by construction",
+      "papers": 1
+    },
+    {
+      "name": "Reducing a constrained optimization (minimize weighted queue waits over alpha) to a single closed-form cubic root in (0,1), giving an O(1) controller update instead of a numerical search — fast enough to run every 15 minutes",
+      "papers": 1
+    },
+    {
+      "name": "Statistical experiment design: each policy run over a simulated 2-month season, reporting mean +/- standard deviation for 8 daily KPIs (Tables 2-3) and explicitly testing whether differences are statistically significant",
+      "papers": 1
+    },
+    {
+      "name": "Honest negative/null result: concluding the four policies are statistically indistinguishable at design-capacity load, and isolating where they DO differ (variance, behavior under over-capacity 'slammed' days)",
+      "papers": 1
+    },
+    {
+      "name": "Probabilistic behavioral modeling throughout — desire ~ Normal, return-time choice ~ chi-squared(2), tie-breaking probabilities (e.g., 70% pick the more flexible queue) — to make agent decisions realistic rather than deterministic",
+      "papers": 1
+    },
+    {
+      "name": "Cost-as-common-currency reframing: converts driver wait minutes and agency dollars into one objective C(B)=WαNγ+QB using cited parameters (α=$0.10/min time-value, Q=$180000/365.25 daily booth cost, γ avg occupancy), so a multi-objective trade-off becomes a single 1-D minimization.",
+      "papers": 1
+    },
+    {
+      "name": "Three-model triangulation with explicit roles: one model is a deliberate upper bound, one is the analytic framework, one is the high-fidelity validator; cross-agreement is the headline evidence ('precision implies accuracy').",
+      "papers": 1
+    },
+    {
+      "name": "Marginal-utility / threshold stopping rule tied to a physically meaningful unit (one service time = 0.2 min) instead of an arbitrary cutoff.",
+      "papers": 1
+    },
+    {
+      "name": "Double-integral accounting of wait time: integrate instantaneous excess demand to get cars-in-queue, integrate again to get total person-minutes waited — a clean macroscopic derivation of W1 and W3.",
+      "papers": 1
+    },
+    {
+      "name": "Surface-fitting (TableCurve3D) to turn the stochastic, B-dependent outflux Fo(t,B) into a closed-form expression usable inside the macroscopic integral — a bridge that lets the micro simulation feed the macro model.",
+      "papers": 1
+    },
+    {
+      "name": "Cellular automata sensitivity analysis: perturbed p (±11%), q (±5.2%), and service delay (±25%); optimal B unchanged except delay +25% shifted 10->11, demonstrating robustness.",
+      "papers": 1
+    },
+    {
+      "name": "Conservation-of-traffic check: counts cars in = cars out to validate the CA code against logic/programming bugs.",
+      "papers": 1
+    },
+    {
+      "name": "Rush-hour vs full-day stress test: re-ran CA under near-saturating 3-hr influx; optimal B never differed by more than 1, showing the recommendation holds under peak load.",
+      "papers": 1
+    }
+  ],
+  "recurring_pitfalls": [
+    {
+      "name": "Self-admitted: all policies depend on noisy flow-rate estimates; even with linear/polynomial regression smoothing, wait-time estimates 'remained rapidly changing,' so the controllers act on jittery signals",
+      "papers": 1
+    },
+    {
+      "name": "Wait times are computed as N_bar / f_out (Little's-law-style aggregate) rather than by tracking individual patrons, so reported average waits are only rough approximations of true experienced waits",
+      "papers": 1
+    },
+    {
+      "name": "Strong behavioral assumptions: 100% of QuickPass holders return in-window and nobody balks/reneges from the normal line — real no-shows and abandonment are unmodeled (acknowledged but not fixed)",
+      "papers": 1
+    },
+    {
+      "name": "Only validated at near-design-capacity load; over-capacity 'slammed' days are shown to break the basic model (13-hour waits) and are sidestepped rather than solved (no queue-shutdown policy implemented)",
+      "papers": 1
+    },
+    {
+      "name": "Single-ride scope: ignores park-wide interaction, where multiple FastPass rides compete for the same guests' time — explicitly flagged as out of scope",
+      "papers": 1
+    },
+    {
+      "name": "The headline four-way comparison yields a NULL result (no statistically significant difference at design load), so the considerable machinery of the dynamic-alpha and dynamic-#QP controllers is not demonstrably better than the simple fixed policy in the tested regime",
+      "papers": 1
+    },
+    {
+      "name": "The most ambitious idea — the three-tier reservation queue (Section 9) — was designed but never implemented and 'does not produce useable data,' so its claimed benefits are unvalidated",
+      "papers": 1
+    },
+    {
+      "name": "Some parameters are set by assertion (0.3 virtual-queue discount, sigma=0.1938 for desire, 70/30 tie-break probabilities) without sensitivity analysis on those specific choices",
+      "papers": 1
+    },
+    {
+      "name": "The bottleneck threshold K is the weakest link: asserted to be linear in L and independent of B with no derivation, and the team itself admits it likely overestimates K (underestimates bottlenecking), biasing the macroscopic model toward too many booths — they lean on the CA model partly to compensate.",
+      "papers": 1
+    },
+    {
+      "name": "The three models disagree most at small L (L=1: 4 vs 3 vs 2 booths; L=5: 10 vs 9 vs 8), and the final B=floor(1.65L+0.9) does not exactly reproduce any single model's column (e.g. it gives 9 at L=5, matching the macroscopic not the favored automata model of 8) — the 'reconciliation' is a regression compromise, not a principled choice.",
+      "papers": 1
+    },
+    {
+      "name": "Single data source: all demand comes from one 1998 NJ parkway dataset (one direction, one road); no test on a qualitatively different demand profile, so external validity of the constant is unestablished.",
+      "papers": 1
+    },
+    {
+      "name": "Homogeneity assumptions are strong: one driver type, one vehicle size (one CA cell), all booths identical, constant booth count all day, and bottleneck never blocks booth exits — the realistic E-ZPass/mixed-booth case is only sketched as future work, and directed lane-changing is never implemented.",
+      "papers": 1
+    },
+    {
+      "name": "CA units are abstract 'time steps' and a 3-5 step service delay; the mapping to real seconds (the η scale factor) is loosely specified, so the CA cost dollars are not directly comparable to the macroscopic dollars.",
+      "papers": 1
+    },
+    {
+      "name": "Model 1's exponential service + soonest-vacated-booth rule ignores merging entirely, so its 'upper bound' is only valid under its own no-bottleneck premise; calling it a rigorous bound is somewhat informal.",
+      "papers": 1
+    },
+    {
+      "name": "The Ψ = 2B* - L expression for the break-even booth count is presented with limited evidence and the team notes counterexamples, so it is more conjecture than result.",
+      "papers": 1
+    }
+  ],
+  "reusable_patterns": [
+    {
+      "name": "The 'model ladder': ship a deliberately simple baseline, expose its failure with plots, then justify each added complication as a targeted fix — turns a model dump into a diagnosis-driven narrative judges can follow",
+      "papers": 1
+    },
+    {
+      "name": "Turn a reported real-world defect into a hard invariant the model enforces by construction (here: monotone non-decreasing clock via max(...)). Answering the prompt's literal complaint earns immediate credibility",
+      "papers": 1
+    },
+    {
+      "name": "Use one set of quantities as BOTH design constraints and KPIs (QP<20min, NL<2.5hr) so the optimization target and the evaluation rubric are the same — keeps the paper internally coherent",
+      "papers": 1
+    },
+    {
+      "name": "Always upgrade a constant-rate Poisson process to a time-varying (non-homogeneous) rate via a simple piecewise-linear/continuous function when the real phenomenon has daily peaks — cheap realism that visibly improves results",
+      "papers": 1
+    },
+    {
+      "name": "Reduce a per-step optimization to a closed-form root (here a cubic in kappa) so a controller can run in real time; reach for algebra before a numerical solver when the objective is low-dimensional",
+      "papers": 1
+    },
+    {
+      "name": "Validate stochastic models by Monte-Carlo over a long horizon (a simulated 2-month season) and report mean ± standard deviation per KPI in a comparison table — and state plainly when differences are within error",
+      "papers": 1
+    },
+    {
+      "name": "Build agent decisions from a utility function over named human factors (desire, line length, return delay) with randomized parameters, rather than hard 50/50 coin flips — more defensible and easier to extend",
+      "papers": 1
+    },
+    {
+      "name": "Write the executive summary for the actual stakeholder (a park manager): describe the user experience and the guarantees first, math second",
+      "papers": 1
+    },
+    {
+      "name": "Reserve a 'Strengths and Weaknesses' section that genuinely lists limitations (data noise, balking, single-ride scope); candor reads as competence to judges and pre-empts their objections",
+      "papers": 1
+    },
+    {
+      "name": "Multi-objective -> single scalar via a 'cost-to-the-system' that monetizes each stakeholder's pain with cited unit values; minimize the scalar in 1-D. Generalizes to any staffing/capacity sizing problem.",
+      "papers": 1
+    },
+    {
+      "name": "Deliberate upper/lower-bound model: build one intentionally simplified model whose omission provably biases the answer in a known direction, then use it to sanity-bound the sophisticated models.",
+      "papers": 1
+    },
+    {
+      "name": "Triangulation by paradigm: solve the same problem with a discrete-event simulation, a continuous/analytic model, and an agent-based (cellular automata) model; report convergence as evidence and let the most detailed model break ties.",
+      "papers": 1
+    },
+    {
+      "name": "Periodic-demand fitting: when modeling daily/cyclic data, prefer a Fourier series over a polynomial precisely for the periodicity constraint f(0)=f(period); fit to hourly data, sample at finer resolution.",
+      "papers": 1
+    },
+    {
+      "name": "Threshold/marginal-utility stopping rule anchored to a physical unit (one service time, one car-length) rather than an arbitrary epsilon.",
+      "papers": 1
+    },
+    {
+      "name": "Micro-to-macro bridge: run the stochastic micro-sim to produce a response surface (e.g., outflux vs time and B), surface-fit it to a closed form, then plug that closed form into the analytic macro model's integrals.",
+      "papers": 1
+    }
+  ]
+}

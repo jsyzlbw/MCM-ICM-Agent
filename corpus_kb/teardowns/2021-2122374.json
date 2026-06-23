@@ -1,0 +1,50 @@
+{
+  "paper_id": "2021-2122374",
+  "year": 2021,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2021 MCM/ICM Problem F (policy): design a model to measure the \"health\" of a country's higher-education system, identify a country needing improvement, propose a migration plan (vision + policy + timeline) to a healthier sustainable state, and assess the policy's effectiveness and real-world impact. This team operationalized \"health\" as two orthogonal axes — (A) status quo of industry performance (benefit to youth) and (B) improvement potential (coordination between higher-ed and the national economy) — built two parallel evaluation models, selected Chile, and ran a before/after policy simulation.",
+  "models_used": [
+    "IEW-TOPSIS combined evaluation model (Information Entropy Weight for objective weighting + TOPSIS for ranking) — built TWICE, once for System A (performance status quo) and once for System B (improvement potential)",
+    "Information Entropy Weight (IEW / Shannon entropy) method to derive index weights objectively from data dispersion, explicitly chosen over AHP/Delphi to avoid expert subjectivity",
+    "TOPSIS (Technique for Order Preference by Similarity to Ideal Solution) — closeness coefficient C_i to best/worst ideal solutions, graded into poor/fair/good/excellent bands by equal intervals",
+    "GM(1,1) grey prediction model — forecasts Chile's master-to-undergraduate (B-S) ratio 2019–2028 to prove a strong policy is NECESSARY (baseline trend fails to reach the vision target)",
+    "Coefficient-of-variation analysis — used to decide which all-country index means are statistically representative enough to serve as Chile's vision targets (only low-CV indicators: rmu, pfe, pou, dgr)",
+    "Counterfactual / before-after policy simulation — overwrite Chile's improvable indicators with target (all-country mean) values, re-run IEW-TOPSIS, compare scores (0.279 → 0.445)",
+    "Inverse-correlation validation via Stata scatter (System A score vs System B score) used as an internal consistency check on the two-model design"
+  ],
+  "key_techniques": [
+    "Two-axis decomposition of an ambiguous 'health' concept into measurable sub-systems (performance vs potential), each with a 3-dimension hierarchy: A = coverage/fairness/achievement; B = input/output/efficiency",
+    "Explicit positive vs negative indicator normalization formulas, plus a 1/x transform to homogenize high- vs low-quality attributes before TOPSIS",
+    "Engineered/derived indicators rather than raw stats — e.g. grc = ln(25–34 attainment / 55–64 attainment) as a 30-year growth proxy; ad-b/ad-d normalize proficiency by enrollment share; pulled OECD Survey of Adult Skills proficiency-level distributions",
+    "Weighting justified by methodology choice (IEW objective) tied directly to an assumption ('the more balanced the state, the higher the entropy')",
+    "Sensitivity analysis by sweeping each indicator individually while holding weights fixed — and turning the LOW sensitivity into an argument ('no single lever works → must implement MULTIPLE policies simultaneously'), feeding directly into policy design",
+    "Necessity argument before solution: GM(1,1) baseline forecast shows the target is unreachable without intervention, motivating 'strong policy'",
+    "Vision targets set deliberately at the all-country MEAN (achievable/reasonable) rather than the max, with explicit reasoning that an over-high goal would be unrealistic",
+    "Country selection driven by the model's own output (largest A–B gap, lowest A, highest B) rather than picked a priori",
+    "Python implementation of all algorithms (IEW-TOPSIS, GM(1,1)) with appendix code; Stata + Excel for the validation/comparison plots",
+    "Stakeholder-segmented impact analysis (students / faculty / schools / community / country) for Task 7"
+  ],
+  "why_it_won": "\"From a judge's view, it won by directly and completely answering every sub-task of a fuzzy policy problem with a coherent, self-reinforcing pipeline: define health → build measurable two-axis model → rank countries → pick Chile from the data → set a defensible vision → prove policy necessity (GM) → simulate policy effect → assess impact. Three things stand out. First, INTELLECTUAL HONESTY: the team's own simulation shows the policy only lifts Chile from 0.279 to 0.445 — still not 'healthy' — and they SAY SO ('the effectiveness of the policy we proposed is not sufficient'), which reads as scientific maturity rather than weakness. Second, METHOD JUSTIFICATION: every modeling choice is defended against an alternative (IEW over AHP/Delphi for objectivity; TOPSIS for multi-indicator decision with no distributional assumptions; GM for small/grey data), showing the team understood why, not just how. Third, the two-axis design produced a non-obvious, testable insight — the inverse correlation between current performance and improvement potential — which they validated empirically in Stata, closing the loop on their own framework. The chain from sensitivity analysis ('single indicators barely move the score') to policy design ('therefore enact multiple simultaneous policies') is exactly the model-to-decision linkage judges reward.\"",
+  "section_highlights": "\"Strong structure: a Summary that names methods and headline numbers; a 'Problem Analysis' that does real conceptual work ('strength is not equal to health' — disqualifying Nobel-laureate counts as a health metric) before any math. Two clean variable tables (System A/B) mapping each indicator to its precise data-processing definition — fully reproducible. Mermaid/flow figures encode the conceptual relationships (coverage→fairness→achievement; the economy↔higher-ed input/output/efficiency loop). The vision is built transparently via a radar chart (Chile vs all-country mean) plus a CoV filter justifying which means are usable. A dedicated GM(1,1) necessity section, an explicit policy timetable figure (Figure 12), and a candid Advantages/Disadvantages section that lists six concrete limitations. The Verification section (inverse-correlation scatter) is a genuine model-validation step, not filler. Tasks are explicitly mapped to sections (e.g. 'Solution of Task 4 & 6'), making it trivial for a judge to confirm completeness.\"",
+  "pitfalls_or_limitations": [
+    "Visible English-language errors and garbled sentences throughout (e.g. 'policy we recomm nding', 'C table ate between 0 and 1') — costly for clarity even if the modeling is sound",
+    "Vision/effectiveness rests on a single static counterfactual: just swapping 4 indicators to the all-country mean and re-running TOPSIS. C_i is a RELATIVE rank measure, so changing Chile's row shifts everyone's closeness — the 0.279→0.445 comparison is not a clean apples-to-apples improvement and this isn't acknowledged",
+    "GM(1,1) is used on a non-monotonic series (B-S ratio dips 2014–2016) which violates grey-model smoothness assumptions; the team even lists this as a weakness, and only ONE indicator's necessity is actually demonstrated by GM",
+    "Heavy reliance on a single 2016 cross-section of 21 OECD countries; 'improvement potential' is largely inferred from low current performance, making the A–B inverse correlation partly a definitional artifact rather than an independent finding",
+    "Policy recommendations (increase investment, de-profit private institutions, strengthen accreditation) are qualitative and generic — not quantitatively linked to the specific indicator deltas they're supposed to move; no cost or feasibility modeling",
+    "Many engineered indicators and the 'quantity is premise of quality' assumption are asserted without sensitivity to the assumption itself; assumption 10 simply excludes COVID/financial shocks despite the problem's post-pandemic framing",
+    "Sensitivity analysis only perturbs indicator VALUES, never the IEW weights or the indicator set — so robustness of the weighting scheme itself is untested"
+  ],
+  "reusable_patterns": [
+    "Decompose an ill-defined target ('health', 'sustainability', 'quality') into 2 orthogonal axes, each a 3-level indicator hierarchy with a one-line data-processing definition per leaf — then build the SAME evaluation engine on each axis",
+    "IEW-TOPSIS as a go-to objective ranking pipeline for policy/eval problems: entropy weights remove the AHP subjectivity attack surface; pair it with a sentence justifying IEW over AHP/Delphi",
+    "Use the model's OWN ranking to justify which entity (country/city/system) you select for the case study — makes selection defensible instead of arbitrary",
+    "Set improvement targets at the population MEAN (achievable) and explicitly argue against using the max; filter candidate target indicators by coefficient of variation so you only anchor to statistically representative means",
+    "Insert a 'necessity of intervention' step: forecast the no-policy baseline (GM(1,1) or similar) and show it misses the target, motivating 'strong policy' before you propose one",
+    "Turn a LOW-sensitivity result into a policy argument: 'no single lever moves the score → recommend a coordinated bundle of simultaneous policies'",
+    "Validate a multi-axis framework by predicting and then empirically testing a relationship between the axes (here, the inverse correlation), shown in a stats package",
+    "Run a before/after counterfactual by overwriting only the improvable indicators with target values and re-scoring — quick way to quantify policy effect (but state the relative-ranking caveat)",
+    "Close with a candid, itemized Advantages/Disadvantages list and a stakeholder-segmented impact analysis (students/faculty/schools/community/country) to cover 'impact' sub-tasks cleanly"
+  ]
+}

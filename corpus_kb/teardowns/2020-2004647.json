@@ -1,0 +1,61 @@
+{
+  "paper_id": "2020-2004647",
+  "year": 2020,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2020 MCM Problem C (data type). Sunshine Company is about to launch a microwave, baby pacifier, and hair dryer on Amazon and supplies three Amazon review/rating .tsv datasets for competing products. The team must: (1) identify the most informative review/rating-based data measures to track, (2) find time-based patterns indicating reputation increase/decrease, (3) combine text- and rating-based measures to predict a product's future success/failure, (4) determine whether specific star ratings incite more reviews of a given type, and (5) determine whether rating levels associate with specific quality descriptors in review text. This paper (Team 2004647, \"Good Morning Sunshine\") builds a layered metric pipeline: RRBS score -> Reputation -> GPR-based successfulness prediction, plus correlation and word-association analyses.",
+  "models_used": [
+    "RRBS Model (Rating and Review Based Score): score = alpha^(circ lambda) * beta, a custom linear-algebra metric where rating row-vector alpha is raised elementwise to power lambda and multiplied by a review column-vector beta",
+    "Rating vector alpha: star ratings mapped to intensity (1&5->3, 2&4->2, 3->1) so positivity and negativity are measured on a common intensity scale",
+    "Review vector beta = A*Phi: A is an n-by-n diagonal sentiment-polarity matrix (+1 positive / -1 negative); Phi is a per-review quantification vector",
+    "Per-review quantifier phi = theta * s^v * h * L + epsilon, multiplicatively combining: theta (Vine-reviewer factor 2/1), s (Afinn sentiment-intensity grade 1-3), v (verified-buyer validity exponent 1/0.1), h (helpfulness factor e^(helpful/total - 0.5)), L (review-length factor (1/2)log10(len)), epsilon (correction term =1 when sentiment grade s=0 so rating still counts)",
+    "Reputation Model: Rep = gamma . score, an exponentially time-weighted sum of monthly scores with normalized weights gamma_j = a^j / a^t, a=1.1 (recent months weighted more)",
+    "Kendall's Tau rank correlation to validate reputation-vs-sales trend similarity (concordant/discordant pairs); reported tau ~0.6-0.8",
+    "Gaussian Process Regression (GPR) to fit the reputation time series and forecast future reputation with 95% confidence intervals",
+    "Logistic/sigmoid reputation mapping p(t) = 1/(1+e^(-Rep)) to bound non-converging reputation forecasts into (0,1)",
+    "Time-dependent successfulness threshold: threshold = 0.5 - 0.1*e^(-(t-tau)/10), a function of product age tau to avoid penalizing young products",
+    "Afinn sentiment lexicon (2,477 graded words) + NLTK POS tagging (JJ adjectives, nouns) for sentiment scoring, feature extraction, and negation-frequency check",
+    "k-event frequency analysis: probability that the review following k consecutive high/low ratings is positive/neutral/negative, frequency-as-probability over k=2..5",
+    "Word star-rate analysis: per-word distribution of associated star ratings to link quality descriptors to rating levels",
+    "Sales-weighted average reputation per market as a proxy for customer loyalty / competition intensity"
+  ],
+  "key_techniques": [
+    "Casting a multi-attribute scoring scheme as a single linear-algebra expression (row-vector x diagonal-matrix x column-vector), giving the metric a clean closed form rather than ad-hoc summation",
+    "Mapping 5 star levels onto a 3-level intensity scale so opposite-polarity ratings of equal strength are comparable, with polarity carried separately by matrix A",
+    "Exploiting nearly every column of the provided data (star_rating, review text, vine, verified_purchase, helpful_votes/total_votes, review length) instead of just stars+sentiment — explicitly framed as the paper's 'full utilization' edge over cited literature (LFM, LDA, RBLT)",
+    "Exponential time-decay weighting to turn a noisy per-month score into a smooth 'reputation' series",
+    "Solving the unobservable-ground-truth problem: 'reputation' has no real-world label, so they validate it indirectly by correlating its TREND against sales (proxied by review-record counts) via Kendall's Tau",
+    "Predicting on the smoothed reputation series rather than volatile raw sales — a deliberate noise-reduction choice with stated justification",
+    "Sigmoid squashing + age-adjusted threshold to convert an unbounded forecast into a binary success/fail decision that is fair to new products",
+    "Negation-robustness sanity check: counting 'not+adjective' combos (1166/101435 = 1.15%) to justify ignoring negation",
+    "Frequency-as-probability k-event design to operationalize the vague 'do ratings incite reviews?' question, plus honest reporting that low-rating sequences are too rare for a confident conclusion",
+    "Data cleaning by spotting mislabeled products (a hair spray under hair_dryer, a fridge under microwave) concentrated in single-digit-record products, then dropping sparse records"
+  ],
+  "why_it_won": "\"It directly and completely answers every sub-question with a single coherent, layered pipeline (score -> reputation -> prediction), so each later model reuses the earlier one's output rather than being bolted on. The signature move judges reward is solving the unobservable-quantity problem rigorously: 'reputation' has no ground truth, so the team validated it by correlating its trend against sales using Kendall's Tau and got strong (0.6-0.8) coefficients — turning an abstract construct into something defensible. The metric design is unusually thorough (it harvests Vine status, verified-purchase, helpfulness ratio, and review length, not just stars + sentiment, explicitly out-doing the cited LFM/LDA/RBLT literature), yet stays mathematically clean as a vector expression. The work is also intellectually honest: it reports the negative result (cannot confirm low ratings incite negative reviews because such sequences are rare), diagnoses GPR long-term overfitting, and runs a real sensitivity analysis that flags the decay parameter a as the critical one. It closes the loop back to the client with concrete, data-grounded marketing and design recommendations (loyalty per market; top-3 valued features per product) and a clean one-page letter.\"",
+  "section_highlights": "\"Structure tracks the modeling logic exactly: Introduction (with literature review explicitly positioning their 'full utilization' contribution against LFM/LDA/RBLT) -> Assumptions/Nomenclature table -> three stacked model sections (RRBS, Reputation, Successfulness Prediction) -> Results -> Sensitivity -> Strengths/Weaknesses -> Conclusion -> client Letter -> Appendices with actual Python and MATLAB code. A one-figure modeling-framework flowchart up front orients the reader. Every notation is defined once in a symbol table (Table 1) and reused consistently. Each factor (theta, s, v, h, L, epsilon) gets its own short subsection with a one-line intuition before its equation, so the reader always knows WHY a term exists, not just its formula. The summary previews all five findings in order. The Letter restates results in client language with concrete numbers (e.g., 86.96% of 'awesome' reviews are 5-star; 63.46% of 'dangerous' reviews are 1-star). Strong use of concrete worked examples (best-selling pacifier #246038397) and reproducible code in appendices.\"",
+  "pitfalls_or_limitations": [
+    "Assumption 3 equates review-record count with actual sales — sales are never observed, so the headline reputation-vs-sales correlation is really reputation vs. review-volume, a weaker claim than presented",
+    "Heavy arbitrariness in constants, self-admitted: lambda=1, a=1.1, Vine factor 2, unverified factor 0.1, helpfulness e^(ratio-0.5), L=(1/2)log10(len), threshold 0.5 and the -0.1*e^... age term are hand-set with little justification or tuning",
+    "Sensitivity analysis only perturbs lambda and a by +/-10% and finds a highly sensitive after month ~38, yet a is still fixed at 1.1 with no principled selection",
+    "GPR long-term forecasts overfit / leave real points outside the 95% CI; the model is only credibly short-term (a couple of months), limiting the 'predict future success' claim",
+    "Negation handled by simply ignoring it (1.15% frequency) rather than modeling it; sentiment is bag-of-graded-adjectives only, missing context, sarcasm, and multi-word phrases",
+    "Afinn lexicon is small (2,477 words) and the team manually re-graded some words 'with our own understanding,' introducing subjectivity; non-lexicon sentiment reviews collapse to the epsilon=1 fallback",
+    "The k-event incitement analysis cannot reach a conclusion for low ratings (data too sparse) — a genuine gap left open",
+    "Design-feature extraction is just noun-frequency counting (price/heat/cord etc.), shallow relative to the modeling machinery; 'loyalty = sales-weighted average reputation' is asserted, not validated",
+    "Several equations/figures in the OCR are garbled and some trend figures appear schematic/illustrative rather than from real fitted data"
+  ],
+  "reusable_patterns": [
+    "Layered-metric architecture: define a base per-item score, aggregate it into a time-weighted index, then forecast and threshold the index — each layer consumes the previous one's output. Reusable for any 'measure -> track over time -> predict' data problem.",
+    "Express a multi-factor weighted metric as a vector/matrix product (row-vector ^ power x diagonal-polarity-matrix x column-vector) to keep an ad-hoc scoring scheme compact and presentable",
+    "Separate magnitude from sign: encode intensity in one vector and polarity in a separate diagonal matrix so positive/negative are handled symmetrically",
+    "Multiplicative factor model with sentinel/correction term (epsilon) so that a zero in one factor doesn't annihilate the whole signal — a clean way to keep a metric well-defined on missing sub-signals",
+    "Validate an unobservable construct by correlating its TREND against an observable proxy with a rank-correlation coefficient (Kendall's Tau / Spearman) — the go-to move when there's no ground truth",
+    "Exponential time-decay weighting (gamma_j = a^j/a^t) to smooth noisy per-period signals into a stable index, then sensitivity-test the decay base",
+    "Forecast the smoothed index instead of the raw volatile target to reduce prediction error; use GPR specifically because it suits small datasets and yields uncertainty bands",
+    "Sigmoid-squash an unbounded forecast into (0,1) and apply an age/maturity-adjusted decision threshold to make classifications fair across entities of different lifespans",
+    "Frequency-as-probability event-window analysis (k-event) to operationalize vague 'does X trigger Y?' questions, and report honestly when the data is too sparse to conclude",
+    "Cheap robustness sanity check by counting the frequency of a confounder (negation combos) to justify ignoring it",
+    "Close the loop to the client: convert model outputs into a sales-weighted 'loyalty' ranking and a top-N valued-feature list, delivered in a plain-language letter with concrete percentages",
+    "Ship reproducible code (Afinn+NLTK matcher in Python, reputation computation in MATLAB) in appendices to boost credibility"
+  ]
+}

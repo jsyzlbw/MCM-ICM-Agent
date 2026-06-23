@@ -1,0 +1,50 @@
+{
+  "paper_id": "2025-2501687",
+  "year": 2025,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2025 MCM Problem B asked teams to build a sustainable-tourism model for Juneau, Alaska — balancing tourism revenue against ecological and social costs of over-tourism, allocating extra revenue, running sensitivity analysis, transferring the model to another over-touristed site, and delivering a memo to the Juneau Tourist Council. This team built a single optimization model that monetizes environmental and social costs into dollars and solves for optimal tourist caps, taxes, and government investment.",
+  "models_used": [
+    "Multi-objective nonlinear programming collapsed to single-objective via a weighted total social utility function U = P_normal + P_extra + E + S (all weights set to 1, justified as a Hicksian/Kaldor-Hicks improvement)",
+    "Contingent Valuation Method (CVM) used as the conceptual device to monetize environmental quality (ERI) and social welfare into dollars so dimensions match profit — the paper's central 'highlight'",
+    "Particle Swarm Optimization (PSO) via Python pyswarm library (50 particles, 100 max iterations, averaged over 10 runs) to solve the constrained nonlinear program",
+    "Cosine seasonal demand model N0(t) = max{-A cos(2pi t/365)+B, 0} fit by integrating over peak (t=121..270) and off-season windows to recover A=16822, B=5514",
+    "Logistic (saturating) growth model for diminishing returns on government investment in both environment (Gamma1) and society (Gamma2), solved in closed form",
+    "Ecosystem Resilience Index ERI = sum 1/(1+beta N(t)) * ERI_max to capture self-recovery degradation with tourist load",
+    "Social Cost of Carbon (SCC = $190/ton, 66.13 kg/tourist/day) to price the environmental human-impact term E1",
+    "ARIMA(0,0,1) for forecasting Juneau's unemployment-rate growth (model order chosen via ACF/PACF for d, grid search + BIC for p,q)",
+    "Linear regression to forecast 2025 Juneau population (33,460) and median income ($47,401)",
+    "Fuzzy statistical method to estimate the unquantifiable negative social impact term S2, with weights beta1/beta2 derived from a 2023 resident survey (beta1=2.155)",
+    "Monte Carlo sampling (101 equal-interval points over +/-5% of each variable) for local sensitivity, reported as normalized elasticities s(u,c1)=0.2078 etc."
+  ],
+  "key_techniques": [
+    "Dimension unification: converting incommensurable environmental and social 'costs' into dollars via CVM so a multi-objective problem becomes a single additive objective — the linchpin that makes the whole optimization coherent",
+    "Decision-variable framing tied directly to real policy levers: peak cap c1, off-season floor c2, total investment I, eco/social split ratio gamma1:gamma2, peak tax x1, off-season subsidy x2 — every output is a lever a council can pull",
+    "Decomposition of each pillar into sub-terms (E = human impact E1 + ecosystem resilience E2 + gov investment E3; S = employment S1 + negative externality S2 + gov investment S3), each separately quantified",
+    "Continuous approximation of discrete daily sums via integration to make the seasonal-demand fit and objective tractable",
+    "Sanity-checking outputs against ground truth: optimal cap 13,993 ~ 5 cruise ships vs current 7, matching residents' stated wish (5:7), and forecasted peak 22,326 — used as validation rather than just asserting",
+    "Sensitivity-driven policy ranking: elasticities give c1 > gamma1 > I > c2, turning numbers into a prioritized recommendation (peak cap is the key policy)",
+    "Transfer/contrast design: re-parameterizing for Jiuzhaigou (waste cost replacing carbon, different alpha/Gamma) yields qualitatively different policy (no peak cap needed) — directly answering 'how does location change which factors matter'"
+  ],
+  "why_it_won": "Judges reward a model that genuinely answers every sub-question with one coherent machine, and this paper's CVM-to-dollars trick lets a messy three-way tradeoff become a single solvable optimization whose outputs are literally the policy knobs the council controls. The validation against real data (5 vs 7 cruise ships) and the sensitivity-based ranking that names peak-capping as THE key policy show modeling maturity beyond just getting numbers. The Jiuzhaigou transfer is not a token re-run but produces a contrasting conclusion (don't cap, do tax/invest), which is exactly the location-dependence insight the prompt demanded.",
+  "section_highlights": "The summary front-loads concrete numbers (cap 13,993; off-season 1,035; invest $92,310.46 at 54.33:45.67) so a skimming judge instantly sees actionable results, and the two flowcharts (work process + factor decomposition) make a complex additive model legible at a glance. The writing consistently closes the loop from formula to policy meaning, and the standalone memorandum is well-pitched to a non-technical council with rounded figures, cruise-ship equivalents, and an honest request for further study.",
+  "pitfalls_or_limitations": [
+    "CVM is invoked in name only — no actual willingness-to-pay survey was run; key magnitudes (ERI=2e5, Gamma_m=1e5, alpha=1e-4, beta=1e-4) are hand-picked to make terms 'approximately equal,' so the monetization is essentially calibrated by fiat, not measured",
+    "Setting all three objective weights a1=a2=a3=1 is asserted as a 'Hicksian improvement' but is really an arbitrary normalization that drives the entire optimum; the result is only as meaningful as those invisible scaling choices",
+    "PSO output is unstable: the 10 iterations show wide spread (e.g. c2 ranges 136 to 2000, x2 from 0 to -14,766) and the team simply averages them, which the paper itself admits risks local optima",
+    "Internal inconsistency in the peak-demand figure — body integrates to imply ~22,336/16,950 while the memo cites 22,326, and the cosine-fit integration bounds (121..220, 211..365) don't cleanly cover the stated 121..270 peak window",
+    "Sensitivity analysis is purely local (small +/-5% perturbations around one operating point), so claimed 'robustness/low sensitivity' doesn't establish global stability and can't detect the local-optimum problem it acknowledges elsewhere",
+    "Many parameters (per-capita profit p, carbon per tourist, negative-impact fuzzy value) are single-source point estimates with no uncertainty propagation",
+    "Only one transfer city (Jiuzhaigou) tests generalizability, and for it the team drops the S1 constant term and skips computing U, weakening the comparison"
+  ],
+  "reusable_patterns": [
+    "Monetize-to-unify: when a problem mixes incommensurable objectives (money, ecology, welfare), pick a valuation principle (CVM, SCC, shadow prices) to convert everything to one unit, then optimize a single additive utility — far cleaner than juggling Pareto fronts",
+    "Make decision variables literally be policy levers so the optimizer's output is directly the answer the stakeholder needs (caps, taxes, budget splits)",
+    "Use saturating (logistic) returns for any 'spend money to get benefit' term so investment doesn't scale unboundedly",
+    "Validate the optimum against an external real-world anchor (here: cruise-ship count residents already asked for) and report the match as evidence",
+    "Convert sensitivity elasticities into an explicit ranked priority list of policies — judges love a defensible 'this is the single most important action' claim",
+    "Design the transfer case to deliberately differ (swap the dominant environmental driver, re-tune saturation parameters) so it yields a contrasting policy and demonstrates real location-dependence rather than a copy-paste re-run",
+    "Two-flowchart pattern: one for workflow, one for model-structure decomposition, to make an additive multi-term model readable",
+    "Average a stochastic solver (PSO) over multiple seeded runs and report the per-run table for transparency about solution variance"
+  ]
+}

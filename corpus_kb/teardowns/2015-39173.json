@@ -1,0 +1,55 @@
+{
+  "paper_id": "2015-39173",
+  "year": 2015,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2015 MCM Problem B (discrete): design a search plan for a missing transoceanic plane that has left radar coverage (>200 mi from coast), with scarce prior information (motivated by MH370 and AF447). The team builds an end-to-end probabilistic Search-and-Rescue (SAR) pipeline: (1) a probability model for WHERE the plane impacted the water, (2) a detection model for how likely a search aircraft spots it per pass, and (3) an adaptive search-ordering algorithm that updates region probabilities as cells are cleared and decides which cell to fly to next. Demonstrated on a fictional Boston→Lisbon Boeing 777 flight (Flight ABCD) with concrete latitude/longitude outputs.",
+  "models_used": [
+    "Probability of Containment (POC) model: a custom quadratic, concave-down PDF f_Yc(y_c) = 3/(y_B-y_R)^3 * (y_C-(y_B-y_R))^2 for distance-to-casualty along the intended flight path (IFP), encoding that loss-of-contact most likely means failure occurred near the last contact point (deliberately rejecting the standard uniform-time assumption)",
+    "Glide/ballistic trajectory model: impact distance Y_I = Y_C + G*h, where G is the aircraft glide ratio (~19:1 for a 777) and h is cruising altitude; radar horizon y_R = sqrt(200^2 - h^2) derived via Pythagorean theorem",
+    "Change-of-variables (transformation technique) to derive the PDF of Y_I analytically from the PDF of Y_C",
+    "Off-course (veering) model: a Normal/Gaussian distribution perpendicular to the IFP with sigma_x = G*h*sin(pi/8), capping plausible veer at pi/8 (22.5 deg); combined with the along-track PDF as a joint density f(x,y_I)=f(x)*f(y_I) assuming independence",
+    "Discretization into an N x 6 grid of search cells, with N = ceil((y_B - y_R - G*h)/(t_0.5 * v_s)) chosen so each cell takes ~0.5 hr to sweep; POC per cell computed by double-integrating the joint density (Mathematica loop), exploiting symmetry about the IFP",
+    "Coordinate transform from an IFP-referenced (x,y) frame to latitude/longitude via a 2x2 rotation matrix R (angle phi = arctan(r_e/r_n)), scaling by miles-per-degree rho, and translation: C_L = rho*R*C + y_0 (validated by det(R)=1)",
+    "Probability of Detection (POD) model: Koopman's exponential random-search law POD = 1 - e^(-coverage), with effective sweep width S = 2*sqrt((kappa*epsilon)^2 - h_s^2) (sensor range epsilon, search altitude h_s, weather scalar kappa in [0,1]), effort = d_s*n for n search planes",
+    "Bayesian-style POC-updating rule: after searching cell q without success, POC_q' = POC_q*(1-POD_q), and the lost mass (POC_q - POC_q') is redistributed uniformly as (POC_q - POC_q')/(6N-1) across the other cells (conservation of total probability)",
+    "Greedy neighborhood (nearest-adjacent) search-ordering algorithm: after updating the map, pick the highest-POC cell among the 3x3 adjacent neighborhood as the next target, minimizing non-adjacent flight to save fuel/time; compared against a non-adjacency-restricted greedy baseline to show reduced back-and-forth travel"
+  ],
+  "key_techniques": [
+    "Decomposing the problem cleanly into the canonical SAR triad POC -> POD -> updating, which maps the open-ended prompt onto established search-theory structure (cited Stone 1977, Frost 1999, Koopman)",
+    "Building a bespoke PDF from a physical narrative (failure-soon-after-contact) rather than reaching for a default distribution, then justifying its concave-down quadratic shape",
+    "Analytic derivation chain: casualty PDF -> glide transform -> impact PDF -> joint 2D density, all in closed form, then numerically integrated over the grid",
+    "Tying every parameter to a real, citable physical quantity: 200-mi radar radius, 19:1 glide ratio of a 777, 40,000 ft cruise altitude, search-plane speed/altitude/sensor range",
+    "Embedding a weather/condition fudge factor kappa in [0,1] inside Koopman's law to make POD tunable without abandoning a standard model",
+    "Probability conservation in the update step (mass removed from a cleared cell is re-added elsewhere), giving a self-consistent dynamic POC map",
+    "Using a controlled comparison (adjacency-constrained vs. unconstrained greedy search, Appendices C vs D) to empirically justify the neighborhood restriction",
+    "Full reproducibility: Mathematica code for integration, POC matrix, and both search loops, plus Excel tables for the rotation/coordinate math, all in appendices",
+    "A concrete worked example (Flight ABCD, Boston->Lisbon, 777) that carries plugged-in numbers all the way to four bounding lat/long coordinates of an actual search rectangle"
+  ],
+  "why_it_won": "From a judge's perspective this paper wins because it is a complete, self-consistent, and operationally actionable pipeline rather than a collection of formulas. It (1) grounds an abstract probabilistic model in real aviation physics (glide ratio, radar horizon, cruise altitude) so the math is never arbitrary; (2) makes a defensible, non-obvious modeling choice (quadratic concave-down casualty PDF) and explicitly argues why it beats the textbook uniform assumption used in prior SAR work; (3) closes the loop with an adaptive Bayesian-flavored update and a resource-aware greedy search order, directly answering the 'what do searchers actually DO' question; (4) produces a tangible deliverable - real latitude/longitude search-cell corners - so a rescue team could literally fly the plan; (5) demonstrates engineering judgment by comparing its neighborhood-constrained search against an unconstrained baseline and quantitatively defending the restriction; and (6) is fully reproducible with Mathematica/Excel appendices. It is honest about sensitivity and weaknesses, signaling mature modeling. The framing around MH370/AF447 gives it timeliness and motivation that judges reward.",
+  "section_highlights": "Structure mirrors the model's logic and is easy for a judge to follow: a strong abstract that states the POC->POD->update arc in plain language; a layered Model section that derives the casualty PDF, then the glide transform, then the perpendicular Normal, then the joint density, then discretization, then the lat/long coordinate transform, then POD, then the updating algorithm. Each component is introduced with a one-line physical motivation before the math. Figures do real work: Fig 1 defines sigma_x geometrically, Fig 2 shows the N x 6 grid, Fig 9 the joint density surface, Fig 11 the actual POC heat-map matrix, and Figs 12 vs 13 visually contrast the adjacency-constrained vs unconstrained search paths. A dedicated Assumptions list (9 explicit assumptions) and a multi-parameter Sensitivity Analysis (f(G), f(theta), POD vs theta/G/h_s/n) precede an honest Strengths/Weaknesses section. The standout writing move is the separate plain-English 'Summary for an Airline's Press Conference' that re-explains the whole method without equations for a lay/stakeholder audience - directly satisfying the problem's communication deliverable.",
+  "pitfalls_or_limitations": [
+    "No ocean currents / drift modeling - debris and the plane are assumed to stay exactly where they hit the water, which is physically unrealistic for a multi-day search and is the model's biggest acknowledged gap",
+    "Rigid geometric assumptions: IFP is a straight A->B line, plane does not explode in air (intact glide only), constant velocities for both lost and search planes, plane stays afloat/detectable for the entire search - several are fragile",
+    "Self-admitted POC mis-allocation: because sigma_x comes from a triangular (sin) construction but cells are rectangular, cells just past 1 sigma at large G*h are over-allocated and outer/later partitions are under-allocated",
+    "The pi/8 veer cap and the casualty PDF's specific quadratic form are asserted by intuition, not derived from data or validated against the real AF447/MH370 outcomes that motivate the paper",
+    "The model is explicitly NOT robust - the authors concede high sensitivity to G, theta, h_s; small parameter changes swing POC and POD substantially, and they reframe this fragility as 'flexibility' which is a partial rationalization",
+    "Uniform redistribution of lost probability mass ((POC_q-POC_q')/(6N-1)) is a simplification - a true Bayesian update would redistribute proportionally to remaining priors, not equally",
+    "POD assumed uniform across all cells (constant effort) despite cells having very different containment, so effort is not optimally allocated to high-POC regions",
+    "Appendix Mathematica/While-loop code has visible bracket/transcription errors and the two search-order outputs are not fully reconciled, so reproducibility is imperfect in practice",
+    "Validation is a single synthetic example (Flight ABCD) with no comparison to a known real-world recovery, so accuracy is unverified"
+  ],
+  "reusable_patterns": [
+    "The POC -> POD -> Bayesian-update -> search-order pipeline is a transferable template for ANY search/coverage/allocation problem (lost objects, sensor placement, inspection routing)",
+    "Derive a custom PDF from a physical story and justify it against the naive default - a repeatable way to score 'modeling insight' points instead of defaulting to uniform/normal without comment",
+    "Use change-of-variables to propagate one random variable's distribution through a deterministic physical transform (here glide) into the quantity you actually need",
+    "Combine independent 1D distributions into a joint 2D density by multiplication, then discretize via double integration over a grid - a clean recipe for spatial probability maps",
+    "Anchor every parameter to a citable real-world constant (radar radius, glide ratio, cruise altitude) so reviewers can't dismiss numbers as arbitrary",
+    "Insert a single bounded scalar (kappa in [0,1]) to graft real-world degradation (weather) onto a clean textbook model without rebuilding it",
+    "Always close the loop to an operational artifact - here, converting model-space coordinates to real lat/long via a rotation+scale+translation transform so the output is directly usable",
+    "Conserve total probability when updating a dynamic map (remove from cleared cell, redistribute the exact mass elsewhere)",
+    "Justify an algorithmic design choice empirically by running a constrained vs unconstrained variant and showing the constrained one wastes less travel (Appendices C vs D)",
+    "Write a separate equation-free stakeholder summary (the 'press conference' section) to satisfy a communication deliverable and demonstrate command of the result",
+    "Ship runnable code (Mathematica) and supporting spreadsheets in appendices to make the work reproducible and credible"
+  ]
+}

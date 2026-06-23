@@ -1,0 +1,52 @@
+{
+  "paper_id": "2019-1924781",
+  "year": 2019,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2019 MCM Problem A (continuous): given that Game-of-Thrones dragons grow indefinitely depending on food availability, build a model of dragon growth, energetics, hunting behavior, and ecological impact if three dragons were dropped into real Earth environments. Team #1924781 (Outstanding) decomposed it into four subproblems — (1) unrestricted growth, (2) metabolism/energy expenditure, (3) a size-biased hunting strategy, (4) a modified multi-prey Lotka–Volterra system — then simulated three dragons across three climate archetypes (temperate New Zealand, arid Western Sahara, arctic Alaska) to find the land area needed for survival and the steady-state dragon mass in each.",
+  "models_used": [
+    "Logistic (sigmoidal) growth curve f(t)=L/(1+e^{-k(t-t0)}) fit to dragon mass-vs-age data via a chi-squared test, yielding L=843.72, k=0.712",
+    "Allometric mass-from-height law m=ah^3 (mass ∝ volume ∝ height^3), constant a=0.01134 fit from Drogon size data; Komodo-dragon 10:1 length-to-height ratio used to scale Balerion",
+    "Change-of-variables to convert maximal growth f(t) into a mass-dependent growth-rate ODE: m_D' = (3/365)·m·k·(1-(m/aL^3)^{1/3})",
+    "Kleiber's law metabolic scaling B=B0·M^{3/4}, upgraded to Kolokotrones et al. (Nature 2010) curved allometric law: log10 B = β0 + β1 log10 M + β2(log10 M)^2 + βT/T",
+    "Piecewise-Gaussian prey-preference probability density p(ms/mD) — asymmetric (narrow left, wide right) Gaussian peaked at prey:predator mass ratio ≈1, normalization constant A=0.8976",
+    "Scarcity factor as a fitted power law s_f = α·σ_m^γ (α=13.2948, γ=-0.425) of available prey mass density σ_m",
+    "Modified multi-prey Lotka–Volterra ODE system: prey equations with no prey-prey cross terms (birth−death minus dragon predation), coupled to a dragon mass-balance equation dm_D/dt = Σ m_e − 2500B",
+    "60%-of-max-mass starvation death rule for individual dragons (mortality threshold borrowed from human starvation physiology)",
+    "Wing-loading and bone-stress scaling arguments (square-cube law) plus a 3/4-power energy supply-vs-demand mismatch argument to prove dragon infeasibility"
+  ],
+  "key_techniques": [
+    "Two-anchor data fitting for a long time horizon: used young Drogon (real show data) for early growth and 200-year-old Balerion (lore + a GRRM-approved illustration scaled against a 6'4\" rider) to anchor the saturation plateau L of the logistic",
+    "Change-of-variables trick to turn an explicit growth-vs-time function into a mass-feedback ODE term so growth couples to the predator-prey dynamics",
+    "Layering published empirical laws rather than hand-rolling: Kleiber → Kolokotrones curvature correction, citing the Nature source for parameters",
+    "Encoding a behavioral assumption (predator prefers prey near its own size, can punch above weight because of fire) directly as an asymmetric probability density, then normalizing it",
+    "Stiff/non-stiff adaptive ODE integration via SciPy's LSODA wrapper around ODEPACK (auto-switching Adams ↔ BDF) to handle the wide dynamic range of populations",
+    "Bifurcation-style sensitivity sweep: scanning land area in coarse (1,000 km^2) then refined (100 km^2) increments to locate the sharp survive/die threshold (e.g. 27,100 km^2 in Alaska)",
+    "Generalization move: switching off the dragon death rule reframes the same model as a continuous invasive-apex-predator population model (stinkbug example), extending relevance beyond the whimsical prompt"
+  ],
+  "why_it_won": "Judges reward a complete, mechanistically-coupled model that turns a deliberately absurd prompt into rigorous quantitative ecology — and this team delivered exactly that. Every subsystem feeds the next (growth ODE → metabolic demand → hunting preference → multi-prey Lotka–Volterra), producing concrete, defensible numbers (land area and steady-state mass per climate) rather than a hand-wave. They grounded fantasy parameters in real published science (Kleiber, Kolokotrones Nature paper, IUCN Red List data) and real fitting (chi-squared, power-law fits), which signals modeling maturity. The sensitivity analysis is genuine and revealing — it surfaces a sharp tipping point where 30 km^2 of land decides whether the dragons live or die, demonstrating the model is dynamic and nontrivial. They generalized the model to a real-world policy use (invasive-species risk assessment), and the writing has voice and confidence (the closing letter to GRRM) without sacrificing technical substance. The team also self-critiqued honestly, including a whole section arguing dragons are physically infeasible — showing they understood the physics they were bending.",
+  "section_highlights": "Strong structure: a clear four-subproblem decomposition stated up front with a logic-flowchart figure, then mirrored in the body. The summary sheet leads with the punchline numbers (110,000 km^2 arid / 42,000 km^2 arctic / 570 km^2 temperate and the corresponding masses) so a judge gets the result in 30 seconds. Assumptions section is unusually thorough and each assumption carries an explicit justification. Memorable, witty section titles ('Dragons Are Gluten Intolerant', 'A Depressingly Small Amount of Polar Bears') keep a long paper readable without undermining rigor. Each climate simulation is narrated as a story with a twist (e.g. one dragon dying actually lets the other two recover, then they still starve), which makes the dynamics intuitive. The 'Generalizing the Model' and 'Infeasibilities' sections show breadth, and the GRRM letter is a genuinely well-executed communication deliverable that answers the problem's framing directly.",
+  "pitfalls_or_limitations": [
+    "Heavy reliance on fabricated/estimated input data — Balerion's mass (~6,000,000 kg) is back-derived from one illustration scaled against an assumed 6'4\" rider and a Komodo-dragon ratio; the arid-region animal data is admitted to be largely guessed",
+    "The scarcity factor s_f is the model's weakest link and the team admits it: α and γ were fit not to data but to whatever values 'looked like' realistic population dynamics — circular parameter tuning that undermines validity",
+    "Internal inconsistency between the summary-sheet numbers and the conclusion/body (e.g. temperate stable mass quoted as 4,000,000 kg vs 4.4×10^6 kg; arid 110,000 km^2 in summary vs 80,000 km^2 simulated; arctic 42,000 vs 27,100 km^2), and several garbled tables/figures with mismatched or implausible digits",
+    "Assumes prey ecosystems are pre-existing steady states with no prey-prey interaction, so the multi-species web is really just N independent prey each coupled only to the dragon — acknowledged but a large simplification",
+    "Only one representative country per climate (n=1 sample per archetype); no uncertainty bands on the headline area/mass results despite all the upstream estimation",
+    "Unit and dimensional slips (e.g. wing area stated as '500 m^4'; reusing symbols α, γ for both Lotka–Volterra and the scarcity power law), and the energy term '2500B' mixes kcal/kg conversion into the ODE in a way that's hard to audit",
+    "Equation 7's mass-eaten expression is presented with minimal derivation, making the core predation coupling hard for a reader to verify"
+  ],
+  "reusable_patterns": [
+    "Subproblem decomposition + logic flowchart in the intro, then one section per subproblem — clean scaffold for any multi-part MCM prompt",
+    "Lead the summary sheet with the concrete answer numbers before any method, so judges grasp the result immediately",
+    "Every assumption gets an inline justification sentence; bundle them in a dedicated early section",
+    "Anchor a long-horizon growth curve with two data points at opposite ends (early-life real data + a saturation anchor) to pin both the rate k and the asymptote L of a logistic/sigmoid",
+    "Convert an explicit fit y(t) into a state-dependent ODE term via change of variables so empirical growth can couple into a dynamical system",
+    "Build the model from published empirical laws and cite the source for every borrowed constant (Kleiber, Nature allometry paper, IUCN data) instead of inventing relationships",
+    "Encode behavioral rules as normalized probability densities (here an asymmetric Gaussian preference) that plug directly into the dynamics",
+    "Use an adaptive stiff/non-stiff ODE solver (LSODA/ODEPACK) when populations span many orders of magnitude",
+    "Run a coarse-then-refined parameter sweep to locate and report a sharp bifurcation/tipping threshold as the headline sensitivity result",
+    "Generalize the bespoke model to a real-world application (invasive-species policy) to demonstrate impact beyond the toy prompt",
+    "Deliver the required communication artifact (a letter/memo) in-voice and on-topic, restating the quantitative findings in plain language",
+    "Include an honest weaknesses section AND a 'why this couldn't really exist' physical-plausibility check to show command of the underlying science"
+  ]
+}

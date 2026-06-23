@@ -1,0 +1,47 @@
+{
+  "paper_id": "2022-2204803",
+  "year": 2022,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2022 MCM/ICM Problem F (policy type): \"Space for Global Equity.\" The team had to (1) define and quantify \"global equity,\" (2) model how future asteroid mining would affect global equity under different scenarios, and (3) recommend policies to promote equity. This O-award paper (team 2204803) builds a composite National Development Level Index (NDI) per country, aggregates it into a Global Equity Index (GEI), then uses Fuzzy Comprehensive Evaluation to score the equity impact of asteroid mining under two funding regimes (state-funded vs. private-enterprise-funded), and derives a UN-oriented policy package from the results.",
+  "models_used": [
+    "McKinsey logic-tree (issue-tree) analysis to decompose 'national development' into 5 branches (Economy, Society, Environment, Civilization, Government) and select 15 concrete indicators",
+    "Entropy Weight Method (EWM) to objectively derive indicator weights from information entropy / data variation (no subjective weighting)",
+    "National Development Level Index (NDI): weighted-sum composite index per country over 115 countries x 5 years (2016-2020)",
+    "K-Means clustering of countries into 3 development tiers (High=29, Medium=39, Low=47) by NDI",
+    "Global Equity Index (GEI): a normalized gap metric = (avg NDI_High - avg NDI_Low)/avg NDI_Low; computed GEI=14.06 for 2020",
+    "Regional Equity Index (REI): same metric applied to 25 EU countries in 1990 vs 2015 as an out-of-sample validation",
+    "Fuzzy Comprehensive Evaluation (FCE) with factor set U (15 indicators), evaluation set V (5 impact levels), EWM weight vector A, single-factor fuzzy matrices R, B=A·R, and a {5,2,1,-2,-5} scoring vector to produce scalar impact values IM",
+    "Scenario comparison via 4 impact values: IM1/IM2 (state-funded, more/less-developed) and IM3/IM4 (private-funded), compared on level and on the developed-minus-developing gap ΔIM"
+  ],
+  "key_techniques": [
+    "Two-stage index construction: structured qualitative decomposition (logic tree) feeding an objective quantitative weighting (EWM) — turns a vague concept ('equity') into a reproducible number",
+    "Per-capita / ratio indicators chosen deliberately so NDI is size-independent (a small country can rank High) — pre-empts the obvious 'big countries dominate' objection",
+    "Directionality handling: negative indicators (poverty, homicide, emissions, out-of-pocket spend) inverted via max(X)-X before min-max normalization so all indicators point the same way",
+    "Reusing the same EWM weight vector A across both the NDI model and the FCE factor weights — ties Task 2 rigorously back to Task 1 instead of inventing new parameters",
+    "Defining equity as a between-cluster gap (High vs Low cluster averages) rather than a continuous inequality measure — simple, interpretable, and clusters come from K-Means not arbitrary cutoffs",
+    "Scenario contrast reduced to two clean inequalities (IM1>IM3, IM2>IM4 and ΔIM12>ΔIM34) that map directly onto the two policy conclusions",
+    "Validation by a known historical case (EU convergence 1990->2015, REI 2.65 -> 0.90) where the 'true' answer is intuitively known, giving a credible sanity check"
+  ],
+  "why_it_won": "Judges reward papers that make a fuzzy, open-ended policy prompt fully quantitative and self-consistent, and this paper does exactly that. It converts 'global equity' into a defensible, reproducible pipeline (logic tree -> EWM -> NDI -> K-Means -> GEI), then makes the hardest part — predicting the impact of a non-existent future industry — tractable by reusing its own Task-1 weights inside an FCE model, so Tasks 1, 2, and 3 form one coherent chain rather than three disconnected efforts. The choice of objective weighting (EWM) over subjective weights signals methodological maturity, and the size-independent per-capita indicators show the team anticipated and neutralized an obvious criticism. Crucially, it validates on a real, checkable case (EU convergence) and gets a sensible result, which buys judge trust. Finally, the policy section is concrete, mechanism-linked (each recommendation cites which indicator/branch it moves) and operationalized through a named actor (a proposed UN asteroid-mining department), so the modeling actually drives the recommendations.",
+  "section_highlights": "Summary clearly previews the full method chain in order. Section 3 (NDI) is the strongest: explicit indicator rationale per branch, full EWM equations (Eq.1-6), reported weights, and the size-independence argument. Section 3.5 (Validation) is a standout — using EU REI over 25 years as an external check is exactly what judges look for. Section 4 (FCE) reuses Task-1 weights and presents the actual R matrices, B=A·R results, and four scalar IM values, then distills everything into two crisp comparison inequalities. Section 5 (Policies) is organized by Economic/Civilization/Industry aspects and each policy is tied back to model findings (e.g., 'because economy and civilization carry the most weight, focus there'). The McKinsey-tree figure and the world heatmap give strong visual structure. Strengths/Weaknesses section is honest and specific (data gaps, unverifiable future-impact assumptions).",
+  "pitfalls_or_limitations": [
+    "The entire FCE step is essentially expert judgment dressed as computation: the R matrices (0.7/0.3 'very likely' probabilities and the significant/moderate/barely labels) are assigned by the team with prose justification, not estimated from data — the impact values IM1-IM4 are only as credible as those hand-set entries",
+    "IM values are extremely close (IM1=2.332 vs IM2=2.312; differences in the third decimal) yet conclusions are drawn from these tiny gaps with no uncertainty/error analysis on whether ΔIM12>ΔIM34 is robust",
+    "Symbol/labeling inconsistencies: 'National income per capita' is labeled Civ1 in the FCE prose (should be Eco2), and the weights bar chart mislabels several Society/Government groups — sloppy bookkeeping that a stricter judge would flag",
+    "Sensitivity analysis only perturbs indicator variance and re-runs EWM (showing weight shifts <0.5%); it never perturbs the FCE membership matrices, which are the most subjective and consequential inputs",
+    "GEI/REI metric (gap/low) is sensitive to the Low-cluster denominator — with a very small avg NDI_Low the ratio explodes (GEI=14.06), making cross-time or cross-region comparisons hard to interpret on an absolute scale",
+    "Assumption that K-Means country classifications stay fixed into the future (Task 2/3) sidesteps the very dynamic — mobility between tiers — that 'equity change' is about",
+    "No optimization or forecasting model: the future is handled entirely by static scenario scoring, so there is no time dimension or dynamics in the mining-impact analysis",
+    "Several data-table figures in the source render as corrupted/duplicated values (heatmap all '17,743'), suggesting the underlying numeric reporting/visualization was fragile"
+  ],
+  "reusable_patterns": [
+    "Concept-to-index pipeline for any vague policy prompt: logic-tree decomposition -> select measurable per-capita/ratio indicators -> normalize with directionality handling -> EWM for objective weights -> weighted-sum composite index -> K-Means tiers -> gap metric. Directly transplantable to 'sustainability', 'resilience', 'well-being', etc.",
+    "Always make composite indicators size/scale-independent (per-capita, ratios, percentages) and explicitly say so — pre-empts the 'big entities dominate' objection that judges reach for",
+    "Validate an unfalsifiable index on a historical case where the answer is intuitively known (here: EU convergence) and show the index reproduces the known trend — cheap, high-credibility move",
+    "Carry one weight vector through the whole paper: derive weights once (EWM) and reuse them in downstream models (FCE) so later tasks are provably grounded in earlier ones, not re-parameterized",
+    "For 'predict impact of a future/hypothetical scenario' tasks, use Fuzzy Comprehensive Evaluation: define factor set = your indicators, evaluation set = ordinal impact levels, weights = your existing weights, then convert the fuzzy result to a single comparable scalar via a score vector",
+    "Reduce a multi-scenario comparison to a few named inequalities (level comparison + gap comparison) so the quantitative result maps one-to-one onto the verbal conclusions and the policy section",
+    "Tie every policy recommendation back to a specific model finding (which branch/indicator carries weight) and assign an operational owner (e.g., a proposed governing body) so recommendations read as model-driven, not opinion"
+  ]
+}

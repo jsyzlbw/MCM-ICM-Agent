@@ -1,0 +1,54 @@
+{
+  "paper_id": "2023-2322645",
+  "year": 2023,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2023 MCM Problem C (data) on Wordle. Teams were given @WordleStats Twitter data (daily counts of reports, the 1-6/fail try distribution, and hard-mode counts per word/date) and asked to: (1) predict the number of reported results on a future date (eerie, March 1 2023); (2) predict the distribution of guesses (difficulty) for a given word, with uncertainty; (3) explain how word attributes drive player behavior; and (4) classify/characterize word difficulty. This paper's central move is to build ONE unified Bayesian model with three conditionally-independent submodels (Try, Reports, Hardmoders) sampled by MCMC, fed by engineered word-difficulty features selected via Lasso.",
+  "models_used": [
+    "Three-submodel Bayesian hierarchical model, conditionally independent given the data (the key architectural choice that keeps MCMC tractable on a large model by running it separately on each submodel)",
+    "Try model: Dirichlet-Multinomial. The 7-vector (got it in 1..6 tries, fail) ~ Multinomial(n, p); p ~ Dirichlet(A); ln(A_i) ~ Normal(d_try,i, sigma) with sigma ~ Exponential(1)",
+    "Reports model: overdispersed Poisson via Negative Binomial. n ~ NegBin(exp(L_reports + P_reports + d_reports), B), with overdispersion B ~ Exponential(0.01); long-term trend L parameterized as a Gamma-PDF-shaped curve gamma1*(T-gamma5)^gamma2 * exp(-(T-gamma5)/gamma3) + gamma4",
+    "Hardmoders model: Beta-Binomial regression. n_h ~ Binomial(n, p), p ~ Beta(eta*kappa, (1-eta)*kappa) with eta = inverse-logit(L+P+d) and kappa ~ HalfCauchy(0.5); long-term trend L_hardmoders = lambda1*(T-lambda4)^lambda2 + lambda3",
+    "Lasso regression for feature selection (lambda=0.1 tuned to yield 4 predictors), run as 7 parallel Lassos (one per try-category) to find features with consistently nonzero coefficients",
+    "Beta-distribution CDF fit to the cumulative try distribution as a 2-parameter (alpha, beta) compression of word difficulty; fit by non-linear least squares (scipy)",
+    "Shannon entropy (Positional Entropy) over letter/position frequencies from the Stanford GraphBase wordbank",
+    "Subset Entropy: a novel custom information-theoretic metric e(t) = E_{g~D}[log2(f_t(g))], the expected log shrinkage factor of the candidate answer pool after one guess, averaged over a uniform distribution on the 30 best guess words",
+    "MCMC with the No-U-Turn Sampler (NUTS) in PyMC for posterior inference",
+    "Implicit causal-inference argument: under the assumption that NYT chooses words at random, regression coefficients are read as causal effects (no confounding possible)"
+  ],
+  "key_techniques": [
+    "Feature engineering of word difficulty into quantifiable traits: number of vowels (excluding y), English usage frequency (wordfreq library), avg green/yellow/colored tiles returned under random SGB guesses, number of unique letters, Positional (Shannon) Entropy, and the novel Subset Entropy",
+    "Inventing a problem-specific metric (Subset Entropy) and rigorously justifying the log transform: because f_t is multiplicative information, averaging log(f_t) equals the log of the geometric mean — the correct mean for multiplicative quantities",
+    "Dimensionality reduction of the 7-category difficulty profile to just (alpha, beta), then to a single scalar alpha/(alpha+beta) = expected difficulty, enabling direct word-to-word ranking and percentile placement",
+    "Exploiting conditional independence of submodels so a large model stays computationally cheap — MCMC run 3 times separately rather than on a huge joint model",
+    "Choosing distributions that natively model overdispersion (Negative Binomial for reports, Beta-Binomial for hardmoders) instead of plain Poisson/Binomial, because the data has variance beyond what predictors explain",
+    "Principled, scale-aware prior selection (Normal(0,20) uninformative coefficients; Exponential(0.01) to allow large overdispersion; HalfCauchy for long-tailed spread; time T rescaled to [0,1] so priors stay uninformative)",
+    "Functional-form priors borrowed from known shapes — parameterizing the long-term report decline with a Gamma-PDF-shaped curve because the observed rise-then-decay matched it",
+    "Rigorous data cleaning with a transparent error log (fixing typos like 'tash'->'trash', impossible hardmode counts, and the naive/naïve diacritic), plus a defensible percentage-to-integer-count rounding scheme that preserves row totals",
+    "Both retrodiction (back-testing on past words like fungi) and prediction (eerie) used as validation, with observed values overlaid on posterior intervals"
+  ],
+  "why_it_won": "Judge perspective: the paper answers every sub-question with ONE coherent, internally-consistent probabilistic framework rather than four disconnected models — a rare display of modeling maturity. It delivers full posterior distributions (not just point estimates plus shaky normal-approximation intervals), which lets it honestly represent asymmetric uncertainty (e.g. the skewed distributions for guessing eerie in 1 try vs failing). It contributes genuine novelty (Subset Entropy) that is both creative and carefully justified mathematically, signaling that the team understood information theory rather than name-dropping it. The conditional-independence insight is an elegant engineering solution that turns an intractable large Bayesian model into three cheap MCMC runs — judges reward clever tractability arguments. It is intellectually honest about causation (only claiming causal reads under the explicit random-word-selection assumption) and about its own limitations. Every modeling choice is motivated and traceable from raw word -> features -> Lasso selection -> Bayesian submodel -> posterior prediction, and validated by both retrodiction and prediction. The deliverable (a distribution, not a number) directly matches what a real puzzle editor would want.",
+  "section_highlights": "Strong structural choices: (1) A summary/abstract that states the three sub-questions up front and previews the three-submodel answer, so a judge knows the whole arc in one paragraph. (2) A dedicated 'Word & Difficulty Representation' section that builds every feature with intuition first (zingy vs onion vs the KAPUT/KINKS repeated-letter figure) before any formula — concrete examples make abstract metrics legible. (3) Clean separation of Methodology (Lasso + Bayesian models) from Results (parameter interpretation, retrodiction, prediction, difficulty representation), so the reader sees the machine before its outputs. (4) Figure 7's single combined plate diagram of all three submodels (color-coded blue/red/yellow with green alpha,beta) compresses a complex hierarchical model into one readable graphic. (5) A genuinely useful, plain-English Letter to the Puzzle Editor that translates findings (easier words -> more reports; rising hard-mode share = casual players leaving) into editor-relevant insight, with the swill-vs-saint and eerie-vs-rhyme/equal/quirk comparisons making difficulty tangible. (6) An explicit, transparent data-error log that builds trust. (7) A dedicated Strengths/Limitations section showing self-awareness.",
+  "pitfalls_or_limitations": [
+    "Subset Entropy only measures information from the FIRST guess and cannot capture late-game traps (e.g. _atch -> watch/catch/latch/match), arguably the dominant source of real Wordle difficulty",
+    "Subset Entropy and several features depend on a strong assumption that players guess from a fixed uniform distribution over the 30 'best' SGB words — real first guesses vary widely",
+    "MCMC/NUTS is far slower than gradient-descent or analytic fitting; the team itself flags runtime as why they capped features at four via Lasso",
+    "Reports and Hardmoders models ignore autocorrelation in the time series and assume a stable long-term trend, which likely understates uncertainty in long-horizon predictions",
+    "Model ignores day-to-day changes in mean player skill; periodic day-of-week effects (theta, omega) came out centered at zero — possibly real absence, possibly insufficient data to identify them",
+    "Causal claims hinge entirely on the unverified assumption that NYT selects words completely at random; if word choice is curated, the causal reading collapses to correlation",
+    "The (alpha, beta) Beta-CDF compression discards information about multi-modal or unusual try distributions that a Beta cannot represent",
+    "Difficulty is defined operationally by reported behavior of a self-selecting Twitter-reporting population, not the true player base — a sampling-bias caveat the paper acknowledges only lightly"
+  ],
+  "reusable_patterns": [
+    "Unify multi-part problems under one probabilistic model with conditionally-independent submodels: keeps the narrative coherent AND keeps inference cheap (run MCMC per submodel).",
+    "Compress a high-dimensional response (here a 7-bin distribution) into 2-3 interpretable parameters by fitting a parametric family (Beta CDF), then to a single comparable scalar (expected value) for ranking/percentile placement.",
+    "Engineer many candidate domain features, then let Lasso (or run it per-output-category) prune to a small consistently-nonzero set before feeding an expensive downstream model.",
+    "When data is overdispersed, swap the naive count model for its overdispersed cousin (Poisson->Negative Binomial, Binomial->Beta-Binomial) and put a prior on the dispersion parameter.",
+    "Invent a problem-specific metric when off-the-shelf ones miss the mechanism — but justify every transform mathematically (the geometric-mean/log-of-shrinkage-factor argument is a template for defending a custom information measure).",
+    "Deliver full posterior distributions, not point estimates, and validate with BOTH retrodiction (back-test on known cases) and forward prediction overlaid on observed values.",
+    "Rescale the time/independent variable to [0,1] so uninformative priors stay genuinely uninformative; borrow functional forms from known shapes (Gamma PDF) when the empirical trend matches.",
+    "State causal assumptions explicitly (random treatment assignment) and only claim causation under them — judges reward this honesty.",
+    "Maintain a transparent data-error log and a totals-preserving rounding scheme to convert reported percentages into integer counts.",
+    "Write the required memo/letter in the stakeholder's language, translating statistical findings into actionable, intuitive comparisons (swill vs saint)."
+  ]
+}

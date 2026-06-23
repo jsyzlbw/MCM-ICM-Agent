@@ -1,0 +1,45 @@
+{
+  "paper_id": "2025-2521556",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Predict the 2028 Olympic medal counts per country, quantify the impact of a 'great coach' effect, and extract strategic insights for national Olympic committees using 120+ years of athlete-level historical data.",
+  "models_used": [
+    "TrueSkill",
+    "SARIMAX",
+    "Random Forest",
+    "Bayesian Inverse Gamma",
+    "Monte Carlo simulation",
+    "VARMAX",
+    "Mahalanobis distance",
+    "CUSUM",
+    "LR-SCAD"
+  ],
+  "key_techniques": [
+    "Bottom-up athlete skill rating with experience decay",
+    "Host nation as exogenous variable in time series forecasting",
+    "Event-level aggregation with uncertainty via Bayesian variance prediction",
+    "Monte Carlo first-medal probability with per-event sampling and weighted combination",
+    "Residual-based anomaly detection (VARMAX + Mahalanobis + CUSUM) to identify coach-effect years",
+    "SCAD penalized regression to isolate and quantify latent coach effect contribution",
+    "Normalized performance heatmaps to identify most important sports per country",
+    "Out-of-sample validation on 2024 Olympics with prediction intervals",
+    "Sensitivity analysis on TrueSkill and SARIMAX hyperparameters"
+  ],
+  "why_it_won": "The paper seamlessly integrates disparate modeling paradigms (skill ratings, time series, ensemble learning, penalized regression) into a unified, multi-task framework that addresses every question with depth and rigor. The innovative use of TrueSkill for Olympic events and the creative isolation of coach effects through residual analysis and SCAD demonstrate original thinking far beyond standard approaches. Comprehensive uncertainty quantification, actionable strategic recommendations, and robust validation elevate the work to the highest level of analytical excellence.",
+  "section_highlights": "The paper uses clear, informative flowcharts to guide readers through complex model pipelines, making the architecture instantly understandable. Mathematical formulations are presented concisely and immediately followed by rich visual outputs (heatmaps, prediction bar charts, radar plots) that translate abstract predictions into tangible insights. The logical progression from model construction to task-specific applications, and then to original insights, with dedicated evaluation and sensitivity sections, creates a polished, professional narrative.",
+  "pitfalls_or_limitations": [
+    "High computational cost due to the multi-model ensemble and repeated simulations",
+    "Prediction accuracy exhibits sensitivity to SARIMAX hyperparameters (p and q), particularly for events with shorter historical data"
+  ],
+  "reusable_patterns": [
+    "Bottom-up pipeline: athlete skill rating → time series forecast → medal allocation",
+    "TrueSkill or similar rating system for tracking national team performance across multiple Games",
+    "Host country as an exogenous variable to capture home advantage in time series models",
+    "Monte Carlo probability estimation for rare events (first medal) by sampling performance distributions across events",
+    "Residual analysis with VARMAX and anomaly detection (Mahalanobis distance, CUSUM) to isolate external intervention effects",
+    "Penalized regression (SCAD) to quantify the independent impact of a latent variable (coach) on a target variable (medal count)",
+    "Normalized performance heatmaps to rank sport importance for strategic decision-making",
+    "Backcasting to a known Olympics to produce realistic prediction intervals and validate model accuracy"
+  ]
+}

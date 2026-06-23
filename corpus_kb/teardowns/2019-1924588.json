@@ -1,0 +1,49 @@
+{
+  "paper_id": "2019-1924588",
+  "year": 2019,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2019 MCM Problem B (\"DroneGo\" / HELP, Inc.): design a transportable disaster-response system for hurricane-hit Puerto Rico. The team must (a) recommend a fleet from a fixed catalog of candidate drone types (B,C,D,G,H, etc.) plus a set of medical packages (MED1/2/3) to serve 5 specific hospitals; (b) design how drones + packages pack into ISO cargo containers; (c) choose where to deploy the containers; (d) configure drone cargo-bay payloads; (e) plan delivery routes/schedules; and (f) plan video-reconnaissance flight routes that cover the road network. It is a discrete/combinatorial multi-part problem (selection + packing + facility location + routing) rather than a single optimization.",
+  "models_used": [
+    "Fleet/type selection as constrained integer selection: pick min number of drones such that for each served hospital pair max flight distance D_i >= inter-hospital distance S(h_m,h_n) and payload Z_i >= daily medical weight Mp_m. Produced two candidate fleet schemes (Scheme 1: 1B+1C+1D+3H; Scheme 2: 2B+1C+1G+3H).",
+    "Multi-objective programming for choosing the *type* of drone serving each hospital: max(alpha1*V_i + alpha2*Z_i + alpha3*D_i) subject to payload/range constraints (weighted-sum scalarization).",
+    "Custom 1D 'maximum-utilization' packing heuristic (ODMU, 'medical-package-first, UAV-later') instead of generic 3D bin-packing: fill container with proportionally-bundled packages, then carve out integer blocks of packages to insert drone shipping crates. Achieved 68.14%-93.22% space utilization.",
+    "Facility-location via grid search: discretize Puerto Rico road map into a 91-cell grid (G_ave = 113.99km/91 = 1.281 km/cell), mark road cells TG=1, then exhaustively search container grid points to maximize covered TG cells inside a circle of radius D_i/2, subject to each hospital being within D_i/2 of its container.",
+    "Drone cargo-bay payload packing as an integer packing/knapsack-style configuration (length/width/height and max-weight constraints) giving concrete per-hospital loadouts (e.g., Drone D: 4MED1+2MED3 or 3MED1+3MED2, etc.).",
+    "Voronoi diagram for obstacle (mountain/building 'threat source') avoidance: edges equidistant from threat sources form the safe-route graph.",
+    "Dijkstra shortest path over the Voronoi-edge node graph to compute delivery routes from container to hospitals.",
+    "Reconnaissance routing modeled as a TSP (min sum d_ij*x_ij with degree-1 + subtour-elimination constraints over starting point + all in-range road cells), solved heuristically with Ant Colony Optimization (ACO)."
+  ],
+  "key_techniques": [
+    "Discretization of a continuous geographic problem: rasterizing the road map into a labeled grid (TG=1/0) so coverage becomes a countable objective and facility location becomes brute-force grid search.",
+    "MATLAB image processing (imread + thresholding at 200, precision-5 block downsampling) to auto-generate the grid and detect road cells from the map JPG.",
+    "Reusing a single grid coordinate system across multiple subproblems (location, delivery routing, reconnaissance) with one conversion constant G_ave, keeping all parts mutually consistent.",
+    "Carrying two competing fleet schemes forward and letting a *downstream* constraint decide: Scheme 2 was eliminated because no grid point let one container's two drones both reach their hospitals within D_i/2.",
+    "Reframing an NP-hard 3D bin-packing into an easy-to-execute, physically realizable 1D layering scheme, explicitly trading some space efficiency for real-world loadability.",
+    "Layering classic graph algorithms: Voronoi (safety) -> Dijkstra (shortest safe path) -> ACO/TSP (max coverage reconnaissance).",
+    "Built-in feasibility check (Section 5): verifying every delivery + reconnaissance route stays under each drone's max flight distance (e.g., F3 40.473km vs 40.5km cap), turning the constraint into a validation test.",
+    "Loaded-flight modeling assumption: max flight time at full load = 2/3 of unloaded, +1 min for ascent/descent, daily deliveries an integer multiple of hospital demand so spare time funds reconnaissance."
+  ],
+  "why_it_won": "Judges reward a complete, self-consistent system over isolated clever pieces, and this paper delivers exactly that: it answers all six required deliverables and stitches them together through a single shared grid so the location, routing, and reconnaissance answers reinforce each other rather than contradict. It demonstrates modeling judgment at decision points an average team misses, most notably (1) recognizing that generic 3D bin-packing is the 'textbook' answer but inventing a simpler, physically-loadable ODMU scheme and *justifying* the space-vs-realizability tradeoff, and (2) carrying two fleet schemes forward and killing one with a concrete downstream feasibility failure rather than hand-waving a choice. It is concrete and numeric throughout (exact container lat/long, 93.22% utilization, per-hospital payload mixes, minute-level schedules), and it closes the loop with an explicit feasibility test showing every route fits under the drones' range. The work is also reproducible: the appendix ships the actual MATLAB for gridding, packing, location search, Voronoi, and ACO. That mix of completeness, defensible engineering tradeoffs, hard numbers, and verification reads as trustworthy to a judge.",
+  "section_highlights": "Summary sheet front-loads concrete numeric results (fleet composition, container coordinates, 93.22%/68.14% utilization bounds) and lists the five named methods as keywords — a judge knows the whole solution in 30 seconds. A CEO-addressed MEMO translates results into business recommendations (replaceable batteries/solar to avoid disposable drones, three container sites, more drones if full road coverage is required), matching the prompt's NGO framing. The body is rigidly structured to mirror the six deliverables (4.1-4.6), each with model-establishment then result, so the reader maps every model to a required task. Notation table, explicit Assumptions-and-Justifications (not bare assumptions), a dedicated 'Testing Our Model' section, and an honest Strengths/Weaknesses evaluation all signal modeling maturity. Figures carry the argument (gridded map, Voronoi diagram, route overlays, packing diagrams), and the appendix provides runnable code per subproblem.",
+  "pitfalls_or_limitations": [
+    "English prose is rough with many typos and garbled OCR-like artifacts (e.g., 'Voronio' for Voronoi throughout, coordinate strings like '18.47,66.N W55'); strong modeling carried it despite weak writing.",
+    "The reconnaissance objective is set up as a TSP/ILP (with subtour-elimination constraints) but actually solved with ACO; the exact ILP is never solved, and there's no optimality gap or comparison to a baseline.",
+    "By minimizing drone count to save cost, the system admittedly cannot reconnoiter all roads — a real coverage gap acknowledged only in the Weakness section, not quantified (what fraction of TG cells are left uncovered?).",
+    "The loaded max-flight-distance is approximated by a flat 2/3-of-unloaded assumption; the paper concedes it never derived the real loaded-range formula, yet feasibility margins are razor-thin (F3 delivery 40.473km vs 40.5km cap).",
+    "Grid resolution (1.281 km/cell, 91 cells) is chosen without sensitivity analysis; both the location search and coverage counts depend on this discretization but its effect is untested.",
+    "The multi-objective type-selection weights (alpha1,alpha2,alpha3) are never specified or justified — the weighted-sum scalarization is effectively a black box.",
+    "Appendix MATLAB is partly corrupted/non-runnable (e.g., 'm=p(:,;2)', a row 'i,I,II,j,J,J,J,K,L,M,...' with undefined vars), so reproducibility is aspirational rather than verified.",
+    "Some hospital-to-container assignments and figures are hard to follow because several auto-extracted diagrams are placeholders, not the real figures."
+  ],
+  "reusable_patterns": [
+    "Map-to-grid discretization recipe: rasterize a map image, threshold to binary, downsample into cells, label feature cells (TG), and define one km/cell conversion constant — converts continuous coverage/location problems into countable grid search. Reusable for any geographic MCM problem.",
+    "Generate multiple candidate solutions early, then eliminate via a downstream feasibility constraint instead of guessing — gives a defensible 'why we chose X' narrative judges love.",
+    "When the textbook method is NP-hard (3D bin packing), invent a simpler structured heuristic and explicitly argue the efficiency-vs-realizability tradeoff rather than throwing a metaheuristic at it.",
+    "Pipeline classic graph algorithms by concern: Voronoi for safety/clearance -> Dijkstra for shortest feasible path -> TSP+ACO for coverage routing. A clean template for any 'navigate around obstacles then cover an area' task.",
+    "Add an explicit 'Testing Our Model' section that re-checks every output against the hard constraint (here, flight-distance budget) — cheap to write, strongly boosts credibility.",
+    "Share one coordinate system / one set of grid outputs across all subproblems so answers are provably consistent and the paper reads as one system, not six disconnected models.",
+    "Lead the summary sheet with concrete numbers + a keyword list of named methods, and add a stakeholder-voiced memo that converts results into actionable recommendations — directly satisfies prompts that name a client (NGO/company).",
+    "Ship per-subproblem code in the appendix to signal reproducibility, even when the main text is light on implementation detail."
+  ]
+}

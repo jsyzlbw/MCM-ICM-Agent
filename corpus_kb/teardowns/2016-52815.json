@@ -1,0 +1,53 @@
+{
+  "paper_id": "2016-52815",
+  "year": 2016,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2016 Goodgrant Foundation problem: recommend how a charity should allocate $500M ($100M/year for 5 years) across U.S. colleges to maximize return on investment (RoI) in student/economic outcomes, using the provided IPEDS/College Scorecard-style dataset plus self-gathered external data. The dataset came with NO response/target variable, so the team had to invent and justify its own RoI metric, then build a model that both scores schools and decides allocations and timing. Note: the corpus file is labeled \"Problem C / data\" but the actual content is the Goodgrant education-funding (ICM-D-style) problem.",
+  "models_used": [
+    "Self-defined response variable 'Goodness' = (school contribution to GDP) + (scaled median alumni salary) — invented because the data had no target/label",
+    "Jobs-Added sub-model: per-major supply-vs-demand scoring. JobsAdded = Students * DegreesAwarded_proportion * z-scored major unemployment (Unemployment_delta = (Unemp - mean)/sd), so schools producing graduates in OVERSATURATED majors get NEGATIVE jobs and are dropped",
+    "Jobs -> unemployment-change -> GDP bridge using labor-force accounting (Unemployment_final from CurrentJobs+JobsAdded over LaborForce) plus Okun's-law-style OLS: ln(deltaGDP) = deltaUnemployment + epsilon fit to 1948-2015 BEA/BLS time series, then back-transformed e^MLE * GDP_initial to get absolute deltaGDP",
+    "Cross-sectional Bayesian linear regression (the centerpiece): Goodness = b0 + b1*ln(Price) + b2*Enrollment + b3*ln(Price)*Enrollment + epsilon, with vague priors b~N(0,1e-5), tau~Gamma(1e-5,1e-5), sampled in BUGS called from R",
+    "Multilevel / hierarchical (empirical-Bayes) shrinkage: the pooled cross-sectional posterior, inflated with extra variance, is used as the PRIOR for a separate per-school model P(M_s|X) ∝ L(M_s|X_s)P(M_s), giving each school its own concave 'Goodness curve' vs effective tuition",
+    "Greedy marginal-return optimization (Algorithm 1): repeatedly compute the Goodness/dollar slope g_next - g_init for a unit disbursement, fund the school with max marginal delta-Goodness, subtract its per-student cost, repeat until the yearly budget is exhausted",
+    "Temporal extension: re-run the model per year 2016-2020 by plugging in EIU GDP forecasts and Census population projections (only national econ data varies over time)",
+    "Missing-data models: MCAR values treated as parameters with vague N(0,1e-5) priors inside BUGS; 'Privacy Suppressed' values treated as MAR and imputed via multiple regression on complete covariates (Salary = gamma·X)"
+  ],
+  "key_techniques": [
+    "Inventing and rigorously operationalizing a response variable when the dataset ships without one — turning an unsupervised allocation question into a supervised regression target (Goodness)",
+    "Chaining simple, individually-interpretable stages (major unemployment -> jobs -> unemployment change -> GDP change -> Goodness -> allocation) so the pipeline is 'complex rather than complicated'",
+    "Empirical Bayes / hierarchical shrinkage: borrow strength across all schools for the pooled fit, then specialize per school with variance-inflated priors so small schools aren't dominated by noise",
+    "z-score normalization of per-major unemployment to convert raw rates into a saturation signal with a meaningful zero (negative = oversupplied field)",
+    "log transforms with explicit back-transformation algebra (ln(deltaGDP) modeling and the e^MLE derivation) to model percent rather than absolute GDP change",
+    "Explicit missingness taxonomy (MCAR vs MAR vs structural/public-private) handled with the R MI package, missingness heatmaps, and two different imputation mechanisms",
+    "Greedy marginal-allocation optimization exploiting concavity of the Goodness curves (water-filling style) to maximize summed RoI under a budget",
+    "Bayesian uncertainty propagation justified by Jensen's inequality argument: because jobs->GDP map is convex, ignoring parameter uncertainty would bias the GDP estimate downward",
+    "Honest residual diagnostics: Q-Q plot, residual-vs-fitted (visible heteroscedasticity / funnel), actual-vs-predicted, with the team openly flagging the variance problems",
+    "Sensitivity/robustness via constrained vs unconstrained variants (cap of $50M/school) and a sanity check that elite schools (Princeton/Harvard/MIT) surface naturally"
+  ],
+  "why_it_won": "\"From a judge's view it won because it confronted the single hardest, most-overlooked feature of this problem head-on: the data has no RoI label, and most teams either ignore that or hand-wave a weighted-sum index. This team built a defensible economic chain of custody from raw major-level unemployment all the way to dollars of GDP, grounded every link in a real cited source (Okun's law, BEA/BLS, returns-to-schooling literature), and then closed the loop with an actual optimization and a concrete deliverable (73 schools, per-year dollar amounts, RoI per school in two tables). The Bayesian/hierarchical framing let them do imputation, per-school personalization, and uncertainty accounting all within one coherent statistical story rather than bolting on ad-hoc fixes. Crucially they were intellectually honest — they showed bad residual plots, listed limitations, and ran constrained vs unconstrained sensitivity — which reads as mature modeling rather than overclaiming. The face-validity check (elite universities emerging unprompted, plus surfacing economically-distressed Puerto Rico schools) gives a judge an immediate reason to trust the pipeline. The summary sheet is also genuinely well written and the methods (R/Python/BUGS) are reproducible-sounding.\"",
+  "section_highlights": "\"Summary sheet is a model of clarity: states the approach (Bayesian multi-stage to maximize RoI), walks each stage in plain English, names the tools, and ends with concrete results (73 schools incl. Princeton/Harvard/MIT) — a judge knows the whole story in one page. The optional plain-language LETTER to 'Mr. Alpha Chiang' (the foundation officer) reframes the entire model for a non-technical decision-maker, which directly answers the ICM communication mandate. Section 2 (Data Cleaning & Imputation) leads with real data archaeology — negative-tuition removal, public/private tuition restructuring, missingness heatmap — signaling rigor before any modeling. Section 3.2 (Contribution to GDP) is the analytical centerpiece with the full unemployment->GDP derivation. Section 6 'Model Analysis' (Why Bayes?, Limitations, Assumptions, Strengths, Improvements) is an explicit self-critique block that judges reward. Results section delivers two full allocation tables (constrained and unconstrained) with year-by-year dollars and RoI.\"",
+  "pitfalls_or_limitations": [
+    "Almost entirely cross-sectional: all school-level and major-unemployment inputs are a single snapshot; the '5-year/when-to-fund' time dimension is faked by varying only national GDP/population forecasts, so per-year allocation timing is weakly grounded",
+    "Heavy ad-hoc data fabrication: public-school external funds assumed 2x private, community-college funding multiplied by 5x 'based on results from such models' (circular justification) — these unvalidated multipliers drive results",
+    "Visible model misspecification they admit but don't fix: residual-vs-fitted shows clear heteroscedasticity (variance shrinks as prediction grows) and Q-Q non-normality, violating the linear-model/normal-error assumptions underlying the posteriors",
+    "The core Goodness regression uses only ln(Price), Enrollment, and their interaction — a very thin feature set; no faculty:student ratio, research output, or graduation/retention controls (they list these as 'future work')",
+    "The unemployment->GDP regression direction and units are muddy: ln(deltaGDP) regressed on deltaUnemployment with the Figure 2 data looking near-deterministic/synthetic, and 'surprisingly good fit' is asserted rather than reported with R^2/CI",
+    "Greedy marginal allocation is locally optimal only; with concave curves it's reasonable but no proof of global optimality or comparison to an exact solver is given",
+    "Salary is simply 'scaled and added' to GDP to form Goodness — the relative weighting of two very different-unit quantities is unjustified and would swing the rankings",
+    "Sparse, partly informal references (several bare titles, blog/salary-site sources for major salaries) weaken the empirical foundation for the salary and unemployment inputs",
+    "Result oddity acknowledged but not fully resolved: unconstrained model dumps ~44% of all funds into Georgia Perimeter College, exposing instability that the $50M cap only patches over"
+  ],
+  "reusable_patterns": [
+    "When a 'data' problem ships without a target variable, INVENT a defensible composite response, name it, and justify each component from literature — then you can use the full supervised-regression toolkit instead of ad-hoc indices",
+    "Build the metric as an interpretable causal chain (input feature -> intermediate economic quantity -> dollars), citing one real source per link, so each step is auditable and a judge can follow the logic",
+    "Use z-scoring to turn raw rates into signed signals with a meaningful zero (oversupplied vs undersupplied) — a clean way to encode 'relative to peers' comparisons",
+    "Empirical-Bayes two-stage modeling: fit a pooled model, then inflate its posterior variance and reuse it as a prior for per-entity models — gives every entity a personalized curve while shrinking noisy small samples toward the population",
+    "For resource-allocation-under-budget with diminishing returns, a greedy water-filling loop on marginal return-per-dollar is simple to code, easy to explain, and near-optimal under concavity",
+    "Add a non-technical stakeholder letter alongside the technical report to satisfy ICM communication scoring",
+    "Devote an explicit early section to data cleaning + a missingness taxonomy (MCAR/MAR) with a heatmap; treating data work as first-class signals rigor",
+    "Include an honest 'Why this method / Limitations / Assumptions / Improvements' self-critique section and show your bad diagnostic plots — judges trust transparent modeling over polished overclaiming",
+    "Run constrained vs unconstrained (or sensitivity) variants and use a face-validity check (do known-good entities surface naturally?) to argue the model is trustworthy"
+  ]
+}

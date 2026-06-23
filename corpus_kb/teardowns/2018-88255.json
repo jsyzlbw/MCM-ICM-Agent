@@ -1,0 +1,51 @@
+{
+  "paper_id": "2018-88255",
+  "year": 2018,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2018 MCM Problem A (continuous): model how HF radio (3-30 MHz) \"sky wave\" signals propagate via multi-hop reflection between the ionosphere and the Earth's surface. The team had to (1) quantify reflection loss off calm vs. turbulent ocean surfaces, (2) compute the maximum number of hops a 100 W signal can make before SNR drops below a 10 dB threshold, (3) compare ocean reflection with land (rugged vs. smooth terrain), and (4) extend the model to a moving shipboard receiver, including the receivable coverage zones along the ship's path.",
+  "models_used": [
+    "Fresnel reflection-coefficient model from Snell's law (complex permittivity tilde-eps = eps_r + i*60*lambda*sigma), using horizontal-polarization R_h because its loss is lower than vertical R_v",
+    "Calm-ocean attenuation as an angular integral: L_cal(dB) = -10*lg of integral of R_h over [theta_min, theta_max], with theta_max from the ionospheric refraction cutoff and theta_min from Earth-curvature geometry R/(R+Z)",
+    "Pierson-Moskowitz (P-M) sea spectrum S(omega) to statistically simulate wind-driven wave-height distribution as a function of wind speed U_19.5",
+    "Finite Element Analysis with Blinn's (1977) microfacet exponential normal-distribution model D(omega_h) ~ (omega_h . n)^e, normalized over the hemisphere with a geometric shadowing/masking term G, to derive the rough-surface correction factor rho",
+    "CCIR international-standard empirical roughness correction factor rho = 1/sqrt(3.2g-2+sqrt((3.2g)^2-7g+9)), with g a function of rms wave height h_w = 0.0051*U^2 (offered as an alternative to the FEA route)",
+    "Free-space / path transmission loss: Friis-based L_bf = 32.45 + 20*lg f(MHz) + 20*lg d(km), then path loss L_b = L_bf - A_air",
+    "Ionospheric refraction model via Snell's law layering (n0*sin(theta0)=...=nn*sin(thetan)) with electron-density refractive index n = sqrt(1 - 80.8*N/f^2)",
+    "Ionospheric non-deviative D-layer absorption A_ion derived from electromagnetic theory of a lossy medium, with HF approximation A_ion ~ 60*pi*sigma/sqrt(eps_r)",
+    "SNR / link-budget model: thermal-noise floor P_noise = kTB, P_signal_min from the 10 dB SNR threshold, yielding L_max = 150.969 dB as the maximum allowable total path loss",
+    "Total-loss summation model L_t = L_b + L_ion + L_cal/tur, evaluated per hop vs. distance to count maximum hops",
+    "Land-reflection model reusing the same reflection formulas but substituting terrain eps_r and sigma (seawater vs. wet/dry soil) and larger surface-amplitude fluctuation for rugged/smooth terrain",
+    "Circular-polarization mismatch model for the shipboard receiver: Mismatch Factor v = 1/2 adds a constant L_ship = -10*lg(0.5) = 3.01 dB, plus geometric computation of per-hop receivable distance bands ('exclusion zones' between hops)"
+  ],
+  "key_techniques": [
+    "Decomposing one signal into a sum of independent dB-additive loss terms (L_b + L_ion + L_surface + L_ship) so each physical mechanism is modeled separately then recombined linearly",
+    "Offering two independent routes to the same rough-surface correction factor rho (physics-based Blinn microfacet FEA AND empirical CCIR standard) — cross-validation that hedges against either method's weakness",
+    "Grounding empirical constants in authoritative standards (CCIR/CCIR values eps_r=7, sigma=5 for seawater; P-M coefficients alpha=8.1e-3, beta=0.74) rather than inventing them",
+    "Converting a vague 'max hops' question into a concrete link-budget inequality: derive L_max=151 dB from kTB noise + 10 dB SNR, then count hops where L_t crosses that line on a loss-vs-distance plot",
+    "Reusing the ocean model as a parameterized template for land by swapping eps_r and sigma — demonstrating model generality with minimal new machinery",
+    "Reducing the complex polarization-stability requirement of a shaky ship to a single clean 3.01 dB penalty via the 1/2 mismatch factor",
+    "Geometric reasoning about Earth curvature and ionospheric height to bound integration limits theta_min and theta_max physically rather than arbitrarily"
+  ],
+  "why_it_won": "\"It is a complete, end-to-end physical model that answers every sub-question with concrete numbers (0.5-5.5 mW calm reflection, 6-7 hops at 3 MHz, 151 dB loss budget, named coverage bands like 1900-2676 km for hop 1), which judges reward over hand-waving. The standout move is solving the genuinely hard part — turbulent-surface reflection — two ways (Blinn microfacet FEA and the CCIR standard), showing both depth and engineering pragmatism. The work is anchored throughout in real EM physics, international standards, and 13 cited references, lending credibility uncommon in a 4-day contest. The link-budget derivation (kTB noise -> SNR threshold -> L_max -> hop count) is a clean, defensible chain that turns a fuzzy question into a crisp computation. Finally it tackled all four parts including the often-skipped shipboard-receiver extension with the exclusion-zone insight, and closed with an honest sensitivity analysis (wind speed dominant; +/-20% eps_r,sigma negligible).\"",
+  "section_highlights": "\"Structure follows the canonical MCM flow: Summary Sheet (dense, per-part results with hard numbers) -> Introduction -> Assumptions + Variable table -> Model Establishment (numbered hierarchically 3.1-3.4 matching the four sub-problems) -> Stability/Sensitivity Analysis -> Strengths/Weaknesses -> the requested IEEE short note -> References. The summary sheet front-loads quantitative answers for every part, which judges skim first. The variable-description table defines all symbols up front. Figures carry the argument: P-M 3D wave surfaces at four wind speeds, L_cal vs L_tur comparison curves, per-hop loss-vs-distance families (n=1..8) where the reader can literally read off where each hop crosses 151 dB, and a coverage-band diagram for the ship. Sensitivity analysis is shown visually (overlapping curves for +/-20% params = insensitive; separated curves for sea-vs-land = sensitive). The required IEEE communication-magazine note is delivered as its own section.\"",
+  "pitfalls_or_limitations": [
+    "The land model is just the ocean model with swapped eps_r/sigma and a larger amplitude assumption — the authors admit this is approximate and 'may have inapplicable places'; terrain roughness is not given its own spectrum analogous to P-M",
+    "Ionospheric path is crudely represented as a function of incident angle; the authors concede the ionosphere's true complexity (random, dispersive, anisotropic, time/season-varying D/E/F layers) is not faithfully captured, undermining accuracy of L_ion",
+    "Stated assumptions explicitly drop fading, multipath delay, and dispersion, so a 'received' signal may actually be distorted/unusable — the hop counts are optimistic upper bounds",
+    "Several figures appear noisy or mislabeled in the extracted markdown (e.g., Figure 14 axis labeled 'Time(km)', Figure 9 layer/temperature values look scrambled), suggesting figure quality/labeling was uneven",
+    "Some reference entries look mismatched to their cited claims (e.g., Blinn microfacet cited to a Zhang ionosphere paper; CCIR rho cited to a dipole-field comment paper), a citation-hygiene weakness",
+    "Electron density N_n at reflection points and exact ionospheric height Z are treated as known/assumed inputs without a sourced profile, so theta_max and the hop geometry rest on unstated values",
+    "Background noise modeled only as cosmic kTB at T=290 K with B=2 MHz; atmospheric and man-made HF noise (which dominate the real HF band) are assumed uniform and otherwise ignored"
+  ],
+  "reusable_patterns": [
+    "dB-additive loss decomposition: model a transmission/degradation problem as L_total = sum of independent mechanism-specific losses in dB, model each in isolation, then sum — generalizes to any signal/energy/flow attenuation problem",
+    "Dual-method cross-validation of a hard sub-quantity: derive the same factor from first-principles physics AND an empirical/industry standard, then show they agree — a credibility multiplier judges love",
+    "Convert a 'how many / how far / how long' question into a threshold-crossing computation: derive a hard budget (here 151 dB from kTB+SNR) and plot the cumulative quantity vs the variable to read off where it crosses",
+    "Parameterized template reuse: build one model around physical parameters (eps_r, sigma, roughness) so a second scenario (land vs sea) is handled by swapping parameter values rather than rebuilding",
+    "Reduce a messy real-world constraint to a single clean constant: the ship's polarization-stability issue collapses to a fixed 3.01 dB mismatch penalty",
+    "Anchor every empirical constant in a cited standard (CCIR values, P-M coefficients) instead of guessing, and list them explicitly in a variable table",
+    "Sensitivity analysis as a visual triage: plot output under +/-X% input perturbations — overlapping curves = robust/ignorable, separated curves = the driver to highlight",
+    "Front-load the Summary Sheet with one concrete quantitative result per sub-question so a skimming judge sees you answered everything"
+  ]
+}

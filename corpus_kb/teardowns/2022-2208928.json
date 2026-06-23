@@ -1,0 +1,53 @@
+{
+  "paper_id": "2022-2208928",
+  "year": 2022,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2022 MCM/ICM Problem D (operations research / data science). Teams had to build a model to assess the maturity of the \"data and analytics (D&A) system\" of a fictional Intercontinental Cargo Moving (ICM) Corporation across three components — people, technology, and process — answer optimization questions raised by hiring managers, IT, and the security officer, design protocols to measure effectiveness, extend the model to companies of different scale and to other industries, and write a one-page letter to port users. This paper (Team #2208928) frames the entire problem as a quantitative maturity-scoring-plus-optimization pipeline.",
+  "models_used": [
+    "DAS Maturity Assessment Model: a 12-KPI scoring framework — 3 KPIs for People (Innovation Rate, Work Efficiency, Work Quality), 4 for Technology (Schedule Adherence, Cost Adherence, Robustness, Data Processing Capacity), 5 for Process (Metadata Consistency, Data Security, Data Processing Efficiency, Data Accessing & Changing Success Rate, Data Quality), each defined by an explicit normalized benefit-type formula in [0,1]",
+    "Fuzzy Synthetic Evaluation Model (FSEM): expert weight vector A times fuzzy evaluation matrix R over 5 grade levels, score Z_F taken as max of resulting membership vector B = A·R",
+    "Entropy Weight Method (EWM): objective KPI weighting from information entropy E_j of normalized indicator dispersion",
+    "Analytic Hierarchy Process (AHP): subjective KPI weighting via pairwise-comparison judgment matrices and eigenvector extraction, with consistency check",
+    "Integrated EWM-AHP weighting: W_i = ω·W_A + (1-ω)·W_E with ω = 0.2 (favoring the objective EWM)",
+    "Final score fusion: Z = 0.8·Z_A + 0.2·Z_F combining the EWM-AHP average score and the fuzzy score",
+    "Capability Maturity Model (CMM): maps Z to 5 maturity stages (Initial, Repeatable, Defined, Managed, Optimizing) by score thresholds",
+    "Vector Optimization Model (VOM): represents a system as a 3D maturity vector a=(a1,a2,a3) of component scores; optimizing level is a target plane (x+y+z)/3 = 0.8; finds optimization vector b minimizing difficulty cost b·D subject to a+b landing on the plane",
+    "Scale-Demand Method (SDM): an economics-of-scale extension that derives component weights ω_i from demand functions D_i = f_i(x) of corporate scale x, normalized over an interval; applied to seaports using berth count as scale, technologist count as people-demand, and cargo throughput as tech/process-demand, fitted by quadratic regression (R² = 0.9758 and 0.9731)"
+  ],
+  "key_techniques": [
+    "Subjective + objective weight fusion (AHP + EWM) to defend weight choices against the 'arbitrary weights' criticism that kills many evaluation-type papers",
+    "Strict operationalization: every one of the 12 KPIs is given a closed-form formula with named variables, normalized to [0,1] and forced to benefit-type (min{1, ·} clamps and 1 - ratio constructions), so the abstract notion of 'maturity' becomes computable",
+    "Two-score fusion (Z = 0.8 Z_A + 0.2 Z_F) to hedge between a data-driven method and an expert/fuzzy method when actual ICM data is unavailable",
+    "Reframing optimization as a geometric vector-to-plane problem, turning 'how do we improve' into a constrained minimization of a difficulty-weighted optimization vector with a clean 3D visualization",
+    "Difficulty vector D to encode that improving each component costs differently — directly answers the three departments' 'where should we invest' questions",
+    "Borrowing economic concepts (economies of scale, demand) to make the scale-extension principled rather than ad hoc, then validating with quadratic curve fitting and R²",
+    "Mapping continuous score to an established industry framework (SEI Capability Maturity Model) for instant face validity and interpretability of the 5 levels",
+    "Pareto (80/20) justification for restricting to 12 'key' indicators rather than an exhaustive list",
+    "Consistency check on AHP judgment matrices reported as a reliability argument"
+  ],
+  "why_it_won": "\"From a judge's perspective the paper wins on completeness and quantitative rigor under heavy ambiguity. Problem D gave essentially no real data about ICM's system, and most teams flounder into hand-wavy qualitative essays; this team instead manufactured a fully computable framework: 12 rigorously-formula'd KPIs, a defensible dual (subjective+objective) weighting scheme, an established maturity ladder (CMM) for the final mapping, and a genuinely creative geometric optimization model (VOM) that converts vague improvement advice into a constrained optimization with difficulty weighting. It answers every sub-task in order (assess, optimize per-department, measure effectiveness via protocols, extend to scale and other industries, write the letter), which signals to judges that nothing was skipped. The Scale-Demand extension with real Chinese Ministry of Transport seaport data and strong R² fits gives the paper an empirical anchor and a validity argument that elevate it above purely theoretical submissions. The model is also self-aware: it states its ω and 0.8/0.2 fusion choices and honestly lists weaknesses. The combination of 'everything is quantified,' 'creative original model (VOM),' 'real-data validation,' and 'tidy mapping to a known industry standard' is exactly the profile of an Outstanding paper.\"",
+  "section_highlights": "\"Summary clearly names every model in execution order (DAS Assessment → FSEM → EWM-AHP → CMM → VOM → SDM), so a judge sees the full arc in one paragraph. Section 1.2 'Our work' enumerates Steps 1–5 mapped one-to-one onto the problem's sub-questions, with a Figure 1 flow diagram of the whole solution. Section 4.1 is the strongest section: a clean KPI table (3/4/5 split across People/Tech/Process) followed by an explicit numbered formula for each indicator with defined symbols — this is what makes the model auditable. Section 4.3 transparently reports the actual computed EWM and AHP weight vectors and states ω=0.2 with a reason. Section 5 (VOM) pairs the math with a 3D schematic (Figure 3) and then translates the solved vector b directly into instructions for each of the three departments — explicitly closing the loop on the prompt's stakeholder questions. Section 6 gives flowchart 'protocols' (Figures 6–8) that operationalize how ICM would actually collect the KPI inputs. Section 7 grounds the abstraction with real seaport data and reports R² values. Section 8 separates Reliability / Strengths / Weaknesses, and Section 9 is a plain-language client letter — the deliverable the prompt explicitly required.\"",
+  "pitfalls_or_limitations": [
+    "Heavy reliance on invented/unavailable data: ICM never shares its real KPI values, so the assessment pipeline is demonstrated structurally rather than run on actual numbers — the EWM weights in Eq. 18 are computed over an unspecified sample of 'objects' whose source is never shown",
+    "Internal inconsistencies and typos undercut rigor: the CMM thresholds overlap/contradict (Defined 0.4–0.6 and Managed listed as 0.4–0.8), 'DPC' is reused for two different indicators, the δ in DACSR is written '??', and the Figure 2 pie-chart data table is garbled (all weight assigned to 'People' row)",
+    "The VOM target is a flat plane (x+y+z)/3 = 0.8, which implicitly treats the three components as perfectly substitutable in the average — a system could 'reach optimizing' with one near-zero component, contradicting the paper's own claim that lacking any component harms maturity; no per-axis floor constraint is imposed",
+    "Self-acknowledged: the optimization model only handles upgrading between maturity levels, not optimization within a level",
+    "The fusion coefficients (ω=0.2, and Z=0.8 Z_A + 0.2 Z_F) are asserted with qualitative justification but never subjected to sensitivity analysis — a judge could ask how robust the maturity verdict is to these choices",
+    "FSEM scoring takes Z_F as the max membership component rather than a defuzzified expected score, which discards information and can be unstable",
+    "SDM rests on a strong simplifying assumption (process and technology demand treated as identical, proxied by throughput) and a single scale variable (berth count); the paper itself notes the process-vs-scale relationship is hard to quantify",
+    "Numerous English/spelling errors ('Sythetic', 'Entrophy', 'slove', 'otimize') that, while not fatal at MCM, slightly hurt polish"
+  ],
+  "reusable_patterns": [
+    "The 'evaluation problem' playbook: decompose the target into named sub-components, define a small set (here 12) of strictly-formula'd, normalized, benefit-type KPIs, then aggregate with weights — reusable for any maturity/quality/sustainability index problem",
+    "Dual-weighting defense: always combine an objective weighter (EWM) with a subjective one (AHP) and fuse with a stated coefficient; report both weight vectors and the consistency check — pre-empts the #1 judge criticism of evaluation models",
+    "Two-method score fusion when ground-truth data is missing: pair a data-driven score with an expert/fuzzy score and blend (Z = w·Z_obj + (1-w)·Z_fuzzy) to hedge bets",
+    "Map your continuous score onto a recognized external framework (here SEI's CMM 5 levels) for instant interpretability and face validity",
+    "Geometric optimization framing: represent state as a vector, the goal as a target surface, and improvement as a minimum-cost vector to that surface using a 'difficulty/cost' weight vector — a clean, visualizable way to turn 'how to improve' into an optimization and to allocate effort across stakeholders",
+    "Stakeholder-closure pattern: explicitly translate model outputs (the solved b vector) into concrete actions for each persona named in the prompt (hiring managers, IT, security officer)",
+    "Validate any extension with real public data and report R² (here Chinese Ministry of Transport seaport data) to add empirical credibility",
+    "Operationalize abstractions with 'protocol' flowcharts showing exactly how each input metric would be collected in practice",
+    "Borrow a domain analogy (economics: economies of scale / demand) to principle-ify an otherwise ad-hoc parameter choice (component weights vs. company scale)",
+    "Standard deliverable discipline: include the explicitly-requested artifact (a one-page client letter) in plain language at the end"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "paper_id": "2025-2500759",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2025 MCM Problem C (data) asked teams to predict gold and total medal counts (with uncertainty) for each country at the 2028 LA Olympics, identify countries likely to win their first-ever medal and estimate that probability, analyze how specific sports/events and the host effect drive medal counts, and quantify the \"great coach\" effect of coaching changes on medal outcomes, plus offer original insights for the IOC.",
+  "models_used": [
+    "PCA (Principal Component Analysis) for dimensionality reduction of a 45-sport weighted-medal feature matrix (gold/silver/bronze weighted 50/30/20%), retaining 5 PCs at 76.4% cumulative variance",
+    "Dual-channel LSTM: one channel on the medal sequence [Gold, Total], one on home-advantage features [Host, Prep, alpha_c], concatenated then fed to a fully-connected layer; hierarchical loss L = 0.7*L_medal (MSE) + 0.3*L_host (cross-entropy), n_steps=3 (last 3 Olympics), tuned to hidden_size=128/patience=10",
+    "XGBoost (gradient-boosted CART trees, 2nd-order Taylor objective with regularization) as the final regressor on the PCA-LSTM-enhanced features; separate models for gold (nrounds=75, max_depth=2, eta=0.1, gamma=0.5, subsample=0.5) and total (gamma=0.25), tuned via 10-fold CV grid search",
+    "Bootstrap resampling (1,000 runs) of the XGBoost model to produce 95% confidence intervals / interval prediction for each country",
+    "Wilcoxon signed-rank test (left-sided, location parameter theta=1) on the per-country Bootstrap distribution to test 'breaking the zero' for first gold medal, with normal asymptotic approximation and tie correction",
+    "Spearman rank correlation coefficient (with t-test on rho) between sport weights and gold/total medals",
+    "SHAP (Shapley Additive exPlanations) on the XGBoost models: beeswarm/importance plots, univariate dependence plots on PC1, and per-sample force plots (USA, France); PC loadings weighted by SHAP importance and normalized to rank sports",
+    "Difference-in-Differences (DID) regression (OLS) with Treat, Post, Treat*Post interaction (beta_3 = coaching contribution coefficient) plus control matrix X_it; validated with parallel-trends test and significance tests on beta_3"
+  ],
+  "key_techniques": [
+    "Stacked/chained pipeline where each method feeds the next: PCA decorrelates 45 sports -> LSTM extracts temporal trend + home-advantage signal -> those enriched features train XGBoost (not three independent models but a fused feature stack)",
+    "Explicit home-advantage engineering: per-country coefficient alpha_c = (Gold_host - Gold_avg)/Gold_avg, a binary Host indicator, and a Prep window (host_year-8 to host_year, i.e. two Olympic cycles) capturing pre-hosting investment",
+    "Bootstrap (1,000 resamples) used both for prediction intervals AND as the sample feeding the Wilcoxon test, turning a point forecast into a probabilistic 'breakthrough' statement (SMR 84.7%, KWT 68.4%)",
+    "Deliberate, justified method selection: chose the non-parametric signed-rank test over a t-test (no normality assumption) and over logistic/binary classification (avoids discarding the quantitative medal-count information)",
+    "Combining a variance-based importance (PCA loadings) with a model-based importance (SHAP) and reconciling them by weighting PC loadings by SHAP component importance then normalizing",
+    "Causal-inference layer (DID) separate from the predictive layer, with parallel-trends validation and an external sanity check (verifying real 2020-2024 coaching changes: Australia/Korea/Poland) to confirm the model's treatment-group findings"
+  ],
+  "why_it_won": "From a judge's view it scored high because it answered every sub-task with a distinct, defensible method and tied them into one coherent framework rather than bolting on disconnected models, and crucially it quantified uncertainty everywhere (Bootstrap CIs, signed-rank p-values, DID confidence intervals, 10-fold R^2) instead of reporting bare point predictions. The causal DID work was independently validated against real-world coaching changes, which signals the team checked their model against reality. The methods are also fashionable and interpretable (XGBoost + SHAP + DID), giving the rich, well-illustrated narrative judges reward.",
+  "section_highlights": "The writing front-loads a clear task restatement (5 tasks) and a flow-chart, then mirrors that structure section-by-section so a judge can map work to requirements at a glance. Method choices are explicitly justified (why signed-rank over t-test, why Spearman over Pearson, why DID for causality), and nearly every claim is backed by a labeled figure or table with concrete numbers (predicted medals + CIs, p-values, beta_3 coefficients, MAE/MAPE/R^2). It closes with a dedicated sensitivity analysis, an honest strengths/weaknesses section, and an IOC memorandum that translates the math into decision support.",
+  "pitfalls_or_limitations": [
+    "Pipeline complexity creates double-counting/leakage risk: PCA is run on sport-weighted medals, LSTM also outputs medal trends, and XGBoost consumes both plus raw 2024 LSTM medals as features (e.g. Gold_2024_lstm), so the 'features' partly encode the target",
+    "Reported metrics are internally inconsistent / suspicious: training MAE (1.49) exceeds test MAE (0.52) for gold, and 10-fold R^2 values near 0.98-1.00 on a tiny dataset strongly suggest overfitting or a too-easy validation split rather than genuine generalization",
+    "The DID table's beta_3 values, p-values and CIs look stylized/too clean (e.g. exactly 6.0, 5.0, 4.0 with p=0.001/0.01/0.02), raising doubt about whether the regression was truly fit per country-sport or partly hand-constructed",
+    "'Breakthrough' framing is statistically inverted: a large p-value (failing to reject theta>=1) is interpreted as high breakthrough probability, conflating a non-rejection p-value with an event probability (0.847, 0.684) — not a valid probability",
+    "The host/Prep effect and alpha_c are estimated from very few host observations per country, so the home-advantage signal is fragile; the paper itself notes LSTM cannot handle sudden shocks and PCA loses information",
+    "Predictions ignore the actual 2028 LA event program changes (added/dropped sports) despite the task asking to account for event selection; adjustment is hand-waved in the memorandum",
+    "Heavy OCR/figure-extraction noise in the source (placeholder ~0.38 loadings, a force-plot table repeated hundreds of times) means several quantitative figure values are not actually verifiable from the text"
+  ],
+  "reusable_patterns": [
+    "The PCA -> LSTM -> XGBoost-Bootstrap 'enhance-then-predict' stack is a reusable template for any panel/time-series data problem: reduce correlated features, extract temporal trend as new features, boost on the combined set, then Bootstrap for intervals",
+    "Bootstrap-the-model-then-hypothesis-test: resample the trained model 1,000x, then run a non-parametric test (signed-rank) on the resulting distribution to convert point forecasts into probabilistic yes/no claims about rare events ('will country X break zero')",
+    "Pairing a predictive model with a separate causal model (XGBoost for forecasting + DID for the coaching intervention) so prediction and causal-effect questions are answered with the right tool each, and validating the causal result against real external events",
+    "Reconciling two importance signals (PCA variance loadings + SHAP) into a single normalized ranking — a clean way to make black-box importance interpretable and physically meaningful",
+    "Engineering domain effects explicitly as features (home-advantage coefficient, a multi-year 'preparation window' dummy) rather than hoping the model learns them implicitly",
+    "A standard credibility scaffold any MCM team can copy: justify each method choice in one sentence, add a sensitivity analysis (scree plot for #PCs, 10-fold R^2), an honest weaknesses section, and a stakeholder memorandum"
+  ]
+}

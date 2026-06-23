@@ -1,0 +1,53 @@
+{
+  "paper_id": "2021-2109298",
+  "year": 2021,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2021 MCM Problem C data type. From noisy AGH sighting reports in Washington State with only 14 confirmed positives, predict spread, classify mistaken reports, prioritize reports, and define an update plus eradication rule, under extreme imbalance and missing population data.",
+  "models_used": [
+    "Cellular Automata spread model",
+    "Suitability index from log population and barriers",
+    "Gaussian KDE for population and discredibility",
+    "LDA topic model on text",
+    "Frozen VGG-11 plus SVM image classifier",
+    "Image augmentation for class imbalance",
+    "Naive Bayes report scoring",
+    "MLE credibility calibration",
+    "ReLU-gated sinusoid seasonal model",
+    "Particle-filter Baum-Welch CA update",
+    "AUROC evaluation",
+    "KL divergence sensitivity"
+  ],
+  "key_techniques": [
+    "Population inferred from false-report density",
+    "Bayesian split into abundance image discredibility",
+    "AGH biology encoded in CA rules",
+    "Transfer learning plus augmentation on 13 images",
+    "Strict temporal train test split",
+    "Adversarial test against look-alike hornets",
+    "Positive and negative reports both assimilated",
+    "Perturbation sensitivity with shrinking intervals",
+    "AUROC-validated weight calibration"
+  ],
+  "why_it_won": "One coherent pipeline answered all four sub questions and turned missing population data into a feature by inferring it from false reports. The interpretable Bayes rule gives the prioritization score and a threshold knob for officials. The work is honest and rigorous with temporal splits AUROC under imbalance adversarial look-alike tests and KL sensitivity all tied to AGH biology and an actionable severity-ranked memo.",
+  "section_highlights": "A one-page summary names every method and headline numbers near 90 percent accuracy and 94 percent AUROC with a framework flowchart up front. Each model has a why-we-chose-this subsection and the Bayes math is from first principles. Spread maps overlaid on population are cross-checked against real cities like Seattle and Spokane. There is an honest weaknesses section an eradication decision tree and a severity-ranked memo to the Department of Agriculture.",
+  "pitfalls_or_limitations": [
+    "Population proxy near-circular and visually validated only",
+    "Image metrics rest on a tiny set",
+    "Baum-Welch update not actually implemented",
+    "CA parameters hand-set and unvalidatable long term",
+    "Always-report assumption is unrealistic",
+    "Some sensitivity figures degenerated in OCR",
+    "Text analysis was a dead end"
+  ],
+  "reusable_patterns": [
+    "Reconstruct missing covariate from data density",
+    "Bayesian factorization across separate models",
+    "Frozen CNN plus classifier for tiny imbalanced sets",
+    "Temporal splits plus adversarial look-alike test",
+    "CA with seasonal rules and rare dispersal",
+    "Perturbation sensitivity with KL and intervals",
+    "Decision artifact with ranked table and tiered memo",
+    "Report negative results honestly"
+  ]
+}

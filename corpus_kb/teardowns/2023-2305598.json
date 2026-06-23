@@ -1,0 +1,49 @@
+{
+  "paper_id": "2023-2305598",
+  "year": 2023,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2023 MCM/ICM Problem E (sustainability / light pollution). The task: build a metric to quantify the light-pollution risk level of a location, apply it to four distinct location types (urban, suburban, rural, protected land), propose intervention strategies, model their potential effect, and pick/communicate the best one. This paper answers it with a weighted composite index (LPI) built on 10 indicators grouped into Light/Society/Nature, classifies risk into 4 grades via fuzzy clustering, then uses correlation analysis + BP neural networks to simulate how interventions propagate through the indicators and change the LPI for two representative cities, finishing with a public-facing flyer.",
+  "models_used": [
+    "Light-Society-Nature (LSN) composite evaluation model: LPI = 100·(ωL·L + ωS·S + ωN·N), a weighted-sum index over 10 second-level indicators in 3 groups (Light: artificial light intensity, density, sky brightness, glare; Society: population, development/GDP, propaganda & education; Nature: climate, geography, biodiversity)",
+    "Combination weighting = average of three weight vectors: Analytic Hierarchy Process (AHP, subjective, with consistency check) + Entropy Weight Method (EWM, objective, information-entropy based) + Coefficient of Variation Method (CVM, objective). Final ωj = (ωj1+ωj2+ωj3)/3",
+    "Min-max normalization with separate positive/negative-indicator formulas to remove dimensionality",
+    "Fuzzy cluster analysis to partition 55 locations' LPI into 4 risk grades (Heavy/Moderate/Minimal/Unpolluted; thresholds <40 / 40-60 / 60-80 / >80)",
+    "PIA-NN (Potential Impact Analysis–Neural Network) model: Spearman rank correlation (chosen because only sky brightness passed a normality test) to find direct→indirect indicator links, then three BP neural networks (built with MATLAB Neural Fitting / nftool) mapping each intervention's direct indicator to its correlated indirect indicators",
+    "Custom domain formulas: glare L4 = -8·(L1/S_location)·lg(0.25/L3); climate N1 = trp'+wet'; geography N2 = h'+t'; biodiversity N3 = S_green/S_location + C_wild/S_green"
+  ],
+  "key_techniques": [
+    "Triangulating weights from three independent methods (AHP+EWM+CVM) and averaging them to neutralize the subjectivity of AHP and the data-sensitivity of the objective methods — a defensible hedge against any single weighting being criticized",
+    "Two-level (first/second-level) indicator hierarchy that maps cleanly onto the problem's Light/Society/Nature framing and makes the index interpretable",
+    "Grounding every indicator in a named, reproducible public data source (Light Pollution Map, national statistical yearbooks, NOAA, Google Trends for the 'propaganda/education' proxy, National Forestry Administration)",
+    "Using Google Trends search volume as a creative quantitative proxy for the otherwise-soft 'publicity and education' indicator",
+    "Normality testing before choosing a correlation measure (Spearman over Pearson) — a small but judge-pleasing piece of statistical rigor",
+    "Reframing intervention strategies as perturbations to specific indicators, then propagating them through learned NN relationships to recompute LPI — connecting Task 3/4 back to the Task 1 model instead of treating them separately",
+    "Controlled comparison design: fixing all strategies to the same ±10% perturbation so strategy effectiveness is compared on equal footing",
+    "Sensitivity analysis by re-training the NN with an indicator removed and showing before/after predictions nearly coincide, used as a robustness argument",
+    "Validation by face-checking the four computed LPIs (NYC=35.55 GradeI, Bellevue=41.33 GradeII, Sedona=76.94 GradeIII, Yellowstone=84.18 GradeIV) against real-world expectations, including Yellowstone's Dark Sky Park status"
+  ],
+  "why_it_won": "\"From a judge's view it nails the full arc of Problem E: it produces a single interpretable number (LPI) with a clean 3-pillar story, applies it convincingly to all four required location types with results that match intuition, and — crucially — it closes the loop by feeding intervention strategies back through the same indicator system rather than answering each sub-task in isolation. The combination-weighting (AHP+EWM+CVM) preempts the obvious 'your weights are arbitrary' critique, the Spearman-after-normality-test detail signals statistical maturity, and the sensitivity analysis gives a concrete robustness claim. It is methodologically broad (MCDA + clustering + correlation + neural nets) yet stays coherent and readable, and it delivers the required flyer with a crisp 3-step message. Triangulation, real named data, intuition-matching validation, and a tight narrative are exactly what separates an O from a Finalist.\"",
+  "section_highlights": "\"Summary front-loads every numeric result (the four LPIs and their grades, the winning strategy) so a judge gets the whole answer in 30 seconds. A whole-paper flowchart (Figure 1) maps the five tasks and the AHP/EWM/CVM→Combine pipeline up front. Assumptions are paired with explicit justifications. A notation table precedes the math. Each of the four case locations gets its own data table + a paragraph of real-world reasoning tying the number to local facts (NYC nightlife/skyglow, Yellowstone's Dark Sky efforts). The weight pie chart (Figure 4) makes the dominance of Light (≈73%) and artificial-light-intensity visible at a glance. Strengths/Weaknesses are candid (admits 55-location database is small, LPI ranges fuzzy, missing data). The flyer translates the technical winner (Strategy I = reduce artificial light at the source) into a 3-step public message ('light only if/when/where needed; prefer warm/amber LED; downlighting shielded').\"",
+  "pitfalls_or_limitations": [
+    "Several core formulas are physically ad hoc and unjustified: the glare formula L4 = -8·(L1/S)·lg(0.25/L3) and biodiversity N3 are presented without derivation or citation for the constants; 'artificial light density L2 = L1/S_location' is a definitional shortcut, not a real density",
+    "The LPI is inverted (higher LPI = LESS pollution), which is counterintuitive for a 'pollution index' and risks confusing readers despite the stated assumption",
+    "Fuzzy clustering yields 4 classes but the paper itself admits the LPI value ranges per class are not clearly determined — the <40/40-60/... thresholds look hand-set rather than derived from the clustering",
+    "The PIA-NN figures are suspicious: the embedded data tables show suspiciously smooth, near-linear/monotone synthetic-looking trends (e.g. Strategy II indicators flattening to constants), suggesting the NN is overfit or the curves are illustrative rather than genuine predictions from 55 points",
+    "Training BP neural networks on only 55 locations to learn multi-output indicator relationships is statistically thin and prone to overfitting; no train/test split or error metric is reported",
+    "The judgment matrices for AHP are omitted ('limited space'), so the most subjective step is unauditable",
+    "The ±10% perturbation comparison conflates effect-size across strategies that act on differently-scaled indicators, so 'Strategy I is best' partly reflects Light's huge ≈73% weight by construction, not an independent finding",
+    "Causal claims (vegetation absorbs light pollution; more biodiversity lowers sky brightness) are asserted from correlation, risking reverse-causation"
+  ],
+  "reusable_patterns": [
+    "Composite-index recipe for any 'evaluate the risk/quality level of X' prompt: pick a memorable 3-pillar grouping, choose ~10 publicly-sourced indicators, normalize, weight, sum to one branded index (here LPI), then bucket into named grades via clustering",
+    "Combination-weighting triangulation (AHP + EWM + CVM, then average) as a reusable, criticism-proof way to set weights when no ground truth exists",
+    "Always validate a constructed index by computing it on a few well-known cases and showing the ranking matches common sense — cheap, persuasive, and judge-friendly",
+    "Treat interventions as perturbations (±k%) to specific model indicators and propagate them through learned relationships back into the same index to score strategies — a clean way to unify 'build a metric' and 'recommend an action' sub-tasks",
+    "Run a normality test before picking Pearson vs Spearman, and state it — low-cost rigor signal",
+    "Do sensitivity analysis by dropping/altering one input and overlaying before/after curves to argue robustness",
+    "Use a search-trend or other behavioral-data proxy to quantify an inherently qualitative indicator (awareness/education)",
+    "Front-load all numeric answers in the Summary and include a single whole-paper task-flow diagram so judges can navigate quickly",
+    "End a communication-oriented (Problem E) paper with the actual requested deliverable (flyer/letter) that distills the technical winner into 2-3 plain-language actions"
+  ]
+}

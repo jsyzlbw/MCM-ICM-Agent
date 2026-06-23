@@ -1,0 +1,48 @@
+{
+  "paper_id": "2020-2010821",
+  "year": 2020,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2020 MCM Problem B (discrete): determine the sandcastle-foundation geometry, water-sand ratio, and protective measures that maximize how long a beach sandcastle survives under wave, tide, and rain erosion. This O-award paper (Team 2010821) decomposes it into four sub-problems — (1) optimal shape under waves+tides, (2) optimal water-sand ratio, (3) optimal shape once rain is added, (4) a protection strategy (when to apply adhesive) — and concludes the cylinder is the most durable shape, the optimal water-sand ratio is ~0.739, and adhesive should be sprayed at the daily humidity minimum (13:00 sunny / 13:30 cloudy).",
+  "models_used": [
+    "Sediment-transport / sand-bearing capacity model: a wave+tide sand-carrying capacity C* = C*C + C*W (tidal + unbroken-wave + broken-wave terms) feeding a sand-bearing force Fs = alpha_r * omega_s * (C* - V)",
+    "Sandcastle Foundation Dynamics PDE: a 2D advection-diffusion-source convection equation for sand volume hV over time (partial(hV)/partial t + advection in x,y = diffusion in x,y + Fs), with zero-normal-flux solid boundary and a time-dependent open boundary V=V(x,y,t)",
+    "COMSOL finite-element simulation to solve the dynamics PDE and produce wave-current pressure/stress-tensor fields on the base of each candidate shape (cuboid, elliptic cylinder, sector cylinder)",
+    "Damage Index G = mu_s*deltaS + mu_h*deltah (base-area increase + height decrease) with a collapse threshold G = 0.52*Gmax used to define a 'duration' T per shape",
+    "Discrete Global Optimization Algorithm based on the Successive Descent Method with a discrete filled-function to escape local minima; objective min K=1/T over discrete shape-factor / water-sand-ratio grids",
+    "Water-sand polymerization-degree model Q(np) (volume-shrinkage relation using water-absorption gamma1 and water-solubility gamma2 coefficients), solved in MATLAB, used to constrain np to 0.7-0.85",
+    "Rain-erosion-resistance model: rainwater-infiltration resistance Fu^i, structure evacuation ratio R^i (using a defined sandcastle collapse-limit coefficient n_collapse), combined into H1^i",
+    "Fuzzy Comprehensive Evaluation model: membership functions over rain-resistance H1 and wave-resistance H2, fuzzy relation matrix R, weight vector A=(0.3,0.7), B = A*R to rank the three shapes",
+    "RBF (Radial Basis Function) Neural Network with Gaussian basis to predict daily beach humidity from ambient temperature, with PCA used for input-feature screening",
+    "Principal Component Analysis (PCA) for selecting humidity-driving factors; sensitivity analysis across mu, gamma/gamma', and kappa coefficients"
+  ],
+  "key_techniques": [
+    "Reframing a continuous shape-selection problem as a DISCRETE optimization: parameterize each shape family by a single scalar shape factor (cuboid e1=l:w, ellipse e2=a:b, sector e3=r:l), sweep a discrete grid by simulation, then run discrete global optimization — a clean fit to a 'discrete' problem type",
+    "Two-stage solve: expensive COMSOL/PDE simulation generates (shape-factor -> duration) data points, then a cheap discrete global optimizer (successive descent + filled function) finds the global optimum over those points — simulation feeds optimization",
+    "Inventing a problem-specific scalar metric (the Damage Index G) plus a calibrated collapse threshold (0.52*Gmax) to convert messy erosion dynamics into a single comparable 'duration' number per design",
+    "Layering complexity across sub-problems: Model 1 (waves+tides) is reused as the engine for Model 2 (add water-sand-ratio constraint) and Model 3 (add rain via fuzzy evaluation) rather than building each from scratch",
+    "Using fuzzy comprehensive evaluation to fairly combine two incommensurable resistances (rain vs wave) with an explicit weight A=(0.3,0.7) justified by rain being the dominant threat",
+    "Closing the loop to actionable advice: RBF humidity forecast pinpoints the daily humidity minimum and ties it to the 8-hour adhesive viscosity window to schedule intervention times",
+    "Per-model sensitivity analysis reporting explicit robustness ranges (cylinder stays optimal for mu in (0.08,0.96); errors <5% for +/-1-2% gamma perturbation; stable within ~25% kappa fluctuation)"
+  ],
+  "why_it_won": "\"From a judge's view it wins on completeness, narrative coherence, and the right tool for a 'discrete' problem. It answers every part of the prompt (shape, ratio, rain, extra strategy + the required magazine memo) and chains the models so each builds on the previous one, giving the paper a single spine instead of four disconnected mini-papers. It pairs heavyweight, credible machinery (a sediment-transport PDE solved in COMSOL, a discrete global optimizer with a filled-function, fuzzy evaluation, an RBF net) with a concrete, defensible answer (cylinder, np~0.739, spray at the humidity minimum). Crucially it self-consciously matches the problem TYPE: it discretizes shape families into scalar factors and applies a genuine discrete global optimization algorithm, which reads as deliberate methodology rather than a generic continuous optimizer. Every model gets its own sensitivity analysis with numeric robustness intervals, signaling rigor and self-criticism. The strengths/weaknesses and promotion sections show the team understands the limits of its own choices.\"",
+  "section_highlights": "\"Strong: the Summary previews all four results with numbers; a Glossary+Notation table front-loads symbols; each model section uses a consistent Overview -> Establishment -> Solution sub-structure that is easy to navigate. Figures are purposeful (COMSOL pressure/stress fields, damage-index-vs-time scatter with a labeled critical point A, humidity forecast curves) and each drives a decision. A dedicated Section 8 gives one sensitivity analysis per model with explicit ranges. The required deliverable (the 'Fun in the Sun' magazine memo) is present, plain-language, and restates the four actionable findings for a lay editor. Weak spots in writing: heavy non-native-English phrasing and typos ('Overviw', 'warming' for 'warning'); internal numeric inconsistencies that a careful reader catches — the Conclusion states the optimal water-sand ratio as 0.32 while the body and memo say 0.739, and the rain-erosion table lists VDL(355) > Vf(305) which makes the evacuation-ratio shear term negative without comment.\"",
+  "pitfalls_or_limitations": [
+    "Many coefficients (beta_C, beta_1, beta_2, kappa_1-3, gamma, n_collapse, the weight A, the 0.52 damage threshold) are asserted from cited literature or chosen without first-principles derivation; results hinge on these tuned constants",
+    "Internal inconsistency: Conclusion reports optimal water-sand ratio 0.32 but Section 5 and the memo report 0.739 — an unreconciled contradiction in a headline result",
+    "Physically suspect numbers: parameter table sets np=6.0 in one place vs 0.7-0.85 elsewhere; rain-model has VDL=355 > Vf=305 making (Vf - VDL) negative, undermining the evacuation-ratio formula",
+    "Only three shape families were considered (cuboid, elliptic cylinder, sector cylinder); the 'cylinder is optimal' claim is a within-family winner, not a true global shape optimum — acknowledged but not resolved",
+    "The simulation -> duration data (e.g. Table 4) is noisy and non-monotonic in shape factor, yet a global minimum is reported with high precision (e.g. cuboid e=1.46), suggesting over-precise conclusions from coarse/uncertain data",
+    "RBF humidity model is trained/validated on a single beach (Venice Beach, 3 days of 2019 data) and generalized broadly; small sample, limited external validity",
+    "Assumes calm waves/tides and that adhesive holds >=8h; explicitly breaks down under storms or strong wind/light erosion (noted in weaknesses)"
+  ],
+  "reusable_patterns": [
+    "Discretize-then-optimize: collapse each design family to one scalar parameter, sweep it by simulation to get (parameter -> objective) samples, then run a discrete global optimizer — a template for any 'discrete' MCM shape/configuration problem",
+    "Define a custom scalar 'damage/quality index' plus a calibrated threshold to turn time-evolving dynamics into a single comparable lifetime/score per candidate",
+    "Model-reuse spine: build one core dynamics/simulation engine in part 1, then add each new effect (a constraint, an extra erosion mode) as a wrapper around it so later parts inherit credibility and code",
+    "Fuzzy comprehensive evaluation as a principled way to combine 2-3 incommensurable criteria with an explicitly justified weight vector and a membership = share-of-total normalization",
+    "Pair a forecasting model (here RBF NN) with a hard operational constraint (8h adhesive window) to convert prediction into a concrete schedule/decision — turns analysis into actionable advice",
+    "One sensitivity analysis per model, each reporting an explicit numeric robustness interval for the key tuned coefficient, as a standard rigor-signaling section",
+    "Always-deliver-the-required-artifact: include the prompt-mandated memo/letter in plain language restating numeric findings for a non-technical audience"
+  ]
+}

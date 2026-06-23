@@ -1,0 +1,45 @@
+{
+  "paper_id": "2025-2516178",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asked to predict Olympic medal counts for each country (including zero-medal nations), quantify the 'great coach' effect on performance, analyze factors like momentum and event participation that influence medal outcomes, and provide data-driven strategic recommendations for national Olympic committees.",
+  "models_used": [
+    "XGBoost binary classifier",
+    "TPE-optimized XGBoost regressor",
+    "Difference-in-Differences (DID) linear regression",
+    "Non-parametric Bootstrap confidence intervals",
+    "SHAP (SHapley Additive exPlanations) analysis"
+  ],
+  "key_techniques": [
+    "Feature engineering: equal-frequency binning of total participants, host-country effect binary variables (Host_t, Host_t±4), medal score mapping",
+    "Last-block time-series cross-validation to respect temporal order",
+    "Bootstrap confidence intervals for prediction uncertainty",
+    "TPE Bayesian hyperparameter optimization for XGBoost",
+    "DID model with interaction term (Coach_Time) to isolate the coaching effect",
+    "SHAP values to quantify event-level contributions to medals and compare country advantages",
+    "Model comparison using ROC curves (classification) and R² (regression)",
+    "Robust data preprocessing: handling boycotts, invalid data, merging historical NOC names, standardizing team event participant counts",
+    "First-medal probability quantification via combined classifier-regressor logic"
+  ],
+  "why_it_won": "The paper won Outstanding because it delivered a sophisticated, rigorously validated dual-stage modeling framework that explicitly handles the zero-medal challenge—a common pitfall in Olympic prediction. The use of TPE‑tuned XGBoost with time‑series cross‑validation and bootstrap confidence intervals provided strong predictive performance and uncertainty quantification. Additionally, the creative integration of a DID regression to isolate the 'great coach' effect and SHAP analysis for actionable, event‑level strategic insights demonstrated both technical depth and practical relevance, far exceeding typical contest submissions.",
+  "section_highlights": "The writing is exceptionally clear, with a logical flow from assumptions through model preparation, two main model sections, rigorous evaluation, and novel insights. Visual aids such as flowcharts, ROC curves, waterfall plots, and CIs make complex steps immediately understandable. The consistent use of defined metrics (M1–M4) and comparative tables to benchmark against other models adds a professional, self‑assessing quality to the report.",
+  "pitfalls_or_limitations": [
+    "Reliance on historical data may not capture unforeseen disruptions (e.g., COVID-19 impacts on 2020 Games).",
+    "Assumption that coaches' impacts are comparable across cultures and nations may oversimplify real-world variation.",
+    "Potential overfitting given limited Olympic editions and many features.",
+    "Discretization of participation numbers may lose fine‑grained information.",
+    "DID model limited to one sport (women’s hockey) and may not generalize across other disciplines or smaller sample sizes.",
+    "Impact of new 2028 events is based on minimal prior data and fixed medal allocations."
+  ],
+  "reusable_patterns": [
+    "Dual-stage classifier‑then‑regressor framework for zero‑inflated count data",
+    "TPE Bayesian hyperparameter optimization for gradient‑boosting models",
+    "Last‑block time‑series cross‑validation for temporally ordered data",
+    "Non‑parametric bootstrap to generate prediction intervals for machine learning models",
+    "Difference‑in‑Differences regression to isolate treatment effects in observational sports data",
+    "SHAP analysis to interpret feature importance and generate event‑level strategic insights",
+    "Feature engineering techniques like equal‑frequency binning and host‑country effect variables",
+    "Rigorous custom evaluation metrics (e.g., M1–M4) that assess overall accuracy, zero‑medal accuracy, and confidence interval coverage"
+  ]
+}

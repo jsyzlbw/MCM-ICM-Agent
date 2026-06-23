@@ -1,0 +1,55 @@
+{
+  "paper_id": "2018-72968",
+  "year": 2018,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2018 MCM/ICM Problem E (sustainability / \"fragile states & climate change\"). The task was to build a model that measures the fragility of a country, explicitly quantify how climate change affects fragility (directly and indirectly), apply it to a top-10 fragile state and to a non-top-10 state (finding a \"tipping point\"), propose and cost climate interventions, and generalize the model to smaller (city) and larger (continent) \"states.\" Team 72968's answer is the SPEC Model (Security, Politics, Economics, Climate), a weighted composite fragility index computed for 178 countries.",
+  "models_used": [
+    "SPEC composite fragility index: a single closed-form score SPEC_score = (Security + Politics + Economics + Climate_gen) / Climate_ext, deliberately putting general/protective factors in the numerator and the extreme-climate destructive factor in the denominator",
+    "19-20 individual indicators across 4 fields (5 security, 4 politics, 5 economics, 4 general-climate), each normalized to a 0-5 or 0-10 scale from World Bank / Fund for Peace / WGI / Political Terror Scale data",
+    "Analytic Hierarchy Process (AHP) to derive indicator weights, with pairwise-comparison matrices, eigenvector weights, and a consistency-ratio (CR) check using the standard RI table (implemented in MATLAB via eig())",
+    "Exponential time-decay weighting (Weighted Average Method): Weight_abs = (1-a)^T / sum_{i=0}^{T}(1-a)^i, with a=0.15 and 5- or 15-year windows, applied to slow-recovering indicators (conflicts, coups, GDP, inflation, abuses)",
+    "Latest-determine Method: for 9 of 14 socio-economic indicators judged 'instantaneous/transient', only the most recent data point is used (a deliberate per-indicator choice between memory vs. snapshot)",
+    "Self-regulatory factor R: R = 0.3189*ln(s_n/s_USA) + 0.2211*ln(i_n/i_L) + 0.46*(security/50), bounded to (0,1), combining land area, per-capita income, and security to represent disaster-coping capacity",
+    "Extreme-climate sub-model: Climate_ext = e^{-R} * ln(CO2_t/CO2_1990) * p, coupling coping capacity, emissions growth, and a universal extreme-weather probability p=5%",
+    "Tipping Model: defines a country's tipping point as the time when R falls to 0.6, justified by an observed near-linear SPEC-vs-R relationship",
+    "Ex-State generalization model: continent fragility F_cop = sum(R_i*F_i)/sum(R_i), an R-weighted average of member countries; city model re-runs AHP on S/P/E weights based on the city's dominant industry",
+    "Intervention cost estimation: bottom-up estimate of 8 interventions by mapping each to a budget line in 'Expenditure of Government of India 2016-2017' and scaling by ratio"
+  ],
+  "key_techniques": [
+    "Memorable backronym branding: 'SPEC' = Security/Politics/Economics/Climate gives the whole model an identity judges remember",
+    "Indicator engineering: each raw series transformed by an explicit equation (e.g. C_elv=(1-D_elv%)*5; C_frst=exp(D_t/D_T)) so direction-of-fragility is encoded and ranges are normalized",
+    "Putting climate in BOTH numerator (general, indirect) and denominator (extreme, direct) of the index to literally encode the problem's 'direct vs indirect climate impact' requirement into the math",
+    "Borrowing a credible external anchor: a=0.15 decay and the indicator philosophy are lifted from Brookings' 'Index of State Weakness in the Developing World', and final ranking is validated against the Fragile States Index",
+    "Per-indicator weighting-method selection (decay vs latest-only) justified by the physical persistence of each shock",
+    "AHP consistency ratio reported (CR check) to show the subjective weights are mathematically defensible",
+    "Real, reproducible computation: pandas pipeline ingests ~15 CSVs (fillna, normalize, score) over 178 countries; MATLAB does the AHP eigen-decomposition",
+    "Validation by cross-checking model output against an authoritative real-world list (Yemen ranks 7th in both SPEC and FSI)",
+    "Sensitivity analysis on the two free parameters (decay constant a, probability p) showing the index is robust to both",
+    "Explicit classification thresholds (Fragile [0,27), Vulnerable [27,50), Stable [50,70)) turning a continuous score into decision-relevant categories"
+  ],
+  "why_it_won": "\"It nails the single thing Problem E rewards: it turns a vague sustainability prompt into one clean, computable index and answers every sub-task with it. The numerator/denominator split is a clever, problem-specific way to operationalize the required distinction between indirect (general) and direct (extreme) climate impact — that design choice alone signals deep engagement with the prompt. The team didn't hand-wave weights: they used AHP with a reported consistency ratio, chose per-indicator time-weighting on physical reasoning, and grounded their parameters in a real Brookings state-weakness index. Crucially they actually computed the model end-to-end on 178 countries with a real pandas+MATLAB pipeline and then validated it against the Fragile States Index (Yemen 7th in both), which gives judges concrete evidence the model 'works' rather than just looks plausible. The Self-regulatory factor R is a memorable, reusable construct that elegantly carries through to the tipping-point task and the continent-generalization task, giving the whole paper a coherent spine. Combined with sensitivity analysis, a memorable name, and clean global-map/treemap visualizations, it reads as a complete, self-aware, defensible piece of work.\"",
+  "section_highlights": "\"Strong structure: a true Summary Sheet that names the model and lists every method; explicit Assumptions and a full Nomenclature table before any math; a field-by-field model build (4.1-4.5) where each indicator gets a paragraph of real-world justification plus its normalization equation; a dedicated 'Calculation' section that assembles the final weighted equations and the AHP weight table; a one-task-per-subsection 'Answers to Tasks' (5.1-5.5) that maps 1:1 to the prompt's five asks; and a Model Analysis section with sensitivity analysis and an honest Strengths & Weaknesses list. Visual storytelling is heavy and purposeful: a world choropleth of SPEC scores, per-country treemaps (Yemen, India) decomposing the score into contributing indicators, a SPEC-vs-R scatter that motivates the tipping point, and weight bar charts. Appendices carry the credibility load: full 178-country results table, the MATLAB AHP code with the consistency check, and the Python data-mining + final-calculation algorithms — so a reader can reproduce the numbers.\"",
+  "pitfalls_or_limitations": [
+    "The master index SPEC = (S+P+E+Climate_gen)/Climate_ext is dimensionally ad hoc — adding four heterogeneously-scaled field scores then dividing by an exponential-times-log term has no real units, and the denominator can blow up/collapse, making absolute scores hard to interpret (only the ranking is meaningful)",
+    "R's three terms are written as ln(ratio) but claimed to lie in (0,1); ln of a ratio <1 is negative and the bounds are enforced by ad hoc clamping (e.g. Russia/Canada r1 set to 1), so the 'R in (0,1)' guarantee is hand-waved",
+    "AHP weights, the a=0.15 decay, p=5%, and the Fragile/Vulnerable/Stable cutoffs are all human-chosen; sensitivity analysis only probes a and p, not the AHP weights or the index's functional form",
+    "Self-admitted omissions: terrorism and several indicators dropped for lack of data; missing-data handling in the continent model is 'just use what's available' with no imputation, which can bias small-data continents",
+    "Climate enters fragility almost entirely through CO2 emissions ratio and a few static land/water indicators — it is a coarse proxy and conflates a country's emissions (a cause) with its climate vulnerability (an effect)",
+    "The data tables show clear OCR/typo corruption (e.g. inflated values like 19.37, 15.12 where ~2-5 expected), and some equation renderings (a=0:15) are mangled — the underlying paper likely cleaner, but it signals fragile data hygiene",
+    "Tipping point is defined by a single fixed threshold R=0.6 inferred from a scatter eyeballed as 'beautifully linear' rather than from any dynamic/temporal model — there is no time evolution of R, so 'when' a country tips is asserted, not predicted",
+    "The city/continent generalization is largely qualitative re-weighting (re-run AHP by 'major industry') with only two worked examples and no validation"
+  ],
+  "reusable_patterns": [
+    "Build a single named composite index (backronym from the problem's keywords) and answer every sub-task by reading that one index in different ways — gives the paper a coherent spine and a memorable identity",
+    "Encode the problem's required conceptual distinctions directly into the math (here: indirect climate in the numerator, direct climate in the denominator) instead of treating them only in prose",
+    "For every raw indicator, write an explicit normalization equation that (a) maps to a fixed range and (b) fixes the sign so 'higher = better/worse' is consistent — show the transform, don't just say 'we normalized'",
+    "Use AHP for weights but always report the consistency ratio (CR) and include the pairwise matrix + eigen code in an appendix — converts subjective weights into a defensible method",
+    "Choose the time-aggregation per indicator on physical grounds (slow-recovery shocks get exponential decay over a long window; transient ones use latest value only) and state the reasoning",
+    "Anchor free parameters to a published reference index and then validate your output ranking against a real-world authoritative list — cheap, high-impact credibility",
+    "Define a small, reusable derived construct (here the Self-regulatory factor R) that can be plugged into multiple downstream tasks (extreme-climate score, tipping point, continent aggregation)",
+    "Provide decision-ready category thresholds on top of the continuous score so results translate to policy",
+    "Ship a reproducible compute trail: real data pipeline (pandas over many CSVs) + full results table in the appendix, so judges trust the numbers were actually produced",
+    "Run sensitivity analysis on the genuinely free parameters and present it as a robustness argument, then close with an honest strengths/weaknesses section to demonstrate self-awareness"
+  ]
+}

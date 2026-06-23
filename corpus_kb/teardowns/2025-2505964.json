@@ -1,0 +1,40 @@
+{
+  "paper_id": "2025-2505964",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asked to predict medal standings for the 2028 Summer Olympics using historical athlete and event data, identify countries likely to win their first medal, analyze how changes in event numbers and host country status affect medal counts, and quantify the impact of exceptional coaches.",
+  "models_used": [
+    "Random forest",
+    "Monte Carlo simulation",
+    "Poisson regression",
+    "Linear regression",
+    "Great Coach Model (heuristic)"
+  ],
+  "key_techniques": [
+    "Feature engineering (four-dimensional athlete capability features: past medals, past gold medals, past best result, past weighted ratio)",
+    "One-hot encoding of categorical variables (NOC, event)",
+    "Grouped random forest (one model per sport)",
+    "Monte Carlo simulation for uncertainty quantification and prediction intervals",
+    "Sensitivity analysis (ROC curves, PR curves, calibration curves, leave-one-out, alternative distributions: Negative Binomial, Zero-Inflated Poisson)",
+    "Elasticity analysis for event count impact",
+    "Multiple linear regression with host dummy, event counts, and historical performance for host-country effect",
+    "Custom heuristic model to quantify coach contribution from historical medal changes"
+  ],
+  "why_it_won": "The paper delivers a comprehensive solution that addresses all four tasks with a well-integrated suite of models, from random forest and Monte Carlo for core predictions to Poisson and linear regressions for nuanced factor analysis. Rigorous validation, including multiple sensitivity checks (ROC, PR, calibration, leave-one-out, and alternative model specifications), demonstrates exceptional attention to model robustness and uncertainty communication. Beyond prediction, the work provides actionable insights (coach investment recommendations, event inclusion ideas for underrepresented regions) that show maturity in interpreting results and offering real-world value.",
+  "section_highlights": "The writing is exceptionally clear and well-structured, with each task logically broken down into problem analysis, model construction, and results. Extensive use of flowcharts, figures, and tables makes the methodology and findings easily navigable. The paper also excels at connecting different model components into a cohesive narrative, from athlete-level features to aggregated country predictions and subsequent analyses.",
+  "pitfalls_or_limitations": [
+    "Reliance on historical data limits the ability to predict emerging athletes or new sports, reducing adaptability to future changes.",
+    "Assumption of athlete participation continuity from 2024 introduces uncertainty due to retirements, injuries, or new athletes.",
+    "Some models showed overestimation at high probability thresholds (calibration curve) and sensitivity to outlier years (e.g., 1964 swimming data).",
+    "The 'Great Coach Model' is simplistic and relies on averaging past results without controlling for other variables."
+  ],
+  "reusable_patterns": [
+    "Generating athlete-level capability features from historical performance and using them as predictors in a sport-specific random forest for medal probability estimation.",
+    "Allocating medals per event via probability-weighted Monte Carlo sampling to reflect competition uncertainty and obtain prediction intervals.",
+    "Performing a comprehensive sensitivity analysis suite (ROC, PR, calibration, leave-one-out, alternative models) to validate model stability and identify potential overfitting or outliers.",
+    "Applying Poisson regression with elasticity analysis to quantify the marginal impact of event count changes on medal totals.",
+    "Modeling host-country advantage with a linear regression that includes a host dummy, number of events, and recent historical performance.",
+    "Quantifying coach impact by comparing average past performance before and after a coach's tenure, providing a simple but interpretable metric."
+  ]
+}

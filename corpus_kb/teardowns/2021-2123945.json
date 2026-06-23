@@ -1,0 +1,49 @@
+{
+  "paper_id": "2021-2123945",
+  "year": 2021,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2021 MCM/ICM Problem F (policy): assess the \"health\" and sustainability of a nation's higher-education system, select one country with room to grow, propose an achievable target vision plus a timed policy roadmap, and evaluate the policies' effectiveness. This O-award paper reframes the open-ended evaluation task as a geometric vector problem in 3D index-space, then layers a target-setting model, a policy timeline, and a grey-prediction validity check on top.",
+  "models_used": [
+    "Three-dimensional Vector Assessment Model (3DVA): each country mapped to a vector S=(SD, ST, SI) over three composite dimensions — School Development, Student Treatment, Social Influence — built from 12 indices; health = vector modulus |S|, sustainability/balance = deviation angle theta to the ideal standard vector S0=(1,1,1)",
+    "Group Decision Making (GDM): subjective weighting via expert pairwise complementary judgment matrices, eigenvector solution, averaged across experts (lambda_i = 1/n), with consistency check",
+    "Entropy Weight Method (EWM): objective weighting from information entropy of the normalized index data across the 22 countries",
+    "Linear weight fusion: integrated weight W_i = 0.85*W_GDM + 0.15*W_EWM (subjective-heavy blend)",
+    "Three-type data normalization: benefit-type (max-min), cost-type (inverted max-min), and moderate-type (closeness to a target interval [a,b] with scaling factor M)",
+    "Curved-surface Target Model (CST): an achievable target set as a spherical-cap region in 3D space, with radius r and angular half-width phi derived from two elasticity indicators E_m (modulus) and E_theta (angle)",
+    "Elasticity indicators driven by non-educational factors: E_m and E_theta are linear functions of HDI, Fragile States Index (FSI), and Gini coefficient — used to cap how far/balanced the target can realistically be",
+    "N-Verhulst Model (NV): a new-structure grey GM-Verhulst variant (reciprocal sequence + accumulated generation) to predict each dimension's 20-year trajectory under no intervention, for counterfactual validity testing",
+    "Sensitivity analysis: perturbing the two coefficient triplets (alpha,beta,gamma) of E_m and E_theta and observing curved-surface stability"
+  ],
+  "key_techniques": [
+    "Geometric reframing: turning a fuzzy 'health + sustainability' mandate into two orthogonal, interpretable scalars — modulus (level) vs. angle to (1,1,1) (balance) — so two distinct policy goals map cleanly onto two distinct geometric quantities",
+    "Subjective+objective weight fusion (GDM+EWM) to defuse the 'arbitrary weights' criticism common in evaluation problems",
+    "Moderate-type normalization for indices where more is NOT better (e.g. education spending ~5%, Bachelor:Master:PhD ~10:4:1, gender ratio ~1:1, international openness ~3%) — a sophisticated touch most teams miss",
+    "Standard/ideal vector S0=(1,1,1) as a normative benchmark, invoking Cannikin's (weakest-stave) law to justify why balance matters even when one component is large",
+    "Differential vector deltaS = S0 - S decomposed to read off each dimension's weakness and prioritize policy direction",
+    "Embedding feasibility into the target via real-world constraint proxies (HDI/FSI/Gini), so the vision is 'achievable and rational' rather than utopian",
+    "Counterfactual validity: predict no-intervention trajectory with grey model and contrast against intervened trajectory to quantitatively 'prove' policy effectiveness (angle 29.96 -> 4.86 deg, modulus 0.640 -> 0.978)",
+    "Timeline staging keyed to geometry: short term shrinks the angle (fix balance first), long term lengthens the modulus (raise overall level) — directly visualized as a trajectory on the trend chart"
+  ],
+  "why_it_won": "\"From a judge's view, the paper wins on a single strong, original, and visually communicable central idea: the 3D assessment vector with modulus-vs-angle decomposition. This one device answers every sub-question coherently — assessment (the vector), country selection (worst angle+modulus = India), vision (a target curved-surface that is provably below the ideal but reachable), policy (move along deltaS), and validity (grey-model counterfactual). The modeling pipeline is end-to-end and self-consistent: weights are defended with dual subjective/objective methods, normalization correctly handles benefit/cost/moderate indices, feasibility is grounded in real non-educational indices (HDI/FSI/Gini), and effectiveness is demonstrated numerically rather than asserted. It also nails the policy-problem genre requirements: concrete staged policies with a Gantt-style timeline, a stakeholder impact analysis (students/faculty/schools/communities/nation, each with a benefit and a backlash), and an honest 'change is hard' conclusion. The whole thing is geometrically intuitive and easy to visualize, which is exactly what a judge skimming hundreds of papers rewards.\"",
+  "section_highlights": "\"Summary: front-loads concrete results (UK best balance at 1.15deg, US highest modulus 1.278, India chosen at 0.735 modulus / 23.13deg) — a judge gets the whole story in one paragraph. Section 4 (3DVA): the schematic of S, S0, deltaS and theta (Figure 3) makes an abstract construct instantly legible; the dual GDM+EWM weighting with consistency check reads as rigorous. Section 5 (CST): the curved-surface target is the paper's most creative move — feasibility encoded as geometry. Section 6: policies are specific and quantified ('ECS to 11%', 'ICT to 50', 'enrollment of poor to 30%') and ordered to first fix angle then modulus, mirrored in a clean timeline (Figure 8). Section 7.3 impact analysis is structured as benefit + counter-risk per stakeholder, showing balanced judgment. Section 8 sensitivity and Section 9 strengths/weaknesses with explicit 'Further Discussion' close the loop professionally.\"",
+  "pitfalls_or_limitations": [
+    "Heavy hidden subjectivity: the 0.85/0.15 GDM-vs-EWM split, the elasticity coefficients (alpha,beta,gamma), and the moderate-type target values (5%, 10:4:1, 3%) are asserted with little justification; the sensitivity analysis only perturbs the elasticity coefficients, not these other choices or the weight split",
+    "Index/data construction is thinly documented and partly opaque — 'integrate 20 sets of data into 12 indices' is hand-waved; many sub-indices (QTI, EIE, IO combine two sub-measures) lack a stated aggregation formula, hurting reproducibility",
+    "Internal inconsistencies in figures/tables: the integrated-weight pie table (Fig 2) lists all SI indices as 0% yet the text says ECS is ~48% of SI; several 3D/line-chart data dumps (Figs 4,5,9,10,11) are garbled placeholders, so the visuals can't be reconstructed from the rendered tables",
+    "The N-Verhulst model is applied to extremely short time series (data 'merely in few recent years'), so the 20-year forecasts and the precise '0.6% growth after intervention' figures are not statistically credible — grey models on ~5 points are fragile",
+    "The 'validity proof' is somewhat circular: intervened trajectories are essentially constructed to hit the CST target the model itself defined, so the favorable angle/modulus improvement is partly baked in rather than independently demonstrated",
+    "Elasticity formulas mix index scales without unit normalization (HDI ~0-1, FSI ~0-120, Gini ~0-1), making the linear combination's coefficients hard to interpret and the resulting r=1.22 / phi=11.5deg somewhat ad hoc",
+    "Cannikin's-law balance argument is asserted, not derived — there's no model term that actually penalizes imbalance beyond the angle being large; 'balance matters' is rhetorical scaffolding rather than an optimized objective"
+  ],
+  "reusable_patterns": [
+    "Vector-in-index-space framing for any multi-criteria evaluation problem: pick 3 (or k) composite dimensions, map each entity to a vector, then read level = modulus and balance = angle-to-ideal as two separate, named scores. Highly reusable across MCM evaluation/ranking problems.",
+    "Dual subjective+objective weighting (GDM/AHP + Entropy) with a stated fusion ratio and a consistency check — a robust, defensible default for any 'how do you weight your indicators' question.",
+    "Three-bucket normalization (benefit / cost / moderate-with-target-interval) as a standard preprocessing kit; the moderate-type closeness formula is the differentiator to remember.",
+    "Feasibility-bounded target setting: derive an *achievable* goal (not the ideal) by modulating it with external constraint proxies (here HDI/FSI/Gini), so a 'vision' question yields a defensible, country-specific target instead of a utopia.",
+    "Counterfactual validation pattern: predict the no-policy baseline with a time-series model (grey/Verhulst/logistic), then contrast with the intervened path to quantify policy impact — directly answers 'evaluate effectiveness' sub-questions.",
+    "Geometry-driven policy sequencing: tie the order of interventions to which geometric quantity each moves (first reduce deviation angle = fix structural balance, then grow modulus = raise overall level), and visualize it as a trajectory.",
+    "Stakeholder impact table with paired benefit + counter-risk per actor — a clean, judge-friendly template for the 'discuss broader impacts / why change is hard' part of any policy problem.",
+    "Front-loaded results summary: state the headline numbers and the chosen subject in the abstract so the entire narrative is graspable before page 1 of the body."
+  ]
+}

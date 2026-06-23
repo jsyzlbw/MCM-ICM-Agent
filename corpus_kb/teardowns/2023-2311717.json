@@ -1,0 +1,58 @@
+{
+  "paper_id": "2023-2311717",
+  "year": 2023,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2023 MCM Problem C (data type) on Wordle, using a Twitter dataset of 359 days of daily reported results. Four tasks: (1) model and predict an interval for the number of reported results on 2023-03-01, plus analyze whether word attributes drive Hard Mode choice; (2) predict the 7-bin distribution of guess counts (1..6 tries, X) for a future solution word (EERIE) on a given date; (3) classify solution words into difficulty levels and identify the word attributes associated with each level; (4) report other interesting features of the dataset. This O-award team (#2311717) framed Task 1 as a social-media popularity-prediction problem and decomposed the time series into a deterministic trend plus stochastic fluctuation, then used a data-driven (not mechanistic) approach for distribution prediction and clustering for difficulty.",
+  "models_used": [
+    "Task 1 trend: 3rd-order Gaussian (sum-of-3-Gaussians) regression fit by least squares; reported RMSE=6034.7, R^2=0.9955",
+    "Task 1 fluctuation: non-homogeneous Poisson process with intensity lambda(t) set equal to the Gaussian trend G(t), giving per-day prediction intervals",
+    "Task 1 correction: a 'popularity relaxation function' f(k)=l*k+m (linear in report count) multiplying the Poisson intensity, so fluctuation width scales with current popularity (heat)",
+    "Task 1 mode analysis: scatter plots of 8 engineered word attributes vs Hard Mode % (visual correlation), plus time-trend / heatmap analysis showing Hard Mode % rises with time, not word attributes",
+    "Task 2: 3-layer BP (backpropagation) neural network, 7 input features -> 7 output bins, single hidden layer sized by empirical formula Nh = Ns/(alpha*(Ni+No)) (chose Nh=9)",
+    "Task 2 ensemble: Bagging over m=100 BP networks (85% subsampling) aggregated by a hard-voting / majority mechanism to cut generalization error; test RMSE=3.6975, R=0.8869",
+    "Task 3 difficulty induction: K-Means clustering (k=4: Easy/Normal/Hard/Master) on the 7-D guess-distribution vectors using Euclidean distance",
+    "Task 3 attribute association: Pearson correlation coefficients between attribute-distance vectors and cluster-distance vectors; threshold M=0.6 to select difficulty-driving attributes",
+    "Task 3 classification of new words: nearest-centroid (arg min Euclidean distance) on either predicted distribution or the selected attribute vector",
+    "Task 4: log-normal distribution fit to the report-count histogram; box plots of per-bin percentage fluctuation",
+    "Sensitivity: perturb the intercept of the relaxation function by a scale factor and measure mean change in the 75% prediction interval width"
+  ],
+  "key_techniques": [
+    "Trend/fluctuation decomposition: split the time series into a deterministic long-term trend (Gaussian regression) and a stochastic part (Poisson), modeling each with the right tool",
+    "Borrowing domain theory: explicitly framed the problem via social-media popularity-prediction literature (Reinforced Poisson Process, SEISMIC self-exciting point process, EPAB Bayesian) and justified why those node-based/deep methods do NOT fit a report-only dataset",
+    "Reusing one model's output as another's input: the Gaussian trend G(t) is plugged in as the Poisson intensity lambda(t), avoiding the need to separately estimate the mean function",
+    "Heat-dependent variance: the relaxation function f(k) makes the prediction interval widen during the popularity 'Explosion Period' and narrow in the 'Dormant Period', matching the observed scatter of fluctuation vs popularity",
+    "Confidence-interval construction from the Poisson PMF (eq.6): solving arg min for left/right bounds at chosen beta to produce explicit intervals at 75% and 85%",
+    "Engineered word-attribute feature set (8 attributes): #distinct letters, total letter-frequency sum, per-position letter frequencies F1..F5, common-root boolean; plus later WCN (word-class count) and VN (vowel number)",
+    "Data-modeling-over-mechanistic-modeling justification: argued the share-on-Twitter distribution is unquantifiable mechanistically, so a learned mapping is more honest",
+    "Right-sizing the model to the data: explicitly rejected deep learning for only 359 rows (underfitting risk) and chose a shallow BP net instead",
+    "Feature pruning for small data: dropped the common-root boolean (only ~20/359 true, imbalanced) and the redundant total-letter-frequency feature to compress dimensionality",
+    "Defining difficulty from user behavior (guess distribution) rather than imposing an a priori difficulty, making the label user-experience-grounded",
+    "Data cleaning with documented corrections: fixed non-5-letter words (tash->trash, clen->clean, rprobe->probe) and replaced an outlier report count (#529) with neighbor average"
+  ],
+  "why_it_won": "\"From a judge's view the paper wins on interpretability-first modeling and intellectual honesty rather than raw sophistication. Three things stand out: (1) The Task 1 decomposition is genuinely elegant - a Gaussian-sum trend (R^2=0.9955) feeding a non-homogeneous Poisson process whose variance is modulated by a popularity relaxation function. This gives a single coherent story where the prediction interval physically widens during the game's 'Explosion Period' and tightens in the 'Dormant Period', which judges read as a model that actually explains the data, not just fits it. (2) The team repeatedly justified what they did NOT do: they cited the popularity-prediction literature (RPP, SEISMIC, EPAB) and explained why node-based and deep-learning methods are inappropriate for a report-only, 359-row dataset, then right-sized to a shallow BP net + Bagging. This signals modeling maturity. (3) They reframed every sub-question into a clean mathematical essence (heat prediction, a 7D->7D mapping, a clustering problem) and answered all four tasks concretely with named deliverables (interval [7654,20154]; EERIE distribution (0,1,6,25,31,25,13); EERIE='Master'). The honest, well-placed Strengths/Weaknesses section and the strong narrative letter to the NYT editor reinforce that this is a complete, self-aware submission.\"",
+  "section_highlights": "\"Summary is task-segmented (TASK 1-4) with concrete numeric results in the abstract itself - judges can grade the whole paper from page 1. Section 1.3 Literature Review is unusually strong for an MCM paper: it names real popularity-prediction models and uses them to argue the chosen approach, which doubles as motivation. Each task section follows a consistent template: data exploration -> mathematical essence statement -> model construction (with equations) -> result with error metrics. Heavy use of figures tied to claims (Fig.4 fluctuation-vs-popularity scatter justifying the linear relaxation function; Fig.5 trend+interval; Fig.14 difficulty bar chart). The Strengths/Weaknesses section is specific and self-critical (admits intervals are too wide in popular phases, admits heavy dependence on dataset representativeness). The closing Letter to the Puzzle Editor translates all findings into plain-English actionable advice and restates the three headline numbers. Notations table and Assumptions-with-Justifications are present and used.\"",
+  "pitfalls_or_limitations": [
+    "The target word is inconsistently spelled across the paper - 'EERIE', 'EERIR', 'ERRIE' all appear for the same Task 2/Task 3 answer, a sloppiness judges may notice (the actual 2023 word was EERIE)",
+    "Setting the Poisson intensity lambda(t) equal to the Gaussian trend implies variance = mean, but report counts are ~10^4-10^5; a Poisson at that scale has a negligible relative spread, so the realistic interval width is really being driven by the ad hoc linear relaxation function f(k), not by genuine Poisson statistics - the stochastic model is somewhat decorative",
+    "The relaxation function f(k)=l*k+m is heuristic and fit to a visual linear boundary in a scatter plot, not derived; sensitivity analysis shows the interval changes 8%-78% as its intercept is scaled, confirming fragility",
+    "Bagging over BP nets is undercut by their own admission: with only 359 samples and 85% subsampling, sub-training sets overlap heavily, so the ensemble members are too homogeneous for voting to add much - they flag this but do not fix it",
+    "Hard-voting an ensemble of regression outputs (continuous 7-bin distributions) is conceptually odd; voting is for classification, and the paper never clearly defines how votes aggregate continuous percentages",
+    "Task 1 mode-choice conclusion ('confidence/play mentality, not word attributes') is inferred only from scatter plots with no quantified correlation, and is partly unfalsifiable given players cannot see the word before choosing mode",
+    "Predicting a single future word's full distribution from 359 historical words is extrapolation with thin support; the model relies on the explicit assumption that history represents all possible Wordle Q&A, which they themselves call the biggest uncertainty",
+    "The Pearson-correlation-of-distance-vectors construction in Task 3 is convoluted and not standard; a direct attribute-vs-difficulty correlation would have been cleaner and more defensible",
+    "Output figures/tables transcribed here contain noise (e.g. a 'Dandy' category appears alongside Easy/Normal/Hard/Master), suggesting some presentation inconsistencies"
+  ],
+  "reusable_patterns": [
+    "Decompose any noisy time series into trend (regression) + stochastic fluctuation (point process), model each separately, then recombine - a clean, judge-friendly narrative for forecasting tasks",
+    "Feed one model's fitted output as the parameter of the next model (trend G(t) -> Poisson intensity lambda(t)) to avoid estimating an unidentifiable quantity",
+    "Make prediction-interval width state-dependent via a learned/heuristic multiplier (here popularity), so uncertainty visibly grows in volatile regimes - very persuasive in figures",
+    "Open with a literature review that names real domain models and then explicitly argue why they don't fit your data constraints - converts a weakness (small/limited data) into a justification for your simpler method",
+    "Right-size model complexity to data size and say so out loud (reject deep learning for ~300 rows, use shallow net + Bagging); judges reward this self-awareness",
+    "Define a subjective concept (difficulty) operationally from observed behavior via clustering, then separately correlate it with engineered features to get an interpretable, actionable classifier for new inputs",
+    "Engineer a transparent, named feature set from the raw entities (per-position letter frequencies, vowel count, word-class count, root flag) and prune redundant/imbalanced features explicitly",
+    "Provide concrete numeric deliverables for every sub-question (interval, distribution vector, difficulty label) and restate them in a stakeholder letter in plain language",
+    "Run a sensitivity analysis on the most heuristic parameter (the relaxation-function intercept) and report it honestly, even when it reveals fragility",
+    "Document data-cleaning decisions concretely (specific word corrections, specific outlier-row replacement) so the pipeline is reproducible and trustworthy"
+  ]
+}

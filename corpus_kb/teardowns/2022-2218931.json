@@ -1,0 +1,48 @@
+{
+  "paper_id": "2022-2218931",
+  "year": 2022,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2022 MCM Problem C (data): Given five years of daily price series for gold (LBMA, trades only on business days) and Bitcoin (trades daily), design a model that uses ONLY past-and-current prices to issue a daily buy/hold/sell decision for a [cash, gold, bitcoin] portfolio starting at $1,000, subject to transaction commissions (gold 1%, bitcoin 2%). Tasks: (1) produce the best daily strategy and report the final portfolio value; (2) provide evidence the strategy/parameters are optimal; (3) analyze sensitivity to commission rates; (4) write a 1-2 page memo to the trader. This team (#2218931) reported a final value of $270,836 from the $1,000 start.",
+  "models_used": [
+    "LM-BP neural network (back-propagation network trained with the Levenberg-Marquardt algorithm via MATLAB's trainlm) for price forecasting",
+    "Separate short-term and long-term forecasting heads per asset: 7-day price window input; short-term output = next day for both assets; long-term output = +5 days for gold, +7 days for Bitcoin (matched to each asset's trading calendar)",
+    "Self-built 'Recurrent Decision Model' (rule-based greedy trend-following trading state machine with four stages: Stand-by, Buy, Hold, Sell)",
+    "Sharpe ratio used as the position-sizing / capital-allocation rule across gold vs bitcoin",
+    "Bitcoin BBI-style market index (BBI = (MA3+MA6+MA12)/3) built only as a Control Group 5 short-term benchmark, not as the main model",
+    "Grid-search parameter optimization over the four buy thresholds to argue optimality"
+  ],
+  "key_techniques": [
+    "Levenberg-Marquardt training (interpolates between steepest-descent far from optimum and Gauss-Newton near it) to fix slow convergence and local minima of vanilla gradient-descent BP; gave R^2 > 0.99 on train/test/validation",
+    "Two-pronged forecast horizons (short + long) per asset, with the long horizon deliberately set to each asset's tradable lag (gold 5 business days, BTC 7 calendar days) so forecasts align with when a position can actually be exited",
+    "Rolling/recurrent re-forecasting: every trading day the 7-day window is updated and predictions are recomputed before deciding ('Recurrent' = re-predict each step, not an RNN)",
+    "Threshold-gated buying tied to transaction cost: buy only if predicted rise clears a cost-aware threshold (gold short 2% / long 3%; BTC short 3.5% / long 4.5%)",
+    "Sharpe-ratio-weighted, normalized allocation between the two risky assets, with expected return taken as max(short-term return, long-term return / 2) to penalize the riskier long horizon, divided by trailing 7-day std",
+    "Cost-aware buy criterion in Part 3: raising the buy bar to short-term return > 1-(1-c)^2 and long-term > 1-(1-c)^2+0.01 so a trade only fires when expected gain beats round-trip commission",
+    "Control-group benchmarking (5 baselines: all-gold, all-BTC, 50/50, 30%/yr fund proxy, BBI short-term trading) to evidence superiority",
+    "Sensitivity sweep of gold vs BTC commission rates rendered as 3D surfaces, showing near-linear asset response and BTC-dominance"
+  ],
+  "why_it_won": "\"It nailed the structural decomposition the problem rewards: a high-accuracy forecasting layer (LM-BP, R^2>0.99) feeding a transparent, defensible trading layer, with the two explicitly composed into one 'Quantitative Trading Decision Model.' Crucially it respected the hard constraint that only past/current prices are usable, and engineered the forecast horizons to match each asset's real trading calendar (gold 5-day, BTC 7-day) rather than treating the two assets identically. It went beyond raw returns to incorporate RISK via the Sharpe ratio for position sizing, which reads as financially literate to judges. It answered all four sub-questions concretely with a single headline number ($270,836), supplied explicit 'evidence of optimality' via grid search plus a 5-strategy control-group leaderboard (beating all-BTC, 50/50, a 30%/yr fund proxy, and a short-term BBI strategy), and delivered the required memo. The judge-pleasing combination is: correct constraint handling + accurate prediction + risk-aware decisioning + benchmarked evidence + clean communication.\"",
+  "section_highlights": "\"Strong, honest Summary that states both models, the horizon logic, the exact thresholds, and the $270,836 result up front. Literature review is genuinely scaffolding, not filler: it surveys ARIMA/NN/LSTM for gold, time-series/deep-learning for BTC, and statistical (mean-variance) vs RL quant models, then explicitly justifies choosing a self-built rule model over RL because the input is 'too single' (price only) — a well-argued modeling decision. Assumptions each come with an inline explanation (no-short-selling, fractional shares, price-of-day = given price, small capital not moving the market). Clean notation table. Algorithm pseudocode is provided for BOTH the LM method (Algorithm 1) and the decision model (Algorithm 2), aiding reproducibility. Part 2 'Prove the Model by Providing Evidence' directly mirrors the prompt's wording and pairs grid-search optimality with a ranked control-group table. The strengths/weaknesses section is candid (admits greedy/local optimum, over-concentration in BTC). The memo is appropriately non-technical and matches the deliverable. Heavy, well-captioned use of flowcharts and fit/comparison plots throughout.\"",
+  "pitfalls_or_limitations": [
+    "The headline R^2 > 0.99 is misleading: a 7-day-window NN predicting next-day price largely learns 'tomorrow approximates today' (high autocorrelation), so a near-perfect fit and visually overlapping curves do NOT demonstrate the directional edge a trading strategy actually needs — the paper never reports forecast error on RETURNS or directional hit-rate",
+    "Possible look-ahead/data-leakage risk: the NN appears trained on the full history (random 70/15/15 split) rather than walk-forward, which can leak future information into the per-day forecasts and inflate the $270,836 backtest",
+    "The decision model is self-admittedly a greedy heuristic giving only a local optimum; 'evidence of optimality' is a coarse 4-parameter grid search over a handful of values, not a true optimization, and the control groups are weak baselines (buy-and-hold variants), so 'best strategy' is overclaimed",
+    "Sharpe-ratio formula is non-standard (no risk-free rate; expected-return numerator hand-defined as max(short, long/2)); the sizing rule mixing normalized Sharpe with all-in-if-Sharpe>1 is ad hoc and under-justified",
+    "Concentration risk: nearly all trading ends up in Bitcoin (gold rarely traded), so the impressive return is essentially a leveraged bet on BTC's 2016-2021 bull run; the model 'reflects the market a little slower' (trend-lagging) as they admit",
+    "Several figures are sparse/placeholder-like (e.g., the 3D cost surfaces and some scatterplots have very few data points), and Algorithm 2's sell/buy branch logic reads inconsistently with the prose (buy/sell conditions appear swapped), suggesting the pseudocode wasn't fully cleaned",
+    "No out-of-sample or robustness test beyond commission sensitivity (no different start dates, no transaction-slippage, no regime-change stress test)"
+  ],
+  "reusable_patterns": [
+    "Two-layer architecture for any forecast-then-act data problem: an accurate prediction model feeding a separate, interpretable decision/policy model, explicitly named and composed into one end-to-end model",
+    "Match forecast horizon to the real-world action lag/constraint (here, asset-specific trading calendars) instead of using a one-size-fits-all horizon",
+    "Make decision thresholds a function of the cost structure (buy only when predicted gain beats round-trip commission: gain > 1-(1-c)^2) — turns a free parameter into a justified, defensible one",
+    "Use a risk-adjusted metric (Sharpe ratio) for allocation/position-sizing so you can claim you optimized risk-adjusted return, not just raw return — judges reward this",
+    "Build an explicit control-group leaderboard of naive baselines and rank your model in a table to give concrete 'evidence of optimality/superiority'",
+    "Run a clean one-variable-at-a-time sensitivity sweep on the cost/penalty parameters and visualize as surfaces to answer 'sensitivity' sub-questions directly",
+    "Rolling re-estimation ('recurrent') design that updates inputs and re-forecasts each step to honor a 'no future information' constraint",
+    "Pick LM over plain gradient-descent BP when data is small/medium and convergence/local-minima are the bottleneck, and state that justification explicitly",
+    "Structure the report to mirror the prompt's exact sub-question wording (e.g., a section literally titled 'Prove the Model by Providing Evidence'), include pseudocode for every custom algorithm, and pair every claim with a captioned figure or table",
+    "Use the literature review to justify what you did NOT use (e.g., rejecting RL because the input feature set is too thin) — turns a survey into a modeling decision"
+  ]
+}

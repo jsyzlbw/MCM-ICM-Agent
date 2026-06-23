@@ -1,0 +1,47 @@
+{
+  "paper_id": "2025-2505199",
+  "year": 2025,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2025 MCM/ICM Problem B (discrete) — sustainable tourism for Juneau, Alaska. The team had to build a tourism model that balances cruise-tourism revenue against overtourism harms (Mendenhall Glacier retreat, strained water/waste infrastructure, resident discontent), plan how to spend extra tax/fee revenue, run sensitivity analysis to find key drivers, transfer the model to other destinations, and write a one-page memo to Juneau's tourism committee. This paper (team 2505199) frames it as a three-objective optimization: maximize tourism revenue (Z1), minimize ecological/environmental stress (Z3), and maximize combined resident+tourist satisfaction (Z2), with 8 government-controlled decision variables.",
+  "models_used": [
+    "Multi-objective optimization model with 3 conflicting objectives (Z1 revenue max, Z2 satisfaction max, Z3 environmental-stress min) over 8 decision variables: tourist count x, daily limit y1, alcohol-sales restriction y2, tourism tax y3, tourist fee y4, and three spend allocations y5 environmental / y6 infrastructure / y7 promotion",
+    "NSGA-II (Non-dominated Sorting Genetic Algorithm II, Deb et al. 2002) as the solver — non-dominated sorting into Pareto fronts, crowding-distance for diversity, tournament selection, Simulated Binary Crossover (SBX), and polynomial mutation",
+    "Gradient descent with MSE loss to fit the linear/exponential sub-models (e.g. transportation revenue D = lambda2*x + eps2) and estimate the ~45 lambda coefficients",
+    "Exponential saturation/asymptote functions to model diminishing returns — alcohol-restriction impact on catering C = lambda1*x - lambda5*exp(-y2/lambda5), and the base-tourist saturation curve A = lambda29*(1 - exp(-y1/lambda29))",
+    "Normalized weighted-sum sub-aggregation inside each objective (e.g. Z3 weights omega3/omega4/omega5 over carbon M, water J, waste K, each divided by its max; Z2 weights resident vs tourist satisfaction with omega1+omega2=1)",
+    "Pareto-front visualization (3D surface over economy/community/environment) for trade-off-based selection of a single recommended operating point",
+    "Single-parameter and two-parameter (heatmap) sensitivity analysis sweeping y1..y7"
+  ],
+  "key_techniques": [
+    "Decomposing revenue into named additive components (catering C, transport D, accommodation E, shopping F, plus policy-driven 'other attractions' income R) and grounding each component's share with a real pie chart (catering 28%, accommodation 33%, etc.)",
+    "Final profit defined as Z1 = O + P - Q: main revenue O + additional income P (fees y4*x + tax y3*O) minus hidden costs Q (infrastructure I, carbon-footprint cost L, management H, promotion y7) — directly answering the prompt's 'hidden costs' and 'extra-income spending plan' asks",
+    "Closing the loop from tourism back to the glacier: carbon emissions M -> glacier retreat rate N = M*lambda35 -> hard constraint N <= W, making the environmental objective causally tied to economic activity rather than a bolt-on penalty",
+    "Min-max normalization of every heterogeneous term (dollars, carbon tonnes, congestion index) before weighting, so objectives at vastly different scales combine sensibly",
+    "Modeling diminishing returns explicitly with exponentials so the optimizer cannot game unbounded linear gains (raising the daily limit y1 stops adding tourists past saturation)",
+    "Rich constraint taxonomy: tourist-number caps (x <= 365*y1 and x <= 365*(A+B)), glacier protection, resource carrying capacity (water/waste/energy ceilings lambda36-38), minimum-level floors (satisfaction, env spend), and non-negativity",
+    "Generalizing rather than re-deriving for Part 2: each new city only edits the relevant module — Hawaii adds a seawater-pollution term X to Z3 and drops the glacier constraint; Yosemite raises infrastructure coefficients lambda11/lambda42; New Orleans adds a cultural-damage index Y with a cap; New York raises the promotion coefficient lambda12"
+  ],
+  "why_it_won": "From a judge's view this paper wins on three things. (1) It chose a method that fits the problem: overtourism is inherently a trade-off among economy, ecology, and society, and a 3-objective Pareto formulation with NSGA-II represents that honestly instead of collapsing it into one weighted score — the Pareto front itself becomes the argument. (2) It delivers a concrete, actionable answer the committee can read off directly (12,000 tourists/day, 8% tax, $15 fee, 30/40/20 spend split), not just a method. (3) Completeness and prompt-fidelity: it explicitly addresses hidden costs, the extra-income allocation plan, sensitivity-driven key-factor identification, a genuinely modular four-city transfer, and a clean one-page memo — every sub-task of Problem B is visibly checked off. The causal glacier→carbon→constraint link and the data-anchored revenue breakdown signal real domain engagement rather than a generic template.",
+  "section_highlights": "Strong structure throughout. The 'Our Work' flowchart (Figure 2) maps the entire pipeline up front. Notation Table 1 declares every symbol before use, and the model-building section narrates the rationale for each equation (why exponential for alcohol impact, why linear for transport) instead of dumping formulas. The NSGA-II section (4.2) is textbook-clean: it walks population init -> fitness -> non-dominated sorting -> crowding distance -> SBX crossover -> polynomial mutation -> elitist update, with the dominance definition stated explicitly. Results (4.3) tie the chosen operating point back to the Pareto surface to argue rationality. Section 7 (regional promotion) is the standout for impact — four cities, each with a specific equation/coefficient edit, showing genuine generalizability. The memo is correctly formatted (From/To/Date/Subject) and reader-appropriate.",
+  "pitfalls_or_limitations": [
+    "The ~45 lambda coefficients are presented as 'fitted by gradient descent' but the underlying data is never shown, sourced, or cited; many values (e.g. lambda1=1257.94, glacier coefficient lambda35=1e-6) appear assumed/hand-tuned, so the precise outputs (12,000, 8%, $15) are not really verifiable — a sharp judge would discount the exactness",
+    "Internal inconsistency between body and memo: the body says 8% tax / 30-40-20 spend split, while the memo states an '$80-per-person tourism tax' and a 30/40/30 split (which sums to 100 but contradicts the body's 20% promotion) — a proofreading failure that undercuts credibility",
+    "Many figures are placeholder or broken: the 3D Pareto 'surface' data is a degenerate diagonal (all axes equal 0.2,0.4,...), the third sensitivity chart is entirely empty, and the multi-parameter heatmap table is garbled — the visuals don't actually substantiate the claims they caption",
+    "Heavy reliance on linearity and stability assumptions (fixed per-capita spend, fixed carrying capacity, linear resident-satisfaction response); the paper acknowledges this in Weaknesses but it limits real-world validity",
+    "Glacier retreat reduced to a single linear proportionality N = M*lambda35 with lambda35 = 1e-6 — physically thin for what is the problem's signature environmental harm",
+    "NSGA-II hyperparameters (population size N0, generations, crossover/mutation probabilities, distribution indices eta_c/eta_m) are described generically but never reported, so the run is not reproducible",
+    "Demand is treated as something the optimizer sets via x rather than something that responds endogenously to price (tax/fee) and crowding — the feedback from policy to actual demand is only partially captured in the B fluctuation term"
+  ],
+  "reusable_patterns": [
+    "For any 'balance competing goals' prompt, formulate as multi-objective + NSGA-II and present the Pareto front as the core deliverable, then justify a single recommended point against it — avoids the arbitrary-weights trap of a single weighted sum",
+    "Build the objective bottom-up from named, individually-justified sub-terms (revenue = catering + transport + ... ; cost = water + waste + carbon + ...) so the model reads as auditable accounting, and anchor component weights with a real data chart",
+    "Use the profit identity 'final = main + additional - hidden costs' to cleanly absorb prompt asks about externalities and extra-revenue spending into the objective itself",
+    "Always min-max normalize heterogeneous terms before combining; state the weights and that they sum to 1",
+    "Encode diminishing returns with exponential/saturation curves so the optimizer can't exploit unbounded linear terms",
+    "Make the environmental objective causal: trace activity -> emissions -> physical harm -> hard constraint, rather than adding an unexplained penalty",
+    "For the 'apply to other places' sub-question, keep the core model fixed and demonstrate modularity — each new context edits exactly one module (add a variable, change one coefficient, drop one constraint); this is far more convincing than re-deriving",
+    "Open with a one-figure 'Our Work' pipeline flowchart and a complete notation table; close with a correctly-formatted, audience-appropriate memo",
+    "Run both single-parameter and pairwise (heatmap) sensitivity sweeps to identify dominant drivers and interactions — but ensure the figures actually render and match the text"
+  ]
+}

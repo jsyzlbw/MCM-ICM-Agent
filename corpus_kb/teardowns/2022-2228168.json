@@ -1,0 +1,51 @@
+{
+  "paper_id": "2022-2228168",
+  "year": 2022,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2022 MCM Problem B (discrete) — Colorado River water allocation. The team had to build models to (1) decide how much water to draw from Lake Powell (Glen Canyon Dam) and Lake Mead (Hoover Dam) to meet 7 states' + Mexico's water and electricity needs, and how long supply lasts with no rainfall; (2) resolve the competition among agricultural, industrial, residential water use and hydropower production; (3) prescribe action when water is insufficient for all needs; (4) analyze sensitivity to population/industry growth and rising renewable share / conservation. The paper frames it as a reservoir-dam scheduling + transportation problem and layers a two-stage program with metaheuristic solvers, plus a popular-science magazine article deliverable.",
+  "models_used": [
+    "Linear programming (LP) transportation/transshipment model for Problem 1: minimize total water-transport cost C = sum over 7 states of (d_p,i x_p,i + d_m,i x_m,i) k_i T, solved with MATLAB's linprog; decision variables are per-state withdrawals from each lake (x_p,i, x_m,i) and dam release flows (q_m, q_M)",
+    "Reservoir water-balance / mass-conservation model: integral of stage-area curve S(P)dP equated to inflow + rainfall - evaporation - downstream release - withdrawals over period T (Eq 4,7); a dam-reservoir system flow diagram (Fig 5) ties Powell -> Mead -> Mexico",
+    "Stage-storage linear regression: fitted water-level vs storage characteristic curve y = 9.1e4*x - 3.1e7 with R^2 = 0.9925, used to justify treating lake surface area S as a constant so the storage integral collapses to S*(ΔP) — a key linearization",
+    "Hydropower physics model N = A*Q*H_net (A = 9.81 output coefficient, Q = release flow, H_net = head above streambed), inverted against rated installed capacity to back-calculate max generation flow q_max for each dam (q_m,max=160218, q_M,max=253627 acre-ft/month)",
+    "Iterative monthly rolling-horizon depletion model for Problem 1b: Δq < 0 means net monthly drawdown; re-solve the LP each month updating reservoir level until infeasible -> '23 months' to exhaustion, then compute minimum required external transfer (-Δq = 1,106,074.571 acre-ft/month)",
+    "Two-stage (bilevel-style) programming model for Problem 2: lower level maximizes total economic benefit Z = sum(A_i + I_i)T + α(E_p + E_m - E_T) over agricultural/industrial water and power generation; upper level minimizes transport cost (same LP as Problem 1) given the lower level's total withdrawals as demand",
+    "Nonlinear programming model for Problem 3 (scarcity regime): min Z = α(E_p+E_m-E_T,min) + β(W_p+W_m-W_T,min) — minimize surplus power and water above minimum demand to stretch reserves through prolonged drought; Mexico allocation set proportional to population",
+    "Genetic Algorithm with enhanced elite retention (population 200, stagnation threshold 1e-6, max stagnation counter 500) as the primary nonlinear solver, with results fed into a single-objective Differential Evolution (DE) refinement stage (F=0.7, crossover prob 0.7, current-to-best mutation, binomial crossover, one-to-one survivor selection)"
+  ],
+  "key_techniques": [
+    "Problem decomposition into sequential 'small stages' (meet water -> meet power -> meet both) to tame coupling between water supply and hydropower before presenting the full coupled model in Problem 2",
+    "Geometric simplification: model water delivery as a warehouse/transportation problem using straight-line distances from each dam to each state's geographic centroid (Table 3) as a proxy for transport cost",
+    "Linearization of the stage-storage relationship (R^2=0.9925) to convert a storage integral into a constant-area product, making the balance constraints linear and LP-solvable",
+    "Inverse engineering of a missing parameter: deriving max power-generation flow from rated installed capacity via N=AQH because the problem data lacked a max flow rate",
+    "GA-then-DE two-stage metaheuristic pipeline: use elite-retention GA for a good global solution, then refine with single-objective differential evolution for deeper local optimization on the nonlinear benefit function",
+    "Reformulating Problem 3's objective from 'maximize benefit' to 'minimize surplus consumption above minimum demand' — an elegant pivot that operationalizes 'survive the drought as long as possible'",
+    "Using infeasibility of the optimization model as a meaningful answer (no feasible solution -> demand cannot be met / supply horizon reached) for the 23-month depletion result and for the drought-threshold finding",
+    "Rolling-horizon monthly re-solve with state (reservoir level) update to simulate temporal depletion using a static optimizer"
+  ],
+  "why_it_won": "\"It directly and visibly answered every sub-question with concrete numbers (per-lake withdrawals, 23-month horizon, $4.12B production value, drought thresholds), which judges reward. The progression from a clean, classical LP transportation model to a layered two-stage program to a scarcity-regime NLP shows escalating sophistication while keeping each piece interpretable. The water-balance + hydropower physics grounding (real USBR elevation/capacity data, fitted stage-storage curve with R^2 reported) gave the model defensible engineering credibility rather than abstract optimization. The objective-function pivot in Problem 3 ('minimize excess to stretch reserves') is a genuinely clever, problem-specific insight. The metaheuristic pipeline (elite-retention GA + DE) is a credible way to handle the nonlinear coupled benefit model. Sensitivity analysis tied back to the prompt's growth/renewables/conservation drivers, and the popular-science magazine article was delivered as required. Strong real-data sourcing (USBR, CRS reports) signaled diligence.\"",
+  "section_highlights": "\"Strong: explicit problem restatement mapping each sub-question; a notations table defining every symbol up front; constraint build-up presented incrementally (water supply, dam-level, river balance, release/power constraints, then objective) so the reader follows the derivation; a system schematic (Fig 5) and allocation map (Fig 2) that make the physical setup legible; clear results tables (per-state allocation Table 7, variable results Tables 6/8) with units; a flowchart for the iterative depletion procedure; convergence trace plots for the GA/DE runs (Fig 8/9) as evidence of solver behavior; an explicit Strengths/Weakness self-evaluation; and the required magazine article that re-narrates findings for a lay audience. The abstract leads with concrete headline numbers.\"",
+  "pitfalls_or_limitations": [
+    "Transport cost depends only on straight-line distance to a state centroid — no pipeline topology, elevation pumping cost, or real conveyance network; the authors themselves flag this in Weaknesses",
+    "Unit inconsistencies and likely numerical/typo errors: the abstract reports production value as '$412,208,7017' and water '49,52007 acre-feet' (garbled); the heatmap of US drought severity in the magazine section is duplicated/repetitive and labels nearly every state 'Severe', undermining that figure",
+    "Constant-surface-area linearization breaks down precisely in the deep-drawdown regime the problem cares about (low reservoir levels), where area-vs-stage is most nonlinear — a self-undermining assumption for severe drought",
+    "The hydropower energy expressions in Problems 2/3 (Eq 17, 27) introduce a T^3/(2S) term whose derivation is not clearly justified and looks dimensionally suspect",
+    "Economics is thin: agricultural/industrial benefit treated via fixed water/power-efficiency coefficients (Table 5) with no real demand elasticity; industrial output I solved to exactly 0.00 in Problem 2, a red flag the authors don't interrogate",
+    "GA/DE solutions are reported without seeds, multiple-run variance, or comparison to an exact/LP bound, so optimality/reproducibility is unestablished",
+    "Problem 4 (temporal demand growth) is handled only through coarse percentage-drop sensitivity scenarios rather than an actual population/industry growth dynamic model",
+    "Mexico, evaporation (q_e), and rainfall terms appear in equations but are often set to zero or hand-waved, weakening the balance model's realism",
+    "Conclusions section is sloppy: section 8.2/8.3 cross-reference the wrong tables/'question 3', showing rushed final assembly"
+  ],
+  "reusable_patterns": [
+    "Cast resource-allocation-with-distance problems as an LP transportation model (sources x destinations, distance-as-cost) — a fast, defensible baseline that judges recognize",
+    "Linearize a nonlinear physical relationship by fitting it (report R^2) and substituting a constant, but explicitly bound where the approximation holds",
+    "Back-calculate missing parameters from related published specs (e.g., derive max flow from rated capacity via a physics formula) instead of guessing or omitting",
+    "Decompose coupled objectives into a two-stage / bilevel structure: inner stage optimizes the hard nonlinear benefit (solve with GA), outer stage handles the linear logistics (solve with LP)",
+    "Use a GA (elite retention) for global search then a differential-evolution refinement pass — a reusable metaheuristic-stacking template for nonlinear MCM models, with parameters explicitly stated",
+    "Simulate temporal depletion/exhaustion by wrapping a static optimizer in a rolling-horizon loop that updates state each period and reports the period where it becomes infeasible",
+    "Reframe the objective for scarcity scenarios from 'maximize value' to 'minimize surplus above minimum demand' to model 'survive as long as possible'",
+    "Always close with an explicit Strengths/Weaknesses self-critique and deliver any required secondary artifact (here, a lay-audience magazine article) — both are scored",
+    "Lead the abstract with the concrete numerical answers to each sub-question so judges see results immediately"
+  ]
+}

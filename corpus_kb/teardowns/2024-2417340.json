@@ -1,0 +1,47 @@
+{
+  "paper_id": "2024-2417340",
+  "year": 2024,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2024 MCM Problem F (policy): design a 5-year project to reduce the illegal wildlife trade (IWT). The team had to (1) pick a client from candidate organization types, (2) justify the project to that client with data and predictions, (3) specify the powers/resources needed, (4) lay out concrete intervention measures and quantify their effect, and (5) estimate the probability of meeting goals plus what could derail them. This O-award paper (control number 2417340) frames the whole solution as \"network collaboration + data-driven reduction,\" chaining one model per task and ending with a client memo.",
+  "models_used": [
+    "Lotka-Volterra predator-prey ODE system (Eq. 10) re-purposed as a population-competition model: international conservation orgs = predator Y(t), poachers = prey X(t); growth/predation/mortality/conversion rates mapped to org attributes PUR/SR/PER",
+    "Analytic Hierarchy Process (AHP) with 3x3 pairwise-comparison matrices to weight PUR/SR/PER (0.43/0.22/0.35) and the client benefits international-reputation/biodiversity/tangible-benefits (0.33/0.44/0.23)",
+    "Custom Comprehensive Adaptation Index CAI = (1+IN)(CI*(0.43*PUR+0.22*SR+0.35*PER)) to score candidate clients GA=0.42, INO=0.51, PAP=0.37 -> selects INO",
+    "Data preprocessing: forward/reverse/interval normalization (min-max style, Eqs. 1-4), vector standardization (Eq. 6) and a proportion/probability matrix P (Eqs. 8-9, entropy-weight style setup)",
+    "BP (backpropagation) feedforward neural network for time-series forecasting of global IWT volume 5 years out: MATLAB feedforwardnet([30,30]), trainlm, logsig activations, 65/15/20 train/val/test split, R approx 0.93-0.997",
+    "Graph/network model of global IWT: countries as nodes V={v_i}, trade relations as directed edges, node degree -> hotspot importance, used for both strike targeting and visualization",
+    "Traveling Salesman Problem (TSP) formulation (Eqs. 21-24) solved by Simulated Annealing (Metropolis criterion Eq. 27, geometric cooling T_new=alpha*T) for the optimal cross-regional awareness route over 166 countries (~511,791 km, ~1,696 days)",
+    "Greedy-strategy optimization to place 5 regional monitoring stations (South Africa, China, USA, Switzerland, Brunei) with 1000 km coverage radius; Haversine for lat/long distances",
+    "Probability model for goal attainment: binomial distribution for flight delays (p=15.36%) and poacher resistance (p=10%), Poisson distribution (lambda=30) for bad weather; combined P(meet goal)=0.829*0.919*0.996=65.1%",
+    "Single-variable sensitivity analysis on the three disruption probabilities (e.g. +10% poacher resistance drops strategy-2 attainment 19.73%, total to 60.8%)"
+  ],
+  "key_techniques": [
+    "One-model-per-task architecture: each of the 5 tasks gets a distinct named model, and outputs chain forward (Lotka-Volterra rates -> AHP weights -> CAI client choice -> BP forecast -> network strategies -> SA route -> probability model)",
+    "Creative re-mapping of a textbook ecology model (Lotka-Volterra) onto a policy/enforcement metaphor, then reusing its parameters (PUR/SR/PER) as the scoring dimensions for client selection -- one conceptual spine reused across tasks",
+    "Translating qualitative policy levers into three concrete, separable strategies (cross-regional awareness, hotspot crackdown, regional sentinel monitoring) each backed by its own optimization model and its own quantified effect",
+    "Quantifying everything: every strategy ends in a number (support growth 95.68%, IWT down 23.5% over 5 years, biodiversity +21%, attainment 65.1%) rather than narrative claims",
+    "Closing each task with an explicit decision/recommendation, then aggregating into a structured client memo with a year-by-year 5-year rollout table per strategy",
+    "Transparent AI-use appendix documenting four ChatGPT-4 queries (literature lead, data sourcing, Haversine formula, chart aesthetics)"
+  ],
+  "why_it_won": "\"From a judge's seat, this paper wins on completeness, decisiveness, and presentation rather than mathematical rigor. It answers all five sub-questions head-on with a clear thread (client = INO, three strategies, 65.1% success), never leaving a task vague. Each task carries a named, recognizable model and ends in a concrete decision, so the reader always knows what was concluded and why. The Problem F policy prompt rewards a plausible, actionable, well-communicated plan plus self-aware risk analysis -- and this team delivers a real 5-year operational roadmap, a memo addressed to the chosen client, a sensitivity analysis that identifies poacher resistance as the dominant threat, and an honest weaknesses section. The breadth of methods (ecology ODE, AHP, neural net, network science, TSP+annealing, probability distributions) signals modeling maturity, and the heavy use of figures, a global trade network, an optimized world route map, and a year-by-year memo table makes the work feel concrete and judge-friendly. For a policy problem, decisiveness + communication + a credible risk story beats numerical exactness.\"",
+  "section_highlights": "\"Strong: (1) Summary front-matter that states every task's headline number up front. (2) Notation table defining the team's own acronyms (PUR/SR/PER/IN/CI/CAI/SE/OSR/TTV) so the bespoke scoring language is legible. (3) The CAI formula (Eq. 13) -- a clean, inspectable composite index that makes the client choice reproducible. (4) Per-task section headers literally tagged 'for task1...task5,' making the mapping to the prompt unmistakable. (5) The client MEMO with a 3-strategy x 5-year table giving concrete annual milestones (which countries, how many technicians, expected % effects). (6) Appendix carries the actual SA Python pseudocode and the MATLAB BP-net code, plus the full 166-country optimal route, lending reproducibility. (7) Honest, brief Strengths/Weaknesses and an AI-use report.\"",
+  "pitfalls_or_limitations": [
+    "Data provenance is thin and several figures look synthetic/idealized: the 'linear fit' of poaching numbers is a perfect straight line 0.15->1.05, and BP scatterplots show points lying exactly on y=x -- training R values (0.997) are implausibly clean, suggesting fabricated or overfit illustrative data rather than real fitted output",
+    "Lotka-Volterra mapping is metaphorical, not validated: parameters (alpha=0.038, beta=0.37452, etc.) appear without a fitting procedure or goodness-of-fit, and the predator-prey analogy is asserted rather than justified empirically",
+    "Internal inconsistency in reported numbers: AHP text gives PUR=0.43/PER=0.35/SR=0.22 but the radar/Table 2 raw scores and the narrative around Figure 3 don't cleanly reconcile; coordinates in Figure 12 are garbled (e.g. 52.37N,4.90W vs Amsterdam, 25.75S,28.23W sign error)",
+    "The probability model treats the three disruptions as independent and uses ad hoc thresholds (K1<=28, K2<=1.25, K3<=45.6) with a non-integer K2 and hand-set p-values; lambda=30 Poisson for weather is unmotivated",
+    "Many effect sizes (IWT -23.5%, biodiversity +21%, support 95.68%) are derived from assumed proportional relations (e.g. SD = C*|decline|, support growth = 0.9568*progress) with single-source or single-survey backing, so quantitative claims are weakly grounded",
+    "TSP/annealing route assumes uniform 120 km/h travel between all countries and a single global circuit, an unrealistic operational model for an awareness campaign",
+    "English/grammar is rough throughout (non-native), and some figure captions/numbers are mislabeled (Figure numbering drifts: 'Figure 16' referenced but Figure 13 shown)"
+  ],
+  "reusable_patterns": [
+    "Task-to-model mapping skeleton: assign one named, recognizable model per sub-question and explicitly tag sections 'for taskN' so graders can check off each requirement -- a reliable structure for any multi-part MCM/ICM problem",
+    "Build a custom composite index (here CAI) from AHP-weighted sub-scores to turn a qualitative selection/ranking question into a defensible single number; reusable for any 'which option/client/site do you pick' task",
+    "Re-purpose a canonical model as a metaphor and harvest its parameters as decision dimensions (Lotka-Volterra rates -> client-scoring axes) to give a policy answer mathematical scaffolding",
+    "For policy problems, decompose the intervention into 3 separable, individually-optimizable strategies, model each (route optimization, network node targeting, coverage/facility placement), then aggregate effects -- a clean template for 'design a plan' prompts",
+    "Close with a probability-of-success + single-variable sensitivity analysis that names the dominant risk factor; this directly satisfies 'what could affect your project' style sub-questions and reads as mature",
+    "Deliverable packaging: end with a client-addressed memo containing a strategy x year milestone table, and include runnable code + full solution tables in an appendix for reproducibility credibility",
+    "Include a transparent AI-use appendix listing the actual prompts (literature discovery, formula lookup, viz polish) -- now expected and looked on favorably"
+  ]
+}

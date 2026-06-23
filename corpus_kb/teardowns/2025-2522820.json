@@ -1,0 +1,52 @@
+{
+  "paper_id": "2025-2522820",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asked teams to predict the 2028 Summer Olympic medal counts with prediction intervals, identify countries most improved/declined and those likely to win first medals, analyze how sports and hosting affect performance, detect a 'great coach effect' in historical data, recommend three country-sport pairs for coaching investment, and provide original insights for Olympic committees.",
+  "models_used": [
+    "Tobit model",
+    "Mixed linear models (hierarchical)",
+    "Negative binomial regression",
+    "Probit regression (hurdle model)",
+    "DBSCAN clustering",
+    "Singular value decomposition (SVD)",
+    "Time series analysis with moving average",
+    "Revealed comparative advantage (RCA) index"
+  ],
+  "key_techniques": [
+    "Maximum likelihood estimation (MLE)",
+    "Zero-inflation handling via Tobit and hurdle approaches",
+    "Multicollinearity checking with correlation heatmap",
+    "Heteroscedasticity testing with residual plots",
+    "Data-processing approximations (ceiling-proportion and event-limitation)",
+    "Sport-point efficiency and sport-point share metrics",
+    "Weighting predictors by variance to improve model fit",
+    "AIC and BIC for model comparison",
+    "Powell's method for optimization",
+    "Cross-referencing model results with historical coaching data"
+  ],
+  "why_it_won": "The paper demonstrates a sophisticated statistical workflow that moves from a classic Tobit model to a hierarchical mixed-effects framework with clustered random effects, directly addressing zero-inflation and heteroscedasticity. It combines multiple regression types (negative binomial, probit) tailored to performance clusters, and validates choices with diagnostics like AIC/BIC, predictor significance tests, and residual analysis. The thorough data processing (event-limitation approximation) and creative use of SVD and RCA to analyze sport impact, along with a time-series anomaly detection for coach effects, show both depth and originality, delivering clear, actionable insights.",
+  "section_highlights": "The writing is exceptionally well-structured, with clear problem restatements, labeled assumptions, and dedicated subsections for each modeling step. Consistent mathematical notation, variable definition tables, and comparative diagnostic plots (residuals, heatmaps, cluster figures) make complex methods easy to follow. The prose seamlessly connects technical rigor to the Olympic narrative, and a dedicated Strengths and Weaknesses section adds transparency and evaluative depth.",
+  "pitfalls_or_limitations": [
+    "Tobit model suffered from heteroscedasticity, which undermines censorship probability estimates.",
+    "MLE optimization never fully converged for some clusters, leading to subpar fit metrics.",
+    "Prediction confidence intervals are wide, reflecting high uncertainty.",
+    "Assumption that 2028 participant countries are identical to 2024 (except Russia) is a strong simplification.",
+    "Data processing approximations (e.g., ceiling-proportion, event-limitation) still rest on assumptions about team events and medal distributions.",
+    "Lack of economic or training-expenditure data limits predictor set.",
+    "Arbitrary point weighting (6-3-2) may influence sport-importance rankings.",
+    "Inconsistent sport/discipline naming across datasets required manual correction.",
+    "Model fit for outlier cluster (-1) was initially very poor and required ad-hoc variance weighting."
+  ],
+  "reusable_patterns": [
+    "Start with a literature-informed model (Tobit) then diagnose flaws (heteroscedasticity) and upgrade to a more flexible framework (hierarchical mixed models).",
+    "Cluster performance levels with DBSCAN before building separate regressions for zero-inflated low-performing groups and high-performing groups.",
+    "Combine a probit binary model (probability of winning any medal) with a negative binomial count model to create a hurdle model for zero-heavy data.",
+    "Use AIC/BIC and log-likelihood to select among optimization methods (e.g., Powell's) and to weight predictors to stabilize fitting.",
+    "Apply SVD to a country-by-event medal matrix to rank events by influence on overall medal counts.",
+    "Quantify sport importance using three complementary metrics: Sport-Point Efficiency, Sport-Point Share, and Revealed Comparative Advantage (adapted from trade economics).",
+    "Detect anomalous performance streaks (coach effect) with a moving average time-series model and a contribution metric, then cross-validate with historical coaching records.",
+    "Approximate event-level medal distributions by deduplicating athlete entries per event (Event Limitation Approximation) to overcome missing per-event data."
+  ]
+}

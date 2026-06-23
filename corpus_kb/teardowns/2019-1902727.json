@@ -1,0 +1,50 @@
+{
+  "paper_id": "2019-1902727",
+  "year": 2019,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2019 MCM Problem A (continuous): treat the three fictional dragons from \"A Song of Ice and Fire\" as real biological organisms and model (1) weight vs. age, (2) daily calorie consumption and intake vs. age, (3) land area needed to feed a dragon under different climates, (4) community/biomass size needed to support dragons at different \"assistance levels,\" and (5) the dragons' impact on the surrounding ecosystem. This team (control number 1902727) builds a stepwise chain of sub-models, grounding a fantasy creature in real animal-physiology and ecology laws, and closes with a letter to George R.R. Martin flagging an internal contradiction in the novel's own description.",
+  "models_used": [
+    "Logistic (retarded/Verhulst) growth ODE for weight-age: dw/da = r0·w(1 - w/wm), solved to w(a) = wm/(1 + (wm/w0 - 1)e^(-r0·a)); fitted to 3 anchor points w(0)=10, w(1)=35, w(3)=14000 giving wm≈1.481e6 kg, r0≈2.417",
+    "Kleiber's law / allometric 3/4-power metabolic scaling: q(a)/q0 = [w(a)/w0]^(3/4), anchored to a human baseline (BMR from the Harris-Benedict/ACSM formula BMR = 13.7w + 5h - 6.8a + 66, with basal metabolism = 70% of daily expenditure)",
+    "Energy-balance / mass-conservation intake model: 365[u(a)-q(a)] = (4000·p1 + 9000·p2 + 4000·p3)·Δw(a), converting the intake-consumption surplus into protein/fat/carb body mass at 4/9/4 kcal per gram",
+    "Malthusian exponential population model for the sheep flock: dg/dt = (b-d)g, g(t)=g0·e^((b-d)t), plus an equilibrium condition G·e^(b-d) - G = s_m to find the steady-state flock that offsets predation, and time-to-reach-G",
+    "Integral regression model of forage (herbage) yield on meteorological factors (temperature, precipitation, sunshine hours) using Legendre orthogonal polynomials φ_j(t) up to order 5, with stepwise regression to fit the 18 coefficients a_ij, calibrated on real Egypt/Australia/Iceland grassland data as proxies for arid/temperate/arctic climates",
+    "Biomass/community-size model via S_i = u_m/c_i and F_i = f_i·S_i, mapping 7 ecosystem types to 7 'assistance levels' by species richness and per-area biomass",
+    "Ecosystem-impact models: discrete Malthus-with-harvest extinction model Q(t+1)=Q(t)·e^(b-d) - K (species extinct when Q≤0), and NPP/biomass degradation deltas ΔNPP_ij = S(n_i - n_j), ΔF_ij = S(f_i - f_j) for ecosystem downgrade i→j"
+  ],
+  "key_techniques": [
+    "Stepwise/cascaded modeling: each sub-model's output feeds the next (weight → metabolic rate → intake → #sheep eaten → flock size → forage demand → grassland area → biomass/community → ecosystem degradation), giving a single coherent narrative spine across all 5 questions",
+    "Borrowing well-established empirical laws to substitute for missing data on a fictional creature: Kleiber's 3/4 law and human BMR formulas bridge from a measurable species (humans) to the unmeasurable dragon",
+    "Anchor-point curve fitting: extracting 3 (age, mass) tuples from problem statement + novel text to pin down the logistic parameters rather than needing a full dataset",
+    "Real-world data substitution as climate proxies: using actual Iceland/Australia/Egypt grassland yield + weather records to instantiate the arid/temperate/arctic cases",
+    "Orthogonal (Legendre) polynomial regression chosen explicitly over 4 alternatives (moving average, nonlinear, piecewise-linear, ordinary orthogonal) so regression coefficients are mutually independent and recursion cuts redundant computation",
+    "Equilibrium/steady-state reasoning to size the supporting populations (flock grows just fast enough to offset predation)",
+    "Two-direction sensitivity analysis: perturbing the single most uncertain input (age-1 weight) by ±1% to ±5% and propagating the relative deviation through to both adult weight and daily energy (full ±5% sensitivity tables)",
+    "Reframing the answer as a real-world transfer (agribusiness growth/feed planning, invasive-species impact) to demonstrate generality"
+  ],
+  "why_it_won": "Judges reward a creative-but-disciplined approach to an open, almost whimsical prompt, and this paper nails the balance. It never hand-waves: every quantity about a fictional animal is derived from a named, citable real law (Kleiber, Malthus, logistic growth, NPP, Harris-Benedict BMR) with literature references, so the fantasy is made falsifiable and defensible. The stepwise food-chain spine (dragon → sheep → grass → climate → ecosystem) gives a clear, auditable logical flow that a judge can follow end-to-end and produces concrete numeric answers to all five questions. The Legendre-polynomial integral-regression forage model is a genuinely sophisticated, non-obvious technique that signals modeling depth above the median team. Two-direction sensitivity tables plus a self-aware 'reliability is not great but acceptable' statement show honest error analysis. Crucially, the closing letter to Martin catches an internal contradiction in the source material (a 1500-ton dragon cannot 'eat a mammoth in one bite'; the novel's 3000-soldier army can't support a dragon), which is exactly the kind of insightful, problem-engaging punchline that lifts a paper to Outstanding.",
+  "section_highlights": "The summary sheet is dense and quantitative, leading with concrete headline numbers (max weight 14.8e5 kg, ~4.8e6 kcal/day, 3738/2383/4843 hm2 for arid/temperate/arctic) so a judge gets all results before reading the body. Assumptions are bulleted and each is paired with a justification. A Notation table defines every symbol up front. Two mermaid-style flow diagrams (the grass→sheep→dragon food chain and the modeling pipeline) make the cascade visually obvious. Strengths/Weaknesses is candid and specific (calls out food-chain oversimplification and averaged data). The Practical Application section generalizes to agribusiness and invasive species. The memo to George R.R. Martin is a strong, on-theme closer that turns the analysis into a narrative payoff and flags self-contradictions in the novel.",
+  "pitfalls_or_limitations": [
+    "The fitted logistic gives a max weight of ~1.48e6 kg (1500 tons), which the team themselves admit is biologically absurd and contradicts the novel - they flag it but never reconcile or re-fit a more plausible curve",
+    "The body-composition fractions are inconsistent/garbled in the text (p1=16%, p2=16%, p3=1% stated, with '16' cut off in an assumption) and the Δw energy-balance arithmetic is hard to audit",
+    "Internal numeric inconsistency: the required flock size is quoted as 296,297 in 4.3.2 but 266,609 in 4.3.3 (and 'a group of 100,000 sheep' in the letter), and forage demand differs (533,335 vs 479,896 kg/day) - sloppy carry-through of numbers",
+    "Figure data tables are clearly OCR/extraction-corrupted (e.g. Figure 1 shows mass values like '14', '14.5' mixed with 1.481e6), but the underlying figures presumably were fine in the original PDF",
+    "The Legendre-regression section is under-specified: the actual grasslands are left as 'xx grassland', and the fitted coefficient table mixes φ-orders without showing the data or goodness-of-fit",
+    "Equation (5)/(11)/(15) have transcription errors (missing parentheses, '/e^(b-d)-1' grouping) that would confuse a reader relying only on the formulas",
+    "Heavy reliance on averaged literature constants (2030 kcal/kg lamb, 1.8 kg/day forage, fixed birth/death rates) with no uncertainty bands except on the single age-1 weight input",
+    "English/grammar is rough throughout (typos: 'Logicstics', 'caroles', 'realation', 'Kleber'), which does not block an Outstanding but is a visible weakness"
+  ],
+  "reusable_patterns": [
+    "Cascade-of-sub-models template: decompose a multi-part open prompt into a single causal chain where each model's output is the next model's input; present it as one pipeline diagram so judges can audit the whole logic flow",
+    "When real data on the target is missing, anchor to a measurable analog via a published scaling law (here: human → dragon via Kleiber's 3/4 power) and cite it",
+    "Curve-fit from a handful of anchor points pulled from the problem text/source material when no dataset is given (logistic from 3 (age,mass) tuples)",
+    "Use real-world geographic data as proxies for abstract scenario categories (Iceland/Australia/Egypt → arctic/temperate/arid)",
+    "Energy/mass conservation as a closure equation: set intake - expenditure = mass gained × per-gram energy content to back out an unknown intake curve",
+    "Equilibrium condition to size a supporting population: growth term = harvest/predation term, solve for steady state",
+    "Choose and justify a regression basis (orthogonal/Legendre polynomials) by explicitly comparing against alternatives and naming the benefit (independent coefficients, less recompute) - shows deliberate method selection",
+    "Two-direction sensitivity sweep on the single most-uncertain input, propagated to final outputs, presented as a full perturbation table with an honest verdict on stability",
+    "Lead the summary sheet with all headline numbers; provide a notation table and per-assumption justifications",
+    "Close with the required deliverable (a letter/memo) that not only reports results but surfaces an insight or contradiction about the problem itself - here, exposing internal inconsistencies in the novel's lore"
+  ]
+}

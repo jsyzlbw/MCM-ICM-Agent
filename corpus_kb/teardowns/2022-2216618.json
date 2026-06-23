@@ -1,0 +1,52 @@
+{
+  "paper_id": "2022-2216618",
+  "year": 2022,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2022 MCM Problem E (sustainability): design a model that quantifies the carbon dioxide a forest and its products sequester over time, determine the carbon-optimal harvest schedule, then extend to a decision model balancing carbon, economic, and ecological/biodiversity values. The team built a \"Comprehensive Index of Forest\" (CIF) combining three sub-indices, found the harvest age that optimizes it, validated on two contrasting forests (Quaking Aspen in a developed country, Amazon rainforest in a developing country), and wrote a persuasive newspaper article arguing that well-timed harvesting can be ecologically AND economically beneficial.",
+  "models_used": [
+    "Chapman-Richards growth function for cumulative forest carbon C(t)=b1(1-e^{-b2 t})^{b3}, derived as the steady-state solution of a von Bertalanffy / Lenthall ODE dC/dt = eta*C^m - kappa*C (synthesis minus destruction terms)",
+    "Density-correction multiplier gamma(y)=y_m/y applied to C(y) to account for lower stand density when harvesting young",
+    "Wood-products carbon-storage model: per-product annual sequestration m_i(y)=w_i*beta*C(y)/y, with a recycling geometric-series recovery factor 1/(1-alpha_i), and product carbon P(y)=(w/y)C(y) using a lumped weighted lifespan factor w = sum(w_i*x_i/(1-alpha_i))*beta = 8.674 yrs",
+    "Total-sequestration objective T(y)=(1+w/y)(y_m/y)b1(1-e^{-b2 y})^{b3}, maximized over harvest age y subject to w < y < y_m",
+    "Comprehensive Index of Forest (CIF) = w1*CSI + w2*EI + w3*BDI, a weighted multi-criteria index",
+    "Carbon Sequestration Index CSI = T(y)/u normalized by global mean primary-forest carbon u=274.1 tC/ha",
+    "Economical Index EI with a sigmoid maturity gate EI = DR*(2/(1+e^{-y})-1)*(1-e^{-b2 y})^{b3}",
+    "Biodiversity Index BDI = 1 - DR*log2(2 - 2/(1+e^{-y/y_m})), constructed for diminishing marginal harm and smooth DR=0 / y->0 limits",
+    "Analytic Hierarchy Process (AHP) to set the three CIF weights, with two separate weight sets for developed vs developing countries",
+    "Selective-harvest extension: T~ = DR*T(y,ybar_m1) + (1-DR)*T(ybar_m2,ybar_m2) with mass-balance constraint DR*ybar_m1+(1-DR)*ybar_m2 = ybar_m, optimized over the harvested cohort's longevity",
+    "Topography-aware aggregation: TCVF / AVF splitting forest into wooded (proportion rho=S/S0) and non-wood regions (wetlands/lakes/grasslands) for carbon, economic, and biodiversity totals",
+    "Faustmann Model cited as the economic-only baseline the CIF deliberately generalizes beyond"
+  ],
+  "key_techniques": [
+    "Deriving a familiar empirical growth law (Chapman-Richards) from first-principles ODE so the model reads as mechanistic rather than curve-fit, then collapsing 3 fitted constants b1,b2,b3 per climate zone",
+    "Lumping a messy products lifecycle (3 product classes, recovery rates, recycling, lifespans) into a single scalar w=8.674 yrs that plugs cleanly into T(y) - dimensional reduction for tractability",
+    "Multi-criteria decision analysis (CIF) that combines a physically-dimensioned carbon term with two engineered [0,1] indices, normalized to be comparable",
+    "Engineering index functions to satisfy boundary/limit conditions on purpose: BDI smoothly recovers the no-harvest case (DR=0 -> BDI=1) and a sigmoid gate kills economic value for too-young trees",
+    "Using AHP to inject a defensible policy distinction (developed vs developing countries get different weights) - turns a subjective weighting into the paper's central narrative lever",
+    "Contrastive case-study design: two forests deliberately chosen to land on opposite sides of the harvest/no-harvest decision, demonstrating the model produces qualitatively different policy from the same machinery",
+    "Constraint w < y < y_m given physical meaning (product renewal vs depreciation, uniform-age assumption) rather than arbitrary bounds",
+    "Closing the loop to policy: converting the EI drop from delaying harvest (4.754%) into a concrete government compensation cost and a 61-year payback at 1% of revenue"
+  ],
+  "why_it_won": "\"It nailed the exact thing Problem E rewards: a sustainability decision that genuinely integrates economic, ecological, and social dimensions rather than optimizing carbon alone. The CIF gives judges a single, interpretable scalar whose optimum directly answers 'cut or not, and when,' and the AHP developed-vs-developing split turns that scalar into a policy story with a counterintuitive, defensible punchline (developed country -> never cut; developing country -> plan harvests). The carbon core is mechanistically grounded (ODE -> Chapman-Richards) and explicitly generalizes a named real-world baseline (Faustmann), signaling modeling maturity. The two contrasting case studies act as a built-in robustness demonstration, the model answers every literal sub-question of the prompt (transition points, when to leave uncut, 100-year prediction, 10-year-gap transition strategy), and the newspaper article is genuinely persuasive and on-message. The whole submission is coherent end-to-end: every index, constraint, and case ties back to the cut/no-cut decision.\"",
+  "section_highlights": "\"Summary is decision-forward: states the CIF=CSI+EI+BDI structure, the AHP developed/developing distinction, and previews both case-study verdicts (aspen: don't cut; Amazon: cut at ~60 yrs) before any math. Section 3 builds the carbon engine bottom-up (forest growth, then products, then total T(y)) with a clean optimization payoff (optimal harvest ages 59.9 / 63.45 yrs by zone). Section 4 layers the multi-criteria CIF with each index motivated by a real forest function and engineered limit behavior spelled out. Section 5's two case studies are the rhetorical spine - same model, opposite conclusions, each tied to country development level. Sensitivity analysis is appropriately scoped (focuses on w, the lumped product-lifespan factor, showing the optimal harvest age shifts from 66 to 43.5 yrs as w goes 2->35). Honest strengths/weaknesses section. The newspaper article restates the thesis in plain, persuasive language with the headline framing 'is deforestation always bad?'\"",
+  "pitfalls_or_limitations": [
+    "The density correction C(y) = (y_m/y)*b1(...) blows up as y->0 and is a heuristic, not derived; it also double-counts with the uniform-age CSPY=C(y)/y averaging in places, making the dimensional bookkeeping in T(y)=(1+w/y)C(y) hard to verify",
+    "AHP weights are fully subjective and the pairwise-comparison matrices / consistency ratio (CR) are not shown - only a 'Figure 5: AHP results' image - so the central policy lever (developed vs developing weights) is unauditable",
+    "EI uses a sigmoid term 2/(1+e^{-y})-1 with y in years, which saturates to ~1 almost immediately (e^{-y} negligible past y~5), so the 'maturity gate' does essentially nothing for realistic harvest ages - likely an unintended scaling error",
+    "Several numbers don't reconcile: frigid-zone max T is quoted as both 63.45 and 314.0 tC/ha; Amazon optimal harvest is 59.9 yrs in Section 3/5 yet the CIF curve peaks at y=134.15 yrs with no reconciliation of the discrepancy; a stray 'Norway forests' heading appears in the Amazon section",
+    "Strong simplifying assumptions: natural disturbances (fire, pests, drought) explicitly ignored, uniform age distribution assumed, product lifespan assumed independent of harvest age, only 3 product classes - all reasonable but materially limit real forestry applicability",
+    "Sensitivity analysis is narrow (mainly w and the verbal claim that data are within 5 years); no sensitivity on AHP weights or on b1,b2,b3, which is where the conclusions are most fragile",
+    "The 231-year selective-harvest result and the 61-year compensation payback are presented with more numerical precision than the underlying assumptions support"
+  ],
+  "reusable_patterns": [
+    "Named-index pattern: invent a branded composite metric (here CIF) as weighted sum of 2-4 normalized sub-indices, then frame the whole problem as 'find the argmax of the index' - gives judges one interpretable object and a clear decision rule",
+    "Derive-then-collapse: present a familiar empirical curve as the solution of a simple mechanistic ODE to earn credibility, then reduce many fitted parameters to a small set per regime",
+    "Lump a complicated subsystem into one scalar (the w product-lifespan factor) so it slots into the main objective without bloating it",
+    "Engineer index sub-functions to satisfy stated boundary/limit conditions (DR=0 -> no harm, sigmoid gates for immature states) and explicitly verify those limits in text - reads as rigor",
+    "Use AHP with multiple stakeholder-specific weight sets to encode a policy distinction (developed vs developing) that becomes the paper's narrative and produces contrasting conclusions from one model",
+    "Pick case studies adversarially: choose instances that land on opposite sides of the decision boundary to demonstrate range and double as robustness evidence",
+    "Close the loop to actionable policy with money: translate an index change into a concrete cost (compensation) and payback horizon, which makes the recommendation feel implementable",
+    "Constraint-with-meaning: give every inequality bound a physical justification (w<y<y_m from product renewal vs depreciation and uniform-age assumption) rather than presenting bare numeric limits"
+  ]
+}

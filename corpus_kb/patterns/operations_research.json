@@ -1,0 +1,252 @@
+{
+  "problem_type": "operations_research",
+  "paper_count": 51,
+  "common_models": [
+    {
+      "name": "Double-layer complex network architecture: inner layer = point-to-point information flow within a region, outer layer = region-to-region (global) flow",
+      "papers": 1
+    },
+    {
+      "name": "AsIC Model (Asynchronous Independent Cascade) as the base diffusion model, extended with custom node/edge feature vectors",
+      "papers": 1
+    },
+    {
+      "name": "Feature-engineered propagation model: node eigenvector phi_n = [phi_S sender, phi_R receiver, phi_C content] and edge vector phi_e = phi_{S,R}, combined via linear score f(u,v,c)=k1*phi_m + alpha1^T*phi_n + alpha2^T*phi_e",
+      "papers": 1
+    },
+    {
+      "name": "Bayesian logistic function to map the linear score f into a propagation probability p(u,v,c)",
+      "papers": 1
+    },
+    {
+      "name": "Analytic Hierarchy Process (AHP) to weight the six communication media (newspaper, telegraph, radio, TV, Internet, mobile)",
+      "papers": 1
+    },
+    {
+      "name": "Maximum Likelihood Estimation with a survival/hazard formulation (accumulated probability F and survival S over continuous time, time-decay factor) to fit coefficients k_i, alpha_i, beta_i by minimizing -lg f(C)",
+      "papers": 1
+    },
+    {
+      "name": "TF-IDF + cosine similarity for sender/receiver interest similarity; Jaccard distance for structural (friend-circle) similarity",
+      "papers": 1
+    },
+    {
+      "name": "Two-dimensional Reaction-Diffusion (R-D) model in polar coordinates: divergence of gradient shown proportional to 1/rho, used to derive distance-corrected propagation (p_ex = k1*p/d_uv, tau_ex = k2*tau*d_uv)",
+      "papers": 1
+    },
+    {
+      "name": "Bounded Confidence Model (Deffuant-style opinion dynamics): s_i(t+1)=s_i(t)+mu[s_j(t)-s_i(t)] with confidence threshold epsilon, aggregated into average public opinion phi_o(t)",
+      "papers": 1
+    },
+    {
+      "name": "Regression analysis to fit/forecast media market-share trends over time",
+      "papers": 1
+    },
+    {
+      "name": "A Dijkstra/BFS-style greedy propagation simulation (set K of infected nodes, threshold gamma in 0.5-0.6) to compute total propagation ratio and delay",
+      "papers": 1
+    },
+    {
+      "name": "SIIR information-flow model — an extended compartmental SIR ODE system with susceptible s(t), infected split into i1(t)/i2(t), recovered r(t), plus a fixed 'hot transmission node' fraction i0 representing mass media; dual contact rates lambda1 (media/hot nodes) and lambda2 (ordinary users) and immune probability mu; solved numerically in MATLAB",
+      "papers": 1
+    },
+    {
+      "name": "Aggregate media contact-rate weighting lambda1 = sum_i lambda_i * P_i over five media (newspaper, radio, TV, computer, mobile/online) built from US historical adoption data 1850-2012",
+      "papers": 1
+    },
+    {
+      "name": "Multiple regression / trend extrapolation on per-medium daily contact rates to project media mix forward and feed the SIIR model for a 2050 prediction scenario",
+      "papers": 1
+    },
+    {
+      "name": "Radial Basis Function (RBF) neural network for information filtering, framed as binary classification (shares >1400 = 'significant news')",
+      "papers": 1
+    }
+  ],
+  "common_techniques": [
+    {
+      "name": "Two-tier decomposition (local micro-diffusion vs. global macro-diffusion) so each layer can use a different mechanism and they compose",
+      "papers": 1
+    },
+    {
+      "name": "Heavy feature engineering of nodes/edges into named, formula-backed indices (Influence=lg(RT+1), Authority=lg(FO/FR+1), Activity=lg(PO/D+1), Willing=lg(R/P+1)) with min-max normalization to [0,1]",
+      "papers": 1
+    },
+    {
+      "name": "Borrowing physics (reaction-diffusion / gradient divergence) to justify the 1/distance attenuation of cross-region propagation",
+      "papers": 1
+    },
+    {
+      "name": "Reusing the same core diffusion engine for all five tasks (news qualification, today's prediction, 2050 forecast, opinion, factor sensitivity) instead of inventing a new model per task",
+      "papers": 1
+    },
+    {
+      "name": "Validation against real events: ~89 simulated repost nodes vs. ~80 real Twitter reposts for the bin Laden event; <10% relative error on newspaper/Internet market share",
+      "papers": 1
+    },
+    {
+      "name": "Two-flavor sensitivity analysis: (a) perturb an index by +/-10% (0.9W, W, 1.1W) and (b) remove an index entirely and measure change in propagation delay, yielding the ranking Authority > Influence > Activity > Willing",
+      "papers": 1
+    },
+    {
+      "name": "Grounding abstract content value in a published 10-indicator weighting scheme (Authenticity 0.318, Timeliness 0.247, etc.) rather than inventing arbitrary weights",
+      "papers": 1
+    },
+    {
+      "name": "Disease-spread analogy: explicitly mapping information propagation onto epidemiological SIR compartments, then justifying the analogy before extending it",
+      "papers": 1
+    },
+    {
+      "name": "Introducing a named modeling primitive — the 'hot transmission node' — to capture mass media as super-spreaders, giving the model a distinguishing conceptual hook",
+      "papers": 1
+    },
+    {
+      "name": "Splitting the infected compartment (i1 from hot nodes, i2 from ordinary nodes) so media-driven vs peer-driven spread are separable",
+      "papers": 1
+    },
+    {
+      "name": "Grounding every model in a specifically named real dataset: Facebook SNAP graph (4039 nodes, 88234 edges), UCI Online News Popularity (39240 records, 27908 train / 11332 test), and US media adoption time series",
+      "papers": 1
+    },
+    {
+      "name": "Reusing the SIR backbone across two of the three sub-models for conceptual unity (information flow and public opinion both SIR-derived)",
+      "papers": 1
+    },
+    {
+      "name": "Reporting a confusion matrix with train (75.1%) and test (74.3%) accuracy and a ROC curve as classifier evidence",
+      "papers": 1
+    },
+    {
+      "name": "Extensive one-parameter-at-a-time sensitivity sweeps (lambda1, lambda2, mu, P_si, P_ir, alpha, P_sr, initial degree k0) each with its own figure and verbal interpretation",
+      "papers": 1
+    },
+    {
+      "name": "Using a forward prediction scenario (2050 vs 2012: ~25% faster propagation, cycle 60->50 days) to turn an abstract model into a concrete, quotable answer",
+      "papers": 1
+    }
+  ],
+  "recurring_pitfalls": [
+    {
+      "name": "Severe presentation/data-integrity problems: many figures are placeholder/garbled (Figure 4 'global network' is OCR nonsense; Figures 7 and 8 sensitivity charts show identical flat 0.03/0.04/0.05 columns for every year, so the curves are fabricated-looking and don't actually show sensitivity)",
+      "papers": 1
+    },
+    {
+      "name": "The Bayesian logistic formula as written is wrong: p = 1/(1+In(-f)) uses 'In' (a typo, and logarithm not exp); a proper logistic should be 1/(1+exp(-f)). The actual function is mis-stated.",
+      "papers": 1
+    },
+    {
+      "name": "Coefficients k_i, alpha_i, beta_i are never reported — the MLE is described but no fitted values, no data set size, no convergence evidence is given, so the 'training' is unverifiable",
+      "papers": 1
+    },
+    {
+      "name": "Validation is anecdotal and cherry-picked: two single events (bin Laden, Ebola) and two media series; the 89-vs-80 node 'match' has no error bars and the market-share table even has an internally inconsistent entry (Internet absolute error 0.12 with relative error 1.55% — numbers don't reconcile)",
+      "papers": 1
+    },
+    {
+      "name": "2050 forecasts (ratio curves, capacity curves) are essentially asserted trend lines with no stated forecasting model, confidence intervals, or driver variables — pure extrapolation dressed as prediction",
+      "papers": 1
+    },
+    {
+      "name": "Many parameters are set by fiat (media weights 1/0.5/2/2.5/3/3.5, threshold gamma 0.5-0.6, mu, epsilon) with no calibration or justification of the specific numbers",
+      "papers": 1
+    },
+    {
+      "name": "English is noticeably broken throughout ('phi_pre', 'sides and code', mislabeled figure references like 'Figure 13' inside the W discussion), which costs polish points",
+      "papers": 1
+    },
+    {
+      "name": "Conflates correlation/assumption with mechanism — e.g., assumes inherent information value decreases toward 2050 as a premise, then 'predicts' it",
+      "papers": 1
+    },
+    {
+      "name": "Poor English throughout (grammar, garbled tokens, typos) — survived because the modeling was strong, but is a clear risk factor, not a model to imitate",
+      "papers": 1
+    },
+    {
+      "name": "SIIR parameter values are physically implausible/unnormalized: lambda1=1000, lambda2=245 are used as raw 'contact rates' in an ODE where s,i,r are fractions, with no clear units or normalization, undermining the quantitative credibility of the curves",
+      "papers": 1
+    },
+    {
+      "name": "Many figures appear inconsistent or auto-extracted with garbled axes/values (e.g. tables of all-0.1 or all-1.0 rows), suggesting plots were not carefully checked",
+      "papers": 1
+    },
+    {
+      "name": "The 2050 prediction rests on naive trend extrapolation of media adoption plus hand-set parameter bumps ('we boost the number of hot transmission nodes'), so the headline '25% faster' number is suggestive, not derived",
+      "papers": 1
+    },
+    {
+      "name": "RBF classifier at ~74% test accuracy is mediocre and presented with no baseline comparison; feature list includes a leakage-prone 'number of shares' which is essentially the label",
+      "papers": 1
+    },
+    {
+      "name": "SN-SIR mean-field equations contain transcription errors (e.g. P_ir multiplies s(k,t) instead of i(k,t)) and the s+i+r=1 constraint is asserted but not reconciled with the separate P_sr/alpha terms",
+      "papers": 1
+    },
+    {
+      "name": "Sensitivity analysis is qualitative one-at-a-time only; no joint/global sensitivity, no uncertainty quantification, and several monotonicity claims read off idealized hand-drawn curves",
+      "papers": 1
+    }
+  ],
+  "reusable_patterns": [
+    {
+      "name": "Layered/multi-resolution network template: model micro-interactions and macro-interactions as separate but coupled layers — directly transferable to epidemic spread, supply chains, transportation, rumor control",
+      "papers": 1
+    },
+    {
+      "name": "Attribute-to-index recipe: for any fuzzy quality (influence, trust, news value), define a closed-form index from observable counts, apply a log transform to compress heavy tails, then min-max normalize to [0,1] before combining",
+      "papers": 1
+    },
+    {
+      "name": "Linear-score-then-logistic pattern: aggregate weighted features into a scalar f, then squash through a logistic to get a probability — a clean, defensible way to turn many factors into one transmission probability (fix the exp typo)",
+      "papers": 1
+    },
+    {
+      "name": "Survival/hazard MLE for diffusion timing: use accumulated-probability F and survival S=1-F with a time-decay factor, then fit by minimizing -log-likelihood — reusable whenever you have timestamped cascade data",
+      "papers": 1
+    },
+    {
+      "name": "Physics-borrowing for spatial decay: invoke gradient/divergence (reaction-diffusion) to motivate a 1/distance attenuation term instead of asserting it",
+      "papers": 1
+    },
+    {
+      "name": "Bounded Confidence Model as a drop-in opinion-dynamics engine for any 'how does public opinion evolve' sub-question, with a confidence threshold epsilon controlling polarization vs. consensus",
+      "papers": 1
+    },
+    {
+      "name": "Two-mode sensitivity analysis as a standard closing section: perturb each key parameter +/-10% AND ablate (remove) each index, then rank importance — produces a quotable result judges like",
+      "papers": 1
+    },
+    {
+      "name": "Validate against a named real event plus a quantified relative-error table — even one good anchor dramatically raises perceived credibility",
+      "papers": 1
+    },
+    {
+      "name": "Summary-sheet discipline: name the model, list the methods, and state concrete numbers/answers for every sub-task on page one",
+      "papers": 1
+    },
+    {
+      "name": "Decompose an open ICM prompt into 3 crisp sub-questions and give each its own model, then reuse one backbone (here SIR) across sub-models for narrative unity",
+      "papers": 1
+    },
+    {
+      "name": "Take a textbook model (SIR) and add ONE named, intuitive extension (the 'hot transmission node') that directly targets the prompt's key phenomenon — a distinctive hook is worth more than a generic complex model",
+      "papers": 1
+    },
+    {
+      "name": "Frame a fuzzy task as a standard problem type to unlock known tools ('filtering = binary classification' -> RBF/ML)",
+      "papers": 1
+    },
+    {
+      "name": "Always bind each model to a specifically named public dataset (SNAP Facebook graph, UCI Online News Popularity, historical adoption tables) — naming the dataset and its size signals rigor",
+      "papers": 1
+    },
+    {
+      "name": "Adopt a fixed per-section template: Build the model -> Solve (state the solver, e.g. MATLAB ODE) -> Validate on data -> Sensitivity sweep with a figure+sentence per parameter",
+      "papers": 1
+    },
+    {
+      "name": "Turn the model into a concrete, quotable forward prediction scenario (2012 vs 2050 with percentage deltas) so judges get a memorable answer",
+      "papers": 1
+    }
+  ]
+}

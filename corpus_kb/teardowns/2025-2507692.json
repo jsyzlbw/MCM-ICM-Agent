@@ -1,0 +1,56 @@
+{
+  "paper_id": "2025-2507692",
+  "year": 2025,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2025 MCM/ICM Problem D (operations research / sustainable transportation), Team #2507692, Outstanding award. The task: model Baltimore's transportation network, quantify the impact of the Francis Scott Key Bridge collapse on diverse stakeholders, select and evaluate a transportation improvement project, propose a new project to maximally improve residents' lives, and address safety. The team built three linked models on a single graph-theoretic foundation: (I) an Adaptive Transportation Network Model to simulate the bridge collapse and its stakeholder impacts; (II) an Upgraded Bus Network Model using clustering to prioritize bus-shelter renovation/construction; (III) an Integrated Multimodal Transport Model that overlays bus and rail networks to recommend a new north-south rail line. The paper closes with a safety insight section, sensitivity analysis, and a mayor-addressed memorandum.",
+  "models_used": [
+    "Graph-theoretic network model: city abstracted as a directed graph G=<V,E>, nodes from nodes_all.csv and edges from edges_all.csv, built/visualized in ArcGIS",
+    "Entropy Weight Method (EWM): objective edge-weighting from three factors (traffic flow, capacity, peak-time duration) via min-max standardization, proportion P_ij, entropy E_j = -k Sum P_ij ln P_ij with k=1/ln(n), weight W_j = (1-E_j)/Sum(1-E_j), then edge weight e_i = Sum W_j Z_ij",
+    "Flow-Balance Equation (conservation: Sum F_in = Sum F_out): collapse simulated by deleting the bridge edges and re-allocating its flow to the two remaining bridges proportionally to their capacity/importance",
+    "Dijkstra shortest-path algorithm: recompute shortest paths/distances d_ij after edge removal to quantify commuting-time changes for stakeholders",
+    "Comprehensive Ranking System: weighted score for bus stops, score = 0.6*ridership + 0.4*nonexistence_of_shelter (shelter present=0, absent=1)",
+    "Cluster Analysis: bus stops partitioned into 5 clusters by location + ridership (k=5, K-means-style)",
+    "Minimum Spanning Tree (MST) per cluster: connect all stops with minimum total edge weight to find key/edge connector stops; later perturbed for sensitivity test",
+    "Second shelter-quality score: score = 0.6*ridership + 0.2*central_latitude_proximity + 0.2*central_longitude_proximity (proximity to cluster geometric centroid)",
+    "Pearson correlation coefficient: between shelter score and number of bus routes through a stop, visualized as a heatmap",
+    "Integrated Multimodal Transport Model: ArcGIS overlay/buffer intersection (0.0015 buffer) of bus and rail networks to find coverage gaps; recommends a new north-south rail line",
+    "Data preprocessing pipeline: linear interpolation for missing ridership, IQR rule (Q1-1.5IQR, Q3+1.5IQR) for outlier removal, min-max normalization of ridership and coordinates"
+  ],
+  "key_techniques": [
+    "Single shared graph spine: one directed-graph abstraction reused across all three models so Model II is explicitly an optimization of Model I and Model III extends it — gives a coherent 'multi-model synergy' narrative",
+    "Objective weighting via entropy (EWM) rather than subjective AHP weights — lets the data dictate which of flow/capacity/peak-time matters most for each edge",
+    "Counterfactual simulation by edge deletion + flow re-allocation: physically removing the collapsed-bridge edges and redistributing flow, then re-running Dijkstra to measure before/after commuting time and AADT",
+    "Using MST not just to plan connectivity but as the object of the sensitivity test (perturbing leaf-node count and showing total edge length rises, arguing the original solution is optimal)",
+    "ArcGIS used end-to-end as the visualization and spatial-analysis engine: entropy-weighted choropleth of the road network, buffer-intersection overlay of bus vs rail to expose the north-south gap",
+    "Stakeholder decomposition repeated in every model: commuters (urban/suburban), merchants, logistics firms, transit riders, operators, planners, governments — directly answering the problem's multi-stakeholder framing",
+    "Two-stage shelter prioritization: first a ridership+shelter-absence urgency score to find where to act, then a centroid-proximity+ridership quality score to split actions into 'build new' vs 'renovate existing'",
+    "Validation of a correlation claim with Pearson + heatmap rather than asserting it qualitatively",
+    "Memorandum to the Mayor that translates the two technical projects into plain-language content/benefits/cons — satisfies the communication deliverable"
+  ],
+  "why_it_won": "From a judge's view, the paper wins on coherence, completeness, and communication rather than mathematical depth. It (1) addresses all four sub-problems plus the required memorandum, leaving no deliverable unanswered; (2) builds one unified graph-theory framework and layers three named, interlocking models on it, so the work reads as a single escalating story (simulate the shock -> optimize the bus layer -> integrate rail) instead of three disconnected exercises; (3) keeps the multi-stakeholder lens front and center in every section, which is exactly what an ICM policy problem rewards; (4) pairs each method with a real data pipeline (interpolation, IQR, normalization) and an objective weighting scheme (entropy) that signals rigor and reproducibility; (5) leans heavily on ArcGIS spatial visualization, giving the paper a professional, GIS-backed look that reads as 'real consulting'; and (6) closes the loop with sensitivity analysis, an explicit strengths/weaknesses section, and a clean mayor-facing memo. The judge sees a team that is organized, on-topic, data-literate, and communicative — the profile that earns Outstanding even when individual models are textbook-level.",
+  "section_highlights": "Standout structural moves: a tight one-page Summary that names all three models and their roles; a clean Assumptions-with-Justifications table and a Notations table up front; per-model workflow flowcharts in 'Our Work' that preview the method chain (Graph Theory -> Flow Balance -> Dijkstra -> EWM). The before/after device is used repeatedly and effectively — paired 3D bubble charts and 3D bar charts of AADT pre/post collapse make the impact visually obvious. The two-equation shelter scoring (urgency score, then quality score) cleanly separates 'where' from 'what action', and the final shelter map (Figure 24) color-codes Build vs Rebuild vs existing stops. The rail/bus buffer-overlay figure visually justifies the single concrete recommendation (a north-south rail line marked in red). The paper ends with a Mayor-addressed Memorandum that re-expresses Projects 1 and 2 as Content/Benefits/Cons — strong audience-aware communication.",
+  "pitfalls_or_limitations": [
+    "The rendered data tables/figures in the markdown are clearly synthetic or placeholder-looking (e.g., perfectly linear AADT 1000,1100,...,2100; bubble-chart latitudes of '4000'/'41O'; idealized grid-like cluster scatters), suggesting the visualizations may be illustrative mock-ups rather than outputs of real computation — a credibility risk a sharp judge could probe",
+    "Entropy weight method is applied but the actual computed weights W1,W2,W3 are never reported, so the 'data-driven' weighting is asserted but not shown",
+    "n is stated as 565496 edges yet no real computational results, runtimes, or aggregate statistics from Dijkstra over that graph are presented — the scale is claimed but not evidenced",
+    "The flow re-allocation rule ('proportional to capacity and importance') is vague and not formalized into equations; no congestion/BPR-type volume-delay function is used, so 'commuting time increased significantly' is qualitative",
+    "Cluster count k=5 is asserted with no justification (no elbow/silhouette analysis), and no clustering algorithm is explicitly named (presumably K-means)",
+    "Sensitivity analysis is weak: it only perturbs MST leaf-node count and notes total edge length rises — this tests MST optimality (trivially true) rather than the robustness of model outputs to input/weight assumptions",
+    "The shelter score mixes a normalized ridership in [0,1] with a binary shelter flag using fixed 0.6/0.4 weights that are unjustified and not sensitivity-tested",
+    "The safety sub-problem (Problem 4) is answered with qualitative policy bullets (maintenance, monitoring, innovative models) rather than any model, the thinnest section",
+    "Several assumptions (fixed capacity, constant travel behavior, negligible weather) are acknowledged but their impact on results is not quantified"
+  ],
+  "reusable_patterns": [
+    "One graph spine, many models: abstract the system as G=<V,E> once and frame every later model as an optimization/extension of it — yields automatic narrative cohesion in network/OR problems",
+    "Entropy Weight Method as a drop-in objective weighting for edge or alternative scoring when you have multiple incommensurable factors and want to avoid subjective AHP weights",
+    "Shock-as-edge-deletion + flow re-allocation + Dijkstra re-run: a clean recipe for any 'what if this link fails' resilience/disruption question",
+    "Two-stage scoring pattern: first a 'where is the need' urgency score, then a 'what action and how good' quality score, to convert a ranking into concrete build-vs-renovate decisions",
+    "Cluster -> MST -> connector-node selection: use clustering to segment, MST within clusters to expose backbone connections, and edge/connector nodes as intervention targets",
+    "Buffer-intersection overlay in GIS to expose coverage gaps between two networks (bus vs rail) and justify a single concrete infrastructure recommendation",
+    "Repeat a fixed stakeholder taxonomy (residents, merchants, logistics, operators, planners, government) in every model's impact subsection to directly satisfy multi-stakeholder ICM prompts",
+    "Standard data-cleaning preamble (linear interpolation for gaps, IQR for outliers, min-max normalization) presented as its own subsection to signal data rigor",
+    "Close with a stakeholder-addressed memorandum that restates each recommendation as Content/Benefits/Cons — strong template for the communication deliverable",
+    "Before/after paired visualizations (bubble charts, bar charts) as the primary device for communicating an intervention's effect"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "paper_id": "2019-1900577",
+  "year": 2019,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2019 MCM Problem C (data type): Using NFLIS drug-report counts (2010–2017) for narcotic analgesics and heroin across 5 eastern states (OH, KY, WV, VA, PA) plus U.S. Census socio-economic data (2010–2016), characterize and predict the geographic spread of opioid incidents between counties, identify likely points of origin for specific drugs, set a threshold for \"unsafe\" county-level drug use and predict where/when counties cross it, incorporate socio-economic factors, and recommend a counter-strategy with an effectiveness estimate. Team 1900577 won an Outstanding award.",
+  "models_used": [
+    "Geographic gravity / spatial-interaction model: county 'External Influence Potential' P_i = sum_j (I_j / r_ij^2), an inverse-square-distance weighting of neighboring counties' drug influence, drawn by analogy to Newtonian gravity (F ∝ m1·m2/r^2) and justified via Yanguang Chen's distance-decay literature",
+    "Influence factor I_i = (drug reports in county i) / (area of county i) — a density measure (reports per area) rather than raw counts, paralleling epidemiology population-density spread arguments",
+    "Haversine great-circle distance formula to compute inter-county distances r_ij from FIPS-matched lat/long centroids (accounting for Earth curvature instead of Cartesian distance)",
+    "Quadratic-weighted linear regression for the per-county time trend m_i: linear fit of total drug reports vs. time with weight (year − 2009)^2, up-weighting recent years; m_i is the slope (time derivative)",
+    "Coupled spread update equation: ΔDrug_i = [ (μ_I / (I_i · I_max)) · sum_n (I_n / r_ni^2) + 1 ] · m_i, combining normalized external influence with internal trend; iterated year-by-year in MATLAB to simulate 2018–2025",
+    "Gravity-of-Influence origin model: G_{d,i} = sum_n (I_{i,d}·I_{n,d} / r_ni^2) per drug d; the county maximizing G_d in a drug's first-appearance year is flagged as the likely origin (applied to 3-Methylfentanyl → Erie County, OH in 2016)",
+    "Threshold model: 90th percentile of 2017 county influence values as an individualized 'unsafe' threshold, used to count counties already over and predict future crossings",
+    "Socio-economic factor selection via R^2 of linear fits (drug-report trend vs. each Census factor) aggregated by median R^2 across counties; distribution-shape diagnostic (skewed-to-±1 = predictive, near-uniform = not)",
+    "Multivariate / polynomial regression adjustment: Total Drug Reports_i = m1·y + m2·x1 + ... + m_{n+1}·x_n, then m_{i,y} = m1 + sum m_k·(dx_k/dt)(y), replacing the simple trend slope with a factor-conditioned slope",
+    "Baseline-comparison validation framework: 'next year = this year' naive predictor as baseline, scored by best-fit slope vs. the y=x line and by sum of residuals to that line"
+  ],
+  "key_techniques": [
+    "Cross-domain analogy as the modeling backbone: borrowing Newtonian gravity to formalize spatial drug-use spread, with a literature citation (Chen) to defend the inverse-square (power-law) choice over exponential decay",
+    "Density normalization: dividing reports by county area so urban/rural counties are comparable, and using the median/current influence ratio (μ_I / I_i) so large counties are correctly modeled as less perturbable than small ones",
+    "Recency weighting via (year−2009)^2 weights — a cheap, defensible way to emphasize the latest trend without discarding history",
+    "Rigorous, honest validation: 1-step-ahead prediction (2014→2015) AND 4-step compounding prediction (2013→2017), each benchmarked against a naive baseline with two quantitative metrics (slope and residual sum)",
+    "Reporting effect sizes relative to the achievable ceiling (model improved slope by 0.0014 out of a maximum-possible 0.0738) — a sophisticated, transparent framing of a small gain",
+    "Feature selection by median-R^2 plus distribution-shape inspection, then deliberately keeping only the single best factor (HC01_VC117, >1-year residency) because adding more hurt the fit",
+    "Sensitivity analysis by perturbing inputs (doubling 2015 reports; doubling 2014+2015; doubling the residency factor) and reporting resulting slope/residual changes to characterize robustness",
+    "Actionable instantiation of abstract outputs: turning G_d into a named origin county and named drug, and turning the threshold into a dated table of future at-risk counties (Table 2)",
+    "Strong problem-to-policy closure: mapping the top correlated factors (veterans, residency, associate's degrees) to concrete interventions (recovery courses for veterans, incentives to pursue 4-year degrees, Chinese needle-exchange/methadone precedent)"
+  ],
+  "why_it_won": "From a judge's view this paper wins on the three things Problem-C data papers are scored on: (1) a genuinely original, well-motivated mechanism — the gravity/distance-decay spread model is intuitive, physically analogized, AND backed by real spatial-geography and epidemiology citations rather than asserted; (2) honest, multi-pronged validation — it builds an explicit naive baseline, tests both 1-step and compounding 4-step forecasts, uses two metrics, and reports its gains candidly (even admitting they are 'only marginally better' in some years and framing them against the achievable maximum), which signals integrity judges reward; and (3) full coverage of every sub-question with concrete deliverables — origin identification (Erie County / 3-Methylfentanyl), a scaled per-county threshold with a dated forecast table, a data-driven socio-economic adjustment that measurably cut residuals 12.2%, and a costed policy strategy. It reads as a complete, self-aware analysis that does what the prompt asks and knows its own limits.",
+  "section_highlights": "Structure follows the canonical MCM arc and uses it well. The summary sheet is dense and quantitative (names the three modeling factors, the 12.2% residual reduction, the six threshold-crossing counties). Strong domain Background (opioid classes, MME conversion factors, addiction causes) earns credibility before any math. A clean Nomenclature table precedes equations so notation never surprises the reader. Model Development builds incrementally: influence factor → Haversine distance → external potential → trend slope → combined ΔDrug equation, each step motivated before stated. Validation and Sensitivity Analysis are their own first-class sections with figures and explicit baselines (Figures 2,3,9,10). Results is split cleanly into the three problem parts. A standout rhetorical move is the DEA memo (Section 9) written in real administrator-facing voice with Insights/Results/Recommendations bullets and even a team logo ('Modelers Countering Methylfentanyl') — exactly the deliverable the prompt requested. Explicit Strengths/Weaknesses lists close the loop with self-critique.",
+  "pitfalls_or_limitations": [
+    "Several reproduced figures are clearly corrupted/placeholder in the markdown (perfect y=x scatterplots, linear 0–25000 'predicted' columns), so the visual evidence as transcribed does not actually demonstrate the claimed fits — the real paper's figures presumably did, but it highlights fragility of figure-dependent claims",
+    "The headline gains are small and the paper says so: the unadjusted model improved the 2015 slope by only 0.0014 (1.9%) and residuals by 3.94% over the naive 'last year' baseline — a gravity model that barely beats persistence is a weak mechanism, even if honestly reported",
+    "Border-county leakage: only 5 states are modeled, so counties near the boundary have systematically understated external influence (acknowledged but not corrected, e.g. via buffering or edge weighting)",
+    "Causation overreach in policy: correlations between drug trends and veteran status / associate's-degree counts / >1-year residency are treated as actionable levers, but high R^2 of a factor's time-trend vs. the drug time-trend can be spurious (both are just trending over 8 yearly points)",
+    "Tiny temporal sample: only 8 annual points (fewer per county), fit with quadratic weights and then multivariate regression — high risk of overfitting and unstable slopes, especially for low-count drug-specific breakdowns",
+    "The threshold is defined on 2017 influence percentiles but then the simulation never lets any county drop below it, which the team frames as 'understandable' but is partly baked into the monotonic trend assumption",
+    "Several assumptions are strong and only lightly defended: 'no new drugs introduced,' 'reports represent actual usage,' 'rural more susceptible than urban' — each materially drives results",
+    "Numerous typos and grammar slips in the prose ('Cuyajoga,' 'modele,' 'opporitunities,' 'must changes into') — not fatal for an O-award but a polish gap"
+  ],
+  "reusable_patterns": [
+    "Gravity / inverse-square spatial-interaction model as a default template for any 'spread between geographic units' Problem-C task — define a per-unit intensity (here density = count/area), weight neighbors by 1/r^2, and add a self-trend term",
+    "Use Haversine + FIPS/lat-long centroids whenever county/zip geography is provided; it's a quick, defensible distance backbone",
+    "Recency-weighted regression (weight = (year − baseline)^2) for short time series where recent trend matters more than old data",
+    "Always build an explicit naive baseline ('next = current') and beat it on two metrics (fit slope to y=x and sum of residuals) — this is a clean, judge-pleasing validation pattern that quantifies value-add",
+    "Report improvements against the achievable ceiling (gain / (1 − baseline)) to honestly contextualize small effect sizes",
+    "Feature selection by aggregating per-unit R^2 (median across counties) plus inspecting the distribution shape, then keeping the minimal factor set that actually improves held-out residuals",
+    "Multi-step compounding forecast test (predict N years out, feeding each prediction forward) to expose error accumulation and demonstrate the model still beats baseline",
+    "Convert abstract scores into named, dated, decision-ready artifacts: an origin county+drug, a percentile threshold, and a year-by-year at-risk-county table",
+    "Close with a stakeholder-voiced memo (Insights / Results / Recommendations) plus explicit Strengths and Weaknesses lists — directly satisfies the deliverable and demonstrates self-awareness",
+    "Anchor each modeling choice to a cited reference (Chen for distance-decay, Tarwater & Martin for density-driven spread) to convert assertions into defended decisions"
+  ]
+}

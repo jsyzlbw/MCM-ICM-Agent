@@ -1,0 +1,48 @@
+{
+  "paper_id": "2018-81402",
+  "year": 2018,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2018 MCM/ICM Problem D (operations research) on electric-vehicle charging-network buildout. The team tackled all five sub-tasks: (1) size and locate Tesla chargers to support an all-electric U.S. (and replicate for South Korea); (2) reason about the charger-vs-vehicle \"chicken-and-egg\" growth dilemma and forecast a blank market's adoption timeline; (3) judge transferability of the approach across countries; (4) speculate on future energy/technology; (5) deliver a policy handout. Their core contribution is reformulating a large facility-location/maximal-coverage problem as a min-cost max-flow network and solving it at national scale (4,295 nodes), then bolting on Bass diffusion for adoption forecasting and a Nash-equilibrium \"best ratio\" rule for investment balance.",
+  "models_used": [
+    "Location & Allocation Optimization Model: a Linear Program for the Maximal Covering Location Problem (Church & ReVelle 1974), with demand-satisfaction constraints, a long-distance fraction alpha, a per-node capacity cap maxC, and a min-distance minD coupling term",
+    "Min-Cost Max-Flow reformulation: the LP is rebuilt as an equivalent network-flow problem (source S, sink T, three node-copies va/vb/vc per location) and solved exactly with Google OR-Tools SimpleMinCostFlow (pywrapgraph) instead of Simplex",
+    "Shortest Path Model: graph over 4,295 nodes (892 superchargers + 3,048 destination chargers + 497 cities/clusters) with edges where geodesic distance <= maxD (170 mi = supercharger 30-min range); shortest paths via Dijkstra and SPFA (queue-based)",
+    "Demand Estimation Model: macro-scale parsimonious estimator splitting Average Miles Driven by state into urban/suburban/rural shares using population, land area (urbanization), and a 26%/53%/21% population split; demand expressed in miles per node",
+    "Best Profit Strategy Model: a 2x2 Nash-equilibrium game (Nash 1951) over charger-ratio P vs standard ratio P0, with expectation payoffs EX1..EX4, solving for the mixed-strategy equilibrium ratio (calibrated P0 = 0.275)",
+    "System Dynamics (qualitative): positive-feedback causal loop between EV count and charger count, used to argue mutual reinforcement (no quantitative simulation)",
+    "Market Evolution Model: Bass Diffusion Model (Norton & Bass 1987) fit to Tesla (US) and South Korea EV sales to forecast the S-curve adoption timeline (p innovation, q imitation; closed-form F(t), f(t), peak at t*=(1/b)ln a)",
+    "Classification Model: Multiple Linear Regression with 7 normalized factors (GDP/capita, PPI, Gini, road-network miles, vehicles/capita, oil price, urbanization) to weight country readiness"
+  ],
+  "key_techniques": [
+    "Reducing an intractable national-scale LP (>|V|^2 variables, infeasible for Simplex) to an equivalent min-cost max-flow instance solvable in polynomial time with a stock OR-Tools solver — the single most important modeling move",
+    "Real geocoding pipeline: scraping Tesla.com address/zip data and converting to lat/long via Google Geocode API, then computing distances on a spherical earth (radius 6,378 km) — grounding the model in real coordinates rather than synthetic points",
+    "Three-copy node gadget (va = long-distance demand source, vb = local demand source, vc = capacity sink) to encode the alpha-split and minD constraints inside a flow network",
+    "Integerization/scaling trick in code: demand divided by an annual mileage base (365*24*340*1.609) and +1/+2 offsets to convert continuous demand into integer supplies the flow solver accepts",
+    "Calibrating the Nash standard ratio P0 = 0.275 empirically from 2012-2017 Korea EV-vs-charger data rather than asserting it",
+    "Reusing the entire US pipeline for South Korea by rescaling demand by the vehicles-per-capita ratio (Korea/US) — cheap transfer to the second required country",
+    "Heavy use of authoritative citations (Church-ReVelle, Dijkstra, Bass, Nash, Hillier OR text) to legitimize each model choice"
+  ],
+  "why_it_won": "\"From a judge's view, this paper wins on engineering credibility and breadth executed at scale, not on polish. Three things stand out: (1) It solves the hard part honestly — it recognizes the LP is computationally infeasible at 4,295 nodes and provides a correct, exactly-equivalent min-cost max-flow reformulation, then actually runs it in OR-Tools and reports concrete numbers (873,869 US superchargers, 56,953 for Korea, per-city tables). That demonstrates real OR maturity most teams fake. (2) It spans every sub-task with a named, cited model each (coverage LP, Dijkstra/SPFA, demand estimator, Nash game, Bass diffusion, multiple regression) — judges reward complete, model-per-task coverage. (3) It works with real scraped/geocoded data and includes runnable appendix code, signaling the results are reproducible rather than hand-waved. The interdisciplinary framing (network science + OR + economics + game theory) plus map/contour/timeline visualizations gave it the ambitious, well-rounded feel O-papers need. It won despite weak prose and shaky later tasks because the technical spine (Task 1) is genuinely strong and verifiable.\"",
+  "section_highlights": "\"Strongest writing/structure choices: a clear 3-facet outline (mapping / time-domain forecast / classification) stated up front and carried through every task; an explicit Assumptions section enumerating scope cuts (no altitude, no traffic, exclude AK/HI/PR, supercharger-replaces-charger simplification); a dedicated 'Dataset & Toolkit' section listing every data source and tool, which buys reproducibility credibility; full math notation tables under each model so every symbol (di, ci, yij, alpha, maxC, minD) is defined; results delivered as concrete artifacts — distribution maps, connection graphs, contour plots, per-city supercharger tables (Table 3, 5), urban/suburban/rural split (Table 4), and an adoption-year table (Table 7). The summary sheet also previews the whole solution path and candidly flags strengths/weaknesses. The reference list is genuinely academic (30 sources, seminal OR/diffusion papers).\"",
+  "pitfalls_or_limitations": [
+    "No sensitivity analysis whatsoever — the team explicitly admits 'lack of sensitivity modification'; key parameters (alpha=0.25, maxC=50000, P0=0.275, minD) are fixed with no robustness check",
+    "Distances use straight-line geodesic (great-circle) distance, not road distance; assumptions even drop altitude and traffic, so 'shortest path' overstates real reachability",
+    "Internal inconsistency / sloppiness: node count quoted as 4,295 / 4,297 / 4,296 in different places; minD set to 170 mi in text but minD=500 in the LP code; the Nash payoff equations EX1 and EX2 are written identically (likely a typo), undermining the game-theory derivation",
+    "The Best Profit / Nash model is thin and under-justified — payoffs are asserted, the 2x2 tables are hand-built, and P0=0.275 is back-fit to one country's data then reused globally",
+    "Demand model is very coarse (national AMD split by a fixed 26/53/21 population ratio, circular urban/suburban zones) and ignores demand growth, home charging, and charger-vs-supercharger capacity differences",
+    "Tasks 3-5 degrade sharply in rigor: Task 3 regression is barely specified and the team says it has 'little confidence'; Tasks 4-5 are essentially free-form essay/handout with no modeling",
+    "Prose quality is poor throughout (grammar errors, run-on sentences) — the paper won on engineering, not writing",
+    "Bass diffusion is fit to very short series (2012 onward) and ignores competition, so the precise adoption-year forecasts (10% by 2026 ... 99.9% by 2036) are overstated as point predictions"
+  ],
+  "reusable_patterns": [
+    "LP-to-network-flow reduction: when a facility-location / coverage / assignment LP blows up past Simplex's reach, check whether it has a min-cost max-flow equivalent and solve exactly with OR-Tools SimpleMinCostFlow — far more scalable and judge-impressive than a heuristic",
+    "Node-gadget pattern: split each location into demand-source and capacity-sink copies (and a second source copy for a special class of demand) to encode side-constraints like a long-distance fraction or minimum-separation directly in flow edges",
+    "Real-data grounding pipeline: scrape addresses -> geocode to lat/long -> compute great-circle distances -> build a proximity graph -> run shortest paths; gives concrete, reproducible inputs and a Dataset/Toolkit section that earns credibility",
+    "Integerization recipe for flow solvers: scale continuous demand by a physical base rate and add small +1/+2 offsets so a min-cost-flow solver that needs integer supplies still respects the original demands",
+    "Model-per-task scaffolding: open with a numbered facet outline, give each sub-task one named-and-cited model, define all notation in a table, and close with map/table artifacts — a reliable structure for full-coverage MCM papers",
+    "Cheap second-country transfer: rescale the primary country's demand by a single ratio (e.g. vehicles-per-capita) to satisfy a 'apply to another country' requirement without re-modeling",
+    "Empirical calibration of a strategy threshold: derive a decision ratio (here charger:EV = 0.275) by regressing on a country's historical adoption data rather than asserting it",
+    "Pairing an optimization model (where to build) with a diffusion model (when adoption happens) to answer both spatial and temporal halves of an infrastructure problem"
+  ]
+}

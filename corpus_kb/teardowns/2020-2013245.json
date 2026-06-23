@@ -1,0 +1,47 @@
+{
+  "paper_id": "2020-2013245",
+  "year": 2020,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2020 MCM/ICM Problem D (operations research / sports analytics): given event-and-passing data for the \"Huskies\" soccer team across 38 matches, build a passing network, identify what drives team success beyond wins/goals, and advise the coach on structural/strategic improvements, then generalize the framework to team design in other domains. This paper attacks it by (1) building a directed weighted passing network, (2) mining recurring \"cooperation structures\" (short multi-pass motifs) via clustering, and (3) introducing a Sliding Window Model to track network performance metrics over match time and locate \"highlight\" periods.",
+  "models_used": [
+    "Directed weighted ball-flow network (nodes = players, arcs = passes, node size proportional to degree, edge width proportional to successful-pass count)",
+    "Cooperation-structure extraction: selected all passing 'accesses' with passes > 5 (1352 accesses, 1345 after removing 7 outliers), each described by a 6-D feature vector [X-bar, Y-bar, avg passing distance sqrt(dx^2+dy^2), rho=passes, N=number of passers, T-bar=avg passing time]",
+    "Hierarchical agglomerative clustering with Average-Linkage and Euclidean (2-norm) distance to group cooperation structures into 6 types; noted O(m^2 log m) time / O(m^2) space complexity",
+    "Principal Component Analysis (PCA) for dimensionality reduction to 2 components retaining 95% variance (PCA1 52.12%, PCA2 40.91%) to visualize clusters",
+    "Sliding Window Model: 900-second (15-min, 1/3 of a half) window sliding along the game timeline; events enter on the right and obsolete events are discarded on the left, yielding a dynamically changing graph at each timestamp (implemented with front/rear pointers over time-sorted events)",
+    "Average Node Connectivity metric: mean over all vertex pairs of max internally-disjoint paths, computed via maximum flow using the Edmonds-Karp algorithm (nx.average_node_connectivity)",
+    "Transitivity metric defined as #triangles + #triads in the instantaneous passing network (motivated by ~60% of goals arising from 3-player local cooperation)",
+    "Network/triadic-motif analysis to name 6 interpretable tactical structures: Winger Machine Gun, Sidewalk Tiger, Defensive Shield, Absolute Suppress, Midfield Overall Planning, Backfield Location Adjustment"
+  ],
+  "key_techniques": [
+    "Feature-vector engineering that fuses spatial (centroid X,Y; passing distance), structural (pass count rho, passer count N) and temporal (avg pass time) attributes into one comparable unit per cooperation structure",
+    "Unsupervised motif discovery: clustering + PCA lets the data itself reveal a small set (6) of recurring, human-interpretable tactical patterns rather than imposing them a priori",
+    "Temporal localization via sliding window: converts whole-match aggregate metrics into time-resolved curves so 'highlight' periods can be pinpointed and back-traced to concrete event data",
+    "Train/test split for generalization claim: model built on half of the 38 matches, the other half used to check universality of the indicators",
+    "Graph-theoretic performance proxies grounded in domain logic (connectivity = breadth of player involvement / anti-star-dependence; transitivity = tactical flexibility via 3-player play)",
+    "Comparative diagnostics: differencing Huskies' structure-usage frequency against opponents both overall and during highlight windows to isolate strengths (e.g. structure 5 Defensive Shield +17% in highlight periods)",
+    "Threat modeling: flagging the 'Absolute Suppress' opponent structure (appears only 7 times, near-total ball control) as a specific danger pattern with match evidence (match 32 vs Opponent 2)"
+  ],
+  "why_it_won": "\"Judges reward a genuinely original, named mechanism, and the Sliding Window Model is exactly that: it reframes a hard problem (how do you measure team quality when scores are confounded by opponent strength?) into a tractable time-resolved analysis, and the paper sells it with an intuitive 'panning across a wide photo' metaphor. The work pairs this novelty with rigor judges look for: well-motivated graph metrics (Edmonds-Karp connectivity, triangle+triad transitivity tied to the real stat that 60% of goals come from 3-player cooperation), data-driven motif discovery that yields six vividly named, coach-actionable tactics, and a train-on-half/validate-on-half universality check. Crucially it closes the loop to concrete advice (counter-attack/long-ball, exploit Sidewalk Tiger, adopt 4-4-2, beware Absolute Suppress) backed by evidence, and answers the generalization sub-question with a research-team analogy. The full Python/networkx appendix shows the analysis is real and reproducible, not hand-waved.\"",
+  "section_highlights": "\"Strong global-to-local narrative arc: global season network -> local cooperation structures -> time-localized sliding-window performance -> strategic advice -> cross-domain generalization. Each model section states a clear motivation before the math (e.g. why >5 passes, why a 900s window = 15 min when players warm up after ~15 min). The six cooperation structures each get their own subsection with a memorable name, a network diagram, a concrete match/time citation (Match ID, Event Time), and a tactical interpretation, which makes abstract motifs feel concrete and coachable. Performance metrics are each given a domain justification, not just a formula. The advice section is explicitly evidence-linked to the highlight-frequency bar charts, and a standout 'Warning on Special Opponent' subsection turns a failure case into actionable insight. A real networkx implementation is appended. Weaknesses are honestly acknowledged (high time complexity, window-edge distortion).\"",
+  "pitfalls_or_limitations": [
+    "Heavy reliance on undefined/loosely defined terms: a 'cooperation structure' / 'access' is never crisply formalized (how a continuous passing chain is segmented into a unit is hand-waved), making reproduction hard",
+    "English/writing is rough throughout (grammatical errors, typos like 'Huxkies', 'shot' for 'shoot'), and several figures are essentially unreadable as rendered (clustermap, PCA scatter, distribution plots have placeholder or garbled data) — the substantive claims rest on charts a reader cannot verify",
+    "Appendix code is buggy and inconsistent (mixed Python/C brace syntax `if(...){`, a malformed `data['EventTime'][(... == '2H'])` selector, commented-out transitivity computation so only ANC is actually returned), undermining the reproducibility it tries to demonstrate",
+    "Self-acknowledged window-edge distortion and high O(m^2 log m)/O(m^2) complexity limit scaling; recomputing average_node_connectivity (max-flow over all pairs) at every event is expensive and not addressed",
+    "Validation is weak: 'universality' is asserted from a half-season split but no quantitative out-of-sample metric (accuracy, correlation with results) is reported — conclusions are largely qualitative chart-reading",
+    "Performance indicators (ANC, transitivity) are never statistically linked to actual match outcomes/goals; the connection to winning is argued anecdotally (one 2:0, one loss) rather than across all matches",
+    "Assumptions are simplistic (all players equal skill, tactics perfectly executed, results perfectly fair) and not stress-tested"
+  ],
+  "reusable_patterns": [
+    "Sliding-window-over-a-dynamic-graph pattern: maintain a fixed time-width window with front/rear pointers, incrementally add/evict edges, and recompute a graph metric per step to turn any aggregate KPI into a time series that localizes 'highlight' events — transferable to any temporal interaction-network problem (logistics, comms, finance)",
+    "Motif/feature-vector + hierarchical clustering + PCA pipeline to discover a small set of interpretable recurring substructures from messy interaction data, then name them for stakeholder communication",
+    "Encode each candidate substructure as a unified spatial+structural+temporal feature vector so heterogeneous attributes become directly clusterable",
+    "Graph-theoretic KPIs as success proxies: average node connectivity (via max-flow / Edmonds-Karp) for participation breadth and triangle+triad transitivity for local-cooperation flexibility — reusable for any 'team effectiveness' question",
+    "Comparative differencing of behavior frequency (self vs others, overall vs highlight periods) to isolate distinctive strengths and prescribe strategy",
+    "Train-on-subset / validate-on-remainder framing to support a 'generalizability' claim required by MCM sub-questions",
+    "Explicit cross-domain transfer section (soccer passes -> research-group shared documents) to answer 'generalize your model' prompts",
+    "Memorable naming of technical artifacts (the 'Sliding Window Model'; six named tactics) and an everyday metaphor to make a novel method stick with judges"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "paper_id": "2024-2400860",
+  "year": 2024,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2024 MCM/ICM Problem E (sustainability/property insurance under extreme weather). The team had to (1) build a model to help insurance companies decide whether and at what price to underwrite property insurance in weather-exposed regions, (2) build a model for community leaders to decide which significant buildings to preserve and how, and (3) apply both to specific regions and a chosen historic landmark, with strategy recommendations. This paper (Team #2400860) answers it with a two-model architecture: a Risk Analysis + Risk-incorporated CAPM insurance-pricing/decision model, and a CRITIC+AHP Building Preservation Model, applied to Los Angeles, Gorontalo (Indonesia), and Tokyo Tower.",
+  "models_used": [
+    "FEMA National Risk Index framework reproduced from first principles: Expected Annual Loss EAL = Exposure x Annualized Frequency x Historic Loss Ratio (HLR), summed over Population/Building/Agriculture and over 18 hazard types into a Composite EAL, then percentile-ranked into an EAL Score",
+    "Community Risk Factor CRF = f(SV/CR) modeled as a triangular distribution (min 0.5, max 2, mode 1), where SV = SoVI social-vulnerability index and CR = HVRI BRIC community-resilience index",
+    "Risk = Likelihood x Consequence, operationalized as R_value = EAL_value x CRF and R_score = EAL_score x CRF",
+    "K-means clustering to bin counties/regions into 5 risk classes (Very Low to High) for a U.S. risk-level map",
+    "Risk-incorporated Capital Asset Pricing Model (CAPM): standard CAPM reward-to-risk identity and beta = Cov(Ri,Rm)/Var(Rm), extended into an insurance surcharge-rate formula x and a pure premium per $10,000 = 10000(1+x)P",
+    "Bankruptcy / ruin theory constraint: solve for the minimum premium y10 that keeps the firm's insolvency probability below 10%, using ROI and Var(ROI) integrals over a loss distribution f(p)",
+    "Affordability rule tying premium to local GNI per capita (willing-to-pay assumed at 5% of per-capita disposable income / 3-10% of income band)",
+    "Demand-response and revenue optimization: N = (1 - omega*y)N_A, Total Revenue = y*N, maximized subject to constraints 0<omega*y<1, y>=y10, y<=0.05*GNI",
+    "Building Preservation Model: 7 secondary indicators (NG Google search terms, P community participation, ANV annual visitors, LV land value, CC construction cost, NH historical documents, DP degree of preservation) under 3 primary indicators (Cultural/Community, Economy, History)",
+    "CRITIC objective weighting using contrast intensity (std dev) x conflict, with Spearman rank-correlation coefficient used for the conflict term (the paper's 'Sperman-CRITIC')",
+    "AHP (Analytic Hierarchy Process) judgment matrix for the 3 primary-indicator weights theta=(0.4432,0.3873,0.1694), with consistency ratio CR=0.0176 reported as acceptable",
+    "Preservation-priority score M_score = V_score x R_score, thresholded into Low/Medium/High protection tiers"
+  ],
+  "key_techniques": [
+    "Reusing an authoritative real-world framework (FEMA National Risk Index) as the modeling skeleton rather than inventing risk math from scratch, lending instant credibility and giving a clear data path",
+    "Decomposing risk into named, interpretable components: a hazard-risk component (EAL), a consequence-enhancing component (SV), and a consequence-reducing component (CR) inside CRF",
+    "Bridging two disciplines: importing finance's CAPM and ruin/bankruptcy theory into actuarial catastrophe pricing, then turning a 10% bankruptcy ceiling into a hard pricing constraint",
+    "Turning the abstract 'should we underwrite?' question into a constrained revenue-maximization with three crisp inequalities (insolvency floor, affordability ceiling, demand factor)",
+    "Hybrid weighting: objective CRITIC for the 7 second-level indicators (data-driven, hard to game) combined with subjective AHP for the 3 top-level indicators (captures expert judgment) — objective-where-data-exists, subjective-where-it-doesn't",
+    "Composing the two models multiplicatively (M_score = V_score x R_score) so value and risk jointly drive preservation priority",
+    "Concrete, numeric end-to-end worked examples (Gorontalo $342.745 required vs $137.25 affordable -> don't underwrite; LA optimal ~$2,500/$10k -> ~1.92M buyers -> ~$4.5B revenue) that make the model auditable",
+    "Sensitivity analysis by stress-testing the market-return parameter r_m downward in 5% steps (worst-case framing), and robustness by perturbing R_value by 5% on randomly sampled counties and checking class stability"
+  ],
+  "why_it_won": "\"It answers the actual decision the problem asks for — not just 'compute a risk number' but 'should the insurer underwrite here, at what price, and is it affordable?' — and produces an unambiguous go/no-go with dollar figures. The Risk-incorporated CAPM is genuinely novel: judges reward teams that synthesize a recognized model (CAPM + ruin theory) into the catastrophe-insurance domain rather than applying a textbook method off-the-shelf. The FEMA-NRI-grounded risk layer gives defensible, sourced inputs (SoVI, BRIC, real exposure/frequency/HLR data) instead of fabricated parameters. The two contrasting case studies (high-income high-risk LA = underwrite; low-income high-risk Gorontalo = don't, then a securitization+government-subsidy fix that flips it to viable) demonstrate the model discriminates between cases and yields actionable policy — exactly the 'sustainability' and decision-support flavor Problem E rewards. The second model cleanly reuses outputs of the first (R_score feeds M_score), giving a coherent integrated system, and the deliverable letter to the Tokyo Tower community closes the loop the problem demanded.\"",
+  "section_highlights": "\"Summary page front-loads every result with hard numbers (Gorontalo $342.745 required vs $137.25 affordable; mitigation -> $137.25 paid, $245M revenue; LA high-profit) so a judge knows the conclusions in 30 seconds. A full-system flowchart (Figure 1) maps both models and the case study up front. Notations table and an explicit Assumptions-with-Justifications section establish rigor early. Each model section moves cleanly from indicator selection -> formula -> data -> worked numeric result. Two deliberately contrasting case geographies make the analysis feel real. The revenue-vs-premium curve (rises then falls) is used to motivate the interior optimum intuitively (too cheap = bankruptcy risk + thin margins; too dear = demand collapse). Sensitivity and robustness each get their own figure. The mandated deliverable — a letter to the Tokyo Tower community with a 5-year plan and ~$320,000/yr budget — is included, plus a transparent Report on Use of AI.\"",
+  "pitfalls_or_limitations": [
+    "Severe OCR/rendering corruption in the risk-map heatmap (Figure 3a lists nearly every state as 'Very High' and degenerates into repeated 'NM/NY/NH/NJ Not Applicable' rows) — the actual K-means risk map is not legibly conveyed in this markdown, and the underlying clustering results are never tabulated",
+    "The robustness 'scatterplot' (Figure 11) is just a y=x identity line (0..100), which does not actually demonstrate class stability under perturbation — the evidence is weaker than the claim",
+    "K-means is called the 'K-algorithm' and is used to bin a 1-D risk score into 5 classes, where simple quantile/percentile thresholds would be equivalent and more defensible; clustering adds little and k=5 is unjustified",
+    "Many parameters are asserted, not estimated: willingness-to-pay fixed at 5% of GNI, 10% bankruptcy ceiling, triangular CRF (0.5/1/2), and the AHP judgment matrix entries — limited justification for these critical levers",
+    "Weaknesses section is thin and partly evasive (spins 'high data dependency' as a virtue) and only sensitivity-tests one parameter (r_m, downward only); CRF distribution, the 5%/10% thresholds, and AHP weights are never sensitivity-tested",
+    "Internal inconsistencies: Table 4 lists ANV weight as 0.3873 (equal to the Economy primary weight) which looks like a copy error, and the three CRITIC sub-weights for the Cultural cluster don't read cleanly; the Gorontalo narrative quotes both $342.745 and later $295.09 as 'the lowest premium' without fully reconciling them",
+    "Building-value indicators like 'Number of Google search terms' (NG) are not normalized for language/time and are easy to manipulate; P (community participation) requires per-event data that is essentially unobtainable at scale",
+    "English is non-native throughout with grammar errors and duplicated sentences (e.g., the level-premium paragraph), and one equation (5) defines EAL Score in terms of itself — a typo that survived to the final draft"
+  ],
+  "reusable_patterns": [
+    "Anchor the risk layer to an authoritative public framework (here FEMA National Risk Index: EAL x social-vulnerability/resilience) — instant credibility plus a real data trail; reuse for any hazard/exposure problem",
+    "Express a 'should we / at what price' question as a constrained optimization with a viability floor (insolvency<10%), an affordability ceiling (<=5% of income), and a demand-response term — a transferable template for any pricing/underwriting/market-entry decision",
+    "Import CAPM + ruin theory to price tail risk: surcharge rate x as a function of beta/correlation, pure premium = base x (1+x) x P(disaster) — directly reusable for insurance, bonding, or any risk-loaded pricing",
+    "Hybrid weighting recipe: CRITIC (objective, std-dev x conflict via Spearman) for low-level data-rich indicators + AHP (subjective judgment matrix with reported consistency ratio) for high-level indicators — a clean general multi-criteria evaluation engine",
+    "Chain two models multiplicatively so one's output feeds the other: risk_score (model 1) x value_score (model 2) = priority_score, then threshold into Low/Med/High action tiers — a reusable 'prioritization' pattern",
+    "Pick two deliberately contrasting case instances (rich/high-risk vs poor/high-risk) so the model is shown to discriminate and to produce different recommendations — far more persuasive than one example",
+    "Front-load the summary with concrete dollar/quantity results and a whole-system flowchart; pair sensitivity (stress one parameter toward worst case) with robustness (perturb inputs, check output-class stability) as standard closing sections",
+    "Convert model output into the mandated communication deliverable (a letter with timeline and budget) to explicitly satisfy the problem's audience requirement"
+  ]
+}

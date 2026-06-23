@@ -1,0 +1,57 @@
+{
+  "paper_id": "2019-1901213",
+  "year": 2019,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2019 MCM Problem C (data): given NFLIS drug-report counts and US Census socioeconomic data for all counties in 5 Appalachian states (OH, KY, PA, VA, WV) over 2010-2016, model the spread of synthetic opioid and heroin use, identify likely origin/epicenter counties, find counties prone to abuse via socioeconomic factors, and propose a strategy with parameter sensitivity. Team 1901213 (\"Take Me Home\") framed opioid addiction as a contagious disease and built a spatiotemporal propagation model plus a socioeconomic model, combining them to locate epicenters, vulnerable counties, and intervention levers.",
+  "models_used": [
+    "Disease/epidemic analogy: each drug report treated as an 'infected individual', county opioid level = 'health'",
+    "External propagation model: discrete-time linear dynamical system x_{t+1} = Q A x_t (the core, winning model)",
+    "Second-order Markov state encoding: x_t = 2 n_t - n_{t-1} (level + last-year trend), n_t = drug reports per capita",
+    "Distance-weighted modified adjacency matrix A: a_{ij}=1/distance(i,j) off-diagonal, 1 on diagonal (inverse-distance gravity-style coupling)",
+    "Transition matrix Q estimated by least-squares over all years: Q = argmin sum_t ||x_{t+1} - Q' A x_t||",
+    "Internal model 1 - linear regression: S_t beta_1 = x_t on top-30 socioeconomic features (least squares)",
+    "Internal model 2 - logistic regression classifier: p = 1/(1+e^{-S beta_2}) to flag infected counties",
+    "Pearson correlation feature selection: reduced ~149-152 census factors to top 30 by |correlation| with county health",
+    "Infection threshold delta = mean(n_2010) + std(n_2010) ≈ 0.0038 (top ~16% under normality assumption)",
+    "Convex-combination ensemble: x_{t+1} = theta*QA x_t + (1-theta)*S_{t+1} beta_1, theta swept 0->1",
+    "Two-stage risk-tiering model: cross-tabulate external vs internal infection predictions into high/medium/low risk",
+    "Epicenter scoring via element-wise (Hadamard) product Q∘A, column-summed to rank county influence"
+  ],
+  "key_techniques": [
+    "Reframing a messy public-health dataset as an epidemic so the whole problem decouples cleanly into 'external' (between-county spread) and 'internal' (within-county socioeconomics) sub-models",
+    "Encoding both level AND trend into the state vector (x_t = 2n_t - n_{t-1}) so a first-order-looking linear map x_{t+1}=QAx_t is actually second-order Markov / temporally aware",
+    "Inverse-distance adjacency to inject geography without needing a road network a priori - the model then 'discovered' interstate highways (I-75, I-64, I-79, US-23) emergently",
+    "Honest overfitting check: trained Q on 2010-2015 (MSE 2e-5) AND on only 2010-2011 then predicted 2012-2016 (MSE 8.42e-5) to prove generalization rather than report the flattering number",
+    "Hadamard product Q∘A then column-sum as an interpretable 'influence + proximity' epicenter ranking",
+    "Negative result reported transparently: linear socioeconomic model R^2=0.1296 and convex combo optimal at theta=1 (internal model contributes nothing), reasoned as 'socioeconomic signal already encoded in per-capita reports'",
+    "Class-imbalance diagnosis on the logistic classifier (87.98% accuracy but TPR only 3.57%) and lowering probability threshold to 0.1 to capture 70% of infected counties - shows ML literacy",
+    "Sensitivity analysis as intervention design: zeroing epicenter health (56->7 infected), border control via zeroing A/Q rows, halving specific census factors (veterans -> 0 infected; grandparents-with-grandchildren -> 56->6) directly seeds policy recommendations",
+    "Steady-state / long-horizon propagation (cured by 2025, converges to 2010 mean by 2038) to characterize the dynamical system's equilibrium"
+  ],
+  "why_it_won": "\"It chose ONE elegant, defensible core mechanism (a distance-weighted linear dynamical system x_{t+1}=QAx_t) and pushed it all the way through: prediction, epicenter identification, vulnerability, sensitivity, and policy. The model is simple enough to fully explain yet produced a striking emergent finding the judges could verify on a map - the identified epicenters lined up along four named interstates, which the team did NOT hand-feed the model. Crucially, the team was intellectually honest: they ran a proper hold-out generalization test, reported the socioeconomic model's failure (R^2=0.13, theta*=1) and reasoned about WHY instead of hiding it, and diagnosed their own classifier's class imbalance. Every parameter (Q, A, delta, theta, beta) maps to a real-world quantity, so sensitivity experiments became concrete, quantified policy levers (e.g. '90% of reports disappear in 6 years if epicenters cleaned in 2010'). The disease framing gave the whole paper a coherent narrative spine and an explicit generalizability claim. Strong closing artifacts (sensitivity-driven strategies + a specific DEA policy letter) connected math to actionable recommendations - exactly what Problem C rewards.\"",
+  "section_highlights": "\"Assumptions section (4.1-4.5) is exemplary: five assumptions each stated, justified, AND ordered by importance, including honest ones (all opioids same because per-drug data is sparse; data homogeneity because no way to correct it). The Nomenclature block before the Model section defines every symbol up front. Model section builds incrementally - defines 'health', then external model term-by-term (x_t, A, Q, estimating Q), then internal (linear + logistic), then two explicit combination strategies - so a reader never sees an equation before its motivation. Equation 1 uses an under-braced word equation (Future = Surrounding + Internal) to telegraph the decomposition before any math. The Strengths/Weaknesses section is unusually candid (5 specific weaknesses including the edge-county distance bias and the ignored opioid<->socioeconomic feedback loop). Sensitivity analysis doubles as policy discovery. The paper closes with a concrete, numbers-backed policy letter to the DEA. Figures show the infection spreading year-by-year on choropleth maps plus a dedicated epicenter map, giving visual proof the model behaves as claimed.\"",
+  "pitfalls_or_limitations": [
+    "The headline strength (socioeconomic model) is effectively a null result - the internal linear model has R^2=0.1296 and the convex combination optimizes at theta=1, meaning census factors add zero predictive value; the policy letter nonetheless leans heavily on socioeconomic interventions justified mainly by sensitivity sweeps, a logical gap between 'no predictive power' and 'change this factor to fix the crisis'",
+    "Q∘A epicenter score conflates incoming and outgoing influence (team admits this) - so 'epicenters' may be sinks, not sources; Mecklenburg VA appears as an epicenter despite low outward influence, flagged as a likely border-effect artifact",
+    "Edge-of-dataset counties get inflated influence because the model can't see counties outside the 5 states - a real boundary-condition bias only hand-waved as 'easily fixable'",
+    "Sensitivity experiments (e.g. 'halve veterans -> 0 infected counties', 'halve never-married -> 142 infected') are run on the discredited logistic model and treated as causal policy evidence, when they are really correlational perturbations of a poorly-calibrated classifier with severe class imbalance (TPR 3.57%)",
+    "The least-squares Q has no constraints (not a true stochastic matrix), risks overfitting an N x N matrix from very few time steps (only ~5-6 yearly transitions for N≈460 counties), and the tiny MSE (2e-5) is itself a red flag the team partly acknowledges",
+    "Threshold delta is a hard cutoff from a single year (2010) under a normality assumption that per-capita drug reports almost certainly violate (heavy-tailed)",
+    "Distance data is the 2010 county-centroid distance, static over the whole horizon, and inverse-distance with no decay-rate parameter is asserted rather than fit"
+  ],
+  "reusable_patterns": [
+    "Disease/contagion reframing of any spatial spread problem (drugs, rumors, defaults, adoption) to unlock the SIR/epidemiology toolkit and a built-in generalizability argument",
+    "State-vector trick: encode level + trend as x_t = 2n_t - n_{t-1} to make a higher-order process fit a clean first-order linear map x_{t+1} = M x_t",
+    "Inverse-distance (gravity-style) adjacency matrix to add geography to any cross-region coupling without needing an explicit network - then check whether real infrastructure emerges as validation",
+    "Estimate a coupling/transition matrix by least squares over time slices: Q = argmin sum_t ||x_{t+1} - Q' A x_t||",
+    "Hadamard product of an influence matrix and a proximity matrix, column-summed, as a transparent node-ranking / centrality score",
+    "Hold-out generalization test stated explicitly (train on first 2 years, predict the rest) and report BOTH the overfit and generalized error - judges trust honesty",
+    "Convex combination x = theta*A + (1-theta)*B with theta swept over [0,1] as a principled, one-parameter way to blend two competing models and let the data pick",
+    "Two-stage risk tiering: cross-tabulate two independent models' positive predictions into high/medium/low risk classes",
+    "Turn sensitivity analysis INTO the strategy: perturb each model parameter/feature, measure outcome, and map the most impactful perturbations directly to policy recommendations",
+    "Diagnose and report classifier class imbalance (accuracy vs TPR/TNR) and adjust the decision threshold rather than reporting raw accuracy",
+    "Order assumptions by importance and pair each with an explicit justification, including the inconvenient ones",
+    "Close a Problem C paper with a concrete, numbers-backed stakeholder letter that traces each recommendation to a quantified simulation result"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "paper_id": "2020-2002526",
+  "year": 2020,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2020 MCM/ICM Problem D (operations_research / sports analytics): using one season of the \"Huskies\" soccer team's data (38 games vs 19 opponents, 23,429 passes among 366 players, 59,271 match events), build a team passing network, define indicators that measure teamwork effectiveness, evaluate the network against those indicators, propose concrete coaching strategies to improve Huskies' play, and generalize the findings into a model of effective team cooperation beyond soccer.",
+  "models_used": [
+    "Social Network Analysis (SNA) of the passing network — directed, weighted graph with players as nodes; node position = player's average (x,y) court coordinate; edge weight = number of passes i->j",
+    "Weighted adjacency matrix A (a_ij = passes from player i to player j per match) as the core data structure",
+    "Network centroid (x0,y0) = pass-weighted average court position",
+    "Weighted centroid dispersion Cdw = pass-weighted standard deviation of player distances from centroid (their custom correction of standard centroid dispersion to weight bench players less) — used as aggregation index tp1",
+    "Maximum network radius r_m = max distance of any player from centroid — used as 'extension' index tp2",
+    "Core/Periphery analysis (via UCINET) to partition players into core vs periphery nodes",
+    "Network motif analysis: enumeration of the 13 distinct 3-node directed motif types (borrowed from biology/protein-structure motifs), counting motif frequencies per team per game (via R igraph graph.motifs)",
+    "Degree centrality of nodes (per-player pass involvement) for individual-network analysis",
+    "Pass timeline / dynamics curve (cumulative passes vs match time)",
+    "Multiple linear regression of goal difference on standardized indicators, estimated with Robust (heteroskedasticity-consistent) standard errors in Stata",
+    "Coefficient of Variation (CV) of per-player pass counts as a contribution-evenness indicator pi2",
+    "Correlation-coefficient screening and VIF (variance inflation factor) multicollinearity check"
+  ],
+  "key_techniques": [
+    "Three-level decomposition of the network: whole network (centroid, dispersion, radius, adjacency matrix), local network (core/periphery, motifs), individual network (degree centrality)",
+    "Engineering 7 candidate features in two families — 3 'performance indicators' (pi1 total passes, pi2 CV of contributions, pi3 midfielders/core-players pass-possession rate) and 4 'team-level processes' (tp1 aggregation=Cdw, tp2 extension=r_m, tp3 tempo=time to first 50 passes, tp4 connected-configuration ratio = freq(motif12+motif13)/total motif freq)",
+    "Choosing goal difference (Huskies score minus opponent) as the regression target instead of a win/loss dummy, deliberately to retain more information about outcome margin",
+    "Standardizing all variables to unit standard deviation before regression to remove dimensional effects",
+    "Two-stage feature screening: scatterplots drop pi2 and tp1 (no visible trend), then regression drops pi1 (counter-intuitive negative sign, treated as spurious correlation) and pi3 (p>0.9), leaving a parsimonious 3-variable model (tp2, tp3, tp4)",
+    "Defining the novel 'connected configuration ratio' tp4 from motif 12 and 13 (highest-connectivity 3-node motifs) as a proxy for flexible 3-player passing patterns",
+    "Using Robust SEs specifically to guard against heteroskedasticity in cross-sectional game data",
+    "Benchmarking Huskies on each surviving indicator against the other 19 teams (rankings out of 20) to turn coefficients into actionable diagnosis",
+    "Mapping each surviving statistical indicator to a concrete coaching strategy (tp4->3-player group drills, tp2->physical/conditioning training for court coverage, tp3->avoid fast opening tempo vs strong teams)",
+    "Generalizing the four indicators into abstract teamwork principles (frequent interaction, full task coverage/division of labor, gradual pacing, intra-subgroup communication) plus qualitative factors (collective consciousness, cores, trust)"
+  ],
+  "why_it_won": "The paper wins on a coherent, original feature-engineering narrative rather than heavy machinery. It takes a borrowed-but-uncommon idea (network motifs from biology) and turns it into a genuinely novel, well-motivated indicator (the connected-configuration ratio tp4), which gives judges something fresh and defensible. Crucially it closes the full ICM loop: it does not stop at descriptive network statistics but feeds engineered indicators into a statistically validated regression (F=13.05, p<0.0001, R^2=0.41, Root MSE~1.5, all three predictors passing t-tests at 95%, VIF confirming no multicollinearity), then translates each surviving, sign-correct coefficient into specific, intuitive coaching advice, and finally abstracts to a general teamwork model as the prompt demanded. The honesty of its modeling — discarding pi1 because its negative coefficient was 'inconsistent with actual significance' and re-examining it via correlation (r=0.32, weak positive) — signals statistical maturity that judges reward.",
+  "section_highlights": "Strong structural choices: (1) The three-tier network breakdown (whole/local/individual) gives the reader an explicit mental map before any math. (2) Clean separation of indicator DEFINITION (4.3) from indicator SCREENING/TESTING (4.4) makes the modeling pipeline legible. (3) The regression section shows its work transparently — two successive Stata regression tables, the explicit drop logic, and a VIF table — so the parsimonious final model feels earned, not asserted. (4) The Strengths/Weaknesses section is candid and specific (admits ignoring sub-game time scales, pass types like 'Free Kick'/'Duel', and home/away/coach effects). (5) Each strategy subsection (4.6.x) is anchored to a specific indicator and its ranking-vs-20-teams, so advice is data-backed. (6) A real, runnable appendix (MATLAB for adjacency matrix and pass-possession rate, R/igraph for motif frequencies, full standardized regression dataset) makes results reproducible.",
+  "pitfalls_or_limitations": [
+    "Final R^2 is only ~0.41 — the model explains under half the variance in goal difference, so its predictive claim ('can effectively predict the 38 matches') is overstated relative to the fit",
+    "Motif enumeration is internally inconsistent: the text and theory describe 13 motifs of SIZE-3 sub-networks, but the appendix R code calls graph.motifs(network, size=4) — a size-4 motif census, a likely error that undermines the headline tp4 indicator",
+    "Dropping pi1 (total passes) because its regression coefficient had an 'inconsistent' sign is a post-hoc rationalization; a negative sign more likely reflects confounding/omitted-variable bias and should have prompted a causal-design discussion, not deletion",
+    "n=38 games with up to 7 candidate predictors risks overfitting and unstable coefficients before screening; the screening itself was partly eyeballed from scatterplots",
+    "Indicators are computed only on SUCCESSFUL passes; intercepts, turnovers, fouls, and pass types are ignored, so the network omits exactly the defensive/transition information that drives many outcomes (the authors acknowledge this)",
+    "Home/away, substitutions beyond a crude pass<10 filter, and coaching changes are assumed away, weakening external validity",
+    "pi3 'pass-possession rate' relies on a hard-coded midfield definition (avg x in [40,60] in the MATLAB) that is brittle and pitch-orientation-dependent",
+    "The generalized teamwork model (4.7) is largely qualitative analogy (collective consciousness, trust) with no validation, so it reads as plausible storytelling rather than a derived result",
+    "Several rendered data tables/scatterplots in the source appear corrupted or duplicated (e.g., the tp2 scatter), making some numeric claims hard to audit"
+  ],
+  "reusable_patterns": [
+    "Two-family feature taxonomy: separate static 'performance indicators' (counts, ratios, dispersion) from dynamic 'process indicators' (tempo, time-to-threshold) — a clean way to organize engineered features for any team/system problem",
+    "Borrow a structural primitive from another field (network motifs from molecular biology) and define a single scalar summary statistic from it (ratio of high-connectivity motifs) as your signature original indicator",
+    "Use a continuous, information-rich target (goal DIFFERENCE) instead of a binary outcome whenever margin data exists",
+    "Standardize-then-screen-then-regress pipeline with explicit, documented drop criteria (scatter trend -> sign sanity -> p-value -> VIF) so reviewers can follow every elimination",
+    "Always estimate with robust/heteroskedasticity-consistent SEs for cross-sectional small-n regressions and report VIF to preempt multicollinearity objections",
+    "Convert each statistically significant coefficient into one concrete, named recommendation, and justify it with a benchmark ranking of your subject against all peers in the dataset",
+    "Three-level network analysis template (whole / local / individual) reusable for any relational/operations dataset",
+    "Ship a reproducible appendix with the actual MATLAB/R code and the standardized regression dataset — strong credibility signal to judges",
+    "When a predictor has a counter-intuitive sign, follow up with a simple correlation to characterize the raw relationship rather than silently dropping it (here r=0.32 rescued the narrative that passes still matter)",
+    "Close ICM problems by abstracting domain-specific results into a domain-general model as an explicit final section, mirroring the prompt's 'generalize' ask"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "paper_id": "2023-2300136",
+  "year": 2023,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2023 MCM Problem B (discrete) — \"Reimagining Ecosystem and Sustainability.\" Team #2300136 tackled the case of the Maasai Mara, Kenya: design a community-based wildlife preservation policy that balances wildlife protection against the interests of local residents and tourists, then predict long-term outcomes. The team reframed the open-ended ecosystem question into a concrete policy-optimization problem: split the preserve into 3 land-use zones, define 9 candidate policies (3 per zone), enumerate the 2^3 = 8 on/off combinations per zone, score every combination with a composite welfare metric over a 20-year horizon (2022–2041), and recommend the highest-scoring policy mix for each zone.",
+  "models_used": [
+    "Composite weighted-scoring evaluation model (\"net-work based model\"): 4 normalized sub-scores in [0,1] summed with zone-specific weights into one Final Score objective",
+    "Analytic Hierarchy Process (AHP) for the 4-section weights: pairwise-comparison matrices per zone, max-eigenvalue/eigenvector for weights, Consistency Ratio CR=CI/RI check (CRs 0.0612, 0.0223, 0.0301 all < 0.1, RI=0.90 for n=4)",
+    "Sigmoid (logistic) normalization functions to map raw wildlife populations and per-capita income into [0,1] scores",
+    "Shannon-Wiener index (H') and Simpson's index (D) for biodiversity, each renormalized into the wildlife sub-score",
+    "Logistic / Verhulst grassland growth ODE (Woodward-Wake multi-paddock discrete grazing model): dκ/dt = 4gbκ(1-bκ) - srκ, with stocking density s = (ηN+M)/A, η=2 grass-intake ratio",
+    "Water-stress model (Vörösmarty / Dessu): V_shortage = V_supply - V_demand, discretized into 4 stress levels (0-3) by demand-percentage thresholds, scored by frequency-weighted sum (0.6/0.3/0.1/0)",
+    "Probability of Interspecies Encounter (PIE) model (Berger-Cunningham): p ≈ 2·T·N/(T+N)^2, combined with species densities into tourist-impact (λ) and wildlife-impact (σ) factors",
+    "Exponential time-series regression (y = A·e^(-Bt)) for wildlife populations; linear regression for livestock, locals, and tourist populations",
+    "Stochastic simulation: Gaussian white-noise random residuals added to regression predictions to capture unobserved heterogeneity",
+    "Social discount rate (2%) applied to the financial/income sub-model for time value of money",
+    "Brute-force enumeration of 8 policy scenarios per zone (24 total trials) simulated in MATLAB"
+  ],
+  "key_techniques": [
+    "Problem decomposition by land-use zoning: split one preserve into WPZ / HSZ / LGZ so the same scoring engine yields zone-specific recommendations via different AHP weights",
+    "Reducing a vague multi-objective problem to a single scalar objective (Final Score) by normalize-then-weight-then-sum — makes 'optimal policy' well-defined and rankable",
+    "Encoding each policy as a small set of explicit parameter perturbations (e.g., hunting quota = -50% poaching, +2%/yr wildlife) in Table 2, so combinations compose mechanically",
+    "Combinatorial policy enumeration (2^3 on/off per zone) to expose policy interactions/counteractions rather than testing policies in isolation",
+    "Borrowing peer-reviewed domain models (grass-growth ODE, PIE, water-stress tiers, biodiversity indices) and wiring them into a custom scoring shell instead of inventing dynamics from scratch",
+    "Cross-section coupling: N (wildlife) feeds stocking density and PIE; tourists feed both income and PIE; livestock feeds grass growth and income — a genuine interdependent network",
+    "Two-layer sensitivity analysis: (1) perturb regression exponent B via y=A·e^((lnα-B)t); (2) a 'correcting coefficient' CC swept -3.6% to -90% to argue transferability to other reserves",
+    "Counter-intuitive result mining: flagging that hunting quotas alone and wildlife corridors are net-negative, turning surprising outputs into a narrative selling point"
+  ],
+  "why_it_won": "\"From a judge's view it wins on completeness and decision-usefulness rather than mathematical depth. It does the single hardest thing for this open ICM-style problem: it converts a fuzzy 'balance nature and people' prompt into a fully specified, reproducible optimization with a named objective, explicit constraints, and concrete recommendations per zone. It demonstrates breadth — wildlife, biodiversity, grass ODE, water stress, income, tourist conflict — every one tied to a citation and real Kenyan data (KWS census, KNBS, conservancy surveys), which signals diligence and grounds the abstraction in reality. AHP gives a defensible, non-arbitrary answer to the inevitable 'how did you pick the weights?' question, and the CR consistency check shows the team anticipated that critique. The combinatorial scenario sweep produces actionable, tiered advice (best trio, best duo under budget limits, best single policy) and surfaces counter-intuitive findings (corridors backfire; quotas alone hurt) that read as genuine insight. Sensitivity + the correcting-coefficient transferability test directly answer the 'is it robust / general?' requirement. The letter to the Kenyan Tourism and Wildlife Committee is polished, specific, and reads like real consulting output. The package — clear objective, real data, defensible weighting, full enumeration, robustness, generalization, strong writing — is exactly the rubric-coverage that earns Outstanding.\"",
+  "section_highlights": "\"Summary sheet states the whole pipeline (4-section net-work model -> AHP weights -> 24 scenarios -> 20-yr prediction) in one read. A separate 3-page Report/Letter to the KTWC translates math into plain, tiered policy advice (full combo / budget-constrained duo / single best policy) — strong stakeholder communication. Section II front-loads 6 explicitly justified assumptions plus a full nomenclature table. Section III builds the model bottom-up, each of the 4 sub-sections following the same template: Modelling ideas -> Supplementary assumptions -> Calculations, with a Figure-1 flowchart showing how sections couple. Results (Sec IV) give per-zone score-vs-time line charts for all 8 scenarios plus ranking tables at 2022/2032/2042, and explicitly interpret counter-intuitive outcomes. Sec V (sensitivity) and Sec VI (transfer to other reserves via correcting coefficient) directly map to the problem's robustness/universality asks. Honest Strengths/Weaknesses section. 22 real, properly formatted academic references.\"",
+  "pitfalls_or_limitations": [
+    "The headline result charts (Figures 8 and 9) show ALL 8 scenario curves with identical or near-identical values across every year — the extracted data columns are essentially the same numbers, so the figures do not actually visually distinguish the policies they claim to rank; the ranking tables assert differences the plotted data doesn't show. A judge skimming might miss this, but it is a real reproducibility weakness.",
+    "Policy effects are hand-set magic numbers (hunting quota = +2%/yr wildlife, corridor = -20% livestock, etc.) with no calibration or source for the exact values; the team itself admits the 'hunting-quota-alone is negative' finding is 'extremely dependent upon our predetermined parameter.' Conclusions inherit this fragility.",
+    "The input data appears stylized/illustrative (round numbers like 210k, 165k wildlife; locals 8000->14500 in clean steps), suggesting some series were idealized rather than raw — weakens the 'grounded in real data' claim on close inspection.",
+    "AHP pairwise matrices are filled by the team's own judgment; 'avoids being overly subjective' overstates it — AHP formalizes subjectivity, it doesn't remove it. Only the consistency, not the correctness, of the weights is checked.",
+    "Sigmoid normalization of populations (1/(1+e^(-α·n))) saturates to ~1 for any large population, so the wildlife-population sub-score is nearly insensitive to the very population changes the policies are supposed to drive — a likely cause of the flat result curves.",
+    "Stochastic 'random residuals' add noise but no validation (no confidence bands, no Monte-Carlo repetition reported), so they decorate rather than quantify uncertainty.",
+    "Several extracted tables in the latter sensitivity figures are garbled/truncated (rows of '8.00' and '...'), indicating saturation artifacts the writeup doesn't fully address.",
+    "Model excludes exogenous shocks (drought, COVID, disease) — acknowledged honestly, but it removes precisely the dynamics most relevant to a 20-year African-rangeland forecast."
+  ],
+  "reusable_patterns": [
+    "The 'normalize -> weight -> sum' composite-objective recipe: turn any multi-criteria open problem into one scalar score by mapping each criterion to [0,1] (sigmoid/min-max) and combining with AHP weights — reusable for nearly any ICM sustainability/policy problem.",
+    "AHP-with-CR-check as the standard, defensible answer to 'how did you choose weights?' — include the pairwise matrices and the CR<0.1 consistency check as evidence of rigor.",
+    "Zone/segment decomposition: when a system is spatially or categorically heterogeneous, split it and reuse one scoring engine with segment-specific weights to generate differentiated recommendations from a single model.",
+    "Policy-as-parameter-perturbation table (Table 2): represent each intervention as a small explicit list of % changes to model variables, enabling mechanical combination and a clean 2^k scenario enumeration to expose interactions.",
+    "Tiered recommendation framing in the stakeholder letter: 'do all three; if budget-limited do this duo; if only one, do this' — high-value way to make results actionable.",
+    "Transferability/universality argument via a single 'correcting coefficient' multiplier swept over a wide range, plus sensitivity on regression exponents — a lightweight template for answering the 'generalize your model' sub-question.",
+    "Compose well-cited domain sub-models (Verhulst grazing ODE, PIE encounter model, Vörösmarty water-stress tiers, Shannon/Simpson indices) inside a custom shell rather than deriving dynamics from scratch — fast path to breadth with credibility.",
+    "Mining counter-intuitive outputs (corridors backfire) and explaining the mechanism turns model results into a persuasive insight narrative judges reward."
+  ]
+}

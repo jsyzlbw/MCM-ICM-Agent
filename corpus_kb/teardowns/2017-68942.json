@@ -1,0 +1,49 @@
+{
+  "paper_id": "2017-68942",
+  "year": 2017,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2017 MCM/ICM Problem D (operations research): the TSA asked teams to find bottlenecks in airport security checkpoints that hurt passenger throughput and increase wait-time variance, then propose modifications that speed throughput and reduce variance while preserving security. This team (control #68942, Outstanding) built a discrete-event/agent-based simulation of a single checkpoint, decomposed it into queues and timed processes (including a separate PreCheck path), located the bottlenecks empirically, and stress-tested a menu of physical and behavioral modifications.",
+  "models_used": [
+    "Agent-based / discrete-event simulation built in NetLogo (passengers, officers, scanners, pack stations as 'turtles'); tick = 1 second",
+    "Queueing-network decomposition of the checkpoint: 4 queues (q0 document-check line, q1 x-ray/unload line, q2 body-scanner/WTMD line, q3 belongings-collection line) plus q-pd for Zone D, interleaved with 10 timed processes",
+    "Probabilistic (stochastic) arrival process: Bernoulli passenger generation each tick at generation probability gen-prob (0.19 from data), then Bernoulli split into PreCheck (~45%) vs regular",
+    "Normal-distribution process-time models for document-check time and millimeter-wave body-scan time, validated by Shapiro-Wilk normality test and Q-Q plots (not rejected at p=0.01)",
+    "Probabilistic event models for rare events: 3% pat-down, 3% baggage search, 20% WTMD diversion for non-PreCheck, 1% opt-out",
+    "Scenario/parametric experimentation via NetLogo BehaviorSpace (3+ trials per parameter set, averaged)"
+  ],
+  "key_techniques": [
+    "Compact configuration encoding: a 4-digit 'configuration number' (e.g. 1221, 2243, 2443) encoding #PreCheck-ID-officers, #PreCheck-lanes, #regular-ID-officers, #regular-lanes — makes the design space legible and lets them sweep configurations cleanly",
+    "Per-queue wait-time attribution: tracking time-waiting separately for q0/q1/q2/q3 so bottlenecks are pinpointed to a specific component rather than reported as one aggregate number (this is what surfaced q0 doc-check and q2 scanner as the culprits)",
+    "Traffic sweep via generation probability (0.09/0.18/0.36/0.54/0.72) to find the load level at which each component saturates",
+    "Deliberately relaxing the 'queues have no limit' assumption (Assumption 7) so bottlenecks reveal themselves as unbounded queue growth instead of being masked by physical line-length caps",
+    "Reporting BOTH mean wait time AND standard deviation everywhere, because the prompt explicitly cares about variance — variance is treated as a first-class output, not an afterthought",
+    "Grounding process times in the supplied TSA data plus cited real-world sources (TSA layout guide, airport footage), with explicit per-process time tables (Table 2) and PreCheck adjustments",
+    "Controlled 'what-if' modification experiments reported as ratio-of-new-to-original throughput (Tables 9, 13) for easy cross-modification comparison",
+    "Cost-awareness baked into recommendations (e.g. extra body scanner ~$250k; '2 PreCheck officers is the cost-optimal point' from the diminishing-returns curve in Table 8)"
+  ],
+  "why_it_won": "\"It directly and completely answered the prompt's two-part ask (throughput AND variance), and it did so with a model whose granularity matched the question. By splitting the checkpoint into individually-timed queues and processes, the team could make the strong, specific, defensible claim that ~99% of total wait-time length and variance came from just three components (PreCheck and regular document-check lines q0, and the body-scanner line q2). That is exactly the bottleneck-identification a judge wants. They then closed the loop: each proposed modification (extra metal detector, more WTMD use, extra scanner, faster pat-downs, more PreCheck officers/enrollment) was tested in the same model and quantified (up to +16% throughput, -33% variance from an extra scanner), and recommendations were tied to cost. The stochastic arrivals + data-validated normal process times gave realistic randomness that justified reporting variance, which most teams under-handle. Honest, specific strengths/weaknesses and counterintuitive findings (e.g. raising PreCheck % HURTS at high traffic because of the 2-officer/2-lane bottleneck; cutting/slow walkers matter less than expected) signal genuine analysis rather than confirmation of a preset answer.\"",
+  "section_highlights": "\"Structure flows exactly as a judge reads: Summary Sheet states the model, the 3 bottlenecks, and the quantified improvements up front; Section 2 lays out the checkpoint as zones with a clean queue/process table (Table 1); Section 3 lists 13 numbered assumptions each with a justification, then a dedicated Normality subsection that statistically validates the distribution choices before they are used; Section 4 crisply defines throughput, wait time, generation probability, and configuration number; Section 5 documents the NetLogo implementation (agents, attributes, run loop); Section 6 reports per-queue results in tables that make the bottleneck visually obvious; Section 7 is a systematic modification-by-modification study with a single comparison table (Table 9) plus per-modification detail; Section 8 isolates behavioral variations; Section 9 turns findings into concrete TSA policy bullets; Section 10 gives candid strengths/weaknesses. The 4-digit configuration code and the q0–q3 labeling are used consistently throughout, giving the reader a stable vocabulary. The full NetLogo source is included in an appendix for reproducibility.\"",
+  "pitfalls_or_limitations": [
+    "Statistically thin: only 3 trials per parameter combination for a stochastic model — the team admits this; CI/error bars and more replications would be needed for the variance claims to be solid",
+    "No quantification of security — the model optimizes throughput/wait but never measures whether modifications preserve the 'maintain security' constraint the prompt required; this is a real gap given the problem framing",
+    "Several internal inconsistencies and sloppy numbers: the summary cites '16%' improvement while Section 7 text cites figures like +82%/+113%/+28–82% (ratios in Table 9 are noisy and sometimes implausible, partly from tiny-sample noise at low traffic); some throughput ratios go down where intuition says up, unexplained",
+    "Only two checkpoint configurations (1221 low-traffic, 2243 high-traffic) were really explored; the team acknowledges it cannot search the full configuration space, so 'optimal' is relative to a small hand-picked set",
+    "Uniform-random arrivals assumption ignores real surge/peak temporal structure (they even note arrivals look flat only within short windows), which likely understates peak-hour variance",
+    "Single-passenger assumption (no families/groups) and 'walk to doc-check takes 0 time' are convenient but unrealistic at exactly the congested conditions of interest",
+    "Some process times (pat-down 150s, baggage search 200s, exit 5–7s) are loosely sourced (YouTube footage, 'personal investigation'), weakening the data-driven claim",
+    "Table/figure captions are occasionally mismatched (e.g. 'Table ??', mislabeled 'Patdown' legend entries that are actually PreCheck percentages), which a top paper should clean up"
+  ],
+  "reusable_patterns": [
+    "Decompose a flow/operations system into an explicit (queue, process, time) table BEFORE modeling — it forces clarity and makes bottleneck attribution per-component possible",
+    "Use a short structured code (here the 4-digit configuration number) to name points in the design space; it makes sweeps, tables, and prose far more readable",
+    "Track the objective separately per component (per-queue wait time) so you can say WHERE the problem is, not just THAT there is one — the single most persuasive move in this paper",
+    "Validate distributional assumptions with a named test + a plot (Shapiro-Wilk + Q-Q) in a dedicated subsection before sampling from that distribution; cheap rigor that judges reward",
+    "When the prompt names two metrics (throughput AND variance), report both in every table and treat variance as a primary output, not a footnote",
+    "Run a menu of independent 'what-if' interventions through the SAME validated model and report them as a normalized ratio table for apples-to-apples comparison",
+    "Sweep load/traffic to find the saturation point of each resource, exposing which resource binds first at each volume",
+    "Tie each recommendation to a cost and a diminishing-returns curve (Table 8) so the 'optimal' choice is economic, not just technical",
+    "Surface counterintuitive results explicitly (more PreCheck can hurt) — they demonstrate the model is doing work and build judge trust",
+    "Choose a simulation platform (NetLogo + BehaviorSpace) whose built-in parameter-sweep/data-export turns experimentation into a repeatable pipeline, and ship the source in an appendix for reproducibility"
+  ]
+}

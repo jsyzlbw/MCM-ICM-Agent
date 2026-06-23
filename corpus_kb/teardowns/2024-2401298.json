@@ -1,0 +1,46 @@
+{
+  "paper_id": "2024-2401298",
+  "year": 2024,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asks teams to develop a quantitative model of momentum in tennis matches, determine whether momentum exists statistically, predict momentum shifts, and provide actionable coaching strategies.",
+  "models_used": [
+    "Naive Binomial Model",
+    "Dual-Temporal Bayesian Network",
+    "Random Forest (feature importance)",
+    "Expectation-Maximization algorithm"
+  ],
+  "key_techniques": [
+    "Server/returner reweighting to isolate player performance",
+    "Sliding point interval and sliding time window performance metrics",
+    "Area Under Curve (AUC) aggregation to reduce window-size sensitivity",
+    "Hypothesis testing: Ljung-Box Q Test and Runs Test for i.i.d. assumption",
+    "Momentum defined as residual effect from a naive skill-based model",
+    "Latent variable modeling (physiology, perception of control, self-efficacy)",
+    "Dual-temporal network with short-term and long-term aggregation layers",
+    "Denoising via predicting sum of effects over intervals (Central Limit Theorem)",
+    "Information gain/entropy reduction for variable importance",
+    "Reweighted Expectation step to handle prior data bias",
+    "Sensitivity analysis on prediction interval and training data subsampling",
+    "Model generalization framework to other sports"
+  ],
+  "why_it_won": "The paper uniquely defines momentum as a residual after removing skill-based binomial probability, avoiding conflation of talent with psychological momentum. It constructs a sophisticated dual-temporal Bayesian network with interpretable latent variables, validated by rigorous statistical tests and augmented with meaningful sensitivity analyses. The combination of theoretical depth, practical predictive power, and clear coaching recommendations impressed judges with both novelty and completeness.",
+  "section_highlights": "The structure flows logically from problem restatement through assumptions, separate model sections per subproblem, and a dedicated memo. Visual flowcharts and illustrative diagrams (e.g., Bayesian network graphs, residual effect plots) are used heavily to make complex methods accessible. The memo section distills technical findings into actionable, well-organized coaching advice, demonstrating real-world translation.",
+  "pitfalls_or_limitations": [
+    "Latent variable accuracy cannot be fully validated without direct measurements of psychological states.",
+    "Data aggregation to reduce noise results in some loss of temporal granularity.",
+    "Model does not account for opponent adaptive strategies, assuming independent player behaviors.",
+    "Counterintuitive positive momentum from double faults is likely a correlation artifact with aggressive serving.",
+    "Dataset bias (Player 1 having better residual effect) required reweighting that may not fully resolve the issue.",
+    "Fails to capture unexpected swings (e.g., Djokovic's fourth-set surge) due to missing personal play-style factors."
+  ],
+  "reusable_patterns": [
+    "Defining momentum as the residual between observed outcomes and a naive 'no-momentum' binomial model prediction.",
+    "Using a dual-temporal layered Bayesian network to separately capture short-term and long-term influences.",
+    "Avoiding point-by-point noise by training on sum of effects over an interval leveraging CLT.",
+    "Integrating domain-specific latent psychological/physiological variables into a generative network.",
+    "Applying information gain (entropy reduction) to interpret variable impact on momentum in a Bayesian network.",
+    "Performing sensitivity analysis by varying prediction horizon and training data size to test robustness.",
+    "Presenting a generalized framework diagram that abstracts the model for other sports."
+  ]
+}

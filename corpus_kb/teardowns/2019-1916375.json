@@ -1,0 +1,51 @@
+{
+  "paper_id": "2019-1916375",
+  "year": 2019,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2019 ICM Problem F (policy): construct a model representing a global decentralized digital (crypto) currency financial system, assess its viability and effects on growth/access/security/stability at individual, national, and global levels; analyze how different countries should respond (and whether to abandon sovereign currency); design an oversight/regulatory mechanism; and extend to long-term impacts on banking, regional/world economy, and international relations. This Outstanding paper (Team 1916375) frames the entire problem as a cost-return (net income) viability analysis grounded in standard macroeconomics, then layers country-choice theory, a 3-tier regulatory design, and long-term dynamics.",
+  "models_used": [
+    "Cost-Return / Net Income (NI) viability framework: NI = sum(R_k) - (C_f + sum lambda_i C_r_j), the spine of the whole paper",
+    "Equation of Exchange / Quantity Theory of Money (MV = PT) to define currency value sigma = (sigma_0/M)*(T/V) and a currency-stability return R1",
+    "Currency-stability return function S(w,sigma) = (1 - |(sigma_t - sigma_{t-1})/sigma_{t-1}|)*w penalizing value volatility, scaled by adoption degree w",
+    "Cobb-Douglas production function Y = A*K^alpha*L^beta, augmented with capital-efficiency multiplier theta (K* = theta*K) to derive output-growth return R2 = theta^alpha * Y (increasing returns to scale)",
+    "Economic Supply-and-Demand model for capital/interest rates (short-term vs long-term), giving capital-availability return R3 and equilibrium r*",
+    "Analytic Hierarchy Process (AHP): 6x6 pairwise-comparison matrix over R1,R2,R3,a1,a2,a3 to derive importance weights (e.g. 0.3472 for a1 risk, 0.2484 for R2)",
+    "Fuzzy Comprehensive Evaluation (FCE/FEC): single-factor membership matrices for individual/nation/global return and risk, combined via A·R with max-membership principle to get level weights (0.395 individual, 0.595 nation, 0.785 global)",
+    "Mundell-Fleming open-economy model + national income identity (Y = C+I+G+NX, S = I(r)+CF(r)) to analyze large vs small country choices",
+    "Impossible Trinity (Mundellian trilemma): capital mobility + non-independent monetary policy => fixed exchange rate; used to recommend abandon-currency / fixed-rate strategy",
+    "Game theory: 2x2 payoff matrix (accept/don't accept) showing Nash equilibrium justifies need for a trust-anchoring global central bank",
+    "Logistic-type growth ODE for banking profit: dPr/dt = Pr*g*(1 - w/w_m), modeling decline of on-balance-sheet banking to zero growth (transition to investment intermediary)",
+    "Blockchain node abstraction with a privileged 'God node' (global central bank) + national 'secondary super nodes' as the regulatory architecture",
+    "Partial-derivative (marginal-benefit) sensitivity analysis: dNI/dw across the three levels to compare long-run marginal returns and diminishing individual benefit"
+  ],
+  "key_techniques": [
+    "Reduced an open, qualitative policy prompt to a single quantitative objective (Net Income) so every sub-question feeds one unifying equation",
+    "Decomposed return into exactly three economically-motivated channels (stability, output growth, capital availability) mapped 1:1 to the prompt's keywords (stability, growth, access)",
+    "Used AHP for cross-factor importance weights and FCE for cross-level (individual/nation/global) weights, then multiplied them together — a clean separation of two different weighting questions",
+    "Carried the single state variable w (degree of adoption) through nearly every sub-model, making the whole system parametric in one interpretable quantity and enabling unified long-run limit analysis (w -> w_m)",
+    "Distinguished short-term vs long-term for capital pricing and banking, signalling economic sophistication",
+    "Closed the loop on the prompt's 'should they abandon their currency' by chaining free-capital-flow + lost monetary independence through the Impossible Trinity to a definite fixed-rate recommendation",
+    "Wrote a separate front-matter Policy Recommendation letter addressed to a President/Prime Minister, directly satisfying the policy-genre deliverable"
+  ],
+  "why_it_won": "\"From a judge's view it won because it imposed a clean, defensible quantitative spine (the NI cost-return equation) on a deliberately fuzzy, open-ended policy question, and then mapped every required task onto that spine rather than answering tasks in isolation. The economics is real and cited (Mankiw, Mundell/Krugman, Nakamoto, CBDC literature): MV=PT, Cobb-Douglas, Mundell-Fleming, and the Impossible Trinity are deployed correctly and lead to a crisp, falsifiable policy conclusion (adopt + fixed exchange rate). It demonstrated methodological range (AHP + FCE for quantification, game theory to justify a central authority, a logistic ODE for banking dynamics, marginal/partial-derivative analysis for long-run effects) without any single model feeling tacked on. It fully covered all five tasks including the often-neglected regulatory mechanism — for which it invented a concrete, memorable 'God node / secondary super node' blockchain governance design — and the long-term international-relations discussion engaged real IR theory (realism/liberalism/constructivism, Mearsheimer). The dedicated policy-recommendation letter nailed the genre. The judges rewarded a complete, coherent, economically literate narrative with an interpretable single driver (adoption w) over a pile of disconnected sub-analyses.\"",
+  "section_highlights": "\"Standout sections: (1) Section 3, the basic cost-return model — it builds R1 from MV=PT, R2 from theta-augmented Cobb-Douglas yielding increasing returns, and R3 from supply/demand, then fuses everything via AHP weights (Table 3) and FCE level weights into three explicit NI equations for individual/nation/global; this is the analytical core and the clearest demonstration of economic literacy. (2) Section 4.2, the Impossible Trinity argument — short, rigorous, and ends in an actionable recommendation (fixed/pegged exchange rate, since free capital flow + no independent monetary policy forces it). (3) Section 5, the regulatory mechanism — the 'God node' global central bank plus national secondary super nodes is the paper's most original, memorable contribution and tackles the task many teams under-serve. (4) Section 6.1, the logistic banking ODE dPr/dt = Pr*g*(1 - w/w_m) concluding banks become investment intermediaries — a tidy dynamic result. (5) The opening Policy Recommendation letter, which frames the whole submission in the correct policy voice.\"",
+  "pitfalls_or_limitations": [
+    "No real data: nearly all membership values, AHP pairwise entries, and parameters (theta, w_m, g) are assigned by judgment, not estimated — the team even admits the AHP matrix is subjective and 'some models lack data to test'",
+    "The 'robustness/sensitivity' test (Section 7) is essentially a verbal claim ('since we don't rely on certain data, results are stable') rather than an actual perturbation experiment with reported deltas — weak validation",
+    "Internal inconsistencies and OCR-level sloppiness: equations are mislabeled/garbled (e.g. R3 written as both capital-availability and as M(r,w); section cross-references say 'section 4.1' inside Chapter 3), and several figures are uninterpretable, suggesting rushed proofreading",
+    "Country taxonomy is coarse (only 'large' vs 'small'), and many causal chains (e.g. digital currency => reduced international conflict) are asserted narratively without modeling",
+    "FCE membership numbers and AHP weights are presented with false precision (e.g. coefficient 0.971833) despite resting on subjective inputs",
+    "Game-theory payoff matrix is trivial (constant payoffs, no real strategic tension) and only loosely supports the central-bank-necessity claim"
+  ],
+  "reusable_patterns": [
+    "The unifying-objective spine: convert an open policy prompt into ONE scalar to optimize/evaluate (here Net Income = Returns - Costs), then route every sub-task into that scalar so the paper reads as one argument, not five",
+    "Decompose-to-prompt-keywords: split the objective into components that map 1:1 onto the problem's stated dimensions (growth, access, security, stability) for visible task coverage",
+    "AHP-for-factors + FCE-for-levels combo: use AHP to weight heterogeneous factors against each other and Fuzzy Comprehensive Evaluation to weight across stakeholder levels (individual/national/global), then multiply — a transferable recipe for any multi-level multi-factor policy scoring problem",
+    "Single carried parameter: thread one interpretable driver (adoption w) through all sub-models so long-run analysis is just a limit (w -> w_m) and sensitivity is just partial derivatives dObjective/dw",
+    "Theory-anchored borrowing: lean on named, citable textbook models (Cobb-Douglas, Mundell-Fleming, Impossible Trinity, MV=PT, logistic growth) so reviewers trust the mechanics and the team spends words on application not derivation",
+    "Short-vs-long-term split as a structural device to show depth on the same quantity",
+    "Deliver the genre artifact: for a policy problem, include a stakeholder-addressed recommendation letter up front",
+    "Invent one concrete, named mechanism for the 'soft' design task (the 'God node' regulatory architecture) — a memorable concrete proposal beats generic prose for the hard-to-quantify task most teams skimp on"
+  ]
+}

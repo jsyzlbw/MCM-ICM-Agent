@@ -1,0 +1,52 @@
+{
+  "paper_id": "2016-44348",
+  "year": 2016,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2016 MCM/ICM Problem F (policy): model the global refugee migration crisis from origin countries in Africa/Middle East into Europe and propose policies for an optimal, humane, and stable migration pattern. The team (control number 44348, Outstanding award) built a multi-stage network/feedback system that (1) places refugee origins and route entry points as nodes, layers them by distance toward Europe via clustering, (2) computes node-to-node migration \"weights\" using a Gravity-model-derived comprehensive attraction index, (3) simulates the dynamic, period-by-period flow with a Cellular Automaton plus a feedback loop for capacity/resource changes and shocks (war, weather, disease, terrorism, GO/NGO action), and (4) derives policy from a Cobweb model linking node capacity to flow stability. Final route-share predictions matched real 2014 data closely (R=0.98-1.00).",
+  "models_used": [
+    "Gravity Model (Newtonian I = P_i*P_j / D_ij^a) adapted into a comprehensive node attraction/weight index M_ij^t",
+    "I. S. Lowry regression migration model (job-opportunity-driven migration) cited as inspiration for the weight formulation",
+    "Hierarchical cluster analysis on average node-to-startpoint distances (matrix D, height values K1/K2/K3) to partition 11 origin nodes into 3 distance layers",
+    "Network/graph node model with layered directed flow (initial-layer -> propagation-layer -> terminal-layer -> 6 route start points)",
+    "Cellular Automaton dynamic simulation of period-by-period (quarterly) migration with feedback (capacity saturation, weight re-normalization)",
+    "Cobweb Model relating node pass-rate P to passed population N to argue capacity-vs-stability for the policy recommendation",
+    "Multi-objective-to-single-objective optimization weighting safety index (vartheta_1) vs distance/transport index (vartheta_2) to find optimal route distribution",
+    "Bernoulli-distribution model of entry-point acceptance / node saturation threshold (tipping point K_L)",
+    "Fuzzy comprehensive evaluation (named in 'Our work') and Analytic Hierarchy Process (named in Strengths) for prioritizing/weighting factors",
+    "Random-walk baseline migration model (deliberately built first, then rejected)"
+  ],
+  "key_techniques": [
+    "Iterative model-refinement narrative: started with a random/equal-weight migration model, showed it FAILED to match data (R=0.6543, p>0.05), then explicitly revised it with the Gravity model (R=0.9914), then added Cellular Automaton feedback (R=1.0). The refutation of their own first model is a deliberate persuasion device.",
+    "Layered abstraction of geography into nodes whose resolution is tunable to a policymaker's jurisdiction (county/state/nation) - directly ties the model to the policy audience",
+    "Compositing many qualitative policy factors (safety, environmental/cultural acceptance, transport convenience, repatriation ratio, entry-point count) into one log-linear weight: ln M_ij = ln S + ln Conv - ln B + K_a",
+    "Quantitative validation at every stage using correlation coefficient R and significance p against real 2014 IOM/UNHCR/Eurostat/FRONTEX-FRAN route-share data",
+    "Encoding shocks as toggle/indicator variables: war beta in {0,1}, weather gamma in {-2c,-c,0,c}, sea-vs-land crossing x1/x2, so exogenous events (disease, terrorism, GO/NGO funding +/-0.2) plug into the same safety/weight equations",
+    "Sensitivity analysis quantified as elasticity bands: +/-5% capacity -> +/-2% output, >+/-10% capacity -> >4.7% output",
+    "Honest scalability stress test: applied model to USA/Canada/China, got absurd results (7 refugees to Canada), and used the FAILURE to surface a real modeling insight (planimetric distance ignores the Himalayas and Atlantic barriers)",
+    "Multi-tool implementation: MATLAB for static weight simulation, C++ for the cellular-automaton dynamics, JavaScript for animated visualization of flows (circle-area = population)"
+  ],
+  "why_it_won": "\"Judges reward a complete, validated, and self-critical modeling arc, and this paper delivers exactly that. It does not just assert a model - it builds three escalating models (random -> gravity -> CA-feedback), quantitatively kills the weak ones, and reports correlation against real data climbing from 0.65 to 0.98 to 1.0. That visible, data-backed convergence is extremely convincing to a judge skimming for rigor. It directly serves the POLICY prompt: nodes are defined at tunable jurisdictional resolution, the Cobweb model turns a math result (large capacity -> stable flow) into a concrete recommendation (enlarge/stabilize capacity, preposition resources on CM/WM/WB routes, indicate official routes, enhance GO/NGO partnership), and it closes with a formal letter to the UN Commission. It handles every sub-requirement the prompt implies - dynamics over time, exogenous shocks (disease, terrorism), scalability, and the role of GOs/NGOs - rather than only the core flow model. Finally it is intellectually honest: the scalability section openly shows the model breaking and explains why, which reads as maturity rather than weakness.\"",
+  "section_highlights": "\"Structure mirrors the judges' mental checklist: Metrics -> Notations table -> explicit numbered Assumptions -> escalating models -> Dynamics -> Scalability -> Policy -> Exogenous events -> Sensitivity -> Strengths/Weakness -> Future Work -> cover letter. The one-page Summary Sheet front-loads every key result number (route ratios 0.07:0.101:0.41:0.369:0.05, R=0.98; CA ratios with R=1) so a judge gets the whole story in 30 seconds. A dedicated Metrics section defines each policy factor in plain language BEFORE math, and a full Notations table makes the dense equations followable. Figures are heavily used and load-bearing: line charts overlay simulated vs actual vs initial-model curves (Fig 14) so the reader literally sees the fit improve. The Strengths section explicitly walks the judge through the model-refinement logic as a selling point. The closing diplomatic letter to the UN Commission nails the policy genre's communication requirement.\"",
+  "pitfalls_or_limitations": [
+    "Distances are straight-line (planimetric) - the model ignores geographic barriers, which the team admits broke the USA/Canada/China scalability test (Himalayas, Atlantic)",
+    "EB (Eastern Borders) route and its nodes were dropped entirely because all sampled origins are in Africa/Middle East, so a whole real migration channel is excluded",
+    "Several formulas are under-specified or contain typos/inconsistencies (e.g., the entry-point Bernoulli P(x=n_i) cases, the changed-weight expression w'_i2 = pi*W_i2, the M_ij factor list f(...) vs the final ln M_ij dropping C_ij and Point terms) - dimensional/notational rigor is loose",
+    "Many coefficients (danger coefficients c1-c4, adjusting coefficients, GO/NGO impact range +/-0.2, weather constant c) are asserted without derivation or calibration source",
+    "Claims like R=1.0000 are implausibly perfect and suggest overfitting to a tiny number of route-share points rather than genuine predictive validation",
+    "OCR/text artifacts aside, the model conflates 'optimal route for refugees' with 'observed route shares' - it validates against where refugees DID go, which weakens the normative 'optimal policy' claim",
+    "Redistribution of refugees after entering Europe and illegal stowaways are omitted, and the team acknowledges the data for these is missing",
+    "The Cobweb-model policy argument is asserted qualitatively from two schematic figures rather than simulated, so the central capacity-stability policy claim is the least rigorously supported part"
+  ],
+  "reusable_patterns": [
+    "The 'build-it, break-it, fix-it' validation arc: deliberately present a naive baseline model, quantitatively show it fails (report low R / high p), then motivate each refinement with the gap to data. This turns model selection into a persuasive story judges love.",
+    "Composite-index pattern: fold many incommensurable qualitative factors into a single log-linear weight derived from a named classical model (here Gravity), so policy concerns become tractable math while staying interpretable.",
+    "Tunable-resolution abstraction: define your unit (node) so its granularity can be set by the decision-maker's jurisdiction - an easy, high-value move for any policy problem.",
+    "Layered network + cellular-automaton + feedback as a general template for any spatial diffusion/flow problem over time with capacity limits and saturation thresholds.",
+    "Encode shocks/scenarios as indicator and toggle variables (war 0/1, weather levels, +/-20% capacity) plugged into the SAME core equations, so 'exogenous events' and 'sensitivity' sections reuse one model instead of new ones.",
+    "Report a single headline correlation R (and p) at each modeling stage and put the climbing sequence in the summary sheet - a compact, judge-friendly proof of progress.",
+    "Turn a failed stress test into an insight: when scalability breaks, diagnose WHY (missing barrier term) and list it as future work rather than hiding it - reads as scientific maturity.",
+    "Sensitivity reported as elasticity bands ('+/-5% input -> +/-2% output; >10% -> >4.7%') gives a crisp, quotable robustness statement.",
+    "Genre-fit closer: for a policy prompt, end with a formal addressed letter/memo translating model results into ranked, actionable recommendations."
+  ]
+}

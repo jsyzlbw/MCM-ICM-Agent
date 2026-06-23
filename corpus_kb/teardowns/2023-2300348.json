@@ -1,0 +1,52 @@
+{
+  "paper_id": "2023-2300348",
+  "year": 2023,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2023 MCM Problem C (data) on Wordle / NYT Twitter-bot data. Five tasks: (1) predict the number of reported results for a future date (Mar 1, 2023) with a prediction interval; (2) determine whether/how word attributes affect the score-percentage distribution (and the Hard-Mode share); (3) build a second model to predict the full (1,2,3,4,5,6,X) try-distribution for a given word, demonstrated on EERIE; (4) build a model to classify word difficulty and place EERIE in it; (5) report other interesting features in the data. Team 2300348 (paper \"Revitalizing a Classic Game\") tackled each sub-question with a distinct named model and tied them together via two engineered scalar targets (score, difficulty rate δ).",
+  "models_used": [
+    "GRU (Gated Recurrent Unit RNN) for time-series forecasting of daily reported-results count, implemented with PyTorch torch.nn.GRU; 80/20 train/test split on Jan 7-Dec 31 2022 data, then rolled forward 60 days to Mar 1 2023",
+    "Regression / correlation analysis (Pearson + Spearman) of word frequency (f_word) and summed letter frequency (f_letter) against an engineered 'score'",
+    "Box-plot analysis (median difference, box-length difference, outlier-count difference) to test categorical attributes rep (letter repetition) and pos (part of speech) against score",
+    "GSRF = Grid-Search Random Forest: sklearn RandomForestRegressor wrapped in GridSearchCV hyperparameter tuning, mapping (f_word, f_letter, rep) -> 7-way try-distribution (1..6,X)",
+    "K-Means++ clustering (sklearn KMeans init='k-means++') on an engineered difficulty rate δ, producing 5 difficulty levels",
+    "Entropy Weighting Method to set the two component weights of the engineered 'score' and difficulty 'δ' aggregates",
+    "Sigmoid normalization inside the δ definition to balance the X-failure term against the weighted-tries term",
+    "Gaussian-noise injection as the sensitivity-analysis mechanism on GSRF inputs (f_word, f_letter)"
+  ],
+  "key_techniques": [
+    "Target engineering: collapsing the 7-number percentage vector into a single scalar 'score' = w1*sum(i*p_i) + w2*p_X so that attribute-vs-outcome relationships become tractable to regress/box-plot",
+    "Separate, problem-appropriate model choice per sub-question: time-series (GRU) for the count forecast vs. attribute-driven regressor (Random Forest) for the distribution — explicitly justifying why time-series was wrong for Task 3 ('distribution determined by word attributes, not time')",
+    "External data enrichment: word-usage frequency from Google Books Ngram Viewer, letter frequencies from the same corpus, and NLTK POS-tagging to derive the four word attributes",
+    "Data cleaning documented in a table (fixing 'tash'->'trash', 'marxh'->'marsh', a 2569->25569 count typo, and re-normalizing daily percentages to sum to exactly 100%)",
+    "Outlier handling with narrative: identifying the Christmas-Day (Dec 25) ~50% deviation as a holiday outlier, removing it before computing RMSE",
+    "Hyperparameter optimization via GridSearchCV reported with the actual best grid (max_depth=10, max_features='sqrt', min_samples_leaf=2, min_samples_split=10, n_estimators=200)",
+    "Model validation against a human baseline: 30 randomly sampled words manually labeled and compared to K-Means++ levels -> 93.33% (28/30) match rate",
+    "Sensitivity analysis via Gaussian noise on continuous inputs, visualized with radar + bar-line delta charts",
+    "Stated assumptions that make the data usable (Hard-Mode distribution approximated by overall distribution because they differ ~1%; equal sharing probability; no cheating)"
+  ],
+  "why_it_won": "\"From a judge's view it wins on completeness and coherence, not on any single sophisticated method. Every sub-question gets a clearly named, branded model (GRU / GSRF / K-Means++ Difficulty Model), each with a justification for why that method fits that specific question. The two engineered scalars (score and δ) are the connective tissue: they reduce a messy 7-dimensional target to something the team can correlate, regress, cluster, and classify, which makes the whole paper feel unified rather than five disconnected mini-analyses. The team backs claims with concrete numbers (Pearson -0.3165/-0.4238, MSE 20.71, MAE 3.24, relative error 2.16%, 93.33% human-match) and includes the things judges look for: documented data cleaning, explicit assumptions, outlier diagnosis (Christmas), hyperparameter tuning, model evaluation metrics, sensitivity analysis, and an honest weaknesses section. It also answers the prompt's softer asks well — the 'parer'/48%-X investigation grounded in real user comments shows genuine data curiosity, and the required NYT letter is present. Strong packaging (consistent notation table, branded model names, flow diagrams) makes it easy to grade favorably.\"",
+  "section_highlights": "\"Strong structure: (a) the 'Our Work' master flowchart (Fig 2) maps all five tasks at a glance; (b) a consolidated notation table up front; (c) each model section follows the same template — algorithm description with governing equations, then application, then evaluation. The score-definition section (5.1) is the conceptual hinge of the paper and is explained clearly. The K-Means++ validation section (7.4) with the 93.33% human-agreement and the appendix sample table (word/manual/model) is a standout evidence move. The 'PARER hellish difficulty' feature (8.2) — noticing X=48% and explaining it via near-neighbor words (PACER/PAGER/PALER/PAPER) that are more common — is the memorable, creative beat that humanizes an otherwise mechanical paper. Each quantitative model closes with explicit error metrics rather than hand-waving. The required Letter to the Puzzle Editor is included and faithfully summarizes findings.\"",
+  "pitfalls_or_limitations": [
+    "Branding over rigor: 'GSRF' is just RandomForestRegressor + GridSearchCV given a custom acronym; dressing standard sklearn calls as a novel 'algorithm' can read as inflation to a skeptical judge",
+    "Reported correlations are weak (|Pearson| 0.32-0.42) yet treated as solid 'linear correlation' justifying feature selection; the paper overstates how strong these relationships are",
+    "MSE/MAE for the EERIE distribution are reported with no baseline (e.g., naive mean predictor) so 'good performance' is unsubstantiated; the X percentage in the predicted EERIE distribution differs notably across the paper's own restatements (2.4% vs '3')",
+    "Only 3 of 4 attributes feed the GSRF model and the feature set is thin (rep is essentially binary, encoded as 1 vs 1.5 then normalized to 0/1); pos was discarded on a tiny median difference without a significance test",
+    "score and δ weights are claimed to be set by the Entropy Weighting Method but both come out exactly 0.5/0.5, which looks like the method added no information (or was applied trivially)",
+    "Internal inconsistencies and typos weaken credibility: 'relative RESE/RMSE', 'difficulty date' vs 'difficulty rate', δ formula uses σ both as sigmoid and (in notations) as difficulty rate, prediction interval written as '20367 ± 2.01569' (mixing a count with a percent), Table 11 'Sum' row contains nonsense values",
+    "K-Means++ on a 1-D δ is overkill (1-D clustering ~ thresholding) and the human-label validation is circular if δ was itself derived from the same try-distribution humans intuit from",
+    "The Hard-Mode question (Task 2's actual subject) is partly sidestepped via Assumption 1 (overall distribution ~ Hard-Mode distribution), so the attribute analysis is really on overall scores, not Hard-Mode-specific behavior",
+    "GRU on ~360 daily points with an 80/20 split is data-thin for an RNN and risks overfitting; no comparison to a simpler baseline (ARIMA, exponential smoothing) is given"
+  ],
+  "reusable_patterns": [
+    "Target-scalarization pattern: when the response is a probability/percentage vector, engineer a single interpretable scalar (weighted mean + a separate failure/tail term) so the rest of the analysis (correlation, regression, clustering) becomes one-dimensional and explainable",
+    "One-named-model-per-subquestion pattern with an explicit 'why this method fits this question' paragraph, plus a master flowchart that shows how the pieces connect — strong for readability and judge navigation",
+    "Match the model to the data-generating story: use a time-series model only when the target is genuinely temporal; switch to a feature-driven regressor when the target is determined by item attributes — and say so",
+    "Enrich a sparse competition dataset with authoritative external sources (Google Ngram for word/letter frequency, NLTK for POS) and cite them",
+    "Validate an unsupervised/derived label against a small human-labeled sample and report an agreement rate (here 30 words -> 93.33%) — cheap, persuasive evidence",
+    "Standard sensitivity-analysis recipe: add Gaussian noise to each continuous input, re-predict, and show before/after distributions to argue stability",
+    "Document data cleaning in a before/after table and diagnose at least one outlier with a real-world explanation (holiday dip) before computing error stats",
+    "Mine one 'surprising' data point as a narrative feature (the PARER 48%-fail case explained by frequent near-neighbor words) to demonstrate curiosity and satisfy the open-ended sub-question",
+    "Close every model with concrete evaluation metrics and end the paper with an honest Strengths/Weaknesses + future-work list (e.g., Mini-Batch / Genetic K-Means variants)"
+  ]
+}

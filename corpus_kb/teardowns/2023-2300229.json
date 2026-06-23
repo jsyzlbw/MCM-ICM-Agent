@@ -1,0 +1,54 @@
+{
+  "paper_id": "2023-2300229",
+  "year": 2023,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2023 MCM Problem D (operations research): the UN's 17 Sustainable Development Goals (SDGs) are interrelated, and teams were asked to (1) build a network revealing relationships among the 17 goals, (2) set priorities for them, (3) project SDG development over the next 10 years under those priorities including the effect of achieving one goal, (4) study the impact of unexpected events like COVID-19, and (5) discuss applicability to companies/organizations. This paper (\"Methods of Measuring Priority via Graph Models: Who Is the Top 1?\", team 2300229) attacks it with three linked models: a Relationship Graph Model (Spearman-correlation network of goals), a Priority Model (graph centralities -> Entropy Weight + TOPSIS ranking), and a novel \"Temporal Champagne Tower Model\" (TCTM) that simulates year-by-year resource allocation and goal completion over 10 years, then perturbs it for COVID-19.",
+  "models_used": [
+    "Relationship Graph Model: undirected weighted graph G(V,E,W) over the 17 SDGs, with edges built from Spearman rank-correlation coefficients between the underlying data 'series' of each goal pair",
+    "Spearman correlation analysis (chosen over Pearson for nonlinearity and outlier robustness) to classify pairwise series links as positive (>0.6), negative (<-0.6), or none; edges aggregated into a 3-component vector and collapsed to a signed weight w_ij = (positive fraction) - (negative fraction)",
+    "Three graph centrality measures computed separately on positive and negative edge subgraphs: Betweenness Centrality, Closeness Centrality, Eigenvector Centrality -> 6 indices per goal (BC+,CC+,EC+,BC-,CC-,EC-)",
+    "Entropy Weight Method (EWM) to objectively weight the 6 centrality indices via information entropy / utility value",
+    "Weighted TOPSIS to rank the 17 goals by closeness to ideal/anti-ideal vectors, producing a priority score s_i per goal",
+    "Temporal Champagne Tower Model (TCTM): the paper's signature novel model — a temporal/dynamic-network resource-allocation simulation where resources cascade from highest- to lowest-priority goals (champagne-tower analogy), goals gain completion from both direct allocation d_t(i) and correlation spillover v_t(i), completed goals are promoted to a 'complete queue' but can fall back, and a growing development queue S_t expands via correlated neighbors",
+    "Linear regression: (a) to impute missing series values, and (b) to estimate annual total resource budget D (17 x slope of accumulated-score vs. year) and project the baseline trajectory",
+    "Time-series simulation (10-year iteration loop) used to roll the TCTM forward",
+    "COVID-19 perturbation model: two added coefficients — threat level gamma_i scaling allocated resources in eq. (29), and mitigation/aggravation level MI_i appended as a 7th attribute to re-run the Priority Model",
+    "Min-max normalization with direction handling (larger-is-better vs. smaller-is-better indicators) for preprocessing"
+  ],
+  "key_techniques": [
+    "Reduced the messy raw data hierarchy (goals -> targets -> indicators -> series) to a tractable 95-series, 3-country (Turkey, Mexico, Indonesia, one per continent), 2003-2018 panel — explicit trade-off between sample years and series count while keeping all 17 goals covered",
+    "Separating positive and negative edges into two subgraphs and computing centrality on each, so synergy and trade-off structure are both captured rather than averaged away",
+    "Stacking an objective weighting scheme (EWM) in front of TOPSIS so the priority ranking is data-driven rather than analyst-chosen",
+    "Reliability filter: dropping any goal-goal edge with fewer than 10 underlying series correlations (N_ij<10) as statistically unreliable, citing the literature",
+    "Memorable physical analogy (champagne tower) turned into precise recurrence equations (eqs. 25-31) for a priority-cascade resource allocation with synergy spillover scaled by a Pareto-inspired constant C=5",
+    "Modeling goal completion as the sum of direct allocation plus correlation-driven spillover, with capping at 100% and a fall-back mechanism for completed-then-reverted goals (poverty-relapse analogy)",
+    "Lightweight crisis modeling: instead of rebuilding, injecting just two interpretable coefficients (gamma_i, MI_i) into existing equations to model COVID-19, then re-running both downstream models",
+    "Two-parameter sensitivity sweep (C from 4-6 step 0.1; D over its 95% CI) reported as max-min score deltas (0.041, 0.028) across all three countries as a robustness claim",
+    "Turning model byproducts into policy recommendations and even proposing a new 'Goal 18: International Cooperation' to handle spillover from already-completed goals"
+  ],
+  "why_it_won": "\"Judges reward a coherent end-to-end pipeline plus genuine modeling creativity, and this paper delivers both. It chains four standard, defensible OR/decision tools (Spearman network -> multi-centrality features -> EWM-weighted TOPSIS) into a clean priority ranking, then crowns it with an original, well-named dynamic model — the Temporal Champagne Tower Model — whose physical analogy makes a complex priority-cascade-with-spillover instantly intuitive while still being written as rigorous recurrence equations with an explicit algorithm table. It hits every sub-question (network, priorities, 10-year projection, single-goal-achievement effect, COVID-19, company/org transfer) and quantifies its value claim (82% vs. 78% of SDGs achieved, +4% over the baseline plan). The COVID-19 extension is handled elegantly by two interpretable coefficients rather than a model rebuild, and the sensitivity analysis on C and D backs the robustness claim with concrete numbers across three countries. It also reads like an advisory product — direct 'Advice for the United Nations' callouts and the proposal of a new Goal 18 — which signals real engagement with the problem's policy framing.\"",
+  "section_highlights": "\"Strong structural moves: (1) A one-page framework flowchart (Figure 1) up front showing all three models and their data flow, so a judge sees the whole architecture in seconds. (2) A consistent notation table and per-model overview figures (Figs 4, 6, 7) that scaffold each model before the math. (3) Equations are numbered, derived stepwise (EWM Steps 1-4, TOPSIS Steps 1-5), and the TCTM is consolidated into a single boxed system (eq. 31) plus a pseudocode algorithm table (Table 4) — easy to audit. (4) Every results subsection ends with concrete discoveries and an explicit 'Advice for the United Nations' block, tying math back to the decision-maker. (5) The champagne-tower metaphor and the 'Who Is the Top 1?' title give the paper a memorable identity. (6) Honest, specific Strengths/Weaknesses section that names the real Achilles' heel (hyperparameters from a single Nature paper). Summary page cleanly states each model, its method, and a headline number per question.\"",
+  "pitfalls_or_limitations": [
+    "Self-admitted weakness: the COVID-19 coefficients gamma_i and MI_i (and arguably C) are hard to estimate and were sourced from a single Nature paper's expert data, so the crisis model rests on thin, non-reproducible calibration",
+    "Assumption 2 — all 17 goals are equally difficult to complete (1% of Goal i = 1% of Goal j) — is a very strong simplification that drives the entire resource-allocation arithmetic; real goals differ enormously in cost/difficulty",
+    "C=5 is justified only by hand-waving 'Pareto's principle'; the spillover-efficiency constant has no real empirical grounding",
+    "Hard-coded thresholds (correlation cutoff at |0.6|, edge-drop at N_ij<10) are presented as fixed and not themselves subjected to sensitivity analysis, even though they materially shape the graph",
+    "Only 3 countries and 95 series over 16 years — small sample; correlation-as-relationship conflates statistical association with causal synergy/trade-off, a known weakness of SDG-network approaches the paper inherits",
+    "Using linear regression both to impute missing values and to set the resource budget D bakes a linear-trend assumption into the data before the 'predictive' model even runs",
+    "Total annual resource D as '17 x slope of a linear fit' is an ad hoc proxy for a real resource budget",
+    "Priorities are frozen for the full 10 years (except the complete-queue promotion), which the paper defends but which ignores that priorities plausibly shift as the world changes",
+    "Several rendered figures/tables in this markdown extraction are clearly garbled (e.g., the radar/heatmap dumps), making some quantitative claims hard to verify from the artifact alone"
+  ],
+  "reusable_patterns": [
+    "Network-from-correlations recipe: build a domain graph by computing Spearman correlations between entities' time series, threshold into positive/negative/none, drop low-evidence edges, and signed-weight the rest — reusable for any 'how are these N things related' MCM/ICM prompt",
+    "Centrality-as-features -> objective-weighting -> TOPSIS pipeline: extract multiple graph centralities as decision criteria, weight them with the Entropy Weight Method (no subjective weights), and rank with weighted TOPSIS — a clean, judge-friendly priority/ranking template",
+    "Split signed graphs: run the same centrality metrics separately on positive and negative subgraphs to preserve synergy vs. trade-off information instead of averaging it out",
+    "Physical-analogy-as-model: anchor a novel dynamic model in a vivid, nameable real-world metaphor (champagne tower), then formalize it as recurrence equations + an algorithm table — buys both intuition and rigor",
+    "Priority-cascade resource allocation: a year-by-year loop that pours a fixed budget into highest-priority items first, lets benefits spill to correlated neighbors, promotes 'completed' items to a maintenance queue (with fall-back), and grows the active set via neighbors",
+    "Perturb-don't-rebuild for shock/scenario sub-questions: model an external shock (pandemic, disaster) by injecting one or two interpretable coefficients into existing equations and re-running, rather than constructing a separate model",
+    "Robustness via parameter sweep reported as max-min deltas across multiple cases (here 3 countries), framed explicitly as evidence of insensitivity",
+    "Decision-maker framing: end each analysis with an explicit 'Advice for [stakeholder]' block and, where warranted, propose a new actionable construct (e.g., 'Goal 18: International Cooperation') to show engagement beyond the math",
+    "Front-load a single whole-paper architecture flowchart and keep a consistent notation table + per-model overview diagrams to make a long paper navigable for graders"
+  ]
+}

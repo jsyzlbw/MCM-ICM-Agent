@@ -1,0 +1,47 @@
+{
+  "paper_id": "2022-2224507",
+  "year": 2022,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2022 MCM Problem C (data): given five years of daily Bitcoin (BCHAIN-MKPRU) and gold (LBMA-GOLD) price series, design a daily trading strategy starting from $1000 that maximizes terminal wealth on 2021-09-10, accounting for transaction costs (2% BTC, 1% gold), prove the strategy is optimal/best, and analyze sensitivity of strategy and final wealth to transaction costs. Team 2224507's answer reframes the problem as a technical-analysis quant strategy: optimize the parameters of seven classical stock-market indicator factors, combine the best factors into a 3-of-5 voting system, size positions with a Markowitz mean-variance model, then layer LSTM price forecasting plus a forced 20% stop-loss on top, reaching a final asset of $190,635.58 (185.49% annualized).",
+  "models_used": [
+    "Technical-indicator decision factors as buy/sell signal generators: KDJ, RSI, WR (overbought/oversold), MACD, TRIX, DMA (trend), BOLL/Bollinger Bands (pressure-support) — 7 classical factors computed from closing price only",
+    "Per-factor parameter-optimization model: a discrete mathematical program maximizing terminal assets M_1826 over factor parameters (e.g. RSI period n, buy threshold I, sell threshold O; MACD n1,n2; BOLL n,k), with state-transition constraints linking cash C, holdings B, total M, binary buy/sell indicators p,q (p+q<=1), transaction-cost factor alpha — solved in MATLAB on the FIRST YEAR of data only (in-sample training)",
+    "Voting system / ensemble signal: 3-of-5 factor agreement triggers a trade (BTC voters = DMA,RSI,MACD,TRIX,WR; gold voters = DMA,RSI,MACD,TRIX,BOLL)",
+    "Markowitz mean-variance portfolio model: minimize portfolio variance (using rolling std of daily returns and BTC-gold covariance) to set position weights H_btc, H_gd when holding both assets, subject to 0<=H_btc+H_gd<=1, H>=0",
+    "LSTM neural network for one-step-ahead price forecasting (input/forget/output gates, cell state) — predicted price w'_{t+1} substituted into factor formulas (e.g. DMA*, WR*) so day t+1 signal is available on day t",
+    "Forced stop-loss risk-control rule: liquidate when an asset falls >20% from entry",
+    "God's-perspective upper-bound LP: a perfect-foresight maximization model (objective Max M_n with full BTC+gold transition constraints) solved in LINGO to get the theoretical maximum $14,362,722,337.67 as a benchmark"
+  ],
+  "key_techniques": [
+    "In-sample/out-of-sample split: parameters fitted on year 1 (2016-09 to 2017-09), strategy evaluated over all 5 years — a genuine train/test discipline rare in MCM C papers",
+    "Recasting an open-ended 'design a strategy' prompt into a parameter-optimization problem with an explicit objective function and state-transition constraints, making it tractable and defensible",
+    "Binary indicator variables (p,q) with p+q<=1 and logic that a bought day has C=0 (no double-buy) — clean encoding of trading constraints in the MP",
+    "Ensemble voting to denoise individual factor signals, reducing the 13 trades over 5 years (low churn => low transaction-cost drag)",
+    "Layered model improvement: baseline voting strategy ($124,716.87) -> add LSTM forecast + stop-loss -> improved strategy ($190,635.58), with explicit before/after delta (+51.64% terminal, +14% they cite)",
+    "Three-pronged optimality argument for Task 2: (a) scientific legitimacy of factors from finance literature, (b) parameter-optimization gains >30% over textbook stock parameters, (c) benchmarking vs God's-perspective LP (model achieves 0.0013% of theoretical max) and vs real firms (J.P. Morgan, CICC annual returns)",
+    "Transaction-cost sensitivity sweep: vary per-trade cost 0-6% for both single factors and the portfolio, tracking BOTH terminal assets and trade count, showing the portfolio degrades more gracefully than single factors",
+    "Multi-tool workflow: MATLAB for factor optimization, LSTM for forecasting, LINGO for the perfect-foresight LP"
+  ],
+  "why_it_won": "\"From a judge's view, the paper wins on three things MCM rewards. (1) It answers all three sub-questions concretely with numbers: a real $190,635.58 terminal value, a sensitivity sweep, and a genuine optimality argument. (2) The optimality section is unusually strong — instead of just asserting 'our strategy is good', it bounds performance against a perfect-foresight LINGO upper bound ($14.36B) AND against named real-world firms (J.P. Morgan, CICC), giving the verdict credibility. (3) Methodological discipline: training factor parameters on only the first year and testing on the remaining four shows the team understands look-ahead bias and out-of-sample validation, which signals modeling maturity. The layered narrative (single factor -> optimized parameters -> voting ensemble -> LSTM+stop-loss) gives a clear improvement story with quantified deltas at each step, and the low trade count (13 in 5 years) makes the strategy robust to the transaction-cost question that sinks naive high-frequency answers.\"",
+  "section_highlights": "\"Summary clearly states the headline numbers ($1,000 -> $190,635.58, 185.49% annualized) and the +14% improvement from the LSTM/risk-control layer. Section 1.3 'Our work' uses a full mermaid-style flowchart tying data preprocessing -> factor selection -> optimization -> voting -> forecasting. Section 4.3 is the technical core: it writes out the full MP (eqs 8-15) with line-by-line justification of every constraint (eqs 9-14 each explained in prose). Section 4.4 Table 2 compactly reports optimal parameters + 5-yr assets + annualized yield for all 7 factors x 2 assets — excellent at-a-glance comparison that motivates which factors made the voting cut. Section 5 (Optimality) is the standout structural choice: three independent angles plus the God's-perspective LINGO benchmark and the investment-firm bar chart. Section 6 separates transaction-cost effects on single factors vs the portfolio, plotting assets and trade count together. Closes with a one-page client-facing MEMO restating the strategy in plain trader-facing language.\"",
+  "pitfalls_or_limitations": [
+    "LSTM forecast is almost certainly overfit / look-ahead-leaky: the predicted vs real price plots (Fig 11) overlap near-perfectly, which for daily crypto prices signals the model is effectively predicting w'_{t+1} ~ w_t (lagged copy), not adding real predictive value — yet they substitute it into factors as if it were a true forecast",
+    "Numerical inconsistency in the summary: text says original program ended at $125,716.87 in one place and $124,716.87 elsewhere (Table 4), and claims '14% higher' while Table 4 / Fig 13 imply +51.64% — sloppy number hygiene that a sharp judge will notice",
+    "Several figures are corrupted/garbled in the rendering (Fig 2, 5, 6 scatterplot tables contain nonsense monotone columns; Fig 16 axis labels mislabeled), suggesting weak figure quality control",
+    "Assumptions are convenient and under-justified: 'no minimum trading unit', 'no systemic risk', and all-in/all-out (buy everything or sell everything) — the all-or-nothing trading rule contradicts the mean-variance position-sizing, which is only partially reconciled",
+    "Parameter optimization is done per-factor in isolation on a single 1-year window with no cross-validation or regime-robustness check; the 'optimal' parameters (e.g. RSI n=16,O=75,I=32) are at risk of being curve-fit to 2016-17",
+    "The 'God's perspective' benchmark uses perfect foresight with the SAME all-in mechanics, so the 0.0013% ratio is more rhetorical than rigorous",
+    "Voting threshold (3-of-5) and the 20% stop-loss level appear chosen by hand, not optimized or justified by sensitivity analysis"
+  ],
+  "reusable_patterns": [
+    "Recast 'design the best X' into a constrained optimization: write an explicit objective (terminal wealth) plus state-transition constraints with binary action variables — turns a vague design prompt into a solvable, gradeable model",
+    "Train-on-window-1, test-on-rest split for any time-series strategy problem to demonstrate awareness of look-ahead bias — cheap to do, strongly rewarded",
+    "Ensemble/voting to combine multiple weak signals and reduce action frequency, which directly improves the transaction-cost / robustness sub-question",
+    "Three-layer optimality argument template: (a) cite literature for component legitimacy, (b) quantify improvement over a naive baseline, (c) bound against a perfect-foresight upper limit AND a real-world peer benchmark",
+    "Build a perfect-information LP (LINGO/solver) purely as a theoretical ceiling to contextualize how good your heuristic strategy is — a clean, reusable optimality device",
+    "Sensitivity sweep that tracks two coupled outputs (terminal value AND trade count) vs the cost parameter, and contrasts the ensemble against its components to argue stability",
+    "Summary table reporting parameters + outcome + normalized metric (annualized yield) across all model variants in one grid for at-a-glance comparison",
+    "Close with a client-facing MEMO that re-states the technical strategy in stakeholder language — matches the ICM/MCM C deliverable expectation"
+  ]
+}

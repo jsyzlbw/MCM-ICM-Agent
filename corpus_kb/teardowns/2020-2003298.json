@@ -1,0 +1,50 @@
+{
+  "paper_id": "2020-2003298",
+  "year": 2020,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2020 MCM Problem A (continuous): \"Keeping up with the Migrating Fish.\" Rising sea surface temperature is shifting the distribution of Scottish herring and mackerel. The team had to (1) predict the geographic distribution of both species over the next 50 years, (2) find the \"critical year\" when fish move beyond the range of small (non-refrigerated) fishing vessels, (3) propose and economically evaluate adaptation strategies for small fishing companies, and (4) revise those strategies under territorial-water (EEZ) fishing restrictions.",
+  "models_used": [
+    "Proper Orthogonal Decomposition (POD) / reduced-order model on NOAA DOISST sea-surface-temperature snapshots (≈468 monthly snapshots, 1981-2020), implemented as a PCA: mean-subtract, covariance C=(1/(m-1))D'^T D', eigendecomposition, retain top-3 modes capturing 97% of energy",
+    "Time-coefficient forecasting: linear regression (long-term trend) + Fourier transform (seasonal periodicity) applied to each retained POD mode's time coefficient a_k(t), holding spatial modes (eigenvectors) fixed over the 50-year horizon",
+    "Habitat/temperature-preference mapping using Mean Temperature of the Catch (MTC): herring 5-7C, mackerel 10-14C, with MTC treated as a Normal distribution (herring mean 6C, mackerel mean 12C) to generate best/most-likely/worst migration cases via contour matching",
+    "Nutrient-loss (food-spoilage) kinetics model: first-order ODE dA/dt = k_A·A with A = TVB-N or K-value freshness indicators, integrated to A = A0·e^{k_A t}",
+    "Arrhenius equation k_A = k0·e^{-Ea/RT} with k0 and Ea fit by linear regression of ln k vs 1/T; expected storage time t_rot = min{t_T, t_K}",
+    "Geometric fishing-range model: range = circle of radius D_max = storage_days × 100 km/day centered on port; critical year = when predicted fish contour becomes tangent to the circle",
+    "Net Present Value (NPV) cost-benefit model for port relocation: NPV = Σ CF_i/(1+r)^i − C0, r=8%, 13-year horizon",
+    "Inverted Arrhenius/storage model to solve for the required on-board storage temperature T_necessary as a function of needed fishing distance (for the 'change fishing mode' strategy)",
+    "Sensitivity analysis: perturbing ODE initial value by ±0.2%, ±2%, ±10% across 250-300K and measuring relative error of storage-time output"
+  ],
+  "key_techniques": [
+    "Reframing a high-dimensional spatiotemporal forecasting problem as a low-dimensional one: separate space (fixed POD modes) from time (forecast only 3 scalar coefficient series) — the central, judge-impressing move",
+    "Justifying the modeling choice by argument before introducing it: explicitly explains why naive per-pixel prediction fails (outliers from wars/human activity, spatial correlation) to motivate POD as a holistic, outlier-robust method",
+    "Out-of-sample validation: train on first 446 snapshots, predict last 12, report 13.69% average relative error in a table — quantified credibility rather than bare assertion",
+    "Chaining physical sub-models into a decision metric: ODE spoilage + Arrhenius temperature dependence → storage time → travel distance → fishing-range circle → critical year",
+    "Using the dual-indicator min{t_T, t_K} as a conservative (worst-binding) freshness bound",
+    "Scenario analysis (best/most-likely/worst) driven by treating the biological temperature preference as a probability distribution, producing a defensible range of critical years instead of a single point estimate",
+    "Bringing in finance (NPV with discount rate) to make strategy recommendations economically rigorous, not just qualitative",
+    "Inverting an existing model to answer a new sub-question (solving Arrhenius for required temperature given target distance)"
+  ],
+  "why_it_won": "\"It made one genuinely sophisticated, well-motivated modeling decision — applying POD/reduced-order modeling to the SST field — and executed it cleanly: motivated it against a naive baseline, validated it out-of-sample with a concrete error number, and reduced a 680-dimensional prediction problem to forecasting three scalar time series. From there it built a coherent physical chain (Arrhenius spoilage kinetics → storage time → travel radius → tangency-based 'critical year') that turned the migration prediction into an actionable operational threshold. The work spans the full breadth the prompt demands — biology, fluid-data analysis, chemistry, geometry, and finance (NPV) — yet stays internally consistent because every later part reuses the Problem-1 and Problem-2 outputs. Judges reward a paper that takes a real interdisciplinary stance, validates its core engine, quantifies uncertainty via best/likely/worst scenarios, and connects everything back to concrete recommendations for the stakeholder (relocate to Shetland, switch to fishing+shipping-vessel mode, build transit warehouses). The dedicated newspaper article for 'Hook Line and Sinker' and an honest strengths/weaknesses section round it out.\"",
+  "section_highlights": "\"Strong: (1) The POD section (3.1) reads like a methods paper — clear snapshot/matrix notation, an eigenvalue table showing 93.96%/2.33%/1.07% energy split to justify the 3-mode truncation, and a validation table. (2) Definitions block in 4.2.1 crisply defines 'maximum traveling distance', 'fishing range', and 'critical year' before using them, so the geometric argument is unambiguous. (3) Assumptions (2.1) are each paired with a physical justification (e.g., fish live <200m where temperature is well-mixed, so ignore vertical gradient). (4) Logical flow: each problem's solution explicitly feeds the next (Problem 2 uses Problem 1 locations; Problem 3 uses Problem 2 critical years; Problem 4 re-runs both under EEZ constraints). (5) Self-contained executive summary up front states every numeric conclusion (300/500 km ranges, 2027/2033/2043/2045 critical years, £64-65M/yr NPV). The keyword list and per-strategy structure (relocate / change mode / transit station) make navigation easy.\"",
+  "pitfalls_or_limitations": [
+    "POD time-coefficient forecast assumes spatial modes are frozen for 50 years and extrapolates a 39-year record forward 50 years — a long extrapolation the paper concedes ('data is not sufficient... errors in long-term forecast'); the validation error (13.69%, with individual months >20%) is only a 12-month horizon, not 50 years",
+    "The reported figures are unreliable/garbled in the markdown extraction (heatmaps and migration maps show generic 'Arctic region' / 'East Asia' / 'birds' images, and the a1/a2/a3 coefficient charts look like placeholder data), so the visual evidence cannot be independently checked — and the actual 50-year contour maps that the whole argument rests on are not legibly conveyed",
+    "Internal inconsistencies in the prose: herring/mackerel travel-distance assignment is stated inconsistently (text gives 300 km mackerel / 500 km herring in one place but the summary and ranges are swapped elsewhere); MTC 'most likely' for mackerel is described as both 6C and 12C in different sentences",
+    "The fishing-range model is a simplistic circle of constant 100 km/day with a single port coordinate; ignores weather, fuel cost, fleet heterogeneity, and assumes travel distance is 'solely' a function of spoilage time",
+    "Spoilage parameters (k0, Ea, A0) are borrowed from a single grass-carp study and applied to herring/mackerel; sensitivity analysis only perturbs the ODE initial value, not Ea/k0 or the SST forecast — so the most uncertain inputs (the 50-year temperature trend) are never sensitivity-tested",
+    "NPV uses flat £169M annual mackerel revenue held constant to 2070 and a uniform £45M/port × 11 ports, ignoring revenue decline, fish-stock depletion, and discounting of the migration itself",
+    "Economic numbers are quoted inconsistently (£64M/yr in the body vs £65M/yr in the summary)"
+  ],
+  "reusable_patterns": [
+    "Reduced-order modeling (POD/PCA-SVD) to forecast a spatiotemporal field: decompose into fixed spatial modes + a few time-coefficient series, truncate by cumulative eigenvalue energy (e.g., keep modes to 95-97%), then forecast only the low-dimensional coefficients with regression+Fourier. Reusable for any climate/field/sensor-grid prediction problem",
+    "Motivate-then-introduce: before naming your method, show concretely why the obvious baseline fails. This frames a fancy method as necessary rather than show-off",
+    "Always hold out a test window and report a single headline error number in a table to make a forecast credible",
+    "Physical-chain modeling: connect first-principles sub-models (here ODE kinetics + Arrhenius) so a measurable physical quantity becomes a decision threshold; and invert the same model to answer the reverse question",
+    "Turn a point prediction into best/most-likely/worst scenarios by treating a key parameter as a distribution — gives a defensible range and shows uncertainty awareness",
+    "Reduce a vague feasibility question to clean geometry (circle + tangency) with explicitly defined terms before computing",
+    "Bring in NPV/discounting for any 'is this strategy worth it' sub-question to add economic rigor",
+    "Make every problem-part consume the outputs of the previous part so the paper reads as one connected model, not four disconnected mini-papers",
+    "Self-contained numeric summary up front + keyword list + honest strengths/weaknesses section as standard MCM scaffolding"
+  ]
+}

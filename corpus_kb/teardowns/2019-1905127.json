@@ -1,0 +1,52 @@
+{
+  "paper_id": "2019-1905127",
+  "year": 2019,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2019 MCM/ICM Problem F (policy): assess the impact of a decentralized digital currency on sovereign currencies, government behavior, and the global trade/financial system, and recommend policy. Team 1905127 built a three-level \"General Digital Currency Circulation Model\" (individual / national / international) grounded in monetary economics, and produced an Outstanding (O-award) paper plus a one-page policy memo to national leaders.",
+  "models_used": [
+    "Fisher's equation of exchange (PY = Mv) used to derive price/volatility of digital currency via incremental form ΔP = ΔMv/Y, splitting demand into transactional vs speculative",
+    "Keynesian theory of money demand (speculative-demand decomposition; speculative demand tied to exchange-rate expectation, interest-rate expectation, and crowd attention)",
+    "Diamond-Mortensen-Pissarides (DMP) search-and-matching model, EXTENDED to a dual-currency (legal 'flat' vs digital) closed economy with Bellman-style value equations rV_o, rV_f, rV_d and acceptance probabilities λ, μ; solved for equilibrium acceptance thresholds λ̂, μ̂",
+    "Intertemporal government tax-maximization model: max z = Σ g_t/(1+r)^t, with per-period revenue g_t built from tax rates t_f, t_d, matching efficiency e(GDP), and a regulatory/monetary-sovereignty cost term C(μ)",
+    "Bacchetta & van Wincoop (2002/2005) currency-denomination-of-trade model, EXTENDED to add digital currency as a third settlement currency; uses second-order Taylor / Jensen-type expansion of expected utility of profit EU(Π) over exchange-rate variance σ² to compare settlement choices",
+    "Mundell-McKinnon Optimal Currency Area (OCA) theory, adapted into a two-track 'Supranational Monetary System Model' (digital currency issued by a supranational bank by demand share + retained sovereign currencies), contrasted against the Mundell-Fleming-Dornbusch (MFD) model",
+    "Purchasing Power Parity (PPP) / interest-rate-parity relation to set the floating exchange rate between each sovereign currency and the universal digital currency (ε expressed via relative real interest and inflation rates)",
+    "Multivariate OLS linear regression (Stata) of country digital-currency acceptance μ_i on price level P, output Y, trading volume TR, public attention IN, legal attitude LE, network security SF, price risk PR — as empirical validation of the structural model",
+    "Monte Carlo simulation of US trade split between fiat and digital currency markets (1994-2016 fit, 10-year forecast), showing convergence of digital market share to ~65.21% independent of initial share, and collapse when the supranational bank loses control",
+    "Quadratic polynomial curve fitting (MATLAB polyfit, degree 2) of US total trade volume to forecast future trade for the Monte Carlo simulation"
+  ],
+  "key_techniques": [
+    "Three-tier micro-to-macro decomposition (individual / national / international) that maps directly onto the three sub-questions of the prompt",
+    "Borrowing and EXTENDING canonical economics models rather than inventing ad hoc ones: DMP → dual-currency, Bacchetta-van Wincoop → third currency, OCA → two-track supranational system — each citation gives the model academic credibility",
+    "Equilibrium / fixed-point analysis on the acceptance proportions, yielding a clean qualitative taxonomy (stable coexistence vs vicious-circle marginalization vs convergence to full adoption)",
+    "Anchoring otherwise-unobservable equilibrium thresholds to real reference countries: Zimbabwe (assumed 100% foreign/digital acceptance → legal-tender threshold λ̂) and USA (assumed 100% dollar acceptance → digital threshold μ̂), then classifying ~130 countries against those thresholds",
+    "Mapping abstract model parameters to measurable proxies (δ = log GDP, pc = inflation rate, p_o-d = Bitcoin's share of money supply, risk = GCI cyber-security rank, attention = Google Trends Bitcoin search heat, volatility = 24h BTC price swing)",
+    "Cross-validation strategy: derive country outcomes structurally from the DMP thresholds, THEN re-confirm direction/significance of drivers with an independent OLS regression",
+    "Robustness via Monte Carlo: showing the ~65% equilibrium share is invariant to random initial conditions, then showing the regime collapse when supranational regulation fails — a built-in sensitivity/scenario analysis",
+    "Strong visualization: world choropleth map (both/legal-only/digital-only/missing) and convergence line charts for stable vs imbalance regimes"
+  ],
+  "why_it_won": "\"From a judge's view it wins on intellectual ambition matched to rigor. The policy prompt is open-ended and easy to answer with hand-waving; this team instead imposed a disciplined micro-to-macro architecture and populated each layer with a real, citable economics model (Fisher, Keynes, DMP, Bacchetta-van Wincoop, Mundell OCA, PPP). Critically, it doesn't just cite these models — it DERIVES new results (dual-currency equilibrium thresholds, a third-currency settlement criterion, a two-track supranational system that repairs the MFD trilemma) and then makes them EMPIRICAL: real data for ~130 countries, a Stata OLS regression as independent validation, and a Monte Carlo showing a robust ~65% equilibrium plus a collapse scenario. The combination of theoretical depth, a falsifiable world-map prediction, an honest weaknesses section, and a clean stand-alone policy memo to national leaders is exactly the 'complete, plausible, well-communicated, self-aware' package that earns Outstanding on a policy problem.\"",
+  "section_highlights": "\"Front matter: a dense Summary Sheet that previews all three sub-models and their punchlines, plus a separate one-page POLICY RECOMMENDATION memo addressed 'To: National leaders' — directly satisfying the deliverable. Overview (1.3) includes a full mermaid-style flowchart tying every model to the three levels. Section 3 is the theory core: 3.1 individual DMP equilibrium with explicit value equations and a λ/μ case taxonomy; 3.2 the intertemporal tax-max model with the discounted-revenue objective; 3.3 the trade-profit-under-volatility derivation and the supranational OCA system. Section 4 is the empirical payoff: threshold-anchoring to Zimbabwe/USA, the parameter-to-proxy table, the OLS regression table (n=53, R²=0.282), the world-equilibrium choropleth (Fig 3), and the Monte Carlo convergence vs collapse charts (Figs 4-5). Section 4.3 extends to commercial-bank disruption, monetary-policy independence, infant-industry protection, and Eurozone-style convergence failure. Section 5 gives an explicit, candid Strengths/Weaknesses split and future work; Appendix ships the actual MATLAB polyfit and world-map drawing code.\"",
+  "pitfalls_or_limitations": [
+    "Self-admitted: the sub-models are loosely coupled ('the framework is relatively large and the relationships of sub models are relatively loose'), so there is no single unified system — results are stitched, not jointly solved",
+    "Weak empirical foundation: a global decentralized digital market does not exist, so the structural model can't be validated against reality; macro currency-choice theory is acknowledged as abstract",
+    "The OLS validation is thin: only n=53 countries, R²=0.282, and all three risk variables (LE, SF, PR) are statistically insignificant — the authors lean on 'economic significance' to rescue them",
+    "Threshold-anchoring is a strong, unargued assumption: treating Zimbabwe as a 100% foreign/digital-acceptance equilibrium and the USA as a 100% dollar equilibrium drives the entire 130-country classification, and a wrong anchor would shift every prediction",
+    "Proxy validity is shaky: Bitcoin's 24h share, Google Trends search heat, and 24h price swings are noisy stand-ins for deep structural quantities; using Bitcoin as 'the' digital currency conflates a speculative asset with a hypothetical stable medium of exchange",
+    "The appendix US trade-volume series is a suspiciously smooth near-linear ramp (9000 → 47000), suggesting illustrative/synthetic rather than real data feeding the Monte Carlo",
+    "Circular logic risk: stability of digital currency is assumed (low volatility) to prove it becomes the trade medium, while its becoming the trade medium is what is supposed to cause the stability",
+    "English-language and notation errors throughout (typos, 'flat' for 'fiat', garbled symbols), which can cost communication points even when the math is sound"
+  ],
+  "reusable_patterns": [
+    "Micro → national → international tiering: for any policy/economics-flavored MCM problem, structure the model as individual-behavior → government-objective → system-level equilibrium so each tier answers one sub-question",
+    "Extend-a-canonical-model move: locate the textbook model nearest the prompt (search/matching, OCA, trade-denomination) and add ONE new dimension to it; cite the original to inherit credibility and derive a genuinely new result",
+    "Anchor unobservable thresholds to real reference cases: pick one or two real-world entities you can argue are 'at equilibrium', back out the critical parameter from them, then classify the rest of the population against it",
+    "Parameter-to-proxy table: explicitly list each abstract model parameter next to a concrete, fetchable data proxy (log GDP, inflation, market share, a public index) — makes an abstract model instantly empirical",
+    "Structural-then-statistical double validation: derive outcomes from the structural model, then run an independent regression to confirm the sign/significance of drivers; report both even if the regression is weak",
+    "Monte Carlo for robustness + a deliberate failure scenario: show the equilibrium is invariant to random initial conditions, then show the regime collapse when a key assumption (here, supranational regulation) breaks — doubles as sensitivity analysis",
+    "Ship a stand-alone policy memo as front matter for any 'advise the decision-maker' prompt, written in plain language and separable from the technical body",
+    "Include the actual solver/plotting code (MATLAB polyfit, choropleth) in an appendix to signal reproducibility",
+    "Write an honest, specific Strengths/Weaknesses section that names the real limitations (loose coupling, no real data) rather than generic caveats — judges reward self-awareness"
+  ]
+}

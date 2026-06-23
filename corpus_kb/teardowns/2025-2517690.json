@@ -1,0 +1,47 @@
+{
+  "paper_id": "2025-2517690",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asks to predict Olympic medal counts for the 2028 Los Angeles Games, assess the 'great coach' effect, and provide strategic insights based on historical data and event information.",
+  "models_used": [
+    "Random Forest regression",
+    "Lasso regression",
+    "XGBoost regression",
+    "Neural Network regression",
+    "Logistic regression",
+    "Grey Relational Analysis",
+    "Two-sample mean hypothesis test",
+    "Chi-square test",
+    "N-player Game Theory / Nash Equilibrium"
+  ],
+  "key_techniques": [
+    "Comprehensive strength indicator with weighted medal counts",
+    "Ten-fold cross-validation for model selection",
+    "Multi-model comparison using R², MSE, RMSE, MAE",
+    "Prediction interval construction for uncertainty",
+    "Radar charts for multi-dimensional strength visualization",
+    "Grey correlation analysis to link events to total medals",
+    "Hypothesis testing (t-test and Chi-square) to validate coach effect",
+    "Logistic regression with odds ratios for first-medal probability",
+    "Game-theoretic modeling of host advantage",
+    "Sensitivity analysis on cross-validation folds"
+  ],
+  "why_it_won": "The paper addresses all three problem questions thoroughly with a well-sequenced mix of machine learning, statistics, and game theory. It rigorously compares four regression models via cross-validation, chooses the best performer (Random Forest, R²=0.92), and extends to classification for medal-less nations, coach-effect hypothesis testing, and strategic Nash equilibrium. Clear visualization, uncertainty quantification, and sensitivity analysis demonstrate robustness and depth, satisfying multiple judging dimensions.",
+  "section_highlights": "The paper uses a top-down flow diagram (Figure 2) that maps the entire solution structure, making the logical flow clear at a glance. Each modeling section is supported by well-labeled figures, tables, and equations, from data preprocessing to final insights. The strengths and weaknesses section honestly acknowledges limitations, and the conclusion ties findings to actionable recommendations.",
+  "pitfalls_or_limitations": [
+    "Relies on assumptions of stable sport levels and no program changes, which may be violated.",
+    "The 'great coach' effect analysis is limited by sparse coaching tenure data.",
+    "Game theory model is qualitative and not numerically optimized.",
+    "Model does not account for unforeseen global events (e.g., wars, pandemics) that could disrupt Games."
+  ],
+  "reusable_patterns": [
+    "Multi-model regression comparison using k-fold cross-validation to pick the best predictor",
+    "Feature engineering of a composite strength index from medal types and participation counts",
+    "Logistic regression for binary outcomes with odds-ratio interpretation and probability thresholding",
+    "Grey Relational Analysis to rank the influence of event-specific performance on overall medal totals",
+    "Pairing hypothesis tests (t-test, Chi-square) with regression coefficients to quantify intangible factors",
+    "Using prediction intervals to convey uncertainty in final forecasts",
+    "Integrating a simple game-theory framework to explain host-country strategic advantages"
+  ]
+}

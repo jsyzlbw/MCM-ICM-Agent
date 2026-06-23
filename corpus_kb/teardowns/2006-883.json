@@ -1,0 +1,49 @@
+{
+  "paper_id": "2006-883",
+  "year": 2006,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2006 MCM Problem A (continuous): design a scheduling algorithm for a hand-move sprinkler irrigation system using a single pipe set to water a 30x80 m flat field. Constraints: minimize the number of pipe-set moves, keep water application as uniform as possible, never exceed 0.75 cm/hr at any point, and deliver at least 2 cm to every part of the field over a 4-day cycle. System specs given: 420 kPa pump pressure, 150 L/min flow, 10 cm aluminum mainline, 20 m pipe joints, 0.6 cm rotating spray nozzles. The team's deliverable is an explicit move-by-move irrigation schedule plus the optimized sprinkler/pipe-set layout.",
+  "models_used": [
+    "Geometric circle-covering model (Kershner 1939 hexagonal covering) — reducing 'water the whole field' to covering a rectangle with the fewest equal-radius circles",
+    "Constraint-driven effective-radius calculation — shrinking the throw radius from 13.43 m (where rate=0) to an effective 11.5 m needed to deliver 2 cm in 5 hours, then shifting the left row inward by 1.93 m to keep sprinklers in bounds",
+    "Simultaneous Perturbation Stochastic Approximation (SPSA) — stochastic gradient optimizer minimizing the standard deviation of accumulated precipitation across the field grid (maximizing uniformity)",
+    "Discrete grid (matrix-of-cells) Monte-Carlo-style irrigation simulator in MATLAB — accumulates precipitation per 0.25 m cell from each sprinkler",
+    "Cubic spline interpolation of the measured sprinkler application-rate-vs-distance profile (Nelson WF16 #16 nozzle data from CIT)",
+    "Hazen-Williams pipe pressure-loss equation and the nozzle-discharge equation (Q = 29.82·sqrt(P)·D^2·Cd) for hydraulic feasibility checks",
+    "Greedy nearest-neighbor pipe-setup minimization heuristic — lateral-distance sorting with a 20 m pipe-length and 0.75 cm/hr overlap-rate feasibility test",
+    "Coefficient of Uniformity (CU = 1 - std/(1+std)) as the scalar objective/scoring metric"
+  ],
+  "key_techniques": [
+    "Decomposition of a coupled optimization into a pipeline of sub-problems: (1) full coverage via circle-covering, (2) boundary adjustment, (3) uniformity via SPSA, (4) pipe-setup minimization via greedy heuristic, (5) hydraulic verification — each stage feeds the next",
+    "Using a closed-form geometric optimum (Kershner's proven-optimal hexagonal covering) as the initialization/blueprint, then refining numerically rather than optimizing blindly from random starts",
+    "Cross-validation between two independent methods: the analytic shifted-covering layout and the SPSA numerical optimizer converge to nearly the same configuration (CU 0.89 vs 0.90), used as mutual confirmation",
+    "Translating physical delivery constraints (2 cm in available time, 0.75 cm/hr cap) into geometric spacing constraints (effective radius 11.5 m, minimum 21 m sprinkler separation)",
+    "Profile substitution with explicit scaling: no data existed for the 0.6 cm nozzle, so they took the documented 1/8\" Nelson profile and scaled the application rate by ~3.3x from the flow-rate ratio (12.57/3.42 gpm)",
+    "Showing optimizer convergence visually across iteration snapshots (random -> 100 -> 500 -> 5000 iterations) to demonstrate the SPSA is actually working",
+    "Order-of-magnitude pruning of negligible effects: computing mainline (0.0122 psi) and riser (0.058 psi) pressure losses and explicitly discarding them as negligible to justify the constant-pressure assumption"
+  ],
+  "why_it_won": "\"From a judge's view this paper wins on the rare combination of a clean analytic insight plus independent numerical confirmation plus a concrete, usable deliverable. The standout move is reducing the open-ended 'irrigate uniformly' task to Kershner's proven-optimal circle-covering problem, then showing that an entirely separate optimizer (SPSA) independently rediscovers essentially the same layout — that convergence (CU 0.89 analytic vs 0.90 SPSA) is exactly the kind of triangulation judges reward because it argues the answer is right, not just plausible. The team did real hydraulic engineering (Hazen-Williams, nozzle discharge) to validate feasibility rather than hand-waving the physics, sourced actual manufacturer sprinkler profiles (Nelson/CIT) instead of inventing a function, and produced a fully specified, immediately actionable output: 8 moves, 5 hours each, an explicit day-by-day clock schedule (8am/1pm), exact (x,y) coordinates, and the report that <1% of the field is under-watered with a defensible reason. They also honestly quantified their own limits. It is a complete loop — model, simulate, optimize, verify against an independent method, deliver a schedule, critique it — which is what an Outstanding paper looks like.\"",
+  "section_highlights": "\"Strong structural choices a future team can copy: (1) An 'Overall Approach' paragraph (4.1) that narrates the entire multi-stage pipeline before any detail — the judge knows the whole plan in one read. (2) A two-tier assumptions list separating 'Main Assumptions' (load-bearing, each justified with a reason, e.g. why no-wind, why 12-hr days) from 'Other Assumptions' (operational), which signals the team knows which assumptions actually matter. (3) A dedicated 'Possible sprinkler profiles' research section documenting that they hunted for real data, what they found, and exactly how they scaled it — transparency about a weak input. (4) Results delivered as BOTH a visual layout (Figure 10/11 with pipe sets drawn) AND a literal operator-facing schedule table with wall-clock times and coordinates — the deliverable is unambiguous and usable by the rancher. (5) A genuinely self-critical Weaknesses section with six specific, technically literate points (wind reshapes the profile, CU is an average that masks spatial patterns, FORTRAN would be ~10000x faster, the nozzle profile is for a half-size nozzle). (6) Full reproducible MATLAB source plus the SPSA implementation in appendices.\"",
+  "pitfalls_or_limitations": [
+    "The core sprinkler profile is borrowed from a 1/8\" (#16) Nelson nozzle, half the diameter of the problem's 0.6 cm (~1/4\") nozzle, then rescaled by a flow-rate factor (~3.3x) with no guarantee the spatial shape stays the same — the entire model rests on an unvalidated input the team themselves flag",
+    "SPSA was never actually run to convergence: they admit they couldn't reach the 5000th-iteration coordinate output due to compute limits and instead ASSUME the analytic shifted-covering layout approximates it. The headline cross-validation (0.89 vs 0.90) is therefore partly assumed rather than fully demonstrated",
+    "Coefficient of Uniformity is an averaged scalar — as the team notes, very different (even pathological) spatial patterns can share the same CU, so CU=0.89 does not by itself prove good spatial uniformity, and they care asymmetrically about under- vs over-watering but the metric is symmetric",
+    "No-wind assumption is a major simplification: wind reshapes the throw profile (shortens upwind, elongates downwind) and could invalidate the whole circular-coverage premise",
+    "The appendix code is buggy/unfinished — typos (thetammin/thetamin, sprinkler_posistions), the perturbation_algorithm.m feasibility branches have empty bodies, and there are unit inconsistencies (the text once says '75 cm per hour' and '420 Pascals' where kPa/0.75 cm-hr were meant) — sloppiness that undercuts the reproducibility claim",
+    "Each pipe set ends up containing only ONE sprinkler (because 21 m min spacing exceeds the 20 m pipe length), so the elaborate multi-sprinkler pipe-fitting machinery effectively collapses to a trivial case — the modeling sophistication exceeds what the final answer required",
+    "Zero real-world or sensitivity validation: all verification is in-simulation, with no robustness analysis over nozzle profile, spacing, or pressure"
+  ],
+  "reusable_patterns": [
+    "Reduce-to-a-known-problem: map the messy modeling task onto a classical solved problem (here, circle covering) so you inherit a proven-optimal baseline and a citation, then perturb to handle real constraints",
+    "Initialize a numerical optimizer from an analytic optimum instead of random restarts — faster convergence and a sanity anchor",
+    "Triangulate the answer with two independent methods and report their agreement as evidence of correctness (analytic layout vs SPSA), not just a single pipeline output",
+    "Convert physical/operational constraints into geometric ones early (delivery target + rate cap -> effective radius -> minimum spacing) so the optimization works in clean spatial variables",
+    "When required data is missing, find the closest real measured data, state the gap explicitly, and apply a defensible scaling law (flow-rate ratio) rather than fabricating a function",
+    "Always run a hydraulic/physical feasibility check and explicitly discard negligible terms with numbers (e.g. pressure losses of 0.0122 and 0.058 psi) to justify simplifying assumptions",
+    "Deliver the answer twice: once as a labeled figure of the optimized layout, once as an operator-ready table with wall-clock times and exact coordinates",
+    "Use a two-tier assumptions list (load-bearing vs operational), each with a one-line justification, and pair it with a specific, technically literate Weaknesses section that names concrete failure modes",
+    "Show optimizer convergence as a sequence of iteration snapshots to prove the algorithm is doing real work",
+    "Adopt a single scalar scoring metric (Coefficient of Uniformity) as the optimization objective, but explicitly discuss its blind spots so the judge trusts your judgment"
+  ]
+}

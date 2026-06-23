@@ -1,0 +1,48 @@
+{
+  "paper_id": "2018-73410",
+  "year": 2018,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2018 MCM/ICM Problem B (discrete). The team (control #73410, Outstanding award) had to (1) project the global geographic distribution of language speakers 50 years out (to 2067 from a 2017 base), explicitly modeling native vs. non-native speakers and migration, and (2) advise a multinational service corporation on where to open 6 new international offices so they cover the major language regions optimally. The paper's spine is a custom block-structured \"inhomogeneous transition matrix\" (a time-varying Markov-like population model) feeding a simulated-annealing combinatorial optimizer for office siting.",
+  "models_used": [
+    "Discrete-time linear population dynamics modeled as a Markov-chain-style transition matrix Y^(n+1)=A·Y^(n); steady state read off as the dominant eigenvalue/eigenvector (A·Y=λY) of A, where λ is the long-run growth rate and the normalized eigenvector is the equilibrium population split",
+    "Two-stage modeling: a 'Preliminary Model' (homogeneous constant matrix A, 22 languages, 4×4 per-language block A·Y for a 44×44 system) validated against real 2017 data, then a 'Modified Model' that adds time-dependence",
+    "Inhomogeneous (time-varying) transition matrix A^(n)=F[Y^(n),n] with a block structure: Ξ (native natural-growth, diagonal 1+growth), Π/Π1 (non-native decrease = 1−death−migration), Ω (migrant death), G/G1 (learning matrices, native→non-native), R/R1 (migration matrices, non-native→migrant), S (migrant reproduction) — separate English (subscript-1) blocks to track non-native English distribution",
+    "Mechanistic learning-rate sub-model: γ_ji^(n) = p_ji·a_i / (σ_i·d_ji), where p=eagerness (∝ current non-native population), a=new-learner proportion, σ=years to learn, d=language-family similarity (1 same family, 2 different)",
+    "Office-siting scoring/objective function S_i = ε^{k_i} · Σ_j (P_ij^η1 · E_ij^η2 / D_ij^η3) − h_i, a gravity-model-style score trading population P, GDP E, transport cost D, with a multiplicative per-extra-language penalty ε^{k_i} and fixed establishment cost h_i",
+    "Simulated Annealing (Metropolis–Hastings acceptance) to solve the discrete language-to-city assignment optimization (T0=97, Tt=3, cooling α=0.99, Markov chain length 10000), run 10 times for a stable solution",
+    "Economic cycle GDP forecast: superposition of Kitchin, Juglar, Kuznets, and Kondratiev cycles fit as a trigonometric function to ~46 years of GDP data, used to project 2067 regional GDP feeding E_ij"
+  ],
+  "key_techniques": [
+    "Disaggregating 'speakers' into native, non-native, learners, and migrants as separate state compartments rather than one population number — a compartmental redefinition of the problem",
+    "Block-matrix construction so each demographic process (birth, death, learning, migration, reproduction of migrants) lives in its own clearly-named sub-matrix, making a 44×44+ system legible",
+    "Eigenvalue/eigenvector interpretation given concrete meaning (λ = long-run growth rate, eigenvector = equilibrium share) and then used as a diagnostic that exposed a model flaw",
+    "Using the preliminary model's wrong long-run answer (Panjabi → 96% of population because highest birth rate dominates a homogeneous chain) as explicit motivation to upgrade to an inhomogeneous, time-varying matrix — turning a failure into the narrative bridge between models",
+    "Parameterizing soft real-world factors (government policy, economy, education) by mapping them onto specific model parameters (p_ij, r_j, σ_i, a_i)",
+    "Validating projections against ground truth: predicted vs. real 2017 native/non-native counts in a side-by-side table, and openly attributing residuals to bad source data",
+    "Sensitivity analysis via a single tunable exponent k on eagerness (γ ∝ (y_i)^k) sweeping 'uniformity of language choice' from k=0.1 to k=10 to show regime change in English vs Mandarin dominance",
+    "Switching the optimization weights (η1,η2,η3 and ε) to answer different business framings — necessities (population-weighted) vs non-necessities (GDP-weighted) — producing multiple tailored office maps"
+  ],
+  "why_it_won": "\"It reframed a vague forecasting prompt into a clean mechanistic state-transition model with genuine mathematical content (eigen-analysis with real interpretation), then connected that forecast to a real decision via a second, different technique (SA combinatorial optimization) — demonstrating breadth (modeling + optimization + econometrics) and an end-to-end pipeline. Crucially it showed scientific honesty: it built a simple model first, validated it against real 2017 data, diagnosed why it failed in the long run via the eigenvector, and used that to justify the more sophisticated inhomogeneous model — exactly the iterative narrative judges reward. The block-matrix decomposition and named sub-matrices made an intimidating 44×44 system readable, and the answers were decision-ready (concrete city lists, 6-vs-5 office tradeoff, weight scenarios), capped with a client memo that translated math into business advice.\"",
+  "section_highlights": "\"Strong structural moves: (1) Two-model arc — Preliminary (constant matrix) then Modified (inhomogeneous), with a clear, explicit list of the preliminary model's 5 defects bridging them. (2) Worked N=2 toy example with a transition diagram before scaling to N=22/26 — eases the reader in. (3) Validation table (predicted vs real 2017 counts) placed early to earn trust, with candid discussion of the German non-native anomaly and data-quality caveats. (4) Eigen-interpretation given plain-English meaning right where computed. (5) Sensitivity analysis isolated to one interpretable knob (k) with two contrasting regimes (k=0.1 vs k=10). (6) Application section reuses model outputs as inputs to the SA optimizer, and reports both 2017 and 2067 solutions plus a 6-vs-5 office economic tradeoff. (7) Client memo at the end restates findings in business language with three pricing-model-specific office maps. Notation tables precede each model section; strengths/weaknesses are explicit and self-critical.\"",
+  "pitfalls_or_limitations": [
+    "Parameter estimation is largely hand-set or assumed (a_i=0.01, σ_i=3, similarity d∈{1,2}, ε=0.98, η=1) rather than calibrated/fitted, so the 2067 numbers rest on convenient guesses — limited rigor in parameter justification",
+    "The headline conclusion (English overtakes Mandarin) is highly sensitive to the eagerness-uniformity exponent k, which the sensitivity analysis itself reveals — yet the team still reports a single confident ranking in the memo",
+    "Data quality is weak and acknowledged: visible inconsistencies (non-native German jumps 8M→52M; Russian non-native 27 vs 113; Japanese non-native left as '?'), so validation residuals are large for several languages",
+    "The learning/eagerness sub-model is somewhat circular: eagerness p is assumed proportional to current non-native population, which biases toward already-popular languages (built-in rich-get-richer for English)",
+    "Feedback is only partial — they admit population structure should feed back on birth/death/migration but only model its effect on learning; migrants' own first language influencing destination regions is ignored",
+    "The SA setup is under-justified (T0=97, Tt=3, α=0.99, chain length 10000 given without tuning rationale) and 'run 10 times' is a weak convergence argument; no comparison to an exact/enumeration baseline at small scale",
+    "The economic 4-cycle trigonometric GDP fit (Kitchin/Juglar/Kuznets/Kondratiev) is an ambitious add-on with little validation and produces implausibly large 50-year GDP multiples"
+  ],
+  "reusable_patterns": [
+    "Compartmentalize a population/quantity into mechanistically distinct sub-groups, then encode each transition process as a named block of a single transition matrix — gives a legible large linear system and easy eigen-analysis",
+    "Build a simple homogeneous version first, validate against real data, and let its long-run failure mode (dominant-eigenvalue domination) explicitly motivate the time-inhomogeneous upgrade — a ready-made two-model narrative arc",
+    "Give λ and the dominant eigenvector concrete domain meaning (growth rate / equilibrium share) and use them as a sanity check that can expose modeling errors",
+    "Two-stage pipeline: a forecasting model produces inputs (population, GDP) that feed a separate optimization model for the decision — demonstrates breadth and ties math to an actual recommendation",
+    "Gravity-model objective P^η·E^η/D^η with a multiplicative penalty term (ε^k) for over-coverage and a subtracted fixed cost h, solved by Simulated Annealing with Metropolis acceptance — a transplantable template for facility-location / assignment problems",
+    "Map qualitative exogenous factors (policy, economy, education) onto specific named parameters so 'soft' drivers become tunable knobs",
+    "Run the optimizer under multiple weight regimes to answer different stakeholder framings (e.g., population-weighted vs GDP-weighted) and present several tailored solutions instead of one",
+    "Do sensitivity analysis through a single interpretable exponent that sweeps a real-world spectrum (here: uniformity of choice) and show regime changes",
+    "Close with a client memo that re-expresses the math as plain business recommendations, including an explicit cost/benefit tradeoff (6 vs 5 offices) and conditional advice"
+  ]
+}

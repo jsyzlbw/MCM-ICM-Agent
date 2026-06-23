@@ -1,0 +1,46 @@
+{
+  "paper_id": "2025-2514461",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Predict the 2028 Los Angeles Olympic Games medal counts per country, including event numbers, medal tallies, first-time medalists, and the impact of introducing great coaches, using historical data and providing insights for Olympic committees.",
+  "models_used": [
+    "Support Vector Regression (SVR)",
+    "Long Short-Term Memory (LSTM)",
+    "XGBoost",
+    "Cox Proportional Hazard Model",
+    "Mann-Kendall test",
+    "Isolation Forest",
+    "Linear Regression",
+    "Random Forest"
+  ],
+  "key_techniques": [
+    "Grid search with 5-fold cross-validation for SVR hyperparameter tuning",
+    "Feature engineering: medal ratios, scoring system (3-2-1 weights)",
+    "Host country effect adjustment (15% score increase for USA)",
+    "Confidence interval estimation using residual normality assumption and z-score",
+    "Monte Carlo simulation for first-time medalist count distribution",
+    "Threshold method and Isolation Forest for anomaly-based coach effect detection",
+    "Ensemble prediction (Linear Regression + Random Forest) for coach impact",
+    "One Cycle Learning Rate Scheduler and Adam optimizer for LSTM training",
+    "Punishment term in LSTM loss to enforce medal count sums"
+  ],
+  "why_it_won": "The paper delivers a thorough, multi-model solution addressing all problem requirements with strong methodological justification. It transparently iterates from a flawed LSTM baseline to a robust XGBoost model, incorporates real-world complexities like host effect and prediction intervals, and provides actionable insights through sensitivity analysis and clear visualizations. The integration of statistical tests (Mann-Kendall), survival analysis (Cox), and anomaly detection (Isolation Forest) showcases depth and versatility, while the explicit strengths/weaknesses discussion demonstrates critical thinking.",
+  "section_highlights": "The report is exceptionally well-organized with a clear progression from assumptions and notations through four distinct models, each with a dedicated overview, establishment, and results subsection. Effective use of flow charts, scatterplots, and annotated tables guides the reader, while the sensitivity analysis and strength/weakness sections reinforce credibility and transparency.",
+  "pitfalls_or_limitations": [
+    "SVR model shows high MSE (1.744) for disciplines with unstable historical event counts",
+    "LSTM baseline suffered from overfitting and underfitting, predicting impossible medal counts",
+    "Assumption that all performance improvements beyond a threshold are solely due to coaches is simplistic",
+    "Host effect adjustment fixed at 15% for USA based on limited historical cases may not be accurate",
+    "The Great Coach Effect model assumes the impact pattern of a coach is consistent across different nations"
+  ],
+  "reusable_patterns": [
+    "Using SVR with Gaussian kernel and grid-search CV for nonlinear event count forecasting",
+    "Converting raw medal counts to winning ratios and using XGBoost to predict percentages, then multiplying by predicted event numbers",
+    "Applying Mann-Kendall trend test to identify countries with significant upward or downward medal trends",
+    "Treating first-medal attainment as a survival process with Cox proportional hazards model and Monte Carlo simulation",
+    "Combining threshold-based first-order difference/ratio with Isolation Forest to detect anomalies (coach effects)",
+    "Ensembling Linear Regression and Random Forest on detected GCE points to predict future performance under a new coach",
+    "Estimating prediction intervals by assuming normal distribution of residuals from XGBoost"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "paper_id": "2018-78577",
+  "year": 2018,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2018 MCM Problem C (data): four U.S. border states (CA, AZ, TX, NM) want an interstate \"energy compact\" focused on cleaner/renewable energy. Using the supplied 50-year ProblemCData.xlsx (1960–2009, 605 variables/state), the team had to: (1) build a comparable energy \"profile\" per state, (2) determine which state currently has the best profile, (3) forecast the profiles to 2025 and 2050 under no-policy-change, and (4) recommend quantitative renewable-energy targets and concrete actions to reach them, delivered partly as a governor's memo.",
+  "models_used": [
+    "Cubic spline interpolation for sparse missing values; curve fitting for indicators missing <25 years; cross-state averaging (highly-correlated borrowing) for indicators that are mostly zero",
+    "Min-max normalization to [0,1] plus per-capita division (by state population) to remove population/area scale effects",
+    "Three engineered composite indices: Use of Renewable Energy U_r, Use of Clean Energy U_c (renewables+natural gas+nuclear), and Greenhouse Gas Emissions GE (weighted CO2 from fossil consumption using published lb-CO2/MBtu ratios: coal 214.3, gasoline 157.2, natural gas 117.0)",
+    "PCA (Principal Component Analysis) to compress 5 correlated per-sector secondary indicators into U_r and U_c (first two PCs giving 0.93 cumulative for clean, 0.98 for renewable)",
+    "MAUA (Multi-Attribute Utility Analysis) with a piecewise power utility function u_i(x)=((x-a)/(b-a))^k calibrated so min→0, max→1, median→0.5 (solving for k_i) to spread out compressed distributions",
+    "Combination Weighting Approach (geometric mean of AHP and PCA weights, normalized) to weight the three indices — final weights U_r=0.178, U_c=0.433, GE=-0.389; AHP consistency check CR=0.033<0.1",
+    "AHP (Analytic Hierarchy Process) as the subjective-weight half of the combination weighting",
+    "ARIMA(p,q,d) time-series forecasting applied per secondary index (e.g. ARIMA(4,4,2) for CA's CA_r), with d chosen by differencing + p-value stationarity test, p/q read from ACF/PACF, validated by AIC/log-likelihood",
+    "Shapley Value (cooperative-game) regression model to split the renewable-investment fund fairly across the four states by marginal contribution"
+  ],
+  "key_techniques": [
+    "Tiered missing-data strategy: matched the imputation method to the severity of missingness (spline for a few gaps, curve-fit for <25yr, cross-state borrowing for mostly-empty) instead of one blanket fill",
+    "Domain-driven feature engineering: collapsed 605 raw variables into 13 interpretable indicators organized by 4 sectors (transport/commercial/industrial/residential) x 3 energy themes",
+    "Two-level hierarchical scoring: PCA at the secondary-index level, then combination weighting at the top index level — separating 'correlation-driven' from 'importance-driven' weighting",
+    "Utility-function reshaping to fix large magnitude gaps after normalization, pinning the median to 0.5 to maximize discrimination where data density is highest",
+    "Combining objective (PCA) and subjective (AHP) weights via geometric mean to hedge the weakness of each",
+    "Per-index ARIMA forecasting (not a single aggregate forecast) so the composite score is rebuilt from forecasted components, preserving structure",
+    "Reframing the funding-allocation sub-question as a cooperative game and solving it with Shapley values — a fairness-justified, not arbitrary, split",
+    "Calibrating recommended targets to 110% of the model's own forecast to express 'cooperation premium' rather than inventing numbers"
+  ],
+  "why_it_won": "From a judge's view, this paper wins on three axes. (1) Closure of the full problem chain: it answers every sub-question — profile, best state, 2025/2050 forecast, AND quantified targets + a costed action plan ($/state via Shapley) + a governor's memo — nothing is left as hand-waving. (2) Methodological layering that is justified rather than decorative: it explicitly explains WHY each tool is chosen (PCA because sectors are correlated and AHP 'would lose effect'; combination weighting because both correlation and real-world importance matter; ARIMA because it captures year-over-year dynamics unlike naive curve-fitting). That 'why this method here' reasoning is exactly what graders reward. (3) Defensible, reproducible numbers: it shows PCA loadings, AHP consistency ratio (CR=0.033), ARIMA parameters with AIC/log-likelihood, and concrete weights/coefficients in tables, so a reader can audit the pipeline. The data-science discipline (severity-matched imputation, per-capita normalization, validation statistics) signals the rigor expected of a data-type C problem.",
+  "section_highlights": "Standout structural moves: the Summary sheet front-loads every quantitative result (weights, 2025/2050 scores, the 34%/59% targets, the $208B fund split) so a triage judge sees the whole answer in 30 seconds. A separate governor's Memo restates findings in plain executive language — directly serving the 'inform the states' framing of the prompt. The 'Influential Factors' subsection (geography/climate, population, economy/policy) connects the numbers back to real-world state characteristics, showing the team understands its own results rather than just computing them. A clean model-overview flowchart (Fig 6) makes the multi-stage pipeline legible before the math. Heavy, varied visualization (energy-structure bars, trend lines, ACF/PACF plots, forecast bands) — the team even lists 'splendid presentations through a variety of charts' as a strength. Explicit Assumptions and a Notations table up front, and an honest Strengths/Weaknesses self-evaluation at the end.",
+  "pitfalls_or_limitations": [
+    "Self-admitted under-use of data: only 13 of 605 variables drive the score, risking loss of signal the judges' real dataset contained",
+    "Subjectivity conceded by the authors themselves: the utility-function form and the ARIMA p/q/d choices are hand-picked; the AHP pairwise judgments are also analyst-set",
+    "ARIMA order selection looks shaky — text says ARIMA(4,4,2) but reports four phi and four theta params (q=4 not 2), and d=4 differencing on a 50-point series is very aggressive and prone to overfit/overdifferencing",
+    "Forecasting each secondary index independently ignores cross-index correlations and can produce incoherent or out-of-range composite trajectories (some plotted overall scores go negative)",
+    "A negative weight on GE (-0.389) makes the composite 'overall score' hard to interpret as a single utility and can be gamed",
+    "Imputation by borrowing other states' averages can fabricate structure for indicators that are legitimately zero (e.g. no nuclear), which the paper flags but still does",
+    "Internal inconsistency in reported numbers: the fund total appears as both $208B (summary/memo) and $343.85B (Table 9), and per-state shares differ — a credibility ding",
+    "Targets set at 110% of forecast is a thin justification for a 'cooperation premium' with no mechanism showing cooperation actually yields that 10%",
+    "OCR/figure-data in this markdown copy is partly garbled (e.g. Fig 9 all-zeros, future-dated rows), so some quantitative plots can't be fully trusted from the transcript alone"
+  ],
+  "reusable_patterns": [
+    "Severity-matched imputation ladder: pick interpolation vs. fitting vs. cross-entity borrowing based on HOW MUCH is missing — reusable for any messy-data C problem",
+    "Per-capita (or per-unit) normalization to make heterogeneous entities comparable before scoring",
+    "Two-stage weighting architecture: PCA/objective weights for correlated sub-features + AHP/subjective weights for top-level importance, fused by geometric-mean combination weighting (with an AHP consistency check) — a strong general recipe for composite-index / ranking problems",
+    "Utility-function reshaping (median→0.5 power curve) to restore discrimination after min-max normalization compresses values",
+    "Build a composite index, then forecast its COMPONENTS with ARIMA and recompose — keeps the forecast tied to interpretable drivers; validate ARIMA with ACF/PACF + AIC/log-likelihood",
+    "Use Shapley values to justify any 'who pays / how to split' allocation sub-question as fair rather than arbitrary",
+    "Anchor recommended targets to the model's own forecast (e.g. forecast x multiplier) so policy numbers are traceable to analysis",
+    "Deliverable packaging for C problems: front-loaded quantitative Summary + a stakeholder Memo + a model-overview flowchart + explicit assumptions/notations + honest strengths/weaknesses section",
+    "A 'real-world influential factors' section that explains WHY your computed ranking makes sense, tying numbers back to domain context"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "paper_id": "2022-2204883",
+  "year": 2022,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2022 MCM Problem C (data): given five years of daily LBMA gold prices and BCHAIN bitcoin prices, build a model that decides each day, using only price data up to that day, how to trade $1,000 of cash/gold/bitcoin to maximize total final value while respecting transaction commissions (gold 1%, bitcoin 2%; gold only trades on market-open days). Required deliverables: (1) a price-aware daily trading strategy and its final portfolio value, (2) evidence the strategy is \"best,\" (3) sensitivity of the strategy to the commission rates, (4) a one-to-two-page memorandum to the trader. This team's strategy turned $1,000 into $14,325.13 over the 5 years (~13x, ARR 266.36%).",
+  "models_used": [
+    "LSTM (Long Short-Term Memory) recurrent neural network for daily price forecasting of gold and bitcoin, with full forget/input/output-gate equations written out",
+    "Sliding Window Algorithm to frame the time series as supervised learning (predict day t from previous d=10 days; train on d'=5-day sub-windows)",
+    "Manual grid/one-at-a-time hyperparameter tuning over hidden size l, window d, training window d', learning rate lambda, epochs epsilon, scored by MAPE",
+    "Multi-objective Linear Programming (MLP) portfolio optimizer that simultaneously maximizes predicted return P and minimizes risk R, decision variables Delta x_g and Delta x_b (dollars moved into/out of gold and bitcoin)",
+    "Ideal Point Method to scalarize the two objectives: solve each single-objective problem for its optimum omega_i, then minimize the sum of squared deviations sum (f_i - omega_i)^2 as a quadratic program",
+    "Case-split formulation: six separate LP models for the six trading behaviors (buy/sell combinations of gold+bitcoin, plus bitcoin-only buy/sell on gold non-trading days), each with commission-correct constraints",
+    "Rolling-window volatility (10-day sample standard deviation S_g, S_b) used as the risk coefficient in the objective",
+    "Granville's eight moving-average rules as a benchmark 'Rule Asset' trading strategy",
+    "Buy-and-hold gold, buy-and-hold bitcoin, and a perfect-foresight 'Ideal Asset' (same MLP fed true future prices) as additional benchmarks"
+  ],
+  "key_techniques": [
+    "Two-stage decomposition: forecast first (LSTM), then optimize the trade given the forecast (MLP) — cleanly separates prediction error from decision logic",
+    "Commission-correct algebra: each of the six cases substitutes x'-x in terms of (1-alpha)*Delta x for buys and Delta x/(1-alpha) for sells, so the LP objective and constraints carry the real transaction cost",
+    "A 'do nothing' guard (eq. 13): even the LP-optimal trade is executed only if its predicted next-day worth beats holding the current portfolio, suppressing churn that commissions would eat",
+    "Risk modeled as a concrete, computable quantity (recent 10-day price volatility scaled by dollars moved), not left abstract",
+    "MAPE as the single tuning/selection metric for forecasts (gold 0.00726, bitcoin 0.04163)",
+    "10-metric evaluation battery for Task 2: ARR, Profit/Loss Ratio, Number of Trades, Win Rate, Max Profit/Loss Amount, Max Consecutive Profits/Losses, Maximum Drawdown, Sharpe Ratio",
+    "Validating the Sharpe-ratio precondition by plotting the daily-return distribution of each strategy and arguing approximate normality before computing SR",
+    "Sensitivity done as controlled experiments: vary one commission across a grid (gold 0-4%, bitcoin 1-5%) holding the other fixed, and report both behavior metrics (investment percentages, trade counts) and outcome metrics (net profit, win rate)",
+    "Honest benchmarking against a perfect-foresight upper bound (Ideal Asset, ARR 1406%, SR 0.2955) to show how much of the achievable value the real strategy captured"
+  ],
+  "why_it_won": "From a judge's view this paper wins on decision-model rigor and disciplined validation rather than on a flashy forecaster. The standout is the MLP/ideal-point optimizer with six commission-exact LP cases plus the explicit no-trade guard — it directly answers the actual question (what to do given a forecast and real frictions) instead of stopping at 'predict the price.' Task 2 is unusually strong: ten named metrics, four genuinely different benchmarks (buy-and-hold gold, buy-and-hold bitcoin, Granville rule-based, and a perfect-foresight ideal), and the key honest framing that their strategy is second only to the impossible clairvoyant strategy on Sharpe ratio and far more risk-resilient than all-in bitcoin (MDD 42.9% vs 83.4%). Judges reward a team that ranks itself against an upper bound and admits the gap. Sensitivity analysis separates effect-on-behavior from effect-on-outcome and reaches a crisp, defensible conclusion (strategy is more sensitive to bitcoin commission). The risk quantity is concrete and the commission algebra is auditable. Together these make the work reproducible and the claims falsifiable — exactly what an O-award rubric rewards.",
+  "section_highlights": "Tightly mirrors the four COMAP tasks one-to-one, with a Figure 1 master flowchart up front. Assumptions are justified with outside facts (e.g., looked up the LBMA 100-troy-ounce minimum lot to justify the no-minimum-purchase assumption). The LSTM section derives all gate equations (Sigmoid/tanh forget-input-output) and shows a hyperparameter sweep table with MAPE per setting. The MLP section is the spine: general multi-objective form, ideal-point scalarization, then six fully written LP sub-models with behavior-specific constraints. Task 2 packs a single comparison table (Table 4) of all 5 strategies x 10 metrics plus per-strategy daily-return distribution plots to license the Sharpe ratio. Task 3 uses paired tables (behavior metrics, then performance metrics) for each commission sweep. The memorandum is correctly formatted (To/From/Date/Subject) with three plain-language actionable recommendations and an explicit statement of model limits. Closes with a per-model Strengths/Weaknesses section. Notation table and keyword list are present.",
+  "pitfalls_or_limitations": [
+    "Forecast leakage risk / over-optimistic prediction: gold MAPE of 0.0073 on a noisy 5-year daily series is suspiciously low; the paper does not clearly state a strict walk-forward train/test split or how the LSTM is retrained as the window rolls, so the reported accuracy may overstate true out-of-sample performance — and the whole strategy result rides on it",
+    "Single hyperparameter combo assumed optimal for BOTH assets (explicit assumption), and tuning is one-factor-at-a-time, which cannot find interacting optima; LSTM stochasticity is acknowledged but no seed averaging / confidence interval is given",
+    "The figure data tables in the markdown are clearly OCR/extraction artifacts (round placeholder numbers), but even in the original the asset-curve evidence is visual; few statistical significance tests beyond Sharpe",
+    "Risk = 10-day rolling standard deviation is a fixed, untuned window (self-identified weakness); no covariance/correlation between gold and bitcoin is modeled — assets assumed independent, which is a strong simplification",
+    "'Proof of best strategy' is overstated: it is best among 5 chosen benchmarks on selected metrics, not optimal in any formal sense; on raw ARR plain buy-and-hold bitcoin (906%) beat their strategy (266%) — they reframe the win around risk-adjusted return (Sharpe/MDD), which is reasonable but should be stated as a tradeoff not a dominance",
+    "Inconsistent date/window reporting: body uses 10-day gold window from Sept 11 2016; memorandum says 'previous 14 days' and a different date range (Nov 9 2016 - Oct 9 2021) — sloppiness a judge could notice",
+    "Calling the optimizer 'MLP' invites confusion with multilayer perceptron; it is multi-objective linear programming. Also the ideal-point step yields a quadratic (not linear) program, so 'linear programming' is loosely used",
+    "Commission constraints use strict inequalities and continuous variables with no transaction lot sizing beyond the no-minimum assumption; real fill/slippage ignored (single daily price assumed for buy and sell)"
+  ],
+  "reusable_patterns": [
+    "Forecast-then-optimize two-stage architecture: keep the predictor (LSTM/ARIMA/Prophet) decoupled from a decision optimizer, so each can be validated and swapped independently — broadly reusable for any sequential decision-under-uncertainty data problem",
+    "Ideal-point method to collapse a maximize-return/minimize-risk multi-objective into one solvable program — a clean, citable alternative to hand-tuned weighting",
+    "Embed real-world frictions (commissions) directly in the constraint algebra via (1-alpha) buy / 1/(1-alpha) sell substitutions, and add an explicit do-nothing baseline comparison to prevent over-trading",
+    "Case-split optimization: when the action space has qualitatively different regimes (buy/sell/hold per asset, trading vs non-trading days), write one constrained sub-model per regime and pick the best feasible one",
+    "Multi-metric scorecard + multi-benchmark table as the standard 'is my model good?' deliverable: include naive baselines, a domain-standard baseline (Granville), AND a perfect-information upper bound so the reader sees both floor and ceiling",
+    "Validate a metric's assumptions before using it (plot return distribution to justify Sharpe ratio normality) — shows statistical maturity cheaply",
+    "Sensitivity analysis that reports behavior-metrics and outcome-metrics separately over a one-variable-at-a-time grid, then narrates the mechanism (why the strategy shifts), not just the numbers",
+    "Justify modeling assumptions with concrete external facts (e.g., exchange minimum lot sizes) rather than asserting them",
+    "Per-model Strengths/Weaknesses self-critique section and a correctly-formatted memorandum with 3 plain-English action items are low-cost structural moves that align directly with the rubric"
+  ]
+}

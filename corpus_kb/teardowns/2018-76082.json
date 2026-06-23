@@ -1,0 +1,56 @@
+{
+  "paper_id": "2018-76082",
+  "year": 2018,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2018 MCM Problem A (continuous): model HF (3-30 MHz) skywave radio propagation. The team had to (1) build a math model of HF signal reflection off the ocean and find the first-reflection intensity of a 100 W land-based HF carrier off a turbulent sea, (2) compare it against reflection off a calm sea, (3) find the max number of multi-hop reflections before SNR drops below the 10 dB threshold, (4) compare ocean reflection vs. reflection off smooth vs. rugged/mountainous terrain, and (5) adapt the model to a moving ship receiver on a raging sea and compute how long communication can be maintained on the same multi-hop path. The paper frames everything around the Fresnel reflection coefficient plus a roughness correction factor, then layers a skywave transmission-loss budget on top.",
+  "models_used": [
+    "Skywave basic transmission-loss budget: L_b = L_bf + L_i + L_g + Y_p (free-space loss + ionospheric absorption + ground/reflection loss + extra system loss)",
+    "Free-space path loss formula L_bf = 32.44 + 20 log f + 20 log r (dB, f in MHz, r in km)",
+    "Semi-empirical ionospheric absorption loss model L_i = 677.2 I sec(i_100) / ((f+f_H)^1.98 + 10.2), with absorption coefficient I = (1+0.0037R)(cos(0.881 chi))^1.3 tied to sunspot number R and solar zenith angle chi",
+    "Solar zenith / sub-solar point geometry model (cos chi from latitude, declination S_x = 23.44 sin[...], hour-angle) to make ionospheric loss time/location dependent",
+    "Complex (plural) dielectric constant of seawater: epsilon~ = epsilon_r + i*60*lambda*sigma, with epsilon_r and conductivity sigma from CCIR polynomial fits in frequency",
+    "Fresnel reflection coefficients for horizontal (R_H) and vertical (R_V) polarized waves on a smooth sea via Snell's law; circular-polarization averaging (R_H^2 + R_V^2)/2 to get reflected power",
+    "Rough-sea reflection via Miller-Brown rough-surface approximation: roughness correction factor rho = exp[-2(2*pi*g)^2] * I_0[2(2*pi*g)^2] (modified Bessel I_0), roughness g = h sin(theta)/lambda; rough coefficients R' = rho*R",
+    "Pierson-Moskowitz (PM) wave spectrum S(omega) to characterize ocean-wave frequency content vs. wind speed",
+    "Phillips (1996) wave-height model h = 0.0051 v^2 linking wind speed to RMS wave height",
+    "Earth-curvature divergence factor D applied to the roughness factor (rho' = rho*D) for long over-sea paths",
+    "SNR model for HF skywave: field strength E_t = 137.2 + 20 log f + 10 log P + G_t - L_b; atmospheric noise field E_n = F_a + 10 log B + 20 log f - 96.8; combined SNR formula compared to the 10 dB threshold to cap hop count",
+    "Ground/terrain comparison: dry-earth Fresnel reflection loss (relative permittivity = 4) for smooth terrain",
+    "Epstein-Peterson multi-knife-edge diffraction method for double-edged-peak (mountain) diffraction loss L_a = L_1 + L_2 + L_c, plus vegetation/foliage attenuation L_s = a_L * s",
+    "Ship six-degree-of-freedom sway model (heave/roll/pitch); max sway angle theta_max = arcsin(pi H_max / sqrt(lambda_sea^2 + pi^2 H_max^2)) feeding a dual-path (segment A) / single-path (segment B) sea propagation loss model",
+    "Stratified-ionosphere ray-refraction model (parallel thin layers, Snell chaining n0 sin th0 = n1 sin th1 = ...) with a ray-path integral D to compute the signal-coverage footprint, then communication time = coverage width / ship speed"
+  ],
+  "key_techniques": [
+    "Decomposing total propagation loss into an additive dB budget of named physical mechanisms, so each loss term could be modeled independently then summed",
+    "Reducing the hard rough-sea reflection problem to smooth-sea Fresnel coefficients multiplied by a single scalar roughness correction factor rho, yielding the clean analytic result P_rough/P_smooth = rho^2",
+    "Chaining wind speed -> PM spectrum + Phillips wave-height -> RMS roughness g -> Miller-Brown rho, so one driver (wind speed) controls sea state",
+    "Using circular-polarization power averaging (R_H^2 + R_V^2)/2 to collapse two polarizations into one reflected-power expression",
+    "Converting the SNR threshold (10 dB) into a stopping criterion to bound the number of multi-hops at 8",
+    "Reusing the same Fresnel/loss machinery on land (dry-earth permittivity, then Epstein-Peterson diffraction) so sea-vs-land becomes an apples-to-apples comparison on one bar chart",
+    "Anchoring abstract formulas with one concrete worked scenario (123E/26N East China Sea, July 1 noon, R=110 sunspots, f=20 MHz, 45-degree grazing, 15 m/s wind) to produce defendable numbers",
+    "Sensitivity analysis sweeping time-of-day to show ionospheric loss is robust while grazing-angle SNR is the sensitive driver"
+  ],
+  "why_it_won": "\"From a judge's view, this paper wins on completeness and physical credibility rather than mathematical novelty. It answers every sub-question explicitly and in order, and each answer terminates in a concrete number with units (rho=0.8043; smooth first-reflection 0.4378 mW; rough 0.2832 mW; ratio 0.6469 = rho^2; 8 hops; 400 km/hop; 15.12 h communication over 840 km). The rough/smooth ratio collapsing exactly to rho^2 is an elegant, checkable closed-form result that signals the team actually understood the physics. The team grounded every coefficient in cited literature (CCIR fits, Miller-Brown, PM spectrum, Phillips, Epstein-Peterson, ITU-R P.526) instead of inventing constants, which reads as competent and reproducible. The sea-vs-land comparison is delivered as a single intuitive bar chart whose conclusion ('ocean is better for skywave') matches real-world experience, and the final ship-sway extension shows modeling range beyond the core problem. It also includes the required IEEE Communications Magazine-style short note. The combination of a coherent loss-budget spine, one fully worked numeric scenario, real citations, a sensitivity analysis, and an honest strengths/weaknesses section is the standard O-award profile.\"",
+  "section_highlights": "\"Strong structure: a Restatement that enumerates the five sub-tasks as a bulleted to-do list, a Notations table, an explicit Assumptions section, then sections that map one-to-one onto the problem's questions. The Section 4 narrative is well-sequenced: seawater complex permittivity -> smooth-sea Fresnel coefficients -> wave physics (PM spectrum + Phillips) -> roughness factor -> rough coefficients -> the rho^2 power-ratio derivation -> plug in numbers. Heavy, purposeful use of figures: Fresnel coefficient vs. grazing angle (Fig 2), PM spectrum vs. wind speed (Fig 4), roughness factor vs. wind speed (Fig 5), and especially the loss-comparison bar chart (Fig 7) that delivers the sea-vs-land verdict at a glance. Every model ends in a boxed/inline numeric result with units. The duplicated abstract/short-note for IEEE Communications Magazine satisfies the deliverable. Strengths/Weaknesses conclusion is candid (admits too many factors, computer-precision limits, accuracy reduced by many assumptions).\"",
+  "pitfalls_or_limitations": [
+    "Heavy reliance on stacked simplifying assumptions (best frequency fixed at 20 MHz, grazing angle fixed at 45 degrees, shadowing ignored, multipath ignored, antenna directivity = 1, circular polarization assumed) - the team admits this reduces accuracy",
+    "Many magic constants and semi-empirical fits (CCIR permittivity/conductivity polynomials, the 677.2 ionospheric-absorption formula) are used without deriving or validating them against the specific scenario",
+    "Several typos / internal inconsistencies that hurt rigor: Eq (3) is labeled L_bf but is actually the ionospheric absorption L_i; the summary swaps the rough vs. smooth power values (0.4378 vs 0.2832) relative to the body; equation cross-references (e.g. 'equation 19') are mislabeled",
+    "No real validation against measured data or an independent benchmark; results are only checked against qualitative 'consistent with experience'",
+    "The sensitivity analysis is thin - the Fig 11 SNR-vs-time table shows essentially identical columns across all times (looks like grazing-angle is plotted, not a genuine time sweep), so the 'robust at any time' claim is weakly supported",
+    "Ship-sway and ray-path-integral (Eq 33) sections are under-explained and lean almost entirely on a single source (Huang 2015, ref [15]), so the 15.12 h / 840 km result is hard to audit",
+    "Fixing the grazing angle removes the geometry that actually determines hop distance and ionospheric path length, so the '400 km/hop, 8 hops' figures are somewhat circular"
+  ],
+  "reusable_patterns": [
+    "Build a propagation/loss problem as an additive dB budget of named physical terms, then model and cite each term separately - clean to write and easy for judges to follow",
+    "Handle a hard 'rough/irregular surface' version of a problem by computing the ideal/smooth case analytically and multiplying by a single correction factor; chase a closed-form ratio (here rho^2) as a headline result",
+    "Drive a whole sub-system from one physical control variable (wind speed -> spectrum -> wave height -> roughness) to keep the parameter space small and the story coherent",
+    "Convert a stated threshold (SNR >= 10 dB) into an explicit stopping rule to answer 'how many / how far / how long' questions",
+    "Reuse the same core model on a second regime (sea vs. land) so a comparison question becomes a fair side-by-side, and present the verdict in one bar chart",
+    "Anchor abstract derivations with exactly one fully specified real-world scenario (named coordinates, date, time, environmental constants) to produce defensible numbers with units",
+    "Open with a restatement that lists every sub-task as bullets, mirror those bullets as the section structure, and close each section with a boxed numeric answer",
+    "Include a candid Strengths/Weaknesses section and a sensitivity sweep over the most uncertain input to demonstrate self-awareness",
+    "Pull all empirical coefficients from cited literature (CCIR, ITU-R, named spectra/methods) rather than inventing them, to signal reproducibility"
+  ]
+}

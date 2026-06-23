@@ -1,0 +1,56 @@
+{
+  "paper_id": "2018-88508",
+  "year": 2018,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2018 ICM Problem F (policy): design a scalable, multilayered, dynamic policy model that quantifies the monetary cost/value and risk of personal information (PI) privacy across society, set price points for protecting privacy, address generational differences, network effects, data-breach response, liability, and distinguish PI/PP (personal property)/IP. Team 88508's response, \"A Smart Privacy Commodity: A Quantitative Model of Dynamic Pricing Strategy,\" treats privacy as a tradable commodity and decomposes the problem into a Pricing Model and a Risk Model, each evaluated at three nested scopes (individual, group/sub-community, nation), arriving at a headline national price of $783 for the four PI domains combined.",
+  "models_used": [
+    "Weighted combination of AHP (Analytic Hierarchy Process) + Shannon entropy method for indicator weighting, fused via Mon's formula omega_total = alpha*omega_AHP + (1-alpha)*omega_entropy; AHP includes a CI/CR consistency check (CR<0.10)",
+    "TOPSIS (Technique for Order Preference by Similarity to Ideal Solution) for individual PI valuation/scoring across the four domains (positive/negative ideal solutions, Euclidean distances S+/S-, relative closeness C_i)",
+    "PI 'Consistency Tradeoffs' eta_ct — a custom information-completeness/combination factor (ratio of weighted present features to all features) multiplied onto TOPSIS score to capture value of feature COMBINATIONS, not just single features",
+    "Multiway-tree classification (Itai-Rodeh, information-entropy based) to partition people into sub-communities by age x occupation x income; appendix also ships DBSCAN and k-means MATLAB as the actual clustering implementations",
+    "Group 'risk perception' delta_risk = product of five sub-factors: privacy type T_pt = -e^eta_ct, generational difference T_gd (a Gaussian in age peaked ~27), network effect T_sn (logistic growth curve), data breach T_db, sub-group difference T_dis",
+    "Markov chain over a 6-state value space {very reluctant ... very willing}, with the transition matrix estimated via Bayes' theorem, propagated year-by-year (Maruyama state-probability recursion) to make valuation DYNAMIC over a 50-year horizon",
+    "Bayesian Nash equilibrium of an incomplete-information static double-auction (buyers b_i, sellers d_j uniform on [O_min,O_max]) giving linear equilibrium bid/ask strategies g*, s*; solved by agent-based computer simulation of the auction converging to the $783 clearing price",
+    "Policy layer: three additive correction terms — macro-control T_mc, privacy policy T_pp, combating-leakage T_cc — that shift market price bounds and supply",
+    "Cultural layer T_co = linear function of GDP, IT-industry share, average education years; feeds back to adjust delta_risk",
+    "Externality optimization: marginal private vs. social cost/benefit (MPC/MEC/MSC, MPB/MEB/MSB) adding a correction coefficient mu_ext to individual/group/national prices",
+    "Risk Model: comprehensive risk R_i = sum(r_jkm * P_k) over domain j, group k, risk-type m — expected loss = loss value x occurrence probability"
+  ],
+  "key_techniques": [
+    "Three-scope nesting (individual -> group -> nation) as the master architecture, with each scope adding the factors the lower scope cannot capture (network effects only appear at group level, market/policy/culture only at national level)",
+    "Subjective+objective weight fusion (AHP supplies expert judgment, entropy supplies data-driven objectivity) to defuse the standard 'your weights are arbitrary' judge criticism",
+    "Explicit Task->method mapping: every one of the 7 sub-tasks is pinned to a specific model component in the overview flowchart (e.g., Task6 network effect -> logistic T_sn, Task7 breach -> T_db, Task5 generational -> Gaussian T_gd)",
+    "Making the model dynamic via a Markov chain so valuations evolve year-by-year, directly satisfying the prompt's 'dynamic' requirement and enabling the 2012-vs-2032 comparison",
+    "Multiplicative composition of normalized risk factors into a single delta_risk scalar, then coupling that scalar to a Markov transition matrix",
+    "Citing the 'most-cited paper in each domain' to justify feature selection (Mangold for social media, Whinston for e-commerce, etc.) — borrowing external authority for otherwise-subjective choices",
+    "Closing the loop between an abstract pricing model and a concrete dollar figure ($783) via a simulated double auction, which gives judges a single memorable headline number",
+    "Validation triad: real-data examination (error <= 0.17 vs Acquisti data), error analysis, and a stability/sensitivity test that progressively removes features",
+    "A standalone policy memo addressed to 'Dr. Decision Maker' that translates model outputs (PI as human-right vs property-right, sensitive vs general info tiers, breach liability) into concrete legislative recommendations"
+  ],
+  "why_it_won": "\"It won on COVERAGE, ARCHITECTURE, and COMMUNICATION rather than mathematical depth. (1) It answers all 7 tasks explicitly and visibly — judges can check off every requirement against the labeled flowchart, which is exactly what scoring rubrics reward. (2) The individual/group/nation nesting is a clean, defensible decomposition that makes an open-ended policy problem tractable and lets the team layer on dynamic, network, and market effects in a principled order. (3) It produces a single concrete, memorable deliverable — a $783 national price — that anchors an otherwise qualitative problem; a policy judge remembers the number. (4) It fuses subjective and objective weighting (AHP+entropy) and validates against real published data (error <= 0.17), pre-empting the two most common judge complaints (arbitrary weights, untested model). (5) The policy memo is genuinely policy-flavored: it reframes privacy as dual human-right/property-right, proposes tiered sensitivity-based protection, and assigns breach liability — showing the team understood this was a POLICY problem, not just a math problem.\"",
+  "section_highlights": "\"Strongest sections: the Overview (Sec 1.3) with the Task1-7 -> method flowchart that makes requirement coverage auditable at a glance; the individual pricing pipeline (4.1) where AHP+entropy -> TOPSIS -> consistency-tradeoff chain is logically sequenced and each step is justified; the group model (4.2) where Markov+Bayes turns static scores into a 50-year dynamic trajectory and the logistic network-effect 2012-vs-2032 visualization directly answers Task6; the national market model (4.3.1) whose Bayesian-Nash double-auction simulation yields the headline $783; and the validation chapter (Sec 6) combining real-data fit, error analysis, and feature-dropout stability. The separate policy memo and the dual human-right/property-right framing (Sec 5.2, Task4) show strong problem-type awareness. The appendix ships actual runnable MATLAB (topsis.m, ahp.m, entropy.m, DBSCAN.m, kmns.m), which signals the numbers were really computed.\"",
+  "pitfalls_or_limitations": [
+    "Many formulas have hard-coded 'magic' constants with no derivation: e.g., T_gd Gaussian uses sqrt(71*pi/50) and exp(-(age-27)^2/268); T_sn logistic has 0.87, 4.3075, -2.02; these look precise but are unexplained, a judge red flag",
+    "delta_risk = T_pt * T_gd * T_sn * T_db * T_dis multiplies factors of incompatible scales/units with no normalization justification; the multiplicative form is asserted, not motivated",
+    "Heavy reliance on simulated/synthetic data — they admit much data was 'computer simulated according to objective laws,' so several sub-models are theoretical inferences validated only against one Acquisti dataset",
+    "T_pt = -e^eta_ct is negative for all positive eta_ct, and several constants/signs (e.g., the e^(-3/5) breach term, the negative privacy-type factor) are dimensionally and sign-wise suspicious; equations were likely not stress-checked",
+    "The transition probability matrix is shown only as a symbolic template (Eq 17) — the actual Bayes-estimated numbers are never given, so the Markov 'dynamic' claim is under-substantiated",
+    "Notation drift and typos: theta_tps vs theta_tps, omega_total reused for three different ratios in the parameter table, 'we randomly picked 2012 and 2012' in the conclusion, mixed P-I/P-P/I-P definitions",
+    "The $783 national price is presented as authoritative but emerges from a simulation with hand-set auction parameters (O_min, O_max, adjustment range), so it is not robustly grounded",
+    "External-effect optimization (mu_ext) and the modified group model are gestured at but the group case is left blank (just a heading with no formula)",
+    "Appendix lists DBSCAN and k-means but the body claims multiway-tree classification — the stated method and the shipped code don't match, suggesting the classification approach was swapped late"
+  ],
+  "reusable_patterns": [
+    "Three-scope nesting template (micro -> meso -> macro / individual -> group -> nation) for any policy problem that must scale across levels of aggregation — add the factors that only exist at higher scopes",
+    "AHP + entropy weight fusion as a default, judge-proof way to set multi-criteria weights (subjective + objective), then feed into TOPSIS for ranking/scoring — a reusable MCDA pipeline with ready MATLAB",
+    "Build an explicit Task -> Method mapping flowchart in the overview so judges can verify 100% requirement coverage; pin each sub-question to a named model block",
+    "Make any static evaluation 'dynamic' cheaply by wrapping the score in a Markov chain over a small discrete state space and propagating over a time horizon, then visualize two snapshot years to dramatize change",
+    "Turn an abstract valuation into one memorable headline number via an agent-based market/auction simulation that converges to a clearing price",
+    "Composite-risk formula R = sum(loss_value x probability) as a generic quantitative risk-measurement scaffold",
+    "Validation triad to include in every paper: fit-against-real-published-data (report a small error), error/assumption analysis, and feature-dropout sensitivity test",
+    "For POLICY-type problems, write a separate stakeholder-addressed memo that converts model outputs into concrete, categorized recommendations (here: dual human-right/property-right classification, tiered sensitive-vs-general info protection, breach-liability assignment)",
+    "Justify subjective feature choices by citing the single most-cited paper in each sub-domain to borrow external authority",
+    "Ship runnable solver code (TOPSIS/AHP/entropy/clustering) in the appendix to signal the results were genuinely computed, not asserted"
+  ]
+}

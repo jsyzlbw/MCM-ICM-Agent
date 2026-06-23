@@ -1,0 +1,52 @@
+{
+  "paper_id": "2015-32879",
+  "year": 2015,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2015 MCM Problem B (discrete): design a model to find a lost commercial aircraft over open ocean and optimize the search to maximize probability of finding it given limited resources/time. This O-award paper (\"Into the Void\") frames it as a Bayesian search-theory problem: build a prior probability map of where the unpowered plane glided/crashed, then iteratively choose and \"execute\" daily search patterns, updating the distribution via Bayesian inference after each fruitless search, comparing four search-path geometries on cumulative probability of detection.",
+  "models_used": [
+    "Bimodal-normal prior over crash trajectory: descent glide angle theta modeled as a weighted sum of two Gaussians (catastrophic-stall mode at theta_max=90deg, optimal-glide mode at theta_min), bearing change phi as a zero-mean Gaussian",
+    "Unpowered glide-range physics: theta_min = arctan(1/(L/D)) and max glide range r_glide = h*cot(theta), parameterized by aircraft lift-to-drag ratio L/D and cruise altitude h (Boeing 747-400: L/D=17, 35000 ft, ~113 mi range)",
+    "Coordinate transform mapping the (theta, phi) probability density into Cartesian (x,y) ocean-surface space (with characteristic turning radius rho; simplified to rho=0 for instantaneous turn)",
+    "Discrete probability mass grid (1 sq mi cells) approximating the 2D density integral as a double sum over grid points",
+    "Bayesian update for a searched-but-empty cell: p' = p(1-q)/[(1-p)+p(1-q)], plus renormalization of unsearched cells r' = r/(1-pq), keeping total probability = 1",
+    "Random-search detection law (Koopman/Stone): q = 1 - exp(-zW/A), derived from an ODE b'(z) = [1-b(z)]*(W/A) for sweep width W, track length z, area A",
+    "Four search-path geometries with closed-form length-vs-area relations: simple square parallel sweep (s = sqrt(Wz)), optimized rectangle (A = Wz over all integer length/width pairs), expanding square spiral (summed-segment arc length inverted for side length l), and octagonal sector search (l = z*sin(67.5)/[8(cos(67.5)+1)])",
+    "Greedy daily optimization: center a search at every grid point, compute usable range after the runway round-trip (400 mi south), convert range to max search dimensions, compute total success probability, pick the argmax, 'search' it, update, repeat per day; cumulative P(N) = prod_{k<N}(1-P(k)) * double-integral of detection*prior",
+    "Effectiveness parameter lambda = alpha*beta folded into detection law q = 1 - exp(-lambda*zW/A): alpha = target detectability (747 vs Cessna), beta = searcher capability (sensors/observers)"
+  ],
+  "key_techniques": [
+    "Borrowed and correctly cited the established Bayesian Search Theory framework (Stone, Theory of Optimal Search) rather than inventing ad hoc rules - the same theory that historically located the USS Scorpion and AF447",
+    "Derived the detection probability q = 1 - exp(-zW/A) from first principles via an ODE limit instead of just asserting it",
+    "Reduced each search geometry to a single closed-form 'path length z <-> covered area' equation, so the only per-pattern code difference is that one relation - clean modular abstraction",
+    "Grounded the prior in real aerodynamics (glide angle from L/D, range from altitude) so the probability map has physical meaning, not arbitrary spread",
+    "Exploited a key property of Bayesian inference - that area-wise vs incremental-cell update give the same result - to justify the discrete grid simulation",
+    "Greedy myopic optimization (search the current global-max-probability region each day) made tractable by scanning every candidate center grid point",
+    "Systematic sensitivity / scenario sweeps: 1 vs 5 planes, long- vs short-range aircraft, high-stall prior, mixed pattern teams, varied effectiveness, 747 vs Cessna - one model, many knobs",
+    "Used the bimodal theta prior to capture two physically distinct failure regimes (controlled glide vs sudden stall/explosion) in a single distribution"
+  ],
+  "why_it_won": "From a judge's view, this paper wins on the rare combination of correct theory + physical grounding + a tractable, fully-implemented simulation that actually answers the question. It does not reinvent search math: it identifies that this IS a Bayesian search theory problem, cites the canonical sources (Stone, Koopman-style random-search), and then earns its result by deriving the detection law and building a working MATLAB grid simulation that produces concrete, comparable cumulative-probability curves for four real-world search patterns. The prior is anchored in genuine aircraft physics (L/D, cruise altitude, glide angle) and the two named real incidents (AF447, MH370), so the model feels operationally credible rather than abstract. Judges reward a clear, defensible answer to the actual ask - here the unambiguous conclusion that the rectangular/square parallel-sweep maximizes cumulative detection probability, with a physically intuitive reason (spatial packing efficiency leaves clean remaining area for future days). The breadth of scenario testing demonstrates the model's claimed strength (modularity/customizability) instead of just asserting it, and the surprising-but-explained findings (Cessna easier to find than 747; mixed square+sector nearly matches double-square) signal real analytical engagement. Finally it is honest about limitations and ships the required client letter, closing the loop on the prompt.",
+  "section_highlights": "Structure is textbook-clean and reviewer-friendly: a four-bullet summary sheet that names each deliverable (prior distribution, search patterns, Bayesian dynamic update, versatility); a nomenclature table and an explicit, exhaustive Simplifying-Assumptions list up front (separating physical idealizations from arbitrarily-chosen-but-tunable parameters - a sophisticated distinction); a clean Theory-then-Implementation-then-Results split so derivations are not tangled with code/figures. Every model subsection follows the same template (figure of the path, derive length-vs-area relation, show 5-day distribution, show 20-day cumulative curve), making the four patterns trivially comparable. The Model Variation section is a strength showcase, each variation isolating one parameter. Writing is precise and quantitative (113 mi glide range, 3.37 deg glide angle, 20-30 s rectangle optimization vs <1 s square), uses consistent figure-driven argument, gives intuitive physical reasons for every result, and ends with a candid Strengths/Weaknesses table plus a forward-looking Future Work list and a non-technical client letter.",
+  "pitfalls_or_limitations": [
+    "Greedy/myopic daily optimization is only locally optimal over the multi-day horizon - the paper even observes the short-range Osprey case where early rectangles partition the distribution badly and a simple square later wins, a multi-step effect their one-day-ahead optimizer cannot anticipate",
+    "Octagonal sector search optimization is admittedly 'rudimentary at best' - it optimizes only a 3x3 central probability sum times usable range, leaves large interior triangles permanently unsearched, and is acknowledged not globally optimized; the authors flag it themselves",
+    "Heavy reliance on arbitrarily chosen parameters: sigma1=15, sigma2=20, sigma3=30 deg for the prior, and alpha/beta/lambda effectiveness values are 'entirely hypothetical' with no calibration to crash statistics",
+    "Physically idealized to the point of unreality: no wind, no ocean currents, debris floats indefinitely, flat non-curved earth, instantaneous turns, all-water search area - these strip out exactly the drift dynamics that dominate real ocean searches (the actual hard part of AF447/MH370)",
+    "No cost model - only an 'all-out' search is considered, despite resource efficiency being central to the problem prompt",
+    "The rho=0 instantaneous-turn simplification discards the turning-radius terms in the (x,y) transform without a quantified error bound",
+    "Some derivation steps are terse/possibly error-prone (the spiral length sum in Eq 23-24 is hard to verify as written), and the OCR'd figures show the 5-day distributions as near-flat tables, so the visual evidence is weakly legible",
+    "Detection model assumes uniform target distribution and independent track segments within each rectangle (the random-search assumptions) which the optimized non-random sweep arguably violates"
+  ],
+  "reusable_patterns": [
+    "Prior-from-physics: derive the initial probability map from governing physical equations (here glide angle from L/D, range from altitude) so spread is justified, not guessed - generalizes to any 'where is the object' problem",
+    "Mixture-distribution priors to encode multiple physical regimes in one density (bimodal Gaussian = glide mode + catastrophic mode)",
+    "Reduce a family of competing designs to ONE differentiating equation: keep the whole pipeline identical and only swap the closed-form 'effort z <-> coverage A' relation per pattern - clean way to compare alternatives fairly",
+    "Discretize a continuous density onto a grid and replace integrals with double sums so the model becomes a directly codeable simulation; justify it by the incremental-vs-block Bayesian-update equivalence",
+    "Iterative Bayesian belief update with renormalization (searched cell down, unsearched cells up, total stays 1) for any sequential search/detection/sensing problem",
+    "Greedy argmax-over-candidates loop (score every candidate placement, pick best, commit, update state, repeat) as a tractable stand-in for true multi-stage optimization - cheap and explainable",
+    "Lump messy real-world unknowns into a single tunable scalar (lambda = alpha*beta) so the model stays simple and the parameter is the explicit knob for future calibration",
+    "One-parameter-at-a-time sensitivity sweeps to demonstrate (not just claim) a model's modularity and robustness, and to surface counterintuitive results worth highlighting",
+    "Front-load an explicit assumptions list that separates physical idealizations from tunable-but-fixed parameters, and pair the paper with a candid Strengths/Weaknesses table - signals self-awareness judges reward",
+    "Templated results sections (same figure sequence for every variant) to make multi-model comparison effortless for the reader"
+  ]
+}

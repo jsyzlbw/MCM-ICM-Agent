@@ -1,0 +1,55 @@
+{
+  "paper_id": "2020-2016287",
+  "year": 2020,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2020 MCM/ICM Problem E (Environmental/sustainability): single-use (\"disposable\") plastic waste. The team had to (a) estimate the maximum level of disposable-plastic waste the environment can safely absorb without further damage, (b) determine how far waste can be reduced to reach an environmentally safe level, (c) set a minimal achievable global target for disposable plastic waste and assess its impacts, and (d) address the equity issues of unevenly distributed waste/pollution and propose solutions. Their headline result: a realistic 2030 global target of 15.88 million tonnes of disposable plastic waste, with ocean deposition falling to ~18% and incineration rising to ~65%.",
+  "models_used": [
+    "Environment Bearing Rate Model (EBRM) — original construct: EBR = sum_i W_i * (EBQ_i + CWQ_i)/(EBC_i + CWC_i) over water/atmosphere/soil channels; safe iff EBR<=1, maximum safe waste level defined by EBR=1",
+    "Threshold/self-recovery dynamics: discrete capacity-decay recurrence C(t+1)=C(t)[1-f(Delta)], Delta=C(t)-Q(t), with damage rate f(Delta) modeled as a Sigmoid (logistic) function 1/(1+e^(-Delta+5)) for Delta>0, else 0",
+    "Per-channel Bearing-Quantity sub-models tied to disposal pathways: Water (WBQ=p_o*(P_b+P_f)), Atmosphere (ABQ=(q_d+q_b)*p_i*(P_b+P_f) from PVC combustion releasing dioxin/benzene rings), Soil (SBQ=(q_p+q_a)*p_l*(P_b+P_f) from landfill phthalate/BPA leaching)",
+    "Principal Component Analysis (PCA) for dimensionality reduction / decorrelation of 11 influencing indicators (retain first 3 PCs at >85% cumulative contribution)",
+    "Disposable Plastic Waste Prediction Model (DPWPM) = Multivariate Time Series Analysis (transfer-function/ARMA form with B backshift operator), simplified via Multiple Linear Regression + Least Squares to estimate per-indicator coefficients omega_i",
+    "Second/Quadratic Exponential Smoothing (double exponential smoothing, Brown's method) to forecast global plastic production 1950->2030",
+    "Entropy Weight Method (EWM) to combine per-country-group proportions into a single global disposable-plastic curve",
+    "Human Risk Index / Human-friendly Indicator (HRI = ln(W * sum_i prod_j u_i R_ij)) — food-chain bioaccumulation model with transfer efficiencies, modified by reduction fraction (1-a%)",
+    "Economics overlays: Cross-Price Elasticity of Demand for plastics vs. alternatives, supply-demand (Q-P) curves, and Coase's theorem for the equity-rights solution",
+    "Country classification scheme (3 axes: economic development, sea-land location, pollution severity) -> 6 country groups driving differentiated policy coefficients"
+  ],
+  "key_techniques": [
+    "Defining a custom dimensionless control ratio (EBR) with a clean decision rule (EBR=1 is the 'maximum safe level'), turning a vague 'environmentally safe' requirement into a solvable equation",
+    "Decomposing a single environmental constraint into parallel water/atmosphere/soil channels, each grounded in a specific pollutant chemistry (PVC combustion equation, dioxin/benzene, phthalate/BPA) — connecting the disposal-pathway shares p_o/p_i/p_l directly to harm",
+    "Sigmoid damage function to encode the irreversibility/threshold intuition (small overshoot tolerated, large overshoot triggers runaway capacity loss / 'vicious circle')",
+    "PCA-before-regression pipeline to kill collinearity among 11 policy/socio-economic indicators before fitting the time-series model",
+    "Using regression coefficient magnitudes as a measurable proxy for 'policy effectiveness', then comparing them across the 6 country groups via a radar chart to justify differentiated recommendations",
+    "Layered prediction stack: double exponential smoothing (total production) x MTSA (disposable proportion per group) x entropy weighting (aggregate to a global curve)",
+    "Validation against an independent real case: applied DPWPM to Ireland (plastic-bag share of total waste), reporting Relative Mean Square Deviation of 4.2% vs official data",
+    "Robustness suite: 10-fold cross-validation (rotation estimation) showing CV error 6.5% vs test 4%, plus Gaussian-noise injection sweep showing <20% deviation up to sigma=0.6",
+    "Economics-as-mechanism: cross-price elasticity and Q-P curves to explain WHY taxes/alternatives reduce demand, and Coase's theorem to ground the tradable-permit/property-rights equity solution"
+  ],
+  "why_it_won": "Judge perspective: this paper wins on coverage, integration, and a memorable original construct. (1) It fully answers all four sub-questions and connects them — the same EBRM that defines the 'maximum safe level' in Q1 is reused to certify the reduced level as 'safe' in Q2 and the global target in Q3, giving the report a single coherent spine rather than four disconnected mini-papers. (2) The EBR ratio is a clean, defensible original idea: dimensionless, additive across pollution channels, with an unambiguous EBR=1 threshold — exactly the kind of self-built metric judges reward. (3) It grounds abstract environmental harm in concrete chemistry (PVC combustion equation, named toxins per pathway) and concrete economics (elasticity, Coase), signaling breadth and seriousness. (4) It validates quantitatively against a real country (Ireland, 4.2% error) and runs both cross-validation AND noise sensitivity — most teams do one or neither. (5) The equity section proposes a tradable-permit market plus property-rights clarification (Coase), which is a sophisticated, policy-literate answer to the 'sustainability + equity' framing of Problem E. (6) Strong communication: clear flow diagram, country-classification logic, a polished ICM memo with a 10-year timeline narrative and accelerating/hindering factors, and a poster — all the deliverables judges look for in the ICM track.",
+  "section_highlights": "Standout sections: (1) Section 4.3 EBRM — the conceptual core; the EBQ/EBC split, the Sigmoid capacity-decay recurrence, and the EBR=1 maximum-level criterion are the paper's intellectual signature. (2) Section 4.3.2 EBQ measurement — tying each disposal route to a specific pollutant with the PVC combustion equation is a credibility highlight. (3) Section 5.3 DPWPM — the PCA->MTSA->regression pipeline plus the Ireland validation (4.2% RMSD) is the strongest empirical moment. (4) Section 6 — the three-stage forecasting stack producing the headline 15.88 Mt target and the ocean/incineration share shifts. (5) Section 7 equity — Coase-theorem-based tradable permits is the most policy-sophisticated section. (6) Section 8 — dual robustness (10-fold CV + Gaussian noise sweep). (7) The closing ICM memo — a vivid 10-year adoption-curve narrative (resistance years 1-2, rapid decline years 3-8, plateau years 9-10) plus crude-oil-price and biodegradable-tech swing factors.",
+  "pitfalls_or_limitations": [
+    "Many of the EBRM's key quantities (EBC values, q_d/q_b/q_p/q_a per-unit toxin yields, microbial decomposition capacities, the food-chain transfer efficiencies R_ij in HRI) are never given concrete numbers or sourced — the maximum-safe-level and HRI machinery is largely unparameterized, so the '15.88 Mt' looks more precise than the inputs justify (false precision)",
+    "The Sigmoid f(Delta)=1/(1+e^(-Delta+5)) is asserted with arbitrary constants (the +5 shift, the unstated units of Delta) and no calibration or justification for the functional form",
+    "EBR=1 is treated as 'the maximum safe level', but EBC, EBQ and their weights W_i are not actually computed, so the threshold is conceptual rather than numerically demonstrated",
+    "Waste sources are reduced to just plastic bags (P_b) and foam (P_f), omitting bottles, packaging film, straws, cutlery, etc. — a large simplification for a 'global disposable plastics' problem",
+    "Data provenance is thin: indicator data, the 10/6 'regions', and several charts (e.g., the radar 'coefficients', the garbage-can correlation of 0.7631) appear illustrative/fabricated rather than from a documented dataset; the equity heatmap data is garbled/duplicated",
+    "MTSA is described in full transfer-function/ARMA generality but then collapsed to ordinary multiple linear regression + least squares, so the 'time series' rigor is partly nominal",
+    "Assumption that EBC (ecosystem capacity) is essentially constant contradicts the model's own premise that overshoot permanently degrades EBC",
+    "Ireland validation chart contains an obvious data inconsistency (a 'real value' of 5.0 in 2000 vs predicted 0.3) yet is reported as a 4.2% fit — weak internal consistency checking",
+    "Forecasts assume policy regimes hold fixed for 10 years and that all countries 'react positively' (stated assumption), ignoring political/economic shocks the weakness section itself flags only as 'natural disasters'"
+  ],
+  "reusable_patterns": [
+    "Build a custom dimensionless 'bearing/load ratio' (load over capacity) with a crisp =1 threshold to convert a fuzzy feasibility/sustainability requirement into a solvable equation — reusable for any carrying-capacity or 'safe limit' problem",
+    "Decompose one aggregate constraint into independent, chemistry- or physics-grounded channels and weight-sum them (sum W_i * quantity_i/capacity_i); ground each channel in a named mechanism for credibility",
+    "Use a Sigmoid/logistic damage or adoption function to encode threshold + irreversibility ('small overshoot tolerated, large overshoot runs away') and to produce S-shaped adoption timelines",
+    "Standard high-scoring forecasting stack: normalize -> PCA to remove collinearity -> regression/time-series on the PCs -> validate against an independent real case and report a relative error %",
+    "Reuse one core model across multiple sub-questions (here EBRM certifies Q1 max level, Q2 reduced level, and Q3 global target) to give the whole paper a single coherent spine",
+    "Treat fitted regression coefficients as a measurable 'effectiveness' score and compare them across pre-defined segments (country groups) via a radar chart to justify differentiated, segment-specific policy recommendations",
+    "Classify the population/regions along 2-3 orthogonal axes to produce a small number of archetype groups, then tailor recommendations per archetype — clean way to handle 'varies from place to place' prompts",
+    "Pair an environmental/engineering model with explicit economics (price elasticity, Q-P curves, Coase's theorem, tradable permits) to answer equity/policy sub-questions with mechanism, not hand-waving",
+    "Two-pronged robustness as a default: cross-validation (rotation estimation) for model fit + Gaussian-noise injection sweep for input-data uncertainty, each summarized with a single error-vs-perturbation curve",
+    "ICM memo craft: open with the concrete target numbers, give segment-specific advice, then narrate a phased adoption timeline with explicit accelerating and hindering external factors — reads as actionable policy advice"
+  ]
+}

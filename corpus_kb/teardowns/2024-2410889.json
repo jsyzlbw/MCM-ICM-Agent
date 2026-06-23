@@ -1,0 +1,50 @@
+{
+  "paper_id": "2024-2410889",
+  "year": 2024,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2024 MCM Problem E (sustainability/property insurance under climate change). The team (Team #2410889) built (1) an Underwriting Decision Model (UDM) deciding whether an insurer should write policies in an extreme-weather region based on simulated profitability; (2) an Underwriting Decision–Goal Programming Model (UD-GPM) that picks the best site/material/build-or-not within a region by trading off building safety vs. living convenience; (3) a Protection Value Assessment Model (PVAM) using EWM-TOPSIS over Culture/History/Economics/Community to classify landmarks into four protection tiers with tailored measures; and (4) a Forbidden City case study plus a one-page community letter. Demonstrated on Guangdong (63% profit probability → underwrite) vs. Florida (26% → decline); Forbidden City scored 0.618 → tier-3 protection.",
+  "models_used": [
+    "Underwriting Decision Model (UDM): a profit = revenue − claims-cost simulation where policy risk R_O = 0.6·external + 0.4·internal drives premium pricing F_O = α + λ·R_O",
+    "Monte Carlo simulation: 1000 policies per region, payout-in-force determined by random draw vs. payout probability (policy risk / 10); 100 repeated scenarios to estimate frequency of Profit > 0",
+    "Risk-checklist method (risk management) to quantify internal property risk across Carrying Capacity / Durability / Usage History sub-indicators scored 1–10",
+    "Premium income reallocation sub-model: reserve assets (0.5·RI), reinsurance assets (only high-risk policies, C'=0.8C, P'=0.4P), and investment assets growing at rate_j",
+    "Least-squares logarithmic regression f(d_I)=0.5454+0.0874·ln(d_I) fitting insurability probability vs. distance from disaster (SSE 0.008)",
+    "Goal Programming model: Max 0.5·IS + 0.5·RS = 0.5·f(d_Imin) + 0.5·g(d_Lmin), with linear convenience decay g(d_L) inside a 2km service radius",
+    "Particle Swarm Optimization (PSO) to solve the goal-programming model for the optimal build coordinate (found (1.2,0.4))",
+    "Protection Value Assessment Model (PVAM) using EWM-TOPSIS: Entropy Weight Method for objective indicator weights + TOPSIS closeness score S_i, over 4 dimensions × 2 sub-indicators each",
+    "Min-Max normalization of the indicator score matrix prior to EWM-TOPSIS",
+    "Sensitivity analysis: investment rate swept 2%–7% (decisions unchanged) and ±20% perturbation of PVAM primary indicators (<5% score change)"
+  ],
+  "key_techniques": [
+    "Reframing a vague sustainability prompt into a crisp binary decision criterion (Profit > 0 ⇒ underwrite), making the whole model objective-driven and testable",
+    "Decomposing policy risk into external (weather frequency, hard to intervene) vs. internal (building condition, human-interventionable) with explicit 0.6/0.4 weights — and using that split to give actionable advice to homeowners",
+    "Using Monte Carlo frequency-of-profit as the decision statistic rather than a single expected value, capturing variance/tail risk credibly",
+    "Bridging Task 1 → Task 2 by reusing the UDM: regressing insurability probability against distance, then plugging f(d_I) in as the 'safety' objective — turning an insurance model into a siting model",
+    "Objective weighting via Entropy Weight Method to avoid arbitrary subjective weights in the multi-criteria protection score, paired with TOPSIS for a single comparable 0–1 score",
+    "Discretizing a continuous decision (protection score) into 4 actionable tiers each mapped to concrete, cost-graduated measures (digital twin/BIM, relocation, control zones, visitor-flow caps)",
+    "Validating with a real, recognizable landmark (Forbidden City) benchmarked against Mogao Caves and Canton Tower to show the score discriminates meaningfully",
+    "Two-pronged sensitivity analysis (one knob per model) used as evidence of robustness"
+  ],
+  "why_it_won": "\"From a judge's view, this paper wins on coherent model architecture and decision-orientation rather than mathematical depth. (1) It answers the actual question asked — a clear yes/no underwriting rule with a defensible economic premise ('insurers are economic beings, decide on profit'). (2) It exhibits strong model reuse: one core engine (UDM) is adapted into a siting model (UD-GPM) and feeds the case study, giving the paper unity and demonstrating real modeling maturity. (3) Every model ends in concrete, actionable recommendations (don't write Florida, build at (1.2,0.4), tier-3 protect the Forbidden City, allocate 60% of net profit), which is exactly what Problem E's sustainability framing rewards. (4) It pairs each subjective choice with a justification and backs the headline numbers with Monte Carlo credibility and sensitivity checks. (5) The named-method toolkit (Monte Carlo, risk checklist, goal programming, PSO, EWM-TOPSIS) is recognizable, appropriate, and well-integrated — judges can quickly see competent method selection. (6) The communication deliverable (the community letter with short/medium/long-term plans) is complete and on-tone.\"",
+  "section_highlights": "\"Strong structural moves: (a) The Restatement section maps each sub-problem to 'Our work' in parallel, so a judge instantly sees full coverage of all 4 tasks. (b) A whole-paper flowchart (Fig 2) shows how UDM → UD-GPM and EWM-TOPSIS → PVAM interconnect — signaling architecture, not a bag of disconnected models. (c) Assumptions are each paired with a justification. (d) A clean Notations table front-loads symbols. (e) The Forbidden City case study explicitly runs BOTH models and benchmarks against two other landmarks in a raw-data table (Table 2), making the 0.618 score legible. (f) The closing community letter translates technical findings into a stakeholder memo with tiered (1-3yr / 3-10yr / >10yr) action plans and a budget figure. (g) Honest, specific Strengths/Weaknesses section. Writing is decision-first: each model subsection ends by stating what to actually do.\"",
+  "pitfalls_or_limitations": [
+    "Heavy reliance on unjustified 'magic' parameters: base rate 0.3%, risk coefficient 0.1%, external/internal weights 0.6/0.4, reserve 0.5·RI, reinsurance C'=0.8C and P'=0.4P, and 'divide policy risk by 10' for payout probability were tuned 'through continuous debugging' with no calibration to real data — a judge would dock realism here",
+    "The data tables embedded under the figures look fabricated/illustrative and internally inconsistent (e.g., the Forbidden City Monte Carlo line chart collapses to absurd values like C=115, R=95 at the tail), suggesting the plots were not faithfully reproduced and the 61% vs. summary 63%/26% figures aren't fully traceable",
+    "External risk is reduced to raw event frequency (Σ ewn_i / (n·365)), ignoring severity, exposure value, and spatial correlation of losses — the team itself flags this as a weakness",
+    "PVAM data is almost entirely Chinese landmarks, so EWM weights are biased and the four-tier cutoffs (0.1/0.3/0.5) are essentially arbitrary, limiting generalization to international sites",
+    "Goal programming uses equal 0.5/0.5 weights for safety vs. convenience with no justification, and the constraints (x≠x_i, y≠y_j) are degenerate/measure-zero — PSO 'optimality' is weakly supported",
+    "Reinsurance/investment economics are toy-level (equal proportions of every product, single regional return rate), so the profitability claims are qualitative at best",
+    "Sensitivity analysis only perturbs one variable per model (investment rate; single indicator ±20%) and never stresses the load-bearing assumptions (the 0.6/0.4 split, the /10 payout rule), so 'robustness' is overstated"
+  ],
+  "reusable_patterns": [
+    "Decision-criterion framing: convert a fuzzy 'should we...' prompt into a single inequality (Profit > 0) and make the whole model serve that test — produces clean, defensible conclusions.",
+    "Internal/external (controllable/uncontrollable) risk decomposition with explicit weights — lets you give differentiated advice to different stakeholders (insurer vs. homeowner).",
+    "Monte Carlo 'frequency of favorable outcome' as the reported statistic for any go/no-go decision under uncertainty, plus repeating the whole scenario N times to stabilize the frequency.",
+    "Model-reuse spine: build one core model, then adapt it for later tasks (here via a regression f(d) that turns insurer willingness into a 'safety' score fed to a goal program) — gives the paper unity and shows maturity.",
+    "EWM-TOPSIS as a go-to objective multi-criteria scoring pipeline (Min-Max normalize → entropy weights → TOPSIS closeness → 0–1 score), then bucket the score into actionable tiers each mapped to concrete graduated measures.",
+    "Benchmark-table validation: score 2–3 well-known real entities and show the ranking matches intuition, to argue the index 'works'.",
+    "One-knob-per-model sensitivity table reported as a clean line chart, plus a stakeholder letter with short/medium/long-term action tiers and a budget number as the communication deliverable.",
+    "Whole-paper architecture flowchart up front + parallel 'Restatement / Our work' table to telegraph full task coverage and inter-model structure to judges."
+  ]
+}

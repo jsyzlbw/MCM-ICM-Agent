@@ -1,0 +1,252 @@
+{
+  "problem_type": "unknown",
+  "paper_count": 5,
+  "common_models": [
+    {
+      "name": "Two custom composite indices: Socioeconomic Development Index D_i and Ecological Impact Index E_i, both Norm-scaled to [0,1] in HDI style",
+      "papers": 1
+    },
+    {
+      "name": "Inequality-adjusted income metric: integral of I(x)(1-x) over income percentile x in (0,1) — embeds Gini-like inequality weighting directly inside a single wealth integral instead of computing GDP and inequality separately",
+      "papers": 1
+    },
+    {
+      "name": "D_i = (2/5)logNorm(integral I(x)(1-x)) + (2/5)Norm(LE) + (1/5)Norm(Education) — explicitly down-weighting education due to its collinearity with income and life expectancy",
+      "papers": 1
+    },
+    {
+      "name": "Weighted pollution index using IPCC 2013 100-year Global Warming Potentials (CO2=1, CH4=28, N2O=265, HFCs/PFCs/SF6 in thousands) as damage weights: Pollution = sum_p A_p * W_p",
+      "papers": 1
+    },
+    {
+      "name": "Scalar sustainability objective S = (D_i + alpha*E_i)/(1+alpha), where alpha is a tunable environmental-priority knob — turns a two-objective trade-off into a single optimizable scalar",
+      "papers": 1
+    },
+    {
+      "name": "Iterated Function Map: ~12 coupled best-fit relationships (Appendix A) linking program cost to factors, iterated year-by-year so factors feed back on each other; relationships derived by linearizing log/exponential World Bank + WHO trends",
+      "papers": 1
+    },
+    {
+      "name": "Preston curve LE=LE(W) for life expectancy vs GDP and a logarithmic birth-rate-vs-wealth fit feeding a discrete logistic-style HIV transmission recurrence (HIV_{n+1} with contraceptive-use suppression term)",
+      "papers": 1
+    },
+    {
+      "name": "2-D Cellular Automata for spatial targeting, adapted from Epstein & Axtell's agent-based Sugarscape; coupled wealth-diffusion and population (growth + migration) update rules with employment coefficient epsilon and migration coefficient beta",
+      "papers": 1
+    },
+    {
+      "name": "Particle Swarm Optimization (128 particles) as the production optimizer over the bounded investment-allocation search space",
+      "papers": 1
+    },
+    {
+      "name": "Genetic Algorithm, Nelder-Mead simplex, and Powell's method tried first as optimizer baselines and explicitly rejected (local-optima trapping / unbounded behavior / too slow)",
+      "papers": 1
+    },
+    {
+      "name": "Sustainable Development Indicator (SDI) hierarchy: 3 levels (3 aspects / 9 sub-aspects / 17 third-level indicators) sourced by cross-referencing Eurostat, Liyin Shen's 52, and Jelena Zlatar's 37 indicator sets (keep indicators appearing in >=2 sources OR policy-controllable)",
+      "papers": 1
+    },
+    {
+      "name": "Custom data normalization: positive r_ij = x/max, negative r_ij = min/x, then f_ij = r_ij / sum_j r_ij; plus 3 bespoke 'special-indicator' transforms — inflation f=1-|INF|/|INF|max (optimum at 0), population density f=1-|(DP-DP_AP)/|dDP|max| (optimum band 60-100/km^2 from Martilli), and a density-coupled piecewise population-growth normalization (from J.V. Ross)",
+      "papers": 1
+    },
+    {
+      "name": "Entropy weight method (entropy H_i = -k*sum f*ln f, k=1/ln m; weight w_i = (1-H_i)/sum(1-H_i)) to objectively weight indicators into three aspect performances F_en, F_so, F_ec",
+      "papers": 1
+    },
+    {
+      "name": "Development Index DI = C*F (weighted aspect sum) and Coordination Index CI = 1 - S/F-bar (coefficient of variation of the three aspect scores) to separate 'how developed' from 'how balanced'",
+      "papers": 1
+    },
+    {
+      "name": "GE-Matrix (McKinsey/GE nine-box) repurposed: DI vs CI plotted in a 2D box, sustainability score = Euclidean distance from the ideal point (1,1) — lower is better; DI/CI cut into weak/medium/strong bands",
+      "papers": 1
+    }
+  ],
+  "common_techniques": [
+    {
+      "name": "Reduced a multi-objective sustainability problem to ONE scalar via the alpha-weighted blend S=(D+alpha*E)/(1+alpha), making it directly optimizable and letting them sweep alpha to produce a policy-choice curve rather than a single answer",
+      "papers": 1
+    },
+    {
+      "name": "External validation against an authority: cross-checked their D_i and E_i top-10 country rankings against the Sustainable Society Index (SSI) — 7/10 overlap on both human and environmental dimensions — to prove the home-grown index is credible",
+      "papers": 1
+    },
+    {
+      "name": "Optimizer bake-off: empirically compared 4 optimizers (GA, Nelder-Mead, Powell, PSO) and justified the PSO choice with concrete failure modes of the others (boundedness, local optima, runtime) rather than asserting it",
+      "papers": 1
+    },
+    {
+      "name": "Two-scale decomposition of the problem: WHAT to fund (iterated function map + PSO) vs WHERE to fund it geographically (cellular automata) — answering two distinct policy questions with two matched models",
+      "papers": 1
+    },
+    {
+      "name": "Linearization of nonlinear (log/exponential) empirical trends to fit clean closed-form relationships for every arrow in the factor map, all collected in an Appendix equation table",
+      "papers": 1
+    },
+    {
+      "name": "Hypothesis-driven sensitivity analysis: predicted what the optimizer SHOULD do under an injected error (raise agriculture cap -> jobs up, indices ~unchanged; remove solar from wealth -> optimizer substitutes dams), then confirmed sub-1% index deviation — testing model logic, not just numeric stability",
+      "papers": 1
+    },
+    {
+      "name": "Borrowed a canonical published model (Epstein-Axtell Sugarscape) and adapted it rather than inventing spatial dynamics from scratch, lending instant credibility",
+      "papers": 1
+    },
+    {
+      "name": "Reframed the deliverable as ICM 'bang for the buck' / ROI on aid dollars, aligning the math with the sponsor's decision problem",
+      "papers": 1
+    },
+    {
+      "name": "Metaphor-driven model transfer: explicitly 'buying Lanchester's war equation a new coat of peace' — taking a combat-attrition ODE and reinterpreting its terms (attack strength -> cross-aspect coupling, troop reinforcement -> external aid) to model sustainability dynamics",
+      "papers": 1
+    },
+    {
+      "name": "Control-engineering analogy as the spine of the whole answer: framing a development plan as a control matrix acting on a state-space system, so 'designing a plan' literally becomes 'choosing G_cA and G_bA' — directly answering Problem D's three sub-parts (measure / plan / evaluate effect) with one unified object",
+      "papers": 1
+    },
+    {
+      "name": "Separating two orthogonal axes (DI = level of development, CI = coordination/balance) instead of collapsing into one number, then using the GE-Matrix distance-to-ideal as a single interpretable scalar score",
+      "papers": 1
+    },
+    {
+      "name": "Objective weighting via entropy method to avoid subjective AHP-style weights, lending statistical defensibility to indicator aggregation",
+      "papers": 1
+    },
+    {
+      "name": "Bespoke handling of 'special' indicators with non-monotonic optima (inflation optimal at 0, population density optimal in a band) — citing demography/epidemiology literature rather than forcing them into positive/negative templates",
+      "papers": 1
+    },
+    {
+      "name": "Two-tier control decomposition (indirect c_i scaling existing dynamics vs direct b_i injecting new effort) with a clear truth-table of what c_i<1/>1 and alpha<1/>1 mean",
+      "papers": 1
+    },
+    {
+      "name": "Closing the abstract-to-concrete loop: control elements -> dynamic-programming optimum -> ranked real activities via an SEA effectiveness table, ending on an actionable recommendation ('Technical support' as Congo's #1 lever)",
+      "papers": 1
+    }
+  ],
+  "recurring_pitfalls": [
+    {
+      "name": "Only 2 time-steps actually computed: the '20-year plan' was run as two 10-year blocks (not annual) due to compute limits, undercutting the 'iterated yearly map' premise the model is built on",
+      "papers": 1
+    },
+    {
+      "name": "Heavy reliance on the 'Zambia follows worldwide development trends' assumption — all 12 map equations are global cross-country fits applied to one country, so any Zambia-specific deviation propagates everywhere",
+      "papers": 1
+    },
+    {
+      "name": "Air-pollution-only ecology metric (justified via Kuznets curve) ignores water and ground pollution, which the team admits matters precisely for poor countries lacking clean water",
+      "papers": 1
+    },
+    {
+      "name": "Compresses economy + health + education into a single D_i, so any factor outside those three has an unmeasured effect; collapsing two well-being dimensions into one value loses information by their own admission",
+      "papers": 1
+    },
+    {
+      "name": "Deterministic-effect-of-money assumption and 'net industry change = 0 without ICM funding' are strong simplifications that make aid impact look cleaner than reality",
+      "papers": 1
+    },
+    {
+      "name": "No imports/exports in the wealth model — team notes this systematically understates wealth growth and biases D_i low",
+      "papers": 1
+    },
+    {
+      "name": "The CA spatial model and the function-map/PSO optimizer are never actually coupled — geography (where) and allocation (what) are solved separately, so spatial targeting doesn't feed back into the optimized dollar amounts",
+      "papers": 1
+    },
+    {
+      "name": "Reported gains are tiny (sustainability moves from ~0.32 to ~0.37 across a huge investment range), and the extracted figure tables show some inconsistent/garbled x-axis values, making the headline impact hard to verify",
+      "papers": 1
+    },
+    {
+      "name": "'Political stability / no corruption' assumption for Zambia is convenient and lets 100% of aid be assumed effective",
+      "papers": 1
+    },
+    {
+      "name": "The Lanchester re-skinning is an aesthetic analogy with no mechanistic justification — there is no reason env/social/econ dynamics should obey a linear coupled ODE of combat form; the coefficients alpha_ij are curve-fits, not causal, so the 20-year extrapolation is essentially linear-trend projection dressed in control-theory notation",
+      "papers": 1
+    },
+    {
+      "name": "Only 5 years of history (2009-2013) are used to fit a model then extrapolated 20 years — severe overfitting/extrapolation risk; an LTI model is acknowledged (Section 6) to be unable to capture real regime change",
+      "papers": 1
+    },
+    {
+      "name": "The plan's 'effectiveness scores' for activities are imported wholesale from a single Tehran SEA paper (Sharifzadegan & Gollar) and applied to Congo without adaptation — a large unjustified transfer, and the mapping from those scores to the b_i/c_i control values is hand-waved ('a series of work should be done')",
+      "papers": 1
+    },
+    {
+      "name": "The dynamic-programming layer is asserted rather than shown: stage/state/decision/value formalism is laid out but no Bellman recursion, discretization of the continuous control space, or solver detail is given, so the 'optimal' schedule in Table 7 is not reproducible",
+      "papers": 1
+    },
+    {
+      "name": "Internal inconsistencies and sloppiness: the system matrix A is printed with alpha_32 in two cells (a typo), several figure data tables look garbled or placeholder (e.g. Figure 7/9 show all columns identical), and the score-distance metric mixes DI and CI on different scales without justification for Euclidean distance",
+      "papers": 1
+    },
+    {
+      "name": "Coordination Index uses coefficient of variation which is unstable when F-bar is near zero — exactly Congo's regime — making CI values for the poorest countries numerically fragile",
+      "papers": 1
+    }
+  ],
+  "reusable_patterns": [
+    {
+      "name": "Scalarize a trade-off with a single tunable weight: S=(A + alpha*B)/(1+alpha), then SWEEP alpha to deliver a decision curve and let the stakeholder pick their preference — converts 'which objective wins?' into a clean Pareto-style policy menu",
+      "papers": 1
+    },
+    {
+      "name": "Validate a home-grown composite index by ranking entities and checking overlap against an established authoritative index (here SSI) — cheap, persuasive credibility for any custom scoring metric",
+      "papers": 1
+    },
+    {
+      "name": "Run an explicit optimizer bake-off (GA vs Nelder-Mead vs Powell vs PSO) and justify the final pick by concrete failure modes (boundedness, local optima, runtime) instead of asserting it; PSO with a stated swarm size is a strong default for bounded, multimodal, non-differentiable allocation problems",
+      "papers": 1
+    },
+    {
+      "name": "Predict-then-test sensitivity analysis: state what the optimizer SHOULD do under an injected perturbation, run it, and show the result matches — far more convincing than reporting raw output deltas",
+      "papers": 1
+    },
+    {
+      "name": "Decompose a resource-allocation problem into 'what to fund' (optimization over a factor map) and 'where to fund it' (spatial agent-based / cellular-automata model) as two coupled sub-models",
+      "papers": 1
+    },
+    {
+      "name": "Build an 'iterated function map': encode each cause-effect arrow as a fitted closed-form equation, iterate the whole web forward in time so factors feed back, and collect all equations in an appendix table for reproducibility",
+      "papers": 1
+    },
+    {
+      "name": "Linearize log/exponential empirical trends to get clean fittable relationships for every edge in a causal diagram",
+      "papers": 1
+    },
+    {
+      "name": "Embed inequality directly into a wealth metric via an integral of I(x)(1-x) over the income percentile, instead of post-hoc combining GDP and a separate Gini number",
+      "papers": 1
+    },
+    {
+      "name": "Adapt a canonical published model (Sugarscape, Preston curve, IPCC GWP weights) rather than inventing from scratch — borrow credibility and cite it",
+      "papers": 1
+    },
+    {
+      "name": "Pair every assumption with both its real-world justification and the specific simplification it buys you; end each model subsection with its own Strengths/Weaknesses block",
+      "papers": 1
+    },
+    {
+      "name": "State-space + control-matrix template for any 'design-a-plan-and-evaluate-its-effect' policy problem: model the system as F_{k+1}=A*F_k, then represent the intervention as a multiplicative control matrix G_cA (scales existing dynamics) plus an additive control matrix G_bA (injects new effort). One object answers measure/forecast/intervene simultaneously — directly reusable for ICM policy/sustainability/network problems",
+      "papers": 1
+    },
+    {
+      "name": "Two-axis scoring then collapse-to-distance: split a fuzzy target into a 'magnitude' index and a 'balance/coordination' index (CI = 1 - CV), plot in a 2x2/3x3 business matrix, and define the final score as distance from the ideal corner — a clean, interpretable way to produce one ranking number from multi-aspect data",
+      "papers": 1
+    },
+    {
+      "name": "Entropy weight method as the default objective weighting when judges may distrust subjective AHP — pairs well with a 3-level indicator hierarchy and min-max-style normalization",
+      "papers": 1
+    },
+    {
+      "name": "Indicator-sourcing rule for credibility: cross-reference 3+ authoritative indicator sets and keep items appearing in >=2 sources, plus deliberately add policy-controllable indicators so the downstream 'plan' actually has levers to pull",
+      "papers": 1
+    },
+    {
+      "name": "'Mechanism-first, then our adaptation' section template, and the explicit 'borrow a famous equation from another field and re-interpret its terms' move (Lanchester here) — a repeatable creativity device, provided the analogy is at least argued",
+      "papers": 1
+    }
+  ]
+}

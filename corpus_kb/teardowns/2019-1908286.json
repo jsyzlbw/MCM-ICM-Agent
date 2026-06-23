@@ -1,0 +1,60 @@
+{
+  "paper_id": "2019-1908286",
+  "year": 2019,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2019 MCM Problem B (discrete): design HELP, Inc.'s \"DroneGo\" transportable disaster-response system for post-Hurricane-Maria Puerto Rico. Teams had to choose a fleet from 8 given drone types (A-H) plus 2 cargo-bay types and 3 medical-package (MED) types, pack them into ISO cargo containers airlifted in by helicopter, decide container drop locations, and plan drone routes for the dual mission of (a) delivering emergency medical packages to hospitals and (b) reconnoitering damaged highways/roads. The core difficulty is a multi-stage chain: 3D bin-packing of heterogeneous cuboids -> evaluating per-drone-type transport vs. reconnaissance capability -> geospatial drop-point selection under an unknown/variable disaster footprint -> fleet scheduling and individual route planning, all balancing two competing objectives (transport vs. reconnaissance).",
+  "models_used": [
+    "Three Space Division Model for 3D heterogeneous container loading: places a cuboid at the origin corner, then recursively cuts remaining space into spaceX/spaceY/spaceZ via axis-perpendicular planes; A_3^3=6 orientations x 6 cut-sequences = 36 cases per placement, recursed until no item fits",
+    "Single-objective integer programming formulation of the bin-packing problem using existence flags Y_krm, a 3x3 configuration (orientation) matrix P constrained to a permutation matrix (row/col sums =1), and box-size containment constraints Y_krm(u + P*s_r^G) <= s^B",
+    "Improved Monte-Carlo Simulation to escape the NP-complete exhaustive search: starts from a feasible packing, randomly chooses space divisions, injects random noise on goods division, ~1e9 trials giving ~0.99995 hit probability; achieved 97.97% space utilization",
+    "Drone Transport Capability Index (TCI): derived a 7x3 Transport Capability matrix TC, computed Days_i = V_container / V_i^MedDay, normalized to TCI (Drone G = 1.0, best transport)",
+    "Drone Reconnaissance Capability Model: optics/geometry model deriving viewing radius r_view=79.7m from a 1080P/2MP camera at 20m altitude (tan(theta+dtheta), resolution angle dtheta=3e-3 rad), used to set a ~100m grid; RCI normalized matrix (Drone B = 1.0, best reconnaissance)",
+    "Geospatial Analysis Model on a 100m grid with 7 normalized feature maps (main highways, highways&roads, population density, high-population areas, harbors, altitude, hospital/medical-need weight)",
+    "Analytic Hierarchy Process (AHP) applied twice (separately for Transport Index and Reconnaissance Index) to weight the feature groups; pairwise comparison matrices with consistency check CR=0.0598 and 0.0591 (<0.1). Medical info dominates TI at 67.03%; highway info dominates RI at 60.11%",
+    "Distance-decay coverage kernels: TI_distance favors near points (1 - dis/DIS * beta), RI_distance favors far points (reconnaissance done en route), combined with coverage-area normalization and TCI/RCI into per-cell TI(i,x,y) and RI(i,x,y)",
+    "Nonlinear programming with a user-tunable trade-off parameter lambda to combine TI and RI into a single Efficiency objective for single drop-point selection",
+    "Dynamic Programming for multiple-container placement: after each drop, transport demand is reduced by ~1/3 locally (renormalize medical feature) and reconnoitered highways are damped by r0=0.1, so each selection conditions the next",
+    "Schedule Arrangement Model: integer/linear programming enumerating feasible MED-into-bay loading schemes per drone type (B/E/G -> 3/27/44 schemes), then a max-min LP maximizing Days_effective = min over delivery locations of supply-days",
+    "Drone Route Planning: an improved greedy 'nearest-road' search with a delivery-first priority and removal of already-scanned roads; fleet-level greedy picks the minimum-flight-distance drone first; specializes Drone B (weak transport, strongest recon) to pure reconnaissance. Achieved 59.86% road coverage at lambda=0.5",
+    "Sensitivity analysis via proportional AHP-weight reallocation: w_j' = (1-w_p')/(1-w_p) * w_j, perturbing dominant weights +/-10%/20% and showing drop-point/proportions barely move"
+  ],
+  "key_techniques": [
+    "Decompose one messy problem into a clean staged pipeline (packing -> capability indices -> geospatial drop-point -> scheduling -> routing) where each stage's output is the next stage's input",
+    "Replace intractable exhaustive 3D packing with a structured search space (Three Space Division: 6 orientations x 6 cut sequences) and then sample it with Monte-Carlo seeded from a feasible solution",
+    "Justify Monte-Carlo with an explicit probability argument (1 - 0.99999^1e9 = 0.99995) rather than just asserting it works",
+    "Reduce per-drone-type performance to two scalar normalized indices (TCI, RCI) so heterogeneous drones become directly comparable and rankable (G best transport, B best recon)",
+    "Turn a continuous physical spec into a discrete grid: derive camera viewing radius 79.7m from optics, then justify a 100m reconnaissance grid",
+    "Use AHP twice with distinct comparison matrices for the two objectives, and report consistency ratios to make subjective weights defensible",
+    "Asymmetric distance kernels encoding domain logic: transport prefers near targets, reconnaissance prefers far targets (near roads scanned in transit anyway)",
+    "Expose a single user-facing knob (lambda) that linearly interpolates the transport/reconnaissance trade-off, so the model answers 'what if priorities change' for free",
+    "Model sequential drop-point selection as DP by having each placement deplete local demand and damp already-scanned features",
+    "Role-specialize the fleet (Drone B -> reconnaissance only) once indices reveal it is cheap to sacrifice for transport but valuable for scanning",
+    "Close the loop on robustness with a principled weight-perturbation sensitivity sweep and show results are stable",
+    "Package everything as a reusable 'DroneGo' system/software with a mocked-up GUI, framing the math as a deployable product"
+  ],
+  "why_it_won": "\"From a judge's view, this paper wins because it fully closes the loop on every sub-question the prompt asks (fleet selection, packing, drop location, schedule, route) with a coherent end-to-end pipeline rather than treating them as disconnected mini-problems. It picks genuinely appropriate discrete-optimization machinery (3D bin-packing as integer programming, Monte-Carlo for the NP-complete search, AHP for multi-criteria weighting, DP for sequential placement, greedy for routing) and ties them together with two clean comparable indices (TCI, RCI) that drive every downstream decision. It produces concrete, checkable headline numbers (97.97% packing utilization, Drone G best transport, Drone B best recon, >2 months of medicine supply, 59.86% road coverage at lambda=0.5) and defends key choices quantitatively (Monte-Carlo hit-probability argument, AHP consistency ratios < 0.1, a real sensitivity sweep showing stability). It also reframes the deliverable as a tunable, generalizable product (the lambda knob plus a GUI memo to the CEO), demonstrating the modeling maturity and communication judges reward.\"",
+  "section_highlights": "\"Structure mirrors the natural solution pipeline and is signposted: Transportation Capability Evaluation Model (Sec 3) -> Geospatial Analysis Model (Sec 4) -> Fleet Arrange Model (Sec 5: schedule then route) -> Sensitivity (Sec 6) -> Strengths/Weaknesses (Sec 7). The summary sheet front-loads the whole narrative and the headline results (Drone G/B winners, >2 months supply, ~60% coverage). Assumptions (Sec 2) are each paired with concrete real-world justification (e.g., no charging gear because Maria downed 80% of utility poles; alpha=0.9 flight-distance loss because Puerto Rico mean elevation 261m). Heavy, consistent use of figures: the Three Space Division diagram, two Monte-Carlo/greedy flowcharts (Figs 3, 8-9), feature heatmaps and per-lambda drop-point maps (Figs 4-7), and final route maps with coverage (Fig 10). Notation is defined up front with set/vector/matrix symbols (K, R, M_r, s^B, P, Y_krm). A separate CEO memo with a software-GUI mockup (Fig 11) translates the math into a deliverable. Tables 1, 3-6 give concrete packing configs, per-lambda locations, the full drone schedule, and the sensitivity grid.\"",
+  "pitfalls_or_limitations": [
+    "Monte-Carlo packing is acknowledged as only 'satisfactory,' not provably optimal; the team concedes quality may not meet expectations and gives no optimality gap beyond noting the ideal is at most slightly better",
+    "The transport/reconnaissance combination uses a hand-picked lambda and several tuned constants (beta_TI=beta_RI=0.2, beta'_TI=13/15, beta'_RI=14/15, r0=0.1, demand-depletion 1/3) with little justification for the specific values",
+    "Key simplifying assumptions are strong: cargo weight does NOT affect flight distance, and a flat alpha=0.9 distance-loss coefficient stands in for all terrain/weather/wind/battery effects",
+    "AHP comparison matrices are inherently subjective; the sensitivity sweep only perturbs the single dominant weight proportionally, not the full matrix, so robustness evidence is partial",
+    "Reconnaissance optics model is idealized (fixed 20m altitude, unlimited gimbal swing, 1m road resolution) and ignores occlusion, terrain, and image-processing reality",
+    "The route-planning greedy is a heuristic with no comparison to a baseline or bound, and the 'drones never move after delivery' assumption limits coverage",
+    "Data provenance is weak: the reference list is short and partly mismatched (e.g., a CIA factbook URL cited for a drone-rescue claim), so the geospatial feature maps rest on shaky sourcing",
+    "The OCR'd heatmap/figure data in the corpus is largely garbled, so the visual evidence is hard to independently verify"
+  ],
+  "reusable_patterns": [
+    "Stage-and-pipe template: break a multi-part discrete prompt into a chain where each model emits a compact artifact (a matrix/index) consumed by the next stage",
+    "Reduce heterogeneous discrete options to one or two normalized capability indices so the rest of the model can rank and mix them cleanly",
+    "When exhaustive search is NP-hard, define a structured move-set first (here: orientation x space-cut combinatorics) and then Monte-Carlo sample it, seeded from a known feasible point, and justify it with an explicit success-probability calculation",
+    "Apply AHP separately per objective, always report the consistency ratio (CR<0.1), and follow with a proportional weight-perturbation sensitivity sweep to pre-empt the 'AHP is subjective' critique",
+    "Encode domain asymmetries directly into kernels (near-favoring vs far-favoring distance decay) instead of using a single generic distance weight",
+    "Expose a single user-tunable trade-off parameter (lambda) and present a table/figure of solutions across its range, turning a fixed answer into a decision tool",
+    "Model sequential placement/allocation as DP by depleting/damping the relevant feature field after each commitment",
+    "Role-specialize fleet members based on the computed indices (assign the cheap-to-lose, recon-strong unit to pure reconnaissance)",
+    "Derive discretization granularity from physics (camera viewing radius -> grid size) rather than choosing it arbitrarily",
+    "Wrap the solution as a named, generalizable 'system' with a CEO memo and a GUI mockup to demonstrate deployability and lift the communication score"
+  ]
+}

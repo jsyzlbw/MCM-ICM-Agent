@@ -1,0 +1,51 @@
+{
+  "paper_id": "2025-2502355",
+  "year": 2025,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2025 MCM Problem E (sustainability) asked teams to model the ecosystem of land converted from forest to agriculture: build a producer-consumer dynamics model that captures agricultural cycles, seasonality, and herbicide/pesticide effects; assess ecosystem stability under species reintroduction and chemical removal; recommend organic-farming method combinations balancing cost and sustainability; and write a one-page letter to a farmer. This paper frames it as a rice-paddy agroecosystem and progresses from a food chain to a seasonally-driven food web, then a network-stability assessment, then an EWM-AHP decision among organic-farming schemes.",
+  "models_used": [
+    "Tri-trophic food chain ODE model (Model 1): logistic producer growth + Holling-II functional response for both predation links (X producer, Y primary consumer, Z secondary consumer), citing Kuznetsov & Rinaldi food-chain dynamics",
+    "Food web ODE model (Model 2): 6 compartments (crop-like X1, grass-like X2, primary consumer Y, secondary consumer Z, decomposer D, soil nutrient S) with Holling-I (linear) functional responses, assimilation/egestion/consumption coefficients a_jk/c_jk/e_jk, and explicit soil-nutrient mass balance",
+    "Human-intervention extension: herbicide modeled as time-accumulating mortality term d2(1+alpha*e^-(t-t0))X2 on grass only; pesticide modeled as subtractive decay term beta*e^-(t-t0) on insect biomass Y",
+    "Seasonal/agricultural-cycle food web model (Model 3): year split into growing season (Apr-Oct) and fallow season (Oct-Apr) with piecewise ODEs; periodic indicator functions f(t), g(t), k(t) for year/month/spray-cycle phase; quartic polynomial temperature fit T(g(t)) (R^2=0.9959) entered as a parabolic growth-rate modifier -0.005(T-16)^2; discrete events for weeding (10:1 X1:X2 reset), fertilization (S+10), harvest (X1->0), post-harvest nutrient return (+1/2 X_p to S)",
+    "Network/graph-theory stability assessment (Problem 2): nodes = populations, arc weights = carbon flow CF_jk = c_jk*BM_j*BM_k computed from Problem-1 equilibrium biomass",
+    "Two stability metrics: (1) Connectivity-Chain-Length method S = C * L_a with C=M/N^2 and L_a = sum(L_ij)/M against literature 'optimal' bands; (2) Maximum-Eigenvalue method lambda_max = max(Re(lambda_i)) of the carbon-flow adjacency matrix (May 1972 complexity-stability framing)",
+    "Ecotrophic Efficiency (EE=C_pe/T_p in [0,1]) as a parameter-sanity check",
+    "Shannon-Wiener diversity index over carbon-flow pathways H = -sum CF_ij ln CF_ij",
+    "Centrality suite via Python networkx: betweenness C_B, closeness C_C, and eigenvector centrality C_E (Power Iteration)",
+    "EWM-AHP combined-weighting decision model (Problem 3): AHP hierarchy (target/standard/indicator/scheme layers, 9 indicators, 8 schemes incl. blank control) with objective entropy weights, scores f_i = sum w_j p_ij",
+    "Sensitivity/bifurcation analysis: sweep herbicide power alpha over [e^0, e^10], bifurcation diagrams per compartment showing periodic-oscillation vs extinction states and a critical transition near alpha=e^4.3"
+  ],
+  "key_techniques": [
+    "Progressive model layering: each model is a strict superset of the previous (chain -> web -> seasonal web), so complexity is added in justified, traceable increments rather than all at once",
+    "Deliberate functional-response switch with justification: Holling-II in the food chain but Holling-I in the food web, argued from predator mobility / uncertain food sources",
+    "Carbon/biomass abstraction: replacing specific species with trophic-level carbon biomass (g/cm^2) to make the model generalizable across agroecosystems, justified by homogeneity of managed farms",
+    "Encoding agronomic operations as math: weeding as an initial-ratio reset, fertilization as a step increase in S, harvest as setting X1=0, herbicide as exponential mortality growth, spraying periodicity via modular indicator functions",
+    "Reusing Problem-1 equilibrium biomass as Problem-2 arc weights and Problem-3 indicators, tying all sub-problems into one pipeline",
+    "Combining subjective AHP judgments with objective entropy (EWM) weights to neutralize AHP subjectivity",
+    "Using a blank control scheme (D1 'do nothing') to demonstrate experimental rigor in the decision analysis",
+    "Real-data grounding: fitting a quartic temperature curve to 2016-2018 Wuchang City data and choosing single-season Northeast-China rice as the concrete crop"
+  ],
+  "why_it_won": "From a judge's view, the paper scores high because it delivers an unbroken, self-referential modeling chain: Problem 1's equilibrium biomass literally feeds Problem 2's network weights and Problem 3's evaluation indicators, which is exactly the cross-task integration judges reward and most teams fail to achieve. It also makes defensible, explicitly-justified modeling choices (Holling-I vs II, two complementary stability metrics, EWM correcting AHP) and closes the loop with a bifurcation sensitivity analysis that retroactively justifies the chosen alpha=e^3. The grounding in a concrete real crop (Northeast-China single-season rice with fitted temperature data) and a clean, actionable farmer letter give it the realism and communication polish that separate O-awards from Finalists.",
+  "section_highlights": "The structure mirrors the four problems one-to-one with a strong flow diagram up front, and the Problem-1 section narrates the model's evolution (Model 1 -> 2 -> 3) so a reader sees the reasoning, not just the final equations. The summary is unusually concrete, leading with specific numerical findings (stability 56.99 without chemicals, bats 29.29, bees 43.37; recommended scheme = soil improvement + manual weeding), and the paper consistently pairs each model with a figure and an interpretation paragraph. The Advantages section explicitly articulates the progressive-and-integrated architecture, helping judges see the design intent.",
+  "pitfalls_or_limitations": [
+    "The two stability metrics disagree and the paper's interpretation is internally tangled: a higher lambda_max should signal LESS stability (unstable modes), yet the text repeatedly reads rising lambda_max (e.g. 56.99 after chemical removal) as the system becoming 'highly unstable' while elsewhere larger S in the connectivity method is called MORE stable - the directionality of 'stability' is inconsistent and never fully reconciled",
+    "Parameter values (consumption/assimilation/egestion coefficients, initial biomass) are largely borrowed from unrelated marine/estuarine trophic studies (Bay of Somme references) and asserted rather than calibrated to an actual converted-forest farm, so quantitative results are illustrative not validated",
+    "Many figures are clearly unreliable/garbled in this rendering (linear 1..n placeholder tables, radar charts with repeated 1.164/0.524 values) indicating weak or auto-generated plots; some axis labels and species names are inconsistent (Decomposers(Y), Roots(P), Peds(P))",
+    "Herbicide term d2(1+alpha*e^-(t-t0)) actually DECAYS toward baseline mortality as t grows, which contradicts the stated intent that herbicide effect 'accumulates over time' - the sign/structure arguably models a decaying pulse, not accumulation",
+    "Holling-I (density-independent linear predation) is a strong simplification that can permit unbounded predation and is biologically less realistic than Holling-II that they used in Model 1",
+    "Sensitivity analysis is performed only on alpha (herbicide power); the many other borrowed parameters are never stress-tested",
+    "Several scheme/indicator scores (C4 cost, C9 social support) are subjective expert scores with no elicitation methodology given, weakening the EWM objectivity claim"
+  ],
+  "reusable_patterns": [
+    "Build sub-models so outputs chain forward: equilibrium state from a dynamics model becomes the input (arc weights / indicators) for later assessment and decision sub-problems - this single move creates the 'integrated' feel judges look for",
+    "Encode every real-world operation in the prompt as an explicit mathematical event (a reset, a step change, a removal, a periodic indicator function) and tabulate them, so the grader can map narrative interventions to equations",
+    "Use modular/periodic indicator functions f(t)=t-floor(t/n)*n etc. to inject seasonality and repeated spraying cycles into ODEs cleanly",
+    "Pair a structural stability metric (connectivity x chain length) with a spectral one (max eigenvalue of the flow matrix) and a diversity metric (Shannon over carbon flows) for a multi-angle ecosystem assessment - but FIRST nail down and state the sign convention for 'more stable'",
+    "Combine AHP (expert hierarchy) with entropy weighting (EWM) to defend weights as both meaningful and data-driven; always include a blank/control scheme to show rigor",
+    "Close Problem 1 parameter choices with a bifurcation sweep that identifies a critical threshold and retroactively justifies the value you used in the main model",
+    "Ground an abstract sustainability problem in one concrete, real, well-documented case (a specific crop + region + fitted climate data) to gain realism without losing generality",
+    "Convert the technical recommendation into a short, plain-language stakeholder letter with 3 concrete actions plus a policy-incentive ask"
+  ]
+}

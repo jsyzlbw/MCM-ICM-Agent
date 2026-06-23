@@ -1,0 +1,53 @@
+{
+  "paper_id": "2022-2202666",
+  "year": 2022,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2022 MCM Problem E (sustainability): determine, for a given forest, the best balance between harvesting trees for products and leaving them standing, with carbon sequestration as the headline objective but also accounting for the forest's broader social/economic value. Deliverables: a carbon-sequestration model that includes both living trees and harvested wood products (HWP), a decision rule that recommends a harvesting plan (rate + interval), application to at least one real forest, and a one-page newspaper article. This team (#2202666) builds two coupled models: a Forestry Carbon Sequestration Model that maximizes total carbon (living wood + HWP) over a 100-year horizon via dynamic programming, and an ESE (Ecology-Society-Economy) Forest Value Evaluation Model that scores any forest and maps the score to one of five harvesting programs. They apply both to Beijing's forest as a case study.",
+  "models_used": [
+    "Forestry Carbon Sequestration Model: total carbon C_t(i) = C_l(i) [living wood] + C_p(i) [forest products], summed over 100-year time series",
+    "Living-wood carbon submodel: area dynamics LFS/HFS/TFS driven by harvesting rate alpha, slope correction by dividing projected area by cos(theta), and an age-distribution-weighted carbon capacity",
+    "Gaussian curve fit for carbon sequestration capacity vs. tree age: D(t) = a*exp(-((t-b)/c)^2), fitted a=17.86, b=69.65, c=67.76 (peak ~maturity, cut age 81)",
+    "Geometric/recursive age-distribution function age(t) parameterized by maturation rate beta and harvesting rate alpha",
+    "HWP carbon submodel splitting products into 'in use' (omega1=0.7) and 'landfill' (omega2=0.3); in-use carbon decays by exponential half-life (T=30 yr hardwood, 2 yr paper), landfill carbon retained permanently",
+    "Dynamic programming over the 100-year horizon with state = cumulative carbon C_t and decision = annual harvesting rate alpha_i in {0.1,0.3,0.5,0.7,0.9}%, subject to sum of alpha_i <= 50%",
+    "ESE three-dimension value index: VI = 0.5816*VI_ecology + 0.1095*VI_society + 0.3090*VI_economy, with 6 indicators (carbon, biodiversity, recreation, culture, therapy, profit)",
+    "K-means clustering (k=10) to bin each indicator into a 10-point Value Index scale, using cluster centers as scoring thresholds",
+    "AHP (Analytic Hierarchy Process) to set the dimension/indicator weights, with consistency ratio CR<0.10 reported",
+    "Min-max-style metric/non-dimensionalization E_m = (I_m/I)*100 to put indicators on a common scale; opportunity-cost trick to value tourism (tourism revenue minus forest-product revenue)",
+    "Cutting-cycle equation TFS*(1-alpha)*(1+g)^(delta-i) = TFS, solved for harvesting interval delta-i = -log(1-alpha)/log(1+g)",
+    "GE / McKinsey matrix mapping (value index x harvesting rate) to one of five harvesting programs (alpha from 0.10% to 0.02%, interval 10 to 50 yr)"
+  ],
+  "key_techniques": [
+    "Decomposing 'carbon sequestration' into two physically distinct pools (living biomass vs. HWP) and giving each its own dynamics - this directly answers the prompt's harvest-vs-preserve tension",
+    "Modeling HWP carbon as a half-life decay for in-use products plus permanent landfill storage, which captures the non-obvious insight that cutting can RAISE total sequestration because young regrowth + stored HWP carbon together exceed a saturated mature forest",
+    "Using a Gaussian D(t) curve to encode the key mechanism that mature trees stop adding carbon (net production ~0), justifying harvesting only overmature trees at age 81",
+    "Two-stage scoring pipeline: K-means to discretize raw indicator data into VI levels, then AHP to weight them - separating data-driven binning from expert weighting",
+    "Reframing the decision as a 2-factor GE matrix (value index vs. harvest rate) so the recommendation is a lookup rather than a re-optimization for each forest",
+    "Deriving a closed-form harvesting interval from a forest-regrowth balance equation, converting the DP's implicit cyclicity into an explicit interval recommendation",
+    "Opportunity-cost valuation to monetize hard-to-price tourism value",
+    "Sensitivity analysis sweeping beta, k, omega2 (10%->100%) and growth rate g to rank parameter influence (beta largest), plus a self-aware Strengths/Weaknesses section"
+  ],
+  "why_it_won": "\"From a judge's view, this paper wins on FRAMING and COMPLETENESS rather than mathematical depth. It nails the central counter-intuitive thesis the problem rewards - that appropriate harvesting can increase total carbon because regrowth plus durable HWP storage beats a carbon-saturated mature forest - and it makes that the spine of both the model and the newspaper article ('More Harvesting, Huger Benefits'). It is comprehensive: living-tree dynamics, HWP carbon accounting with realistic half-lives, AND a separate value model covering the social/economic dimensions the problem explicitly asks about, so nothing in the prompt is left unaddressed. It is decision-oriented: the GE-matrix + five named programs turn analysis into an actionable, generalizable recommendation (not just a number), and the Beijing case study with real species-level fitted parameters and a concrete output (harvest rate 0.06%, 30-yr interval) demonstrates the model runs end to end on real data. The method stack (DP + AHP + K-means + GE matrix) is varied and each tool is matched to a sub-task, signaling modeling maturity. Clear structure, sensitivity analysis, honest weaknesses, and a polished newspaper article round out the 'judge checklist.'\"",
+  "section_highlights": "\"Summary sheet states both headline numbers up front (max HWP-inclusive carbon 8.62e9 kg for the ideal forest; 1.08e10 kg over 100 yr for Beijing) and the final actionable recommendation. Figure 1 (4-stage carbon cycle) and Figure 3 (model flow chart) establish the physical mechanism before any math - good pedagogy. The Gaussian D(t) curve (Fig 4) visually motivates 'cut only overmature trees.' The DP solving-process diagram (Fig 5) and annual harvesting scatter (Fig 6) make the optimization legible. The ESE section cleanly separates the three value dimensions with one equation per indicator. Table 3 (AHP weights with CR<0.10 noted) and the GE matrix (Fig 10) plus the five-program table give a crisp decision interface. Beijing case study uses real species-level fitted parameters (Table 5) and walks a concrete decision (adopt Program III, raise rate to 0.09% for a longer interval). The newspaper article is genuinely journalistic in tone with a memorable headline and a concrete relatable statistic. Strengths/Weaknesses and a 'future work' list show self-critique.\"",
+  "pitfalls_or_limitations": [
+    "The ESE evaluation is run on SYNTHETIC data - indicator values are generated by random numbers (their own note 'values may vary due to the random nature of the data generation' appears in multiple scatter plots), so the K-means clusters and resulting VI thresholds are not grounded in a real 186-forest dataset as the summary implies",
+    "Strong, partly self-acknowledged assumptions: uniform tree-age distribution (admitted as 'not robust'), a single fixed maturity threshold (81) for all species, all forests primary, no unexpected mortality - these flatten real forest heterogeneity",
+    "The DP is coarse: only 5 discrete harvesting rates and a single 50% cumulative cap; the reported 20-year cyclicity is asserted from a noisy scatter rather than rigorously characterized, and the DP recurrence is described more than formally specified (state/value function not written out)",
+    "Equation numbering is buggy (two equations labeled (19)) and several symbols render as '??' in the markdown, indicating notation/typesetting sloppiness that would slightly hurt readability",
+    "AHP weights are subjective despite the paper claiming it 'excludes subjective factors' - a slight internal contradiction; pairwise comparison matrix itself is not shown",
+    "Tourism opportunity-cost can go negative and the 'profit' indicator mixes signs (sensitivity/therapy plots even show negative values), making the value index interpretation fragile",
+    "Carbon numbers shift between sections (8.62e9 for ideal forest vs 1.08e10 for Beijing) without a clean reconciliation, and units/area conventions (slope/cos(theta) correction) are under-validated",
+    "Two models are only loosely coupled - the cutting-cycle/interval logic in Model 2 is a re-derivation rather than emerging from the Model 1 DP, so the harvesting interval recommendation is somewhat disconnected from the carbon optimization"
+  ],
+  "reusable_patterns": [
+    "Two-pool decomposition for any stock-flow sustainability problem: split the conserved quantity into a 'standing/living' pool with growth dynamics and a 'harvested/product' pool with decay+permanent sub-pools (half-life + landfill) - generalizes to water, fisheries, soil carbon, recycling",
+    "Score-then-decide architecture: K-means to discretize messy multi-indicator data into ordinal levels, AHP to weight, then a 2D GE/McKinsey matrix to map (composite score x control variable) onto a small menu of named action plans - reusable for any 'recommend a policy per case' question",
+    "Use a Gaussian (or other unimodal) fitted curve to encode a 'benefit peaks then declines' mechanism, which justifies a threshold/timing decision (here: harvest only past the peak)",
+    "Closed-form interval from a regrowth-balance equation: set (state after action)*(growth)^delta = (state before) and solve for delta to convert a dynamic policy into a single interpretable cadence number",
+    "Opportunity-cost substitution to price an intangible value by netting it against the foregone alternative (tourism vs. forest products)",
+    "Triple-bottom-line indicator framework (Ecology-Society-Economy) with one explicit equation per indicator - a clean, judge-friendly template for any sustainability/ESG scoring task",
+    "Self-grading hygiene: parameter-sweep sensitivity analysis that RANKS parameter influence, plus an explicit Strengths/Weaknesses + future-work list - cheap structure that signals rigor",
+    "Anchor the whole paper on one counter-intuitive thesis and carry it into the newspaper article headline for narrative coherence"
+  ]
+}

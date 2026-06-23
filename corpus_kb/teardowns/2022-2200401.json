@@ -1,0 +1,55 @@
+{
+  "paper_id": "2022-2200401",
+  "year": 2022,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2022 MCM Problem C (data): given five years of daily price series for gold and Bitcoin, build a model using ONLY price data up to the current day to produce a daily buy/sell/hold strategy that maximizes final portfolio value from a $1000 initial investment by 2021-09-10, accounting for asymmetric transaction costs (gold 1%, Bitcoin 2%, gold non-tradable on market-closed days). The team built APGM (Adaptive Periodic Grid Model): a classic grid-trading strategy whose grid lines are dynamically shifted by a weighted combination of a long-term moving-average trend signal and a short-term ARIMA one-step price prediction, with model parameters re-tuned every 6-month period via a backtesting/grid-search loop. Reported result: $1000 grew to ~$43,271 (≈42.3x).",
+  "models_used": [
+    "Grid trading strategy (vanilla) — two variants analyzed: Isometric (equal-width) grid and Proportional (geometric/log-spaced) grid; chose large-width isometric for both assets",
+    "Transaction-cost-aware grid sizing: derived constraint p_{i+1} >= (1/(1-alpha)^2 + r_0) p_i so each grid step still profits after round-trip cost; yields max grid count num_0",
+    "Moving Average MA(N) with N=30 as long-term trend indicator (acts as a low-pass / smoothing filter on price)",
+    "ARIMA(p,d,q) for short-term one-step-ahead price prediction, trained on a rolling 30-day window; selected order (p,d,q)=(9,6,1) [paper inconsistently writes (6,9,1)]",
+    "ACF / PACF for ARIMA p,q order identification",
+    "Ljung-Box Q-test on squared residuals to check residual independence/significance",
+    "APGM grid-shift fusion rule: p~_i^{t} = p_i + omega*(MA^{t}-MA^{t-1}) + mu*(ARIMA^{t+1}-ARIMA^{t}), weights omega,mu in {0,0.1,0.3,0.5}",
+    "Periodic backtesting + discrete grid-search parameter optimization (6-month periods) over lambda_1..lambda_4, omega, mu using minimum-MSE for ARIMA order and max realized profit-rate for grid/allocation params",
+    "Asset allocation heuristic G/B ratio driven by realized and potential (oracle) profit rates PR_G/PR_B and PPR_G/PPR_B",
+    "Sensitivity analysis (vary transaction cost rates 0.01/0.02/0.03) and Robustness analysis (additive Gaussian noise, variance 0.01x and 0.02x of price)"
+  ],
+  "key_techniques": [
+    "Adaptive grid shifting: making the normally-static grid 'float' with the market trend so the strategy survives strong unilateral trends (the core innovation that fixes vanilla grid's main failure mode)",
+    "Two-timescale signal decomposition: explicitly splitting price into overall trend (MA) and local fluctuation (ARIMA), then linearly weighting them — clean and interpretable",
+    "Cost-aware grid geometry: turning the 1%/2% transaction costs into a hard lower bound on grid width, directly tying a problem constraint into model math",
+    "Walk-forward/online discipline: strict 'only data up to today' compliance via rolling 30-day ARIMA windows and period-boundary retuning — directly honors the problem's causality constraint",
+    "Oracle baseline ('God who knows all data') computed as an upper bound to contextualize achievable profit and to drive the PPR-based allocation",
+    "Backtesting-as-optimizer: enumerate discrete parameter grids each period, retest on the just-finished period, keep the best — a practical surrogate for non-convex tuning",
+    "Deliberate model-selection justification: explicit argument for NOT using LSTM/GRU/SVM (small data, overfitting, generalization risk) — turns an omission into a defensible design choice",
+    "Ablation-style comparison: tested 8 strategy variants (baseline buy-all, fixed grid, ARIMA-only, MA-only, ARIMA+MA, with/without periodic retuning) to isolate each component's contribution"
+  ],
+  "why_it_won": "\"From a judge's perspective it wins on framing and judgment, not on raw return. (1) It directly and visibly honors the hardest constraint of the problem — decisions using ONLY past data — via rolling windows and walk-forward retuning, which many teams violate. (2) It reframes the objective from naive profit-maximization to risk-adjusted profit, then HONESTLY admits its return (42x) is lower than the buy-all baseline (56x) and defends APGM on generalization/risk grounds — this intellectual honesty plus the insight that the baseline's high return is an artifact of an unrealistic hand-picked upper bound (30000) reads as mature modeling. (3) Strong component-wise story: vanilla grid -> identified failure (sells into uptrends) -> fix with MA+ARIMA grid shift -> adapt over time with backtesting; the reader is led through WHY each piece exists. (4) Clean 8-strategy comparison + sensitivity + robustness gives the empirical rigor judges want. (5) Explicit, reasoned rejection of deep learning shows the team understood the small-data regime rather than reflexively bolting on a neural net. (6) A genuinely actionable, user-tunable memorandum (risk-averse vs profit-oriented knobs, reverse-grid for downtrends) speaks to the trader audience the problem demanded.\"",
+  "section_highlights": "\"Structure follows a build-up narrative: Vanilla Grid Strategy (Sec 4) establishes the baseline AND its concrete failure (worked $34->$40.91 toy arbitrage, then isometric 0.731x vs proportional 0.595x on real BTC) before the upgrade. Section 5 builds APGM incrementally (MA, then ARIMA with full ACF/PACF/Q-test pipeline, then the fusion formula, then backtesting). The single grid-shift equation p~_i = p_i + omega*dMA + mu*dARIMA is the conceptual centerpiece and is easy to grasp. Results (Sec 6) uses an 8-strategy bar comparison + a separate figure proving the fixed-grid baseline only wins because of an unrealistic upper bound — a sharp analytical move. Model Evaluation (Sec 7) cleanly separates sensitivity (cost rates) from robustness (Gaussian noise), with the elegant finding that noise HELPS the grid (more arbitrage oscillations). Strengths/Weaknesses (Sec 8) is unusually candid (lists overfitting, start/end-time sensitivity, non-convex/non-optimal params, failure in rapid moves). The 2-page Memorandum is genuinely trader-facing with a tunable-parameter table and reverse-grid advice. Notation table and a flowchart up front aid readability.\"",
+  "pitfalls_or_limitations": [
+    "Self-admitted overfitting risk: many discrete parameters (omega, mu, lambda_1..4, p, q, d, period length) tuned on tiny per-period data with no held-out validation — backtest-best params need not generalize",
+    "Backtesting tunes on the period THAT JUST ENDED and applies to the next period; if regimes shift at boundaries this leaks/misfits (team flags start/end-time sensitivity as a weakness)",
+    "Discrete, non-convex parameter grids mean no optimality guarantee — explicitly acknowledged",
+    "Internal numerical inconsistency: final profit quoted as $43,271 / 42.271x in text but $43,721 in the memo table; ARIMA order written (6,9,1) in one place and chosen as p=9,q=6 elsewhere — sloppiness a strict judge would notice",
+    "Ljung-Box Q-statistic formula as printed is malformed (denominator n-i with index j, applied to squared series) — looks transcribed/garbled",
+    "Many figures are schematic/low-fidelity (axis labels by year not by period; some tables show flat or placeholder values, e.g. the appendix oracle table is all zeros except the final cell), weakening empirical credibility",
+    "ARIMA on a 30-day window with order up to 9 is over-parameterized (≈18+ coefficients from 30 points) — statistically fragile and arguably contradicts the team's own anti-overfitting argument against neural nets",
+    "Gold's market-closed (non-trading) days and the asymmetric tradability constraint are not explicitly handled in the modeling sections",
+    "Robustness test injects noise but the reported results across noise levels are nearly identical/possibly under-resolved, so the 'noise helps' claim is asserted more than demonstrated",
+    "Heavy reliance on an oracle (PPR) baseline for allocation risks look-ahead leakage if not carefully walled off to past periods only"
+  ],
+  "reusable_patterns": [
+    "Trend/fluctuation decomposition + weighted fusion: split a signal into a slow component (moving average / low-pass) and a fast component (short-horizon predictor), then combine with tunable weights — generalizes far beyond trading",
+    "Baseline -> diagnose failure mode -> targeted fix -> adapt over time: a four-beat narrative that makes any model upgrade feel motivated rather than arbitrary",
+    "Encode a problem constraint directly into model geometry: here transaction cost -> minimum grid width; reuse the trick of turning a cost/limit into a hard inequality the model must satisfy",
+    "Walk-forward / rolling-window evaluation to enforce causality ('only past data') — the gold-standard compliance pattern for any time-series decision problem",
+    "Oracle / 'God' upper-bound baseline to contextualize how good a realistic result is, and to expose when a naive baseline only wins via unrealistic assumptions",
+    "Honest under-performance defense: when your principled model loses on the raw metric, win on a better metric (risk-adjusted, generalization) AND prove the competitor's win is an artifact — strong rhetorical+analytical move judges reward",
+    "Explicit justified rejection of a fancier method (deep learning) citing data size/overfitting — pre-empts the 'why no neural net?' question",
+    "Backtesting-as-parameter-optimizer with periodic re-tuning: enumerate discrete param grids, score by realized objective on the prior window, redeploy — simple, defensible alternative to gradient-based tuning",
+    "Ablation comparison table (component on/off across many variants) to attribute performance to each model piece",
+    "User-facing tunable-knob memorandum: expose a small set of interpretable parameters (period length, grid count, prediction weight) mapped to user personas (risk-averse vs profit-seeking) for the practitioner audience"
+  ]
+}

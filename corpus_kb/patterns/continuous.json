@@ -1,0 +1,252 @@
+{
+  "problem_type": "continuous",
+  "paper_count": 91,
+  "common_models": [
+    {
+      "name": "Geometric circle-covering model (Kershner 1939 hexagonal covering) — reducing 'water the whole field' to covering a rectangle with the fewest equal-radius circles",
+      "papers": 1
+    },
+    {
+      "name": "Constraint-driven effective-radius calculation — shrinking the throw radius from 13.43 m (where rate=0) to an effective 11.5 m needed to deliver 2 cm in 5 hours, then shifting the left row inward by 1.93 m to keep sprinklers in bounds",
+      "papers": 1
+    },
+    {
+      "name": "Simultaneous Perturbation Stochastic Approximation (SPSA) — stochastic gradient optimizer minimizing the standard deviation of accumulated precipitation across the field grid (maximizing uniformity)",
+      "papers": 1
+    },
+    {
+      "name": "Discrete grid (matrix-of-cells) Monte-Carlo-style irrigation simulator in MATLAB — accumulates precipitation per 0.25 m cell from each sprinkler",
+      "papers": 1
+    },
+    {
+      "name": "Cubic spline interpolation of the measured sprinkler application-rate-vs-distance profile (Nelson WF16 #16 nozzle data from CIT)",
+      "papers": 1
+    },
+    {
+      "name": "Hazen-Williams pipe pressure-loss equation and the nozzle-discharge equation (Q = 29.82·sqrt(P)·D^2·Cd) for hydraulic feasibility checks",
+      "papers": 1
+    },
+    {
+      "name": "Greedy nearest-neighbor pipe-setup minimization heuristic — lateral-distance sorting with a 20 m pipe-length and 0.75 cm/hr overlap-rate feasibility test",
+      "papers": 1
+    },
+    {
+      "name": "Coefficient of Uniformity (CU = 1 - std/(1+std)) as the scalar objective/scoring metric",
+      "papers": 1
+    },
+    {
+      "name": "Bernoulli equation + continuity (mass conservation) to derive nozzle exit velocity (~28.9 m/s), per-nozzle discharge (~48.35 L/min), and the cap of 3 nozzles before pressure drops below the Rain Bird 280 kPa minimum",
+      "papers": 1
+    },
+    {
+      "name": "Empirical 'sprinkler constant' Cs ~ 0.983 fit from Rain Bird discharge-vs-pressure data to capture friction loss in the discharge relation Q = Cs*Ac*sqrt(2P/rho)",
+      "papers": 1
+    },
+    {
+      "name": "Projectile motion with linear (Stokes) air drag: coupled ODEs dvx/dt = -k*vx, dvy/dt = -g - k*vy, solved in closed form, with drag constant k=1.20314 calibrated numerically so the jet range matches the manufacturer's 19.5 m radius",
+      "papers": 1
+    },
+    {
+      "name": "Two competing radial water-distribution models for a single rotating sprinkler: (a) Triangular Distribution (application rate falls linearly with distance, a 3-D cone) and (b) Exponential Decay Distribution f(r) = (3*0.00267*e^(-0.7r) + 0.00267)*e^(-(r/19.5)^20) fit to Louie & Selker experimental data, rotated about the axis via r = sqrt((x-a)^2+(y-b)^2) to place a sprinkler at (a,b)",
+      "papers": 1
+    },
+    {
+      "name": "Lattice superposition model: total application = sum of individual sprinkler distributions over triangular and rectangular (square) grids; optimized spacing-to-radius ratio for uniformity (square at 1.1*radius, triangular lattice at 0.85*radius)",
+      "papers": 1
+    },
+    {
+      "name": "A uniformity objective: Aver(D,R) = (1/Area)∫_R D, and a variance-like Std(D,R) = (1/Area)∫_R (D - Aver)^2 over a unit cell of the lattice, plus Max-Min spread, used to score configurations",
+      "papers": 1
+    },
+    {
+      "name": "Combinatorial/geometric coverage argument: a lower bound of M_T = 2 pipe moves from the fact that two points >59m apart (19.5+20+19.5) cannot be covered at once; enumeration of layouts by number of moves M_T = 2,3,4 and a full-field numerical grid evaluation on [0,80]x[0,30]",
+      "papers": 1
+    }
+  ],
+  "common_techniques": [
+    {
+      "name": "Decomposition of a coupled optimization into a pipeline of sub-problems: (1) full coverage via circle-covering, (2) boundary adjustment, (3) uniformity via SPSA, (4) pipe-setup minimization via greedy heuristic, (5) hydraulic verification — each stage feeds the next",
+      "papers": 1
+    },
+    {
+      "name": "Using a closed-form geometric optimum (Kershner's proven-optimal hexagonal covering) as the initialization/blueprint, then refining numerically rather than optimizing blindly from random starts",
+      "papers": 1
+    },
+    {
+      "name": "Cross-validation between two independent methods: the analytic shifted-covering layout and the SPSA numerical optimizer converge to nearly the same configuration (CU 0.89 vs 0.90), used as mutual confirmation",
+      "papers": 1
+    },
+    {
+      "name": "Translating physical delivery constraints (2 cm in available time, 0.75 cm/hr cap) into geometric spacing constraints (effective radius 11.5 m, minimum 21 m sprinkler separation)",
+      "papers": 1
+    },
+    {
+      "name": "Profile substitution with explicit scaling: no data existed for the 0.6 cm nozzle, so they took the documented 1/8\" Nelson profile and scaled the application rate by ~3.3x from the flow-rate ratio (12.57/3.42 gpm)",
+      "papers": 1
+    },
+    {
+      "name": "Showing optimizer convergence visually across iteration snapshots (random -> 100 -> 500 -> 5000 iterations) to demonstrate the SPSA is actually working",
+      "papers": 1
+    },
+    {
+      "name": "Order-of-magnitude pruning of negligible effects: computing mainline (0.0122 psi) and riser (0.058 psi) pressure losses and explicitly discarding them as negligible to justify the constant-pressure assumption",
+      "papers": 1
+    },
+    {
+      "name": "Three-stage decomposition (physical characterization -> evaluation metric -> configuration search) that cleanly separates 'how the hardware behaves' from 'how to deploy it'",
+      "papers": 1
+    },
+    {
+      "name": "Anchoring an idealized derivation to a real commercial product (Rain Bird 70H 1\" sprinkler) and its published spec sheet, so derived numbers (radius, discharge, pressure floor) are cross-checked against manufacturer data rather than invented",
+      "papers": 1
+    },
+    {
+      "name": "Calibrating free parameters against ground truth: the drag constant k and the sprinkler constant Cs are both back-solved so the model reproduces the known 19.5 m radius and measured discharge",
+      "papers": 1
+    },
+    {
+      "name": "Deriving a hard scheduling constraint from physics: because the exponential model peaks near ~1 cm/hr at the head (>0.75 cm/hr limit), sprinklers can run at most ~45 min/hr, which then propagates into total operating-hours and water-use calculations",
+      "papers": 1
+    },
+    {
+      "name": "Reducing the design space with a provable lower bound (M_T >= 2 moves) and then climbing M_T = 2 -> 3 -> 4 to expose the uniformity/stability/time trade-off, showing 3 moves is dominated and 4 is the sweet spot",
+      "papers": 1
+    },
+    {
+      "name": "Explicitly modeling 'stability' as robustness to wind/pressure perturbation via d_max (max distance from any field point to nearest sprinkler) and tolerance bands (e.g. Creative Farmer tolerates ~25% deviation, Conservative ~7m shift)",
+      "papers": 1
+    },
+    {
+      "name": "Two-model sensitivity hedge: testing every layout under both the optimistic Triangular and the pessimistic Exponential distribution, arguing any scheme acceptable under exponential is safe under triangular",
+      "papers": 1
+    },
+    {
+      "name": "Quantitative final scorecard: each candidate (Lazy, Passive-Aggressive, Conservative, Creative) reported with mean, variance, min, max application rate plus moves, hours of operation, and total liters used",
+      "papers": 1
+    }
+  ],
+  "recurring_pitfalls": [
+    {
+      "name": "The core sprinkler profile is borrowed from a 1/8\" (#16) Nelson nozzle, half the diameter of the problem's 0.6 cm (~1/4\") nozzle, then rescaled by a flow-rate factor (~3.3x) with no guarantee the spatial shape stays the same — the entire model rests on an unvalidated input the team themselves flag",
+      "papers": 1
+    },
+    {
+      "name": "SPSA was never actually run to convergence: they admit they couldn't reach the 5000th-iteration coordinate output due to compute limits and instead ASSUME the analytic shifted-covering layout approximates it. The headline cross-validation (0.89 vs 0.90) is therefore partly assumed rather than fully demonstrated",
+      "papers": 1
+    },
+    {
+      "name": "Coefficient of Uniformity is an averaged scalar — as the team notes, very different (even pathological) spatial patterns can share the same CU, so CU=0.89 does not by itself prove good spatial uniformity, and they care asymmetrically about under- vs over-watering but the metric is symmetric",
+      "papers": 1
+    },
+    {
+      "name": "No-wind assumption is a major simplification: wind reshapes the throw profile (shortens upwind, elongates downwind) and could invalidate the whole circular-coverage premise",
+      "papers": 1
+    },
+    {
+      "name": "The appendix code is buggy/unfinished — typos (thetammin/thetamin, sprinkler_posistions), the perturbation_algorithm.m feasibility branches have empty bodies, and there are unit inconsistencies (the text once says '75 cm per hour' and '420 Pascals' where kPa/0.75 cm-hr were meant) — sloppiness that undercuts the reproducibility claim",
+      "papers": 1
+    },
+    {
+      "name": "Each pipe set ends up containing only ONE sprinkler (because 21 m min spacing exceeds the 20 m pipe length), so the elaborate multi-sprinkler pipe-fitting machinery effectively collapses to a trivial case — the modeling sophistication exceeds what the final answer required",
+      "papers": 1
+    },
+    {
+      "name": "Zero real-world or sensitivity validation: all verification is in-simulation, with no robustness analysis over nozzle profile, spacing, or pressure",
+      "papers": 1
+    },
+    {
+      "name": "Several equations are typeset/printed incorrectly, which a stricter judge would flag: the standard-deviation formula is actually a variance (no square root, and missing 1/Area normalization consistency), and the discharge constant line writes sqrt(2/(rho*P)) where the derivation needs sqrt(2P/rho)",
+      "papers": 1
+    },
+    {
+      "name": "The initial-condition v0 = 1 m for the drag ODE is almost certainly a typo (should be ~28.5 m/s exit velocity); using v0=1 would not give a 19.5 m range, so the drag constant k=1.20314 is fit to a possibly inconsistent setup",
+      "papers": 1
+    },
+    {
+      "name": "The 'Conservative Farmer' and 'Creative Farmer' algorithm tables in Section 7 are identical (both list pipes at x=10,30,50,70) even though one is described as a square grid and the other as an equilateral-triangle grid, so the reproducibility of the triangular layout is broken in the writeup",
+      "papers": 1
+    },
+    {
+      "name": "Wind is never modeled mechanistically; it enters only as a tolerance band on coverage distance (d_max), so 'stability' ratings are heuristic rather than simulated",
+      "papers": 1
+    },
+    {
+      "name": "Major resource inefficiency is under-examined: the Lazy Farmer uses 113,000 L vs. a 48,000 L theoretical optimum (42% water efficiency), and 4-move schemes use 226,000 L, yet water cost is not folded into the final ranking despite the problem emphasizing avoiding over-watering and conserving a 'precious resource'",
+      "papers": 1
+    },
+    {
+      "name": "Single hardware instance: the whole analysis is pinned to one Rain Bird 70H model; the claim that other manufacturers give similar radii is asserted with little supporting data",
+      "papers": 1
+    },
+    {
+      "name": "Evaporation, soil infiltration/runoff, and crop-specific sensitivity (all raised in the problem) are largely assumed away (flat 5% evaporation, uniform soil) rather than modeled",
+      "papers": 1
+    },
+    {
+      "name": "The exponential fit f(r) mixes variable names (uses x in the formula but r=distance), and its calibration to the larger sprinkler via ad hoc width/height scaling is only loosely justified",
+      "papers": 1
+    }
+  ],
+  "reusable_patterns": [
+    {
+      "name": "Reduce-to-a-known-problem: map the messy modeling task onto a classical solved problem (here, circle covering) so you inherit a proven-optimal baseline and a citation, then perturb to handle real constraints",
+      "papers": 1
+    },
+    {
+      "name": "Initialize a numerical optimizer from an analytic optimum instead of random restarts — faster convergence and a sanity anchor",
+      "papers": 1
+    },
+    {
+      "name": "Triangulate the answer with two independent methods and report their agreement as evidence of correctness (analytic layout vs SPSA), not just a single pipeline output",
+      "papers": 1
+    },
+    {
+      "name": "Convert physical/operational constraints into geometric ones early (delivery target + rate cap -> effective radius -> minimum spacing) so the optimization works in clean spatial variables",
+      "papers": 1
+    },
+    {
+      "name": "When required data is missing, find the closest real measured data, state the gap explicitly, and apply a defensible scaling law (flow-rate ratio) rather than fabricating a function",
+      "papers": 1
+    },
+    {
+      "name": "Always run a hydraulic/physical feasibility check and explicitly discard negligible terms with numbers (e.g. pressure losses of 0.0122 and 0.058 psi) to justify simplifying assumptions",
+      "papers": 1
+    },
+    {
+      "name": "Deliver the answer twice: once as a labeled figure of the optimized layout, once as an operator-ready table with wall-clock times and exact coordinates",
+      "papers": 1
+    },
+    {
+      "name": "Use a two-tier assumptions list (load-bearing vs operational), each with a one-line justification, and pair it with a specific, technically literate Weaknesses section that names concrete failure modes",
+      "papers": 1
+    },
+    {
+      "name": "Show optimizer convergence as a sequence of iteration snapshots to prove the algorithm is doing real work",
+      "papers": 1
+    },
+    {
+      "name": "Adopt a single scalar scoring metric (Coefficient of Uniformity) as the optimization objective, but explicitly discuss its blind spots so the judge trusts your judgment",
+      "papers": 1
+    },
+    {
+      "name": "Three-layer pipeline pattern for any physical-system design problem: (1) derive/characterize the device from first principles, (2) define a single scalar quality metric, (3) search the deployment/configuration space against that metric — keeps physics, scoring, and optimization decoupled",
+      "papers": 1
+    },
+    {
+      "name": "Calibrate-to-reality pattern: pick a real commercial component, pull its published spec sheet, and back-solve any free constants (friction Cs, drag k) so your idealized model reproduces a known quantity — instantly buys credibility and a validation check",
+      "papers": 1
+    },
+    {
+      "name": "Derive operational constraints from the physics, not just from the prompt: here the per-head peak rate forced a 45-min/hr duty cycle that cascaded into hours-of-operation and water-budget numbers",
+      "papers": 1
+    },
+    {
+      "name": "Lower-bound-then-climb search: prove a combinatorial/geometric lower bound (min moves), then increment the discrete decision variable to map out the trade-off frontier instead of brute-forcing everything",
+      "papers": 1
+    },
+    {
+      "name": "Unit-cell variance as a uniformity metric: evaluate Aver/Std/Max/Min over one repeating lattice cell (superposition of overlapping kernels) to compare periodic spatial patterns cheaply",
+      "papers": 1
+    }
+  ]
+}

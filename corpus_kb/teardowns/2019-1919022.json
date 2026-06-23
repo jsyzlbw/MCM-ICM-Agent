@@ -1,0 +1,55 @@
+{
+  "paper_id": "2019-1919022",
+  "year": 2019,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2019 MCM Problem A (continuous): treat the three Game-of-Thrones dragons as if living today and quantify (a) their physiology/growth and resource needs and (b) their impact on a real ecosystem. This team's answer is a two-tier \"1 + n Meta-population Model\": \"1\" = a Growth Model Based on Energy Flow for a single dragon (energy expenditure, intake, body-size cap, mass-vs-time growth curve); \"n\" = an Improved n-population Meta-population Model that injects the dragon's destroyed-habitat footprint as a destruction term into Tilman's competition-colonization community model to predict which native populations survive or go extinct across three biomes (temperate deciduous forest, desert, ice sheet), plus a human-restoration extension with a time-lag.",
+  "models_used": [
+    "Growth Model Based on Energy Flow (custom energy-balance ODE: dM/dt from assimilated intake minus metabolic expenditure minus fire cost)",
+    "Kleiber's Law allometric scaling q = q0*M^(3/4) for metabolic rate, fit separately for rest and action states",
+    "Log-log linear regression (polyfit) of mass-specific metabolic rate vs mass on bird/bat data to recover q0r=36.6 and q0a=270.4 cal/hr/g^(3/4)",
+    "Von Bertalanffy growth equation dM/dt = 3k*M^(2/3)*(M_inf^(1/3) - M^(1/3)) with closed-form integral, calibrated to M(0)=10kg, M(12mo)=35kg, M_inf~1.2e5 kg -> k=0.0020",
+    "Bone-strength / gravity scaling argument (F = sigma*A >= 25G with V^(1/3)=10*A^(1/2)) to derive body-mass upper bound ~1.17e5 kg",
+    "Trophic energy-flow / assimilation-rate model (AR, NAR per trophic level) linking NPP per unit area to dragon intake and minimal habitat area s(t)",
+    "Tilman n-population metapopulation model (competition-colonization with habitat destruction D) dp_i/dt = c_i*p_i*(1 - D - sum p_j) - d_i*p_i - sum p_i*c_i*p_j, with geometric-distribution initial occupancy and migration rates",
+    "Improved/Extended Tilman model: dragon living scope S(t)=5*s(t) injected as time-varying destruction D1(t)=S(t)/S0",
+    "Human-restoration extension with delay-differential term D2(t)=mu*D1(t-epsilon) (impact factor mu, time-lag epsilon)",
+    "Numerical ODE simulation via MATLAB ode45 across three biomes and varying total area S0"
+  ],
+  "key_techniques": [
+    "Two-module composition with a clean naming hook ('1 + n') that makes a complex coupled system easy to remember and navigate",
+    "Borrowing a published, citable community-ecology model (Tilman 1994) and adapting it minimally rather than inventing an unvetted model from scratch",
+    "Reframing the introduced dragon as a 'destruction/interference' term D in an existing equation - an elegant minimal coupling that links the physical Growth Model output (area s(t)) to the ecological model input",
+    "Calibrating free parameters to two known data points (hatchling 10 kg, 35 kg at 12 months) to pin the VB growth-rate constant k",
+    "Deriving every dragon parameter from analogous real organisms (birds/bats for metabolism, real bone compressive strength for the size cap) to keep fantasy assumptions defensible",
+    "Defining two crisp scalar response indices - habitat-occupancy reduction ratio eta and population-type reduction ratio xi - so multi-population dynamics collapse into comparable headline numbers",
+    "Scenario sweep across three biomes x multiple S0 values, turning one model into a comparative study",
+    "Sensitivity analysis on habitat area S0, restoration strength mu, and time-lag epsilon",
+    "Concrete unit conversions for the judge/reader ('2500 football fields', '480 sheep', '30 Asian elephants')",
+    "Closing with an in-character letter to George R.R. Martin that restates results as actionable narrative advice"
+  ],
+  "why_it_won": "From a judge's view it wins on three axes. (1) Modeling coherence: it answers a deliberately whimsical, open-ended prompt with a genuinely coupled physics-to-ecology pipeline - the Growth Model's habitat-area output s(t) becomes the destruction term in the ecological model, so the two halves are not bolted together but mechanistically linked. (2) Scientific defensibility: every fantasy parameter is anchored to a real, cited source (Kleiber, Von Bertalanffy, Tilman, measured bone strengths, biome NPP tables), so the dragon never feels invented - it feels derived. (3) Decision-relevant output: instead of stopping at simulation curves, it produces crisp comparative findings (dragons can barely survive on ice sheets; larger habitat means less extinction; timely human restoration with small mu saves most species) and translates them into narrative guidance. The '1 + n' branding, the two scalar indices, and the GRRM letter make the work memorable and easy for a tired judge to grade quickly - a major edge in O-award selection.",
+  "section_highlights": "Structure is textbook-clean and judge-friendly. Abstract front-loads the headline numbers (2.4e11 J/month per adult dragon, habitat > 1.8e7 m^2 for three). Seven explicitly justified assumptions each get a one-line rationale, pre-empting 'why is that allowed?' objections. A framework flowchart (Figure 1) opens the Growth Model so the reader sees the whole pipeline before the equations. The two models get their own top-level sections, then a dedicated Implementation section separates method/solver/parameters from the Results section - a discipline many teams skip. Results are organized as a biome-by-biome comparative sweep with paired panels (per-population p_i trajectories on the left, aggregate eta on the right) and the xi value stated in every figure caption. Sensitivity analysis is its own treatment of S0, mu, and epsilon. Strengths/Weaknesses is honest and specific (admits 10^6-population scaling cost and ignored seasonality). The reproducible MATLAB appendices (regression, weight ODE, population ODE with the delay branch) signal rigor. The in-character closing letter is the standout rhetorical move.",
+  "pitfalls_or_limitations": [
+    "Body-size cap derivation has an internal inconsistency: the text's final inequality reports 1.17e5 kg but the abstract/summary states 1.17e3 kg, and density is given units kg/m^-2 - a dimensional/typo slip that a careful judge could flag",
+    "The bone-strength scaling uses unexplained magic constants (V^(1/3)=10*A^(1/2), F>=25G) presented without derivation - reverse-engineered to hit a desired answer",
+    "Fire-breathing energetics (E_fire = 6.69e6 * m) and intake (E_in = 2e7 * m) are asserted 'by estimation and calculation' with the actual estimation hidden - weakly justified",
+    "Equation (17)/(20) self-competition term sum p_i*c_i*p_j is written ambiguously and the indexing differs slightly between the displayed equation and the appendix code (uses c(j) not c(i))",
+    "The 'Odd-even Symmetry Law' is stated with a copy-paste error (the two conditional clauses are identical) and is more an observed numerical artifact than a proven law",
+    "Many figure data tables are garbled/placeholder in this extraction (e.g., Figure 16 values blow up to 2.0), and several p_i trajectories appear schematic rather than true simulation output",
+    "Assumptions are convenient (dragon at top of food chain, body function never changes with age or injury) - they simplify but sidestep the harder predator-prey feedback the dragon would actually create",
+    "Treating the dragon purely as static habitat destruction D ignores that a dragon actively predates specific populations, so the ecological coupling is cruder than the energy model implies"
+  ],
+  "reusable_patterns": [
+    "The '1 + n' two-tier framing: build a single-agent micro-model whose output is the driving input to a population/system-level macro-model, and give the pair a memorable name",
+    "Anchor every speculative/fictional parameter to an allometric law or measured value from the nearest real analogue (Kleiber for metabolism, Von Bertalanffy for growth, measured material strengths for structural limits)",
+    "Couple two models through one shared quantity: here, habitat area s(t) is the single bridge variable from physiology to ecology - find the one number that links your modules",
+    "Repurpose a published community model by adding a single forcing/destruction term rather than building dynamics from zero - faster and more citable",
+    "Calibrate a free rate constant to two anchor data points and report the resulting value explicitly",
+    "Define a couple of normalized scalar indices (ratio-to-baseline) so high-dimensional dynamics produce gradeable headline metrics",
+    "Run the same model across a small grid of scenarios (biome x system size) to convert a single simulation into a comparative study with a clear takeaway",
+    "Translate every key result into a layperson unit (football fields, number of sheep, elephants) for the abstract and summary",
+    "End with an audience-appropriate communication artifact (a memo or in-character letter) that restates results as decisions, satisfying the COMAP 'communicate to a specific audience' rubric",
+    "Separate Implementation (solver, parameters) from Results as distinct sections, and state the key sensitivity number in every figure caption"
+  ]
+}

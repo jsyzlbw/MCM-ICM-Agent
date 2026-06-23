@@ -1,0 +1,53 @@
+{
+  "paper_id": "2018-80386",
+  "year": 2018,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2018 MCM/ICM Problem D (operations research): plan a national rollout of electric-vehicle charging infrastructure. The team must (1) determine whether the US can fully convert to EVs and how many Tesla-style charging stations (Supercharger vs. Destination) are needed, split across urban/suburban/rural; (2) generalize to South Korea — optimal number, geographic layout, build-order/investment strategy, key driving factor, and a full-conversion timeline; (3) test whether the plan transfers to countries with different conditions and build a country-classification system; (4) assess how new transport modes and new tech (autonomous, car-share, flying cars, fast-swap, wireless charging) change the analysis; (5) write a one-page handout for world leaders.",
+  "models_used": [
+    "Linear regression to forecast car ownership / population (US ~271.5M cars by 2030; per-capita 0.766) and project rural-population share with confidence bands",
+    "Daily charging-demand formula B0 = N · (1/Sb) · (Sd/T) deriving total daily charges (US ~51.7M/day) from fleet size, 170-mi range, and daily mileage",
+    "Queuing theory M/M/1/inf/inf used to size charging piles: bound expected wait Wq = lambda/(mu(mu-lambda)) <= tw, yielding Ncp >= ceil[(Bi·k1)/(Tw·mui) · (1/(mui·twi)) + 1] applied separately to Supercharger (mu1) and Destination (mu2) piles, then summed (US ~11.7M piles -> 1,463,222 stations at 8 piles/station)",
+    "Maximum Coverage Location model (binary x_ij, capacity Dm, p-station budget, radius rm constraints) solved with LINGO to choose station sites among candidates from a demand-point/distance matrix",
+    "Central Place Theory to set max service radius rm = (Vcar·tf)/lambda_s and station daily capacity Dm = 16·8·[alpha·mu1 + (1-alpha)·mu2] (~95 cars/station/day)",
+    "Gravity / center-of-gravity method to partition service areas and pick primary sites",
+    "Lotka-Volterra competitive-exclusion (two-species logistic) model for EV vs. ICE adoption: dx1/dt = r1·x1(1 - x1/N1 - alpha·x2/N1), dx2/dt = r2·x2(1 - x2/N2 - beta·x1/N2); equilibrium-stability analysis (need beta>1, alpha<1) gives a full-conversion timeline solved numerically with MATLAB ode45 (Korea: 10% in 13.0 yr, 30% in 16.1 yr, 50% in 18.4 yr, 100% in ~55 yr)",
+    "Consumer purchase-benefit / range-anxiety model lambda(t) = (t/dc)·lambda with utility [1-lambda(t)]·theta - p + b to argue build-stations-first lowers anxiety and raises adoption",
+    "Standard Deviation Ellipse to compute an Evenness Index of Population Distribution x1 = Sr/Sw (share of land holding 50% of population), using a chi-square(2 df) confidence factor",
+    "Gini coefficient x2 as the wealth-inequality index",
+    "Fisher / distance (Mahalanobis) discriminant analysis in R to classify countries as Balanced vs. Unbalanced from (x1, x2), with decision rule R1/R2 via w(x) = (x-mu)^T Sigma^-1 (X1bar - X2bar); reported >91% accuracy"
+  ],
+  "key_techniques": [
+    "Two-stage facility-design pipeline: queuing theory sizes the *quantity* of piles/stations (demand side), then max-coverage + central place theory + gravity method place them *geographically* (supply side) — cleanly separating 'how many' from 'where'",
+    "Treating the two Tesla charger types (Supercharger mu1 vs. Destination mu2) as separate M/M/1 servers with a proportion split, then summing — a tidy way to handle heterogeneous service rates",
+    "Repurposing an ecology model (competitive exclusion / two-species logistic) as a market-substitution model for EV-vs-ICE, with the competitive-advantage parameters alpha, beta carrying the economic meaning",
+    "Using equilibrium-stability conditions (beta>1, alpha<1) to give an analytic 'can full conversion even happen?' criterion before solving numerically",
+    "Inventing a quantitative 'balance' fingerprint for any country from just two cheap, widely-available indices (Standard Deviation Ellipse evenness + Gini), enabling a transferable classification instead of re-modeling each country",
+    "Self-defined operational definition of suburban (citing FiveThirtyEight 26/53/21 perception split) to make the fuzzy urban/suburban/rural partition reproducible",
+    "Sensitivity analysis run on exactly the hard-to-estimate parameters (tolerable wait time tw, growth rate r1, competitive advantage alpha) to show which conclusions are robust vs. fragile",
+    "Closing the loop from analysis to a tiered policy prescription: Balanced vs. Unbalanced countries get different recommendations (30-45 yr vs. 60-75 yr ICE-ban horizon, infrastructure-first vs. subsidy-first)"
+  ],
+  "why_it_won": "\"From a judge's view it wins on breadth-with-coherence and decision relevance rather than mathematical depth. It answers every sub-question concretely with a number or a rule (1,463,222 US stations; 124,798 for Korea; 13/16/18/55-year timeline; a >91%-accurate country classifier), and it ties a chain of textbook-but-correctly-chosen OR models into one narrative: regression -> queuing -> location optimization -> adoption dynamics -> cross-country generalization -> tech foresight -> leader handout. The two memorable, 'judge-pleasing' moves are (a) reframing EV-vs-ICE adoption as Lotka-Volterra competitive exclusion and extracting a stability criterion, and (b) the Standard Deviation Ellipse evenness index + Gini discriminant analysis, which the paper itself flags as its innovation and which directly solves the 'does it generalize?' sub-question. The sensitivity analysis honestly identifies the single dominant lever (competitive advantage alpha, not growth rate r1), which signals modeling maturity. The Falcon/Tesla framing in the summary and the polished leader handout show strong problem-framing and communication, which O-awards reward heavily.\"",
+  "section_highlights": "\"Summary sheet: opens with the SpaceX Falcon Heavy/Tesla hook, then states every headline number per task — exactly the scannable, results-forward summary judges want. Parameter table (Section 4) defines all symbols/units up front. Section 5.1 chains demand formula -> M/M/1 queuing -> per-type pile counts -> station total, with the urban/suburban/rural split justified by a cited perception survey (the self-defined 'suburban' definition is a nice rigor signal). Section 5.2.5 (competitive exclusion) is the analytical centerpiece, with the stability criterion, the ode45 trajectory plot, and the explicit 10/30/50/100% timeline. Section 5.3 (Std-Dev Ellipse evenness + Gini + R discriminant analysis) is the most original section and includes an honest discussion of the misclassified US case. Section 7 sensitivity analysis cleanly separates robust conclusions (wait time, growth rate barely matter) from the dominant factor (competitive advantage). Section 9 leader handout converts everything into tiered, country-type-specific policy advice.\"",
+  "pitfalls_or_limitations": [
+    "Heavy notation/units inconsistency and OCR-garbled formulas throughout (e.g. Sd vs Sy/Sr mileage symbol drift, mu2 definition mangled, eq. references like 5.1.8 with undefined rho terms) — derivations are hard to audit and would frustrate a careful checker",
+    "The M/M/1 sizing assumes Poisson arrivals and a single-server-per-pile abstraction with hand-picked constants (k1=0.9, tw, Tw) that are asserted rather than derived from data; the leap from per-pile wait bound to the closed-form Ncp is not fully shown",
+    "Competitive-exclusion parameters r1=0.3 vs r2=4.7 and alpha,beta are essentially fitted/assumed with thin empirical grounding; an r2 of 4.7 is implausibly large and the 'small error with historical data' claim is unverified",
+    "Max-coverage + gravity layout is described but never fully executed for Korea — the actual LINGO solution, candidate-site set, and resulting map are gestured at (Figures 3/4 referenced) rather than reported with numbers, leaving the 'where' question weaker than the 'how many'",
+    "Data sourcing is thin and the team admits it (Section 8.2); several figures (Gini heatmap, scatterplots) are clearly corrupted/duplicated in the source and contain nonsensical rows",
+    "The Std-Dev-Ellipse evenness index has known geometric error (ellipse spills outside Australia's landmass) that the team waves away as negligible without quantifying it",
+    "Discriminant model misclassifies the US — disclosed honestly but exposes that two indices (evenness + Gini) are insufficient to capture 'balance'",
+    "Strengths section accidentally lists weaknesses (admits the differentiated-charging scheme is unproven), showing rushed editing",
+    "Several causal claims about new tech (flying cars, car-share, autonomy all simply scale B0 by (1+a)) are hand-wavy with no model behind the multiplier"
+  ],
+  "reusable_patterns": [
+    "Demand-then-placement decomposition for any infrastructure-siting problem: use queuing theory (M/M/1 or M/M/c) to size capacity from arrival/service rates, then a Maximum Coverage Location LP + Central Place Theory radius + gravity method to place facilities — solvable in LINGO/MATLAB",
+    "Closed-form server-count bound: derive a 'minimum number of servers given a tolerable wait tw' inequality and apply it per service class, then sum — directly reusable for clinics, depots, EV chargers, restrooms, etc.",
+    "Lotka-Volterra competitive exclusion as a technology-substitution / market-share model (old vs new product), using equilibrium-stability conditions to answer 'will full replacement happen?' and ode45 to extract a quantitative adoption timeline",
+    "Range-anxiety / adoption-utility model lambda(t)=(t/dc)·lambda to argue infrastructure-first build order — generalizes to any chicken-and-egg adoption problem (network effects)",
+    "Two-index country/region 'fingerprint' + discriminant analysis (R) to make a model transferable across geographies instead of re-solving per case — pick cheap, public indices (here Std-Dev-Ellipse population evenness + Gini) and classify, then give class-specific recommendations",
+    "Standard Deviation Ellipse as a compact spatial-evenness metric from point/population data (with chi-square confidence sizing)",
+    "Targeted sensitivity analysis: vary only the parameters you couldn't pin down from data and report which conclusions are robust — frame the result as 'factor X dominates, factor Y is negligible'",
+    "Results-forward summary sheet (hook + one headline number per sub-task) and a separate stakeholder-facing one-page handout that translates models into tiered, actionable policy"
+  ]
+}

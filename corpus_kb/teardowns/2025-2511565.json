@@ -1,0 +1,56 @@
+{
+  "paper_id": "2025-2511565",
+  "year": 2025,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2025 MCM Problem A (continuous), \"Staircase Wear Analysis.\" The task: build a mathematical framework that lets archaeologists read stair-wear patterns in historic buildings to infer (1) usage frequency, (2) directional traffic preference (up vs down), (3) simultaneous occupancy (single-file vs side-by-side), plus age estimation, repair/renovation detection, material-source verification, and usage-intensity profile (short-burst vs long-light). A required preliminary sub-task was to specify a non-destructive, low-cost, small-team, minimal-tool measurement plan. This O-award team (control number 2511565) backed the framework with self-collected real data: top-down photos of stairs from several old Chinese temples, turned into wear-depth maps via monocular depth estimation.",
+  "models_used": [
+    "Archard wear equation as the core physics link (V = K·P·L / 3H), covering both adhesive and abrasive variants; abrasive coefficient derived as K_abr = 3tanθ/π ≈ tanθ, then argued numerically equivalent to KP so the simpler adhesive form is reused",
+    "Daily Foot Traffic Model (Model I): total friction distance L = n·d·t substituted into Archard to invert for daily traffic n = 3VH / (K·P·d·t); applied to all 11 collected samples with d=0.01 m, P=650 N",
+    "Bayesian inversion framework for usage time t: uniform prior t~U(50,200) yr, Gaussian likelihood on (V_model − V_obs), grid-search posterior, MAP estimate t_MAP, then back-solve n",
+    "Wear Distribution Model (Model II): wear depth as Gaussian h(y) along step depth — truncated normal for ascent (front-edge weighted), normal for descent (center/rear weighted), bimodal mixture h_total = α·h_up + (1−α)·h_down for two-way traffic; α recovers directional preference",
+    "Multi-person extension: sum of N Gaussians (one peak per walker) to distinguish single-file (one peak) from side-by-side (multi-peak), with automatic vs mixed two-way traffic cases",
+    "Edge-effect correction factor: h_total scaled by (1 + k_edge·|y|) to model heavier wear near step edges",
+    "Wear-volume estimator from discrete point cloud: Delaunay triangulation converting the surface integral V=∬|f(x,y)|dA into a weighted sum Σ A_i·|h_i| over local triangles (area from cross product, mean of 3 vertex depths)",
+    "Monocular Depth Estimation (MDE) pipeline: overhead photo → open-source MDE model → .gltf mesh → trimesh/scipy binned_statistic_2d to build wear-depth heatmaps; ruler for absolute scale, gyroscope for tilt correction",
+    "C-14 radiocarbon dating for wooden stairs: t_w = −T0·ln(N/N0)/ln2, T0=5730 yr",
+    "Weathering-degree model for stone stairs: exponential W(t)=W0·e^(−λt)+β with a weighted composite index W=w1·WI+w2·PI+w3·LOI (three chemical weathering indices), inverted to age t0=(1/λ)ln(W0/(W_current−β))",
+    "Anomaly detection for repair/renovation: Z-score on age/wear-depth across sampling points, |z|>2 flagged as a repaired patch",
+    "Kurtosis of wear-depth distribution to classify usage regime: high kurtosis (>3) = long-term light use, low (≤3) = short-term heavy use",
+    "Statistical validation layer: Shapiro-Wilk normality test on wear distributions, t-based confidence intervals on the mean position, and Gaussian error-propagation (partial-derivative formula) to build 95% CIs (±1.96σ) on age and foot-traffic estimates"
+  ],
+  "key_techniques": [
+    "Anchoring every inference to ONE tribology law (Archard) and reusing it three ways: forward (predict V), inverse for traffic (solve n), inverse for material ID (solve wear coefficient K=3VH/PL) — a single equation does most of the load-bearing work",
+    "Reducing an intractable surface integral to a computable Delaunay-triangulation sum — turning messy point-cloud data into a clean, defensible volume number",
+    "Translating the qualitative archaeology questions (who walked, which way, how many) into the SHAPE of a 1-D wear distribution: unimodal vs bimodal vs N-modal, front-skewed vs center-skewed — a clever 'read the histogram' framing",
+    "Actually collecting original field data (11 stair samples, 4 temple sites, multiple materials) rather than relying on synthetic data — rare and high-credibility for an A problem",
+    "Cheap, reproducible measurement: monocular depth estimation from a single overhead phone photo + a ruler for scale + gyroscope for tilt, directly satisfying the 'non-destructive / low-cost / small-team / minimal-tool' constraint",
+    "Splitting age estimation by material (C-14 for wood, weathering index for stone) and cross-validating multiple independent age estimates — disagreement between methods becomes the renovation-detection signal",
+    "Layering uncertainty quantification on top (Bayesian MAP, Shapiro-Wilk, error propagation, ±1.96σ CIs) so each headline number ships with a reliability statement",
+    "Single distinctive descriptor — using kurtosis as a one-number classifier for short-burst vs long-light usage"
+  ],
+  "why_it_won": "Judges reward teams that connect a real-world story to defensible math, and this paper does it end-to-end. It (a) directly satisfies the problem's hard measurement constraint with a concrete, non-destructive MDE-from-a-photo pipeline; (b) grounds the abstract questions in a single, well-cited physical law (Archard) used inventively in forward and inverse directions; (c) backs claims with self-collected real temple data across four materials, which signals genuine effort and gives every model something to fit; (d) decomposes the qualitative archaeology questions (direction, occupancy, intensity) into testable distributional signatures (mode count, skew, kurtosis); and (e) wraps results in proper uncertainty quantification (Bayesian MAP, confidence intervals, Shapiro-Wilk, error propagation) plus a parameter sensitivity analysis. The breadth covering all eight sub-problems with a coherent, reusable toolkit, combined with original data and honest validation, is the profile of an Outstanding paper.",
+  "section_highlights": "Strong structural choices a future team should copy: (1) A one-page \"Our Work\" flowchart up front mapping measurement → models → evaluation → downstream sub-problems, so a judge sees the whole architecture in 10 seconds. (2) A dedicated Measurement Plan section (physical / chemical / biological) explicitly tied back to the problem's constraint words, with \"Data Collected\" and \"Tool Required\" call-outs per method — it reads like a real protocol. (3) Explicit Problem Restatement that enumerates the 8 tasks, then a results section that visibly closes each one. (4) Clean notation table and numbered assumptions, each assumption justified with one sentence of physical reasoning (e.g. footfall ~ normal by CLT). (5) Models named and numbered (Model I, Model II) and reused by reference in later sections rather than re-derived. (6) Per-model sensitivity analysis with a ranked verdict (Load P high, H/K medium, d low) and an explicit robustness claim. (7) A transparent AI-use appendix documenting the DeepSeek-R1 prompts for the GLTF/trimesh depth-map code.",
+  "pitfalls_or_limitations": [
+    "The OCR'd data tables (heatmaps, line charts, 3D-surface tables) are visibly garbled/placeholder — many show monotonic synthetic ramps or '1,1,1...' rows, suggesting the 'real data' visualizations may be partly illustrative rather than genuine fits; the numerical rigor of the figures is weaker than the prose claims",
+    "Model I conflates the abrasive and adhesive coefficients by asserting tanθ and KP are 'numerically similar' with no actual numbers shown, then quietly drops to the simpler adhesive form — a hand-wave at the physics core",
+    "Friction distance per step fixed at d=0.01 m and load P=650 N as point values with no justification or distribution, yet these feed directly into every traffic estimate (and P is the most sensitive parameter by their own analysis)",
+    "The Wear Distribution Model is presented largely as forward simulation and qualitative pattern-matching; there is little evidence the Gaussian-mixture parameters (α, μ, σ, N) were actually fit to the collected stairs to recover real direction/occupancy numbers",
+    "Age models rely on parameters (λ, β, W0, weathering-index weights w1,w2,w3) that are never measured or sourced for the actual samples — the C-14 and weathering sections read as methodology rather than applied results",
+    "Kurtosis>3 vs ≤3 as a binary usage-intensity test is asserted without calibration or a threshold derivation; baseline kurtosis of a clean normal is exactly 3 (excess 0), so the boundary is fragile",
+    "Sensitivity reported only as a single bar chart of ratios; no Monte-Carlo / global sensitivity, and the 'good generalization' conclusion is asserted rather than demonstrated",
+    "Several mineral/index formulas in Table 4 are transcribed with typos (e.g. Si2O), reducing reproducibility"
+  ],
+  "reusable_patterns": [
+    "Pick ONE governing equation for the domain and exploit it forward and inverse (predict → invert for the unknown you actually want → invert again for a second unknown). Archard here; for other problems think mass-balance, SIR, gravity model, etc.",
+    "When data is a point cloud or surface, convert the integral you wish you could compute into a Delaunay-triangulation weighted sum — a clean, defensible discretization judges trust",
+    "Map qualitative judging questions onto the shape of a distribution: number of modes = number of agents, skew = directional bias, kurtosis = burst-vs-steady. 'Read the histogram' is a transferable inference pattern",
+    "Satisfy any explicit problem constraint (non-destructive/cheap/small-team) with a named, concrete pipeline and per-step Tool/Data call-outs — answer the constraint literally and visibly",
+    "Collect even a small amount of original real data; it lifts a paper above the synthetic-only crowd and gives every model a fitting target",
+    "Cross-validate the same quantity via independent methods (C-14 vs weathering for age) and turn their disagreement into a NEW signal (renovation detection via Z-score anomalies)",
+    "Ship every headline number with uncertainty: Bayesian MAP + grid posterior for inversion, Gaussian error propagation for CIs, a normality test before assuming normality, and a per-model sensitivity ranking",
+    "Open with a one-page architecture flowchart and a numbered restatement of all sub-tasks, then visibly close each one — makes breadth legible to a fast-skimming judge",
+    "Use a distinctive single-number classifier (here: kurtosis threshold) to give a crisp, quotable answer to an otherwise fuzzy question",
+    "Include a transparent AI-use appendix with the actual prompts — signals integrity and documents the code-generation workflow"
+  ]
+}

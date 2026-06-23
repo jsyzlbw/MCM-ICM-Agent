@@ -1,0 +1,58 @@
+{
+  "paper_id": "2017-55280",
+  "year": 2017,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2017 MCM Problem A (continuous): the Kariba Dam on the Zambezi River is failing. Teams had to evaluate three options — repair, rebuild, or remove-and-replace with 10–20 smaller dams — and for the replacement option recommend the number, placement, and height of the new dams while preserving overall water-management capability and addressing emergency/extreme flow scenarios and protection of Lake Kariba. This team (\"iMoDS\") focused on the replacement option, building an integrated multi-dam optimization model and producing a concrete recommendation of 13 dams with specific positions and heights, plus a comparative cost assessment of all three options.",
+  "models_used": [
+    "Manning formula (open-channel flow) to estimate cross-sectional average water velocity v = (k/n)R_h^(2/3)S^(1/2)",
+    "Cone method for reservoir storage capacity, simplified to a closed-form CA(X_i)=h(X_i)^2 d / (2 k(X_i))",
+    "Dam construction-cost model linear in dam volume via hydrostatic pressure P=rho*g*h with compressive-stress safety factor sigma: Cost = lambda*rho*g*d*h^2/(2 sigma) + beta",
+    "Risk Cost Model: risk-based dam-safety formulation combining Fundamental Investment = Cost/Pf^1.1 and Risk Loss = [1-(1-Pf)^N]*alpha*(1+lambda)*Q, with Pf the acceptable risk ratio",
+    "Series Safety Model: modified Pearson Chi-Square dispersion measure Series(X)=d_bar / exp(sum (d_i-d_bar)^2/d_bar^2) rewarding even spacing of dams",
+    "Power Supply Ability Model: standard hydropower equation Supply(X_i)=eta*rho*g*h*Q",
+    "Integrated nonlinear programming model (iMoDS) maximizing a weighted, min-max rescaled sum of Series, Risk, Supply subject to total-capacity, count (10<=n<=20), and position constraints",
+    "Analytic Hierarchy Process (AHP) to assign submodel weights (Risk 0.54, Series 0.35, Supply 0.11)",
+    "Genetic Algorithm (MATLAB ga toolbox: normGeomSelect, arithXover, nonUnifMutation) to optimize number and placement of dams",
+    "Closed-form dam-height optimization via first-order condition Supply'(X_i)-Risk'(X_i)=0 giving h(X_i)=eta*sigma*Pf^1.1/(lambda*d)*Q",
+    "8th-degree polynomial least-squares fit of the river elevation profile from Google Earth data (defines slope k(X_i))",
+    "Gaussian weighting N(X_Lake, sigma^2) for Lake Kariba protection scoring by reservoir distance to the lake",
+    "ODE discharge/storage dynamics dm/dt = -p - k*m for dry/wet-season operating rules",
+    "Bathtub-curve / Bayesian failure-rate model FR(T) (3e-4 baseline, rising exponential after 50 yrs) for the option comparison",
+    "CPI inflation adjustment to estimate present-day rebuild cost"
+  ],
+  "key_techniques": [
+    "Decomposition into three independent submodels (Risk Cost, Series Safety, Power Supply), each from a different discipline (economics/risk, statistics, physics), then recombined",
+    "Min-max feature rescaling to [0,1] (and Risk inverted via min(Risk)/Risk) so heterogeneous-scale objectives are comparable before weighting",
+    "AHP-derived weights to turn three competing objectives into a single scalar nonlinear-programming objective",
+    "Two-stage solve: GA finds positions {X_i} with heights held equal (dimensionality reduction), then a closed-form first-order condition assigns per-dam heights, with a feedback loop to enforce the total-capacity constraint",
+    "Reframing the safety/cost tradeoff as a single risk-analysis variable Pf (acceptable risk ratio), yielding an interpretable U-shaped Risk-vs-Pf curve with an optimum",
+    "Driving the model with self-collected real data (Google Earth elevation profile, World Bank basin flow data) and curve-fitting it",
+    "Qualitative analytic reasoning (Observations 1 & 2) explaining why the Risk curve is non-monotonic and shifts with alpha, demonstrating model understanding rather than just plotting",
+    "Separating modeling-phase assumptions (steady annual flow) from a dedicated strategies section handling time-varying dry/wet seasons and emergency floods"
+  ],
+  "why_it_won": "\"It directly and completely answered the prompt: a concrete recommendation (n=13, exact X_i positions and per-dam heights, Pf=0.0024) constrained to match Kariba's total capacity, plus the required emergency-flow guidance, Lake Kariba protection, and a comparative cost assessment of all three options ($39B for the 13-dam plan). Judges reward teams that turn a vague open-ended problem into a quantified, defensible answer. The integrated iMoDS framework is genuinely interdisciplinary — risk economics, a statistical evenness test, and hydropower physics fused via AHP and solved with a GA — which reads as novel and sophisticated rather than a single off-the-shelf model. The work shows mathematical maturity: a derived closed-form height equation from a first-order optimality condition, a non-monotonic risk curve explained analytically, sensitivity analysis on N and alpha, and honest strengths/weaknesses. It also grounds everything in real, self-mined Zambezi data and presents it with strong figures (3ds MAX dam rendering, placement maps, reservoir overlays), signaling effort and credibility.\"",
+  "section_highlights": "\"Summary sheet is tight and sells the named model (iMoDS) and its three submodels up front. The Statement of Model section builds bottom-up (water flow -> single dam -> series of dams) so the reader is never lost. Figure 3 is an integration diagram tying all submodels and the data-flow loop together — a strong orienting device. The Risk Cost section pairs each formula with two labeled 'Observation + Illustration' pairs that interpret the curves, which is exactly the judge-pleasing 'explain your math' move. The Implementation section transparently documents data sourcing (Google Earth, World Bank) and the GA procedure, and gives a clean numeric result table (Table 3) plus an annotated placement figure (Figure 9). The separate 'Brief Assessment Report' cleanly addresses the all-three-options part of the prompt with explicit cost formulas and a failure-rate model. Appendices include the actual MATLAB GA and fitness code, adding reproducibility/credibility.\"",
+  "pitfalls_or_limitations": [
+    "Internal inconsistency in the weights: AHP table gives Risk 0.5403 / Series 0.3478 / Supply 0.1119, but the objective is written as 0.35*Series + 0.54*Risk + 0.11*Supply and the appendix code uses wei=[0.12,0.54,0.34] — the Series and Supply weights are swapped/mismatched across text and code",
+    "The 'Pf^1.1' exponent in the Fundamental Investment term is asserted to be 'set by experiment' but never justified — a magic constant",
+    "Several formula/code mismatches and typos: the Supply term in the integrated objective uses L*k(X_i) while Eq.7 uses h(X_i); the appendix mixes a MATLAB block tagged as Julia and contains an unbalanced-parenthesis line in the chi-square loop",
+    "The Series Safety 'modified Pearson Chi-Square' is an ad-hoc dispersion metric, not an actual chi-square test, and its units/scaling (multiplying by (n-1)/L) are not rigorously motivated",
+    "Heavy simplifications acknowledged but consequential: river treated as steady open-channel flow, other existing dams ignored, extreme conditions excluded from the core model; these undercut the cost and safety numbers",
+    "GA is acknowledged to be non-deterministic with no convergence evidence, multiple-run statistics, or comparison to a baseline, so the claimed global optimum (n=13) is not strongly substantiated",
+    "Cost figures rest on stacked rough assumptions (basic cost = 10% of total, removal = 15%, CPI ratio) that compound uncertainty without a sensitivity check",
+    "Numerous spelling/grammar errors throughout (collaspe, antural, sistem, hrdropower) that, while not fatal, slightly hurt polish"
+  ],
+  "reusable_patterns": [
+    "Name your model with a memorable acronym (iMoDS) and an integration diagram — gives judges a handle and a mental map",
+    "Multi-objective decomposition: build one submodel per competing concern from a distinct discipline, then fuse via rescaling + AHP weights into a single NLP objective",
+    "Min-max rescale all heterogeneous objectives to [0,1] (invert 'lower-is-better' ones via min/x) before combining, to prevent any one term dominating",
+    "Dimensionality-reduction two-stage solve: hold some decision variables fixed to let a heuristic (GA) search a lower-dim space, then recover the held variables analytically with a feedback loop to satisfy constraints",
+    "Collapse a fuzzy tradeoff into a single interpretable control parameter (here Pf, the acceptable risk ratio) and show its optimum with a U-shaped curve",
+    "Pair every key equation with a short 'Observation + Illustration' that interprets the math in plain words — demonstrates understanding, not just derivation",
+    "Quarantine simplifying assumptions in the core model, then add a dedicated 'Strategies/Scenarios' section that re-introduces real-world complexity (seasons, floods) qualitatively",
+    "Self-source real data when no dataset exists (Google Earth elevation, World Bank flow reports) and curve-fit it — credibility beats synthetic numbers",
+    "Include runnable solver code in an appendix for reproducibility",
+    "Add a focused side report (here the 'Brief Assessment Report' comparing all three options) to cover prompt sub-questions the main model doesn't, with explicit cost formulas"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "paper_id": "2014-30680",
+  "year": 2014,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2014 MCM Problem B (discrete): build a model to name the top-5 all-time college coaches over the last ~100 years, applicable across genders and all college sports. Team #30680 applied it to men's basketball, football, and baseball, scraping the final scores of essentially every Division-I game (basketball 1939-2013, football 1869-2013, baseball ~1947-2013) and producing per-sport top-5 rankings.",
+  "models_used": [
+    "Per-year weighted directed graph (digraph) of one sport-season: nodes = teams, directed edge A->B means A beat B (arrowhead points to loser), edge weight = number of wins, and a list of point margins attached to each edge (~300 graphs total)",
+    "Eigenvector centrality (right-hand eigenvector of the adjacency matrix, Ax = lambda x) used as the team-skill metric T_s, chosen over degree/betweenness/closeness centrality; computed with NetworkX via power/Von Mises iteration",
+    "Multiplicative skill decomposition model T_s = C_s * P_s (team skill = coach skill x player skill), letting player skill be solved as P_s = T_s / C_s so only one unknown matrix (coach skill) must be optimized",
+    "Coach-effect interaction term (C_A - C_B) * 1/(1 + alpha*|P_A - P_B|): coaching matters only when player skills are close, decaying as the player gap widens",
+    "Gaussian margin-of-victory probability model: P(A beats B by margin x) = K*exp(-( (1/E)(C*playereffect + D*coacheffect - margin) )^2), a per-game likelihood over the score difference",
+    "Maximum-likelihood objective: product of per-edge Gaussian probabilities over all games in a year, converted via log to a least-squares cost J(C_s) = sum over games of (C*playereffect + D*coacheffect - margin)^2 minimized over the coach-skill vector",
+    "Derivative-free optimizers compared: Genetic Algorithm (1000 random vectors, fitness/crossover/mutation), Nelder-Mead simplex, and Powell's method; Powell's method selected as final solver",
+    "Career aggregation metric C_v = N_a / N_c (number of yearly top-5 appearances divided by years active) to rank coaches across their whole career and handle team changes"
+  ],
+  "key_techniques": [
+    "Reframing a subjective 'best coach' question as an objective network-centrality + maximum-likelihood inference problem",
+    "Large-scale custom web scraping from multiple incomplete sources (ShrpSports, Sports-Reference) and entity reconciliation via a hand-built name-matching table (e.g. 'Florida State' vs 'Florida St.') to merge game data with coach rosters",
+    "Dimensionality reduction by algebraic substitution: using T_s = C_s*P_s to eliminate player skill as a free variable, halving the optimization search space",
+    "Likelihood-to-least-squares transformation: taking the log of the product-of-Gaussians turns a messy nonlinear product into a clean quadratic cost J for the optimizer",
+    "Justifying eigenvector centrality both formally (Ax=lambda x, unique positive Perron eigenvector) and intuitively via the walk-counting series S = A + lambda^-1 A^2 + ... (paths of all lengths inversely weighted by length)",
+    "Algorithm bake-off: empirically trying three optimizers and reporting why GA (too slow, non-optimal) and Nelder-Mead (stuck in shallow local extrema) were discarded in favor of Powell's method",
+    "Validation against an external ground truth: comparing eigenvector-centrality team rankings to AP and USA Today polls for 2009-2010 basketball (6 of top 10 overlap)",
+    "Perturbation-based sensitivity analysis: deleting a game and flipping a game result, then measuring the ~1% and ~4% changes in a coach's skill value and whether the #1 ranking flipped"
+  ],
+  "why_it_won": "\"It transformed a vague, opinion-laden prompt into a fully objective, end-to-end computational pipeline and actually executed it at scale (~300 networks, a century of real scraped game data for three sports), which judges reward far more than a toy model. The intellectual core is a genuinely clever two-stage decomposition: eigenvector centrality gives a defensible strength-of-schedule-aware team-skill measure, and the T_s = C_s*P_s substitution plus a per-game Gaussian likelihood cleanly isolates the coach effect — exactly the 'separate the coach from the team' insight the problem demanded. The team validated the team-ranking stage against AP/USA Today polls (external ground truth) and ran a concrete two-case sensitivity analysis, demonstrating engineering maturity. It also satisfied the generality requirement by running the identical pipeline across basketball, football, and baseball, and produced non-obvious results (e.g. lesser-known names like Jim Grobe, Mark Marquess) that show the model wasn't just regurgitating fame — directly answering the prompt's framing question.\"",
+  "section_highlights": "\"The dual-audience structure is a standout: a plain-English Sports Illustrated-style article ('draw two circles, arrow points to the loser', 'use some cool mathematics') opens the paper and makes the method graspable to a layperson, followed by the rigorous technical report — directly serving the problem's 'write for Sports Illustrated' sub-task. The logical flow is exemplary: it walks through and rejects degree, betweenness, and closeness centrality before motivating eigenvector centrality, so the chosen method feels earned rather than asserted. The 'When is Coach Skill Important?' section uses two contrasting Gaussian margin-of-win figures (mismatched vs. evenly-matched players) to build physical intuition before any equation appears. Assumptions are explicit and individually justified (each bullet states the simplification AND why it is reasonable). The optimizer bake-off section transparently reports failures (GA too slow, Nelder-Mead stuck), and a clearly-stated strengths/weaknesses section admits the eigenvector convergence failures and Powell's local-minima risk.\"",
+  "pitfalls_or_limitations": [
+    "The multiplicative model T_s = C_s*P_s is asserted, not derived or validated; coach and player skill are fundamentally unidentifiable from win/margin data alone, so the decomposition is an unfalsifiable modeling choice",
+    "The constant weights C, D, E, K and the scalar alpha in the coach-effect and Gaussian functions are never fit, reported, or sensitivity-tested — the results hinge on unstated parameter values",
+    "C_v = N_a / N_c (top-5 appearances / years active) systematically rewards short careers: a coach active only a few elite years scores higher than a sustained great, partly explaining odd #1s like Glenn Warner and obscure names beating Krzyzewski/Saban — a denominator artifact the paper never flags",
+    "Cross-era comparability is weak: eigenvector centrality is only defined within a single year's graph, and margins/scoring rules changed drastically from 1869 to 2013, yet coaches across all eras are pooled (the paper only briefly notes 'as long as average margin of victory is similar')",
+    "Sensitivity analysis is thin — a single deleted game and a single flipped result on one team in one year — and is not a true global robustness or parameter sweep",
+    "Powell's method is acknowledged to get stuck in local minima and was not restarted from multiple seeds due to compute limits, so reported coach-skill optima may not be global",
+    "Eigenvector centrality failed to converge (Von Mises iteration) on some graphs and those cases were silently dropped, introducing unquantified selection bias",
+    "Baseball data was sparse and partly tournament-only (different exposure than the full-season basketball/football graphs), making the three sports not strictly comparable",
+    "Reproducibility note: the rendered <details> network tables in this markdown (sequential node sizes, lat/long grids) are clearly OCR/extraction placeholder artifacts, not the team's real data"
+  ],
+  "reusable_patterns": [
+    "Game-results-as-digraph + eigenvector centrality is a transferable recipe for any ranking-from-pairwise-comparisons problem (tournaments, leagues, A-beats-B data); reject simpler centralities explicitly to motivate it",
+    "Latent-factor decomposition by algebraic substitution: when a quantity = factor1 x factor2 and one factor is observable, substitute to eliminate a free variable and shrink the optimization space",
+    "Per-observation likelihood -> product over all data -> log -> least-squares cost J is a clean, reusable maximum-likelihood-to-optimization pipeline that any derivative-free solver can attack",
+    "Interaction/gating term 1/(1 + alpha*|delta|) to encode 'effect X only matters when condition Y is small' — a reusable way to bake a qualitative assumption into a differentiable function",
+    "Optimizer bake-off pattern: try GA, Nelder-Mead, and Powell's method, then report runtime/quality trade-offs and justify the final pick — shows rigor and earns judge trust",
+    "Validate an intermediate model stage against an independent external benchmark (here AP/USA Today polls) before trusting downstream results",
+    "Two-case perturbation sensitivity analysis (delete a data point; flip a data point; measure ranking change) as a fast, concrete robustness demonstration",
+    "Dual-register writing: lead with a plain-language popular-science explanation, then the formal technical report — directly satisfies MCM prompts that ask for a non-technical deliverable (memo/article/letter)",
+    "Custom multi-source scraping + a manual entity-reconciliation matching table is a practical pattern for assembling a dataset no single source provides"
+  ]
+}

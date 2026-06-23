@@ -1,0 +1,50 @@
+{
+  "paper_id": "2025-2516695",
+  "year": 2025,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The problem asked to predict the 2028 Los Angeles Olympic medal counts with uncertainty, identify nations likely to improve or regress, forecast which countries will win their first Olympic medal, analyze how the host country can influence medal allocation through event selection, and quantify the 'great coach' effect on medal distribution.",
+  "models_used": [
+    "Static Bayesian Network (SBN)",
+    "Dynamic Bayesian Network (DBN)",
+    "LSTM",
+    "Bayesian Model Averaging (BMA)",
+    "Cox Proportional Hazards Model",
+    "Monte Carlo Simulation",
+    "Difference-in-Differences (DID)",
+    "Graph Neural Network (GNN) with Node2Vec and GAT",
+    "Spatio-temporal regression with spatial lag and decay kernel",
+    "MCMC sampling",
+    "Sobol' sensitivity indices"
+  ],
+  "key_techniques": [
+    "Temporal dimensionality expansion for Bayesian networks via time slices",
+    "Three-layer hybrid architecture (SBN+DBN+LSTM) with end-to-end variational inference",
+    "Feature engineering including Haversine distance matrix, dual-decay spatio-temporal kernel, and sliding window panel data",
+    "Cox Monte Carlo framework for first-medal probability with scenario analysis",
+    "DID with spatial spillover terms to isolate coach effect under COVID-19",
+    "GNN-based coach network analysis using node centrality, PageRank, and graph attention",
+    "Sensitivity analysis via univariate elasticity, Sobol' total indices, and dynamic regime-shift simulations",
+    "Counterfactual simulation for host agenda-setting effect",
+    "Project Advantage Index (PI) and National Dependence (SD) for resource allocation",
+    "Statistical tests (Shapiro-Wilk, Durbin-Watson, VIF, Moran's I, placebo effect, K-S test)",
+    "Monte Carlo prediction of medal growth with 90% confidence intervals"
+  ],
+  "why_it_won": "The paper seamlessly integrates Bayesian networks, deep learning, causal inference, and graph analytics to address a multi-faceted problem, demonstrating exceptional modeling breadth and depth. Rigorous validation with prediction intervals, placebo tests, Sobol' sensitivity, and Monte Carlo uncertainty quantification builds strong credibility. Actionable insights—like specific country investment recommendations, coach network pathways, and host-nation strategy—make the results directly useful for National Olympic Committees, a hallmark of Outstanding papers.",
+  "section_highlights": "The writing excels through a clearly demarcated three-model structure (HARMONIE, CHAMPS, GCIQ) each followed by immediate results and analysis, making the paper easy to navigate. Figures and tables are used strategically to summarize complex outputs (e.g., probability density functions, heatmaps, box plots), while the dedicated strengths/weaknesses section shows self-critical evaluation. Pseudocode algorithms and a sensitivity analysis section with Sobol' indices and structural stability tests give the paper a rigorous, reproducible, and scholarly tone.",
+  "pitfalls_or_limitations": [
+    "The 'great coach' effect was deliberately omitted from the main medal-table prediction, introducing potential discrepancy with reality (acknowledged in the paper).",
+    "Model integration is noted as immature, with flaws in hierarchical construction and logical connections that require further optimization.",
+    "Linear superposition assumption ignores higher-order interactions among variables, which may oversimplify causality."
+  ],
+  "reusable_patterns": [
+    "Three-layer hybrid modeling combining a static Bayesian network, dynamic Bayesian network, and LSTM to capture static potential, temporal transitions, and nonlinear trends.",
+    "Temporal extension of Bayesian networks using time slices and state transition matrices for DBN.",
+    "Cox Proportional Hazards + Monte Carlo simulation pipeline to estimate probability of first-time event occurrences with scenario-based sensitivity.",
+    "DID with spatial spillover terms (Treat × Post × spatial weight) to quantify causal effects while controlling for geographic dependence.",
+    "GNN-based analysis of network centrality and key pathways to identify impactful nodes and predict cascade effects.",
+    "Comprehensive sensitivity analysis suite: univariate elasticity, Sobol' total indices, dynamic regime-shift simulations, and structural parameter tuning (e.g., LSTM window length, hidden units).",
+    "Clear algorithm pseudocode for reproducibility of complex hybrid models.",
+    "Multi-index evaluation (PI, SD, risk matrix) to translate model outputs into strategic recommendations for resource allocation."
+  ]
+}

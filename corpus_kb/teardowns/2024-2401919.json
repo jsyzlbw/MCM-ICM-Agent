@@ -1,0 +1,43 @@
+{
+  "paper_id": "2024-2401919",
+  "year": 2024,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "The 2024 MCM Problem C asked teams to analyze momentum in tennis matches: develop a metric for player performance/momentum over time, determine whether momentum swings are random, predict turning points, identify contributing factors, and generalize the model to other matches using provided Wimbledon data.",
+  "models_used": [
+    "PCA-TOPSIS evaluation model",
+    "White noise tests (ACF, PACF, Ljung-Box, Box-Pierce)",
+    "GM(1,1) grey prediction model",
+    "Grey relational analysis"
+  ],
+  "key_techniques": [
+    "Construction of a 5-dimension, 18-indicator hierarchical performance assessment system",
+    "Data cleaning: accumulation of binary variables, missing value imputation, categorical mapping",
+    "Principal Component Analysis (PCA) for objective dimensionality reduction and weight derivation",
+    "TOPSIS for comprehensive scoring based on distance to ideal solutions",
+    "KMO and Bartlett's sphericity tests for model validation",
+    "White noise tests (ACF, PACF, Ljung-Box, Box-Pierce) to assess randomness of momentum sequences",
+    "GM(1,1) grey model on catastrophic sequences for small-sample disaster (turning point) prediction",
+    "Grey relational analysis to quantify factor impact on momentum swings",
+    "Cross-match validation (men's semifinal, women's final) to test generalizability",
+    "Sensitivity analysis by perturbing the weight of the most influential indicator"
+  ],
+  "why_it_won": "The paper comprehensively addresses all problem tasks with a well-integrated modeling pipeline: it creates a robust, objectively weighted PCA-TOPSIS momentum metric, statistically refutes randomness via multiple white noise tests, delivers accurate small-sample turning-point predictions using grey theory, and provides actionable advice backed by grey relational analysis. Rigorous validation (KMO, Bartlett's, sensitivity analysis, and cross-match testing) combined with clear visualizations and a strongly structured narrative made it an O‑prize work.",
+  "section_highlights": "The writing excels through a crystal-clear 'Overview of Our Work' flowchart, well-organized sections that mirror the problem tasks, and a step‑by‑step exposition of each model's purpose, mathematical construction, and diagnostic outcomes. Tables, heatmaps, autocorrelation plots, and prediction-vs‑actual line graphs are used effectively to support the narrative without clutter.",
+  "pitfalls_or_limitations": [
+    "Indicator set is not exhaustive; omits health, court environment, and psychological factors.",
+    "GM(1,1) model is only suitable for short‑to‑medium‑term prediction; not robust for long‑term forecasting.",
+    "Applying the model to different match types (e.g., women's) requires parameter and indicator adjustments.",
+    "Predictions in the women's final showed slightly lower accuracy compared to men's matches.",
+    "The serve‑count indicator contributed negligibly to the PCA model, hinting that some features may be redundant."
+  ],
+  "reusable_patterns": [
+    "Build a domain-specific hierarchical indicator system with clear topical dimensions.",
+    "Combine PCA for objective weight determination and TOPSIS for composite scoring of time-series data.",
+    "Use statistical randomness tests (ACF/PACF, Ljung-Box) to validate or refute hypotheses about sequence behavior.",
+    "Apply GM(1,1) grey prediction on extracted anomaly/turning-point subsequences for small-sample forecasting.",
+    "Quantify influential factors via grey relational analysis and translate correlations into actionable strategic advice.",
+    "Always test model generalizability on held‑out or different-type matches and perform sensitivity analysis on key parameters.",
+    "Present results with stacked visual comparisons (predicted vs. actual turning points) and diagnostic metric tables."
+  ]
+}

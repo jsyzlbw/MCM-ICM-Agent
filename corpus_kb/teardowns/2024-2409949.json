@@ -1,0 +1,52 @@
+{
+  "paper_id": "2024-2409949",
+  "year": 2024,
+  "problem": "F",
+  "problem_type": "policy",
+  "problem_summary": "2024 MCM/ICM Problem F (policy type). The task is to design a 5-year project to combat illegal wildlife trade (IWT), select and convince a real client organization to run it, satisfy extra execution requirements, and quantitatively evaluate the project's impact. This O-award paper narrows the open-ended problem to a concrete, defensible scope: countering the supply-side illegal trade of tigers in Southeast Asia, via a project named STSEA (\"Safeguarding Tigers in Southeast Asia\"). It chains five sub-tasks: (1) data-driven project design, (2) client selection + persuasion, (3) cross-organization cooperation, (4) impact prediction, (5) a one-page memorandum.",
+  "models_used": [
+    "Results-Based Management (RBM) + Logical Framework Approach (LFA) — used to structure the project via problem tree and objective tree, a Logframe Matrix mapping goals to Objectively Verifiable Indicators (OVIs), and SMART-criteria outcomes",
+    "Gantt chart — 5-year time-phased schedule across Preparation/Initiation, Execution/Control, Summary/Closure phases",
+    "Entropy Weight Method (EWM) — objective weighting of a three-level (primary/secondary/tertiary) client-assessment indicator system across 7 candidate IOs",
+    "TOPSIS — score normalization to a 0-100 capability-and-fitness scale on top of the EWM weights",
+    "Grey Relational Analysis (GRA) — ranks which trafficked species/products are most central to SEA IWT (Tigers 0.83 top), used as the data-driven justification for targeting tigers",
+    "Optimal Expected Utility Model under uncertainty — micro-economic deterrence model treating legal vs. illegal-tiger-trade (ITT) as two investment choices with endowment Z, detection rate pi, penalty cost f(y); solved with a Lagrangian and FOCs, then comparative statics show dy/dpi <= 0 (higher detection lowers illegal activity)",
+    "Multiple Linear Regression with VIF diagnostics — initial impact model; flagged multicollinearity (VIF > 10)",
+    "Ridge Regression — remediation for the multicollinearity; ridge trace used to pick k = 0.022, then predicts tiger-IWT numbers with vs. without the project over 5 years",
+    "Local sensitivity analysis — elasticity-style S_i = mean over t of (dy/dx_i)(x_i/y_t); identifies terrestrial protected-area size as the most impactful lever"
+  ],
+  "key_techniques": [
+    "Scope-narrowing the open policy prompt to a single, defensible target (supply-side tiger trade in SEA) justified by funding-trend data on 764 historical projects rather than by assertion",
+    "Industrial value-chain decomposition (Suppliers -> Intermediaries -> Consumers) to pick a single intervention point, making a sprawling problem tractable",
+    "Mapping each problem-tree root cause one-to-one to an objective-tree target and then to a concrete activity and a measurable OVI — full traceability from cause to KPI",
+    "Reusing the SAME OVIs defined in project design (Task 1) as the explanatory variables of the impact regression (Task 4) — tight model interlock instead of disconnected sub-models",
+    "Two-pronged data-driven persuasion of the client: global capital-flow / Comtrade map to prove SEA matters, then GRA to prove tigers matter — argument backed by quantitative ranking",
+    "Methodologically honest model upgrade: detecting multicollinearity via VIF and switching from OLS to ridge regression, with ridge-trace selection of k",
+    "Backtesting the regression on held-out historical years (2015-2020, predicted vs. true) before using it for forward prediction",
+    "Grounding economic deterrence in standard concave-utility assumptions and deriving a clean qualitative result (raising detection rate pi reduces illegal investment) to justify the WWF-Interpol partnership"
+  ],
+  "why_it_won": "\"From a judge's perspective it won because it is the rare policy paper that is BOTH a credible real-world plan AND a genuinely quantitative modeling paper, with the two halves fused rather than bolted together. Judges reward decisive, justified scoping: it committed to tigers-in-SEA and backed every commitment with data (764-project funding trend, Comtrade capital flows, GRA species ranking, EWM/TOPSIS client scores). It used recognized professional project-management frameworks (RBM/LFA/Logframe/SMART/Gantt) that map exactly to what Problem F's client-facing rubric expects, signaling domain literacy. It demonstrated mathematical maturity by catching its own multicollinearity (VIF>10) and remedying it with ridge regression, and by deriving a clean comparative-statics result from a Lagrangian utility model to motivate the Interpol partnership. Crucially the OVIs defined in Task 1 are the very regressors in Task 4, so the impact estimate measures the project the team actually designed — a coherence most teams miss. Finally it closes the loop with a concrete with/without-project forecast, a sensitivity ranking that yields an actionable recommendation (expand protected areas), and a clean one-page client memorandum.\"",
+  "section_highlights": "\"Summary: front-loads every model by name and ties each to its task, so a judge sees the full method inventory in one paragraph. Work-structure flowchart (Fig 2): six parallel workstreams that mirror the five tasks, giving an at-a-glance map. Task 1: value-chain decomposition -> single intervention point -> problem/objective tree -> Logframe Matrix -> Gantt, a textbook traceable design chain. Task 2 persuasion: layered indicator system (Organizational/Communication/Special Influence, three levels) with EWM weights and per-client scores (WWF 78.70 top), plus the GRA species ranking — persuasion done with numbers. Task 3: the utility/Lagrangian derivation is the paper's mathematical centerpiece, turning a soft 'partner with Interpol' suggestion into a derived dy/dpi <= 0 result. Task 4: the honest OLS->ridge pivot plus backtest table and with/without forecast. Strength/Weakness and one-page memorandum are concise and client-appropriate. Glossary, assumptions-with-justifications, and a populated appendix (full weight table) signal rigor.\"",
+  "pitfalls_or_limitations": [
+    "Severe small-sample statistics: the regression uses n=7 yearly observations to fit 4 predictors plus intercept — R2=0.991 is almost certainly overfit, and the marginal p-values (most > 0.05) are barely meaningful; ridge mitigates but does not fix this",
+    "The rendered data tables in the markdown (funding heatmap, Comtrade Sankey, GRA line chart) are clearly mangled/placeholder values, so the underlying data quality cannot be verified from the paper; several figures appear illustrative rather than reproducible",
+    "The optimal-utility deterrence model is left fully abstract — V_l, V_i, f(y) are never given functional forms or parameters, so it yields only a qualitative sign result, not a quantified benefit of the WWF-Interpol cooperation",
+    "The with/without-project forecast bakes in the team's own assumed OVI improvements (search +15%, employment +0.5%, area +5%, detection +25%) — the predicted impact is partly assumed rather than derived, a circularity risk",
+    "Sensitivity analysis is local (one-at-a-time elasticities) and inconsistent with the regression: x4 detection rate is statistically insignificant in the ridge fit yet the cooperation argument hinges on raising detection; the headline lever (protected-area size) is the most sensitive but the narrative still leans on detection",
+    "Data pre-processing is vague ('regression, averaging, etc.') with no detail on how gaps were filled, undermining reproducibility",
+    "EWM weights are sensitive to the candidate pool and indicator choice; with only 7 IOs the entropy-based weights are unstable, and benefit-only attribute treatment is asserted without justification",
+    "Writing has noticeable English/typo issues (Aisa, Entrop, Counter-IWI) — tolerated by judges here but a quality risk"
+  ],
+  "reusable_patterns": [
+    "Open policy prompt -> narrow to one concrete target justified by trend data, not opinion (decompose a value chain, pick one intervention node, cite historical funding/flow data to defend the choice)",
+    "Use RBM/LFA + problem-tree/objective-tree + SMART + Logframe Matrix + Gantt as the standard scaffold for ANY MCM/ICM 'design a project/policy' task — it directly satisfies client-facing rubrics",
+    "Build a multi-level (primary/secondary/tertiary) indicator system, weight it objectively with EWM, normalize/rank with TOPSIS to make a selection or scoring decision defensible",
+    "Use Grey Relational Analysis when data are sparse/incomplete to rank which factor/entity matters most, and use that ranking as a persuasion argument",
+    "Define your KPIs (OVIs) during the design phase and REUSE them as regression variables in the evaluation phase, so impact estimation measures exactly the designed intervention",
+    "Always run VIF after a multiple regression; if VIF>10, switch to ridge regression and use a ridge trace to select the penalty k — a clean, judge-pleasing rigor signal",
+    "Backtest a predictive model on held-out historical years before producing a forward forecast, and present a with-intervention vs. without-intervention comparison",
+    "Add local sensitivity/elasticity analysis to convert a fitted model into a single actionable policy recommendation (which lever to push)",
+    "Frame a partnership/deterrence argument as a constrained expected-utility optimization (endowment split, detection probability, penalty cost) and use Lagrangian comparative statics to derive the qualitative benefit",
+    "Close with a one-page client memorandum in plain business language — required by Problem F and a strong differentiator"
+  ]
+}

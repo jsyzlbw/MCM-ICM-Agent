@@ -1,0 +1,40 @@
+{
+  "paper_id": "2017-56632",
+  "year": 2017,
+  "problem": "D",
+  "problem_type": "operations_research",
+  "problem_summary": "2017 MCM Problem D operations research: reduce TSA security wait time and its variance, find bottlenecks, recommend staffing. Team 56632 uses a two-stage parallel queuing network (ID check then scan, precheck and regular lanes), closed-form expected waits validated by a discrete-event simulation, cost-benefit staffing optimization, and a virtual-queue discipline test.",
+  "models_used": [
+    "Two-stage tandem queuing network, ID-check then scan, parallel precheck and regular lanes, FIFO",
+    "Poisson arrivals estimated by MLE, KDE for service times (MATLAB expfit, ksdensity)",
+    "Precheck scan time as max of two independent variables, density from product of CDFs",
+    "Closed-form solved wait recurrence with three boxed average-wait formulas",
+    "Discrete-event simulation via dynamic programming, service times sampled from KDEs",
+    "Cost-benefit profit-rate optimization over station counts, plus FIFO vs Priority via virtual queue"
+  ],
+  "key_techniques": [
+    "Operationalize inefficiency as one metric, average wait time",
+    "Closed form first then validate by independent simulation overlay",
+    "Drop max-with-zero for a solvable recurrence, restore in simulation",
+    "Derive arrival-equals-service bottleneck threshold, overlay on curves",
+    "Nonparametric KDE plus parametric exponential where justified",
+    "Analyze variance not just mean; report the failed Priority discipline honestly"
+  ],
+  "why_it_won": "Mathematical depth plus honesty: real stochastic-process work (Poisson, MLE, KDE, order statistics, a solved recurrence) validated against an independent simulation; an elegant arrival-equals-service threshold confirmed empirically; candor about simplifications; a failed hypothesis turned into a recommendation; full prompt coverage including throughput, variance, cost with dollar figures, and behavior.",
+  "section_highlights": "Four-part architecture stated up front; each assumption justified by its own remark; three boxed wait results; reproducible labeled pseudo-code; figures with predicted thresholds overlaid on observed transitions; a structured future-work list; real citations (Chen and Yao, an EJOR virtual-queuing paper, TSA statistics).",
+  "pitfalls_or_limitations": [
+    "Closed-form waits can go negative from dropping max-with-zero, fixed only in simulation",
+    "Saturated-queue assumption never reaches steady state",
+    "Constant daily arrival rate ignores flight peaks, which the team admits",
+    "Security constraint asserted but never modeled",
+    "Profit objective coarse; slow-fast multiplier uncalibrated"
+  ],
+  "reusable_patterns": [
+    "Define one scalar metric early and justify it",
+    "Pair a closed-form model with an independent simulation",
+    "Flag a simplifying assumption then relax it numerically",
+    "Derive a load-equals-one threshold and overlay on data",
+    "Use KDE plus selective parametric fits estimated by MLE",
+    "Report failed hypotheses; use boxed equations and pseudo-code"
+  ]
+}

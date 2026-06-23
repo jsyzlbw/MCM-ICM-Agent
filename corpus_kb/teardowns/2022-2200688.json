@@ -1,0 +1,55 @@
+{
+  "paper_id": "2022-2200688",
+  "year": 2022,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2022 MCM Problem C (data): given only the daily price streams of gold (LBMA-GOLD.csv, traded only on open-market days) and bitcoin (BCHAIN-MKPRU.csv, traded daily), build a model that uses ONLY prices up to each day to decide buy/hold/sell for a $1000 portfolio, report the final value on 9/10/2021, prove the strategy is best, assess sensitivity to transaction costs, and communicate to a trader in a 2-page memo. This team's \"PADRRI\" answer reaches a reported final portfolio value of $285,647 from $1000 with an allocation of 2% gold / 98% bitcoin.",
+  "models_used": [
+    "Prophet (Facebook/Meta additive time-series model): trend term a(t) via logistic-growth or piecewise-linear with changepoints, seasonal term b(t) via Fourier series (yearly p=365.25 I=10, weekly p=7 I=3), holiday term c(t), error term; changepoints modeled with a Laplace prior (changepoint_range=0.8, n_changepoints=25, changepoint_prior_scale)",
+    "X-Prophet: their proposed hybrid that fuses Prophet with an XGBoost gradient-boosted regressor on the residual/confidence module; final prediction is a convex blend W(t)=w1*p(t)+w2*y_hat with w1+w2=1, where XGBoost's regularization term curbs Prophet's overfitting at special points",
+    "Sliding-Window Mechanism: retrain a fresh Prophet on only the most recent window (window size = 90 days / one season) for each prediction day, rather than all history — their key innovation for bitcoin's non-stationarity",
+    "5-day SMA (Simple Moving Average) decision rule with a '5-day deviation' (bias) threshold to detect overbought conditions",
+    "Adaptive N-day-forecast decision model: classifies the next-N-day predicted curve into 6 monotonic/peak-valley shapes and buys/sells; N is self-tuning (initial 15, multiply by alpha=1.1 if no peak/trough, by beta=0.9 if multiple), targeting exactly one peak or trough in the window",
+    "XGBoost gradient boosting (additive trees with L2 regularization penalty 0.5*gamma*sum(w_j^2))",
+    "Greedy per-day simulation / portfolio bookkeeping algorithm (Algorithm 1) tracking MoneyForGold, MoneyForBitcoin, gold units, bitcoin units with transaction-cost haircuts (1-c_g), (1-c_b)"
+  ],
+  "key_techniques": [
+    "Two-stage decomposition: separate forecasting model (X-Prophet) from decision model (5-day SMA + adaptive N-day curve classifier), so prediction error and trading logic are debugged independently",
+    "Per-day rolling retraining: a separate model is trained for every decision day using only prior data, which directly enforces the problem's 'only past prices' causality constraint",
+    "Hybrid statistical + ML ensembling (Prophet residuals corrected by XGBoost) with an explicit convex weighting w1+w2=1",
+    "Sliding window to combat non-stationarity, explicitly justified by ADF/stationarity reasoning and analogized to how human economists forecast bitcoin (machine + intuition framing)",
+    "Human-knowledge / machine-prediction fusion: empirical finance rule (5-day SMA) used to correct and de-risk the ML forecast, with a data-availability switch (lean on SMA when little data, lean on forecast when more)",
+    "Shape-based curve classification for trade timing: detect local maxima/minima in the forecast window to decide buy vs sell and to adapt the lookahead horizon N",
+    "Statistical pre-checks before modeling: Min-Max normalization, stationarity testing (time-series plot + autocorrelation decay), and pure-randomness testing (Q / Ljung-Box statistics, showing p-values < 0.05) to justify that the series is predictable",
+    "Allocation sweep: scan gold ratio delta from 0–100% to find the profit-maximizing split (delta=2%), and plot profit vs delta",
+    "Sensitivity analysis over a 2D grid of gold (0.00005–0.0030) and bitcoin (0.0001–0.0030) transaction costs, quantifying max profit fluctuation (gold 4.86%, bitcoin 0.35%)",
+    "Risk argument from the allocation curve: not putting 100% into bitcoin is framed as a deliberate risk/return compromise"
+  ],
+  "why_it_won": "\"It nails the problem's hard causality requirement (use only past prices) cleanly via per-day rolling retraining, then layers a genuine, well-motivated innovation on top: the sliding-window X-Prophet hybrid. Judges reward a clear original contribution with a name and a story, and this team delivered two (X-Prophet and the sliding-window mechanism) plus a memorable branded model (PADRRI). The choice of Prophet is defended on interpretability and generalization grounds — exactly the 'why this method, not just which method' reasoning judges look for — and is backed by explicit model-comparison reasoning against ARIMA (can't handle non-stationary/nonlinear) and LSTM (overfits, needs lots of data, opaque). The two-stage prediction/decision split makes the pipeline legible. They close every loop the prompt asks for: the optimality argument, an explicit Algorithm 1 for profit calculation, an objective function (argmax of last-day portfolio value), the allocation sweep producing a concrete answer ($285,647 at 2/98), a 2D transaction-cost sensitivity study with quantified bounds, and a clean 2-page memo. The human-plus-machine framing (SMA expert rule correcting ML) gives a maturity and risk-awareness narrative that resonates with judges.\"",
+  "section_highlights": "\"Abstract is dense and sells the contributions in order (X-Prophet, sliding window, 5-day SMA, human-machine collaboration) with keywords. Section 4.1.1 Model Selection is a standout: it argues WHY ARIMA and LSTM were rejected before introducing Prophet — comparative justification, not just a method dump. Section 5.1 (Data Preprocessing and Testing) builds credibility up front with normalization, stationarity tests, and randomness tests that justify predictability. Section 4.2.2's six-shape curve taxonomy and the self-adaptive N (alpha=1.1 / beta=0.9) is a concrete, reproducible decision rule. Section 6 (Evidence of optimality) explicitly states the objective function (Eq. 24–25), gives Algorithm 1 pseudocode for the profit simulation, and splits the optimality claim into 'gives optimal decision' + 'considers risk'. The allocation-sweep figure (profit vs gold ratio delta) directly yields the headline answer. Section 7 sensitivity analysis quantifies robustness with hard numbers (4.86% / 0.35%). The 2-page memo is appropriately non-technical and the Python appendix (five_days_sma, gold_decision, bitcoin_decision) shows the actual decision code, boosting reproducibility/trust.\"",
+  "pitfalls_or_limitations": [
+    "Optimality claim is overstated: 'the proposed model gives the optimal decision' is asserted, not proved. The real strategy is a greedy heuristic over imperfect forecasts; no upper-bound / oracle benchmark (e.g. perfect-foresight DP) is shown, so 'best strategy' is unsubstantiated against what the prompt literally demands.",
+    "Severe look-ahead / leakage risk in practice: Prophet's own backtests and the 'Actual vs Predicted' figures show near-perfect overlap (predicted == actual at many points), which is implausible for true one-step-ahead forecasting and suggests in-sample fitting rather than genuine out-of-sample prediction. The $285,647 result likely benefits from this.",
+    "Sliding-window size (90) and adaptive-N hyperparameters (initial 15, alpha=1.1, beta=0.9) and the 5-day-deviation threshold are asserted with no tuning/validation evidence or ablation.",
+    "X-Prophet formulation is mathematically loose: equation numbering is inconsistent, the XGBoost loss (Eq. 21) is garbled, and how XGBoost is actually trained on Prophet residuals/confidence is never operationalized — it reads more like a citation-borrowed concept than a reproduced implementation.",
+    "Sensitivity-analysis figure is internally inconsistent: profit INCREASES as transaction cost rises in the heatmap table, which is backwards and undermines the robustness claim; the cost ranges in text and figure don't match.",
+    "Stationarity conclusion is shaky: they declare bitcoin 'relatively stable' from autocorrelation plots while elsewhere stressing bitcoin's extreme non-stationarity (the very reason for the sliding window) — a contradiction.",
+    "Assumption that gold and bitcoin prices are uncorrelated and that only past own-price matters is convenient but unjustified for a real portfolio.",
+    "2/98 gold/bitcoin allocation is essentially an all-in bitcoin bet riding a historical bull run; the 'risk consideration' narrative is weak given 98% concentration.",
+    "Appendix code has broken indentation (every branch flush-left), so it would not run as printed."
+  ],
+  "reusable_patterns": [
+    "Brand your pipeline with a memorable acronym (PADRRI) and name your innovations (X-Prophet, Sliding-Window Mechanism) — gives judges a handle and signals contribution.",
+    "Split any forecast-then-act problem into an explicit prediction model + decision model so each is justified and debugged separately.",
+    "For 'use only data up to day t' problems, implement per-day rolling retraining and say so explicitly — it both satisfies the constraint and reads as rigor.",
+    "Always include a Model Selection section that argues WHY rejected methods (ARIMA, LSTM) fail before presenting your choice; comparative reasoning beats a method list.",
+    "Front-load credibility with data preprocessing + statistical tests (normalization, stationarity/ACF, randomness/Ljung-Box) that justify the series is predictable.",
+    "Fuse an expert/domain rule (here 5-day SMA) with the ML forecast and frame it as human-machine collaboration plus risk control — judges value the narrative.",
+    "Pin down the deliverable with an explicit objective function (argmax last-day value) and a pseudocode Algorithm box for the evaluation/simulation procedure.",
+    "Turn the required free parameter into a headline result via a 1-D sweep (profit vs allocation delta) and a clearly labeled figure.",
+    "Do sensitivity analysis as a 2D grid over the parameters the prompt names (transaction costs) and report quantified fluctuation bounds, not just 'it's robust'.",
+    "Make the model self-adaptive with a simple control loop (grow/shrink horizon N by alpha/beta until exactly one peak or trough) — cheap to describe, looks sophisticated.",
+    "Include actual decision-rule code in an appendix to boost reproducibility and trust.",
+    "Keep the memo non-technical, lead with the strategy and the single dollar figure, and end with a risk caveat."
+  ]
+}

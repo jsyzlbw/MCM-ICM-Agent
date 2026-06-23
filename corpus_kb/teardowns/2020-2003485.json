@@ -1,0 +1,50 @@
+{
+  "paper_id": "2020-2003485",
+  "year": 2020,
+  "problem": "A",
+  "problem_type": "continuous",
+  "problem_summary": "2020 MCM Problem A (continuous): Rising ocean temperatures push Scottish herring and mackerel out of their habitat. The team had to (1) predict 50-year migration paths of both species, (2) forecast when fish leave a no-refrigeration fishing company's reachable range with best/worst cases, (3) recommend business strategy (relocate ports, buy refrigerated boats), (4) assess the impact of fishing entering foreign territorial waters (Iceland, Norway), and (5) write a 1-2 page magazine article. The paper, ID 2003485, treats temperature as the driver and reduces the biology to fixed thermal-tolerance bands (mackerel 8-16°C, herring 12-18°C).",
+  "models_used": [
+    "NOAA data pipeline (1980-2019): bounding-box + sentinel-value (-99.99) filtering, hourly-to-yearly aggregation, discard locations with <50% year coverage (>=20 of 40 yrs) -> 54 representative grid points",
+    "Per-location temperature-vs-year curve fitting via MATLAB lsqcurvefit with custom basis F = x1*t^2 + x2*(sin t + cos t) + x3, extrapolated 1980->2070",
+    "Spatial interpolation of the 54 fitted points across the whole study region: compared linear/cubic/nearest/v4 (gridata 'v4' biharmonic) and selected v4; visualized as 3D surfaces + filled contour maps",
+    "Migration-route extraction: read isotherm bands matching each species' thermal tolerance off contour maps, pick discrete points nearest Scotland, then least-squares polynomial fit of latitude vs longitude to draw the route",
+    "Markov chain ('Macleaf/Mark leaf' model) on temperature growth rate discretized into 5 states (rapid rise >=0.03, slow rise, stable, slow decline, rapid decline <=-0.03); built one-step transition matrix from adjacent-year state counts, propagated state probabilities to find best/worst exit years",
+    "Fishing-range geometry: 1.5-day salting freshness x 10 knots (18.52 km/h) -> 666.72 km max radius; spherical great-circle distance (acos formula, R=6378.137 km) from port to fish school",
+    "Port relocation optimization over 25 Scottish ports: Plan A minimizes summed distance to fish over 50 yrs (-> Orkney); Plan B re-optimizes every decade (Orkney->Stornoway->Scrabster->Lerwick)",
+    "Mahalanobis distance (sample-to-population) to test whether fish positions fall inside Iceland/Norway territorial-sea point clouds; threshold calibrated empirically, validated with apparent + cross misjudgment rates (0.1923, 0.24)",
+    "Cross-validation models: BP neural network used to independently check the Problem 2 crisis year (~20 yrs, between best/worst); AHP scoring model proposed to rank Plans A vs B"
+  ],
+  "key_techniques": [
+    "Driver-reduction: collapse a complex ecological question into one governing variable (temperature) plus fixed species thermal bands, making the whole problem tractable end-to-end",
+    "Two-stage fit-then-interpolate: fit time series independently per location, THEN interpolate across space per year, keeping temporal extrapolation and spatial filling as separate clean steps",
+    "Reading model output off contour maps to seed the next model (isotherm bands -> migration waypoints -> polynomial route): chaining visual intermediate results into downstream quantitative steps",
+    "Discretizing a continuous rate into a small finite state space to justify a Markov chain, turning 'how fast will it warm' into a tractable transition-probability question that naturally yields best/worst scenarios",
+    "Operationalizing the 'best/worst case' deliverable as max/min over Markov state-probability outcomes rather than hand-waving",
+    "Independent cross-checks per sub-problem (BP NN, AHP, real published migration data, misjudgment rates) used purely as validation rather than as primary models",
+    "Tying every abstract result back to a concrete business decision (which port, which year to buy refrigerated boats, negotiate with Iceland/Norway)"
+  ],
+  "why_it_won": "\"Judges reward a complete, decision-oriented narrative, and this paper delivers all five deliverables with a clean problem-to-decision chain and concrete numbers (exit by 2032 at 30% worst case / 2050 at 21.91% best case; relocate Orkney->Lerwick; buy refrigerated boats by 2050; herring 29 yrs in Icelandic waters, mackerel 11 yrs in Norwegian). Its strongest move is empirical validation: Problem 1's predicted route is checked against the actual published herring/mackerel migration and matches, which buys enormous judge trust early. It then independently cross-validates each later sub-problem with a DIFFERENT method (BP neural net for the crisis year, AHP scoring for strategy ranking, apparent/cross misjudgment rates for the Mahalanobis classifier), signaling rigor without over-claiming. The modeling is workmanlike but the engineering is thorough and reproducible (full MATLAB appendices), every result maps to an actionable recommendation, and the magazine article is genuinely magazine-like (£5 banknote mackerel hook, plain-language framing) rather than a rehashed abstract.\"",
+  "section_highlights": "\"Strong structure choices worth copying: (1) Narrative section titles that double as findings ('Fish Are Swimming Out of the Control of the Fishing Company', 'Can't Steal Others Small Fish') keep judges oriented. (2) A short flowchart opens every problem section (Figs 4, 11, 13, 16), so the reader sees the method before the math. (3) A dedicated Model Preparation section front-loads all real-world constants (thermal bands, boat speed, 1.5-day freshness, port coordinates) so later sections stay clean. (4) Results are always given as concrete tables (migration coords per decade, exit-year probabilities, port-to-fish distances per decade) tied to a labeled map. (5) Section 8 'Error/Sensitivity Analysis' is actually a per-problem validation log using independent methods plus real data, which reads as honesty. (6) The magazine article uses a vivid local hook (mackerel on the new £5 Scottish note, Scotland landing 60% of UK catch with 8.4% of population).\"",
+  "pitfalls_or_limitations": [
+    "Biology is over-simplified: fixed constant thermal-tolerance bands, no salinity/oxygen/pH/prey/spawning despite those columns being collected; Assumption 1 literally freezes species preferences for 50 years",
+    "The temporal basis F = a*t^2 + b*(sin t + cos t) + c is ad hoc with no physical justification, and a quadratic extrapolated to 2070 can diverge unrealistically; sin/cos of raw year values is near-meaningless",
+    "Data-integrity red flags in the appendix: data4(:,1) is overwritten by rand() twice (Appendix 2) and the Markov state-counting in Appendix 5 has a copy-paste bug (the 5th category condition duplicates 'j>5 && j<11'), so some reported probabilities may not reflect the described method",
+    "The Markov 'Macleaf/Mark leaf' model is mislabeled and under-specified; transition probabilities come from only ~40 yearly transitions per location, a thin sample, and stationarity is assumed under a non-stationary warming trend",
+    "Best/worst cases are defined as extreme outcomes but reported with mid-range probabilities (30%, 21.91%) that aren't true bounds; no confidence interval on exit year",
+    "Mahalanobis 'critical standard' threshold is set 'through a large number of experiments' (i.e., tuned by hand) rather than from a principled cutoff; using lat/lon directly with a covariance from a coastline point cloud is geometrically questionable",
+    "Plans A/B optimize on planar/great-circle distance only; AHP weighting for strategy selection is proposed but never actually computed; no real cost figures for relocation or new boats despite framing it as a business decision",
+    "Sensitivity analysis is shallow: only fishing-boat speed is flagged as a shortcoming; no systematic perturbation of thermal bands, growth-rate thresholds (the 0.03 cutoff), or the v4 interpolation choice"
+  ],
+  "reusable_patterns": [
+    "Pipeline skeleton for any spatio-temporal forecast problem: clean/aggregate raw data -> drop low-coverage sites -> fit per-site time series -> interpolate across space per time slice -> visualize as 3D surface + contour -> read decision-relevant bands off the contours",
+    "Turn an open-ended 'predict the future' question into a finite-state Markov chain by discretizing a rate of change into a handful of states; this cheaply yields best/worst scenarios with attached probabilities",
+    "Deliver a 'best and worst case' requirement as max/min over a probabilistic model's outcomes, not as guesses",
+    "Validate the headline result against real published data when it exists (here, the actual fish migration route) - it is the single most credibility-building move available",
+    "Cross-check each sub-problem with a deliberately different method (NN, AHP, classifier misjudgment rate) and present it in a unified Error/Validation section",
+    "Front-load a 'Model Preparation' section that fixes every real-world constant and geographic input, keeping the modeling sections uncluttered",
+    "Open each problem section with a small flowchart and use finding-as-title headings so a skimming judge always knows the method and the conclusion",
+    "Operational-constraint geometry: convert a perishability/speed limit into a hard reachability radius (freshness_days x speed), then drive relocation/equipment decisions off whether targets fall inside it",
+    "Write the magazine deliverable around a concrete local hook and a striking statistic, in lay language, not as a reworded abstract"
+  ]
+}

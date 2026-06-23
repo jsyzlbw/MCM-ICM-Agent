@@ -1,0 +1,51 @@
+{
+  "paper_id": "2014-31262",
+  "year": 2014,
+  "problem": "C",
+  "problem_type": "interdisciplinary",
+  "problem_summary": "2014 MCM Problem C (interdisciplinary \"Big Data\" network science problem): measure the influence/importance of nodes in research networks — first the Erdős co-authorship network (the Erdos1 dataset), then a citation network of foundational network-science papers — and generalize the influence model to other domains. The team's answer is a single composite \"Influence Measurement (IM)\" score per node, built by classifying nine network metrics into three semantic dimensions and fusing them.",
+  "models_used": [
+    "Three-dimensional taxonomy framework: every node-importance metric is bucketed into Centralizing, Connecting, or Spreading characteristics (3 sub-metrics each = 9 total)",
+    "Centralizing dimension: Degree centrality, Eigenvector centrality, PageRank (eq. 2, damping factor d, iterative)",
+    "Connecting dimension: Betweenness centrality (shortest-path fraction g_jik/g_jk), Clustering coefficient, and a self-defined Node-Removal 'Total Loss' TL = Self-Loss + Mutual-Loss (eqs. 4-6) computed from Floyd all-pairs distance matrices before/after node deletion",
+    "Spreading dimension: Closeness centrality plus two self-invented indices from a custom particle-diffusion submodel",
+    "Self-defined Spreading Breadth Index B_s(P) and Half-network Period T_h(P): a branching-particle model where a particle at a degree-m node splits into (m-1) particles; an attenuation factor a(t)=1/(T(D-1)^{t-1}) is derived specifically to cancel the (D-1)^{t-1} growth term so B_s is independent of the test horizon T (eqs. 8-23), with analytic upper/lower bounds derived",
+    "Self-defined Spreading Depth Index D_s(P) = d(T)/(T·D) from the same particle model, interpreted as a normalized spreading 'velocity' (eqs. 24-28)",
+    "Principal Component Analysis (PCA) applied separately within each of the three metric groups to collapse 3 correlated metrics into 1 component vector (Central, Connect, Spread)",
+    "Final fusion: IM = α·Central + β·Connect + γ·Spread with α=β=γ=1/3 (eqs. 29-30)",
+    "Louvain / Blondel community detection (modularity, via Gephi) for visualization and component partitioning"
+  ],
+  "key_techniques": [
+    "Semantic dimensionality reduction in two stages: first group 9 raw metrics by meaning into 3 buckets, then PCA each bucket to 1 number — reduces 9→3→1 while keeping the 3 dimensions interpretable rather than a black-box single PCA",
+    "Correlation-driven grouping: claims the metrics inside each bucket are mutually highly correlated (so PCA is well-justified) while the three buckets capture genuinely different facets — and validates this with a Top-3 radar chart showing nodes high on one axis can be low on another",
+    "Inventing problem-specific metrics (Spreading Breadth/Depth, Total Loss) to fill gaps the standard centrality zoo doesn't cover — spreading dynamics and connectivity-criticality",
+    "Mathematical hygiene on the invented metric: deriving the attenuation factor so the index is provably independent of the arbitrary horizon T, then bounding the index analytically — turns a hand-wavy diffusion idea into a defensible quantity",
+    "Cross-metric corroboration as validation: showing a few authors (ALON, HARARY, GRAHAM) top every individual ranking AND the composite IM, used as evidence the model is 'rational'",
+    "A counter-intuitive case study (paper 11 has the biggest degree/circle but low IM because it only connects to the network through paper 12) used to demonstrate the model captures hidden structural importance that degree alone misses",
+    "Multi-dataset stress testing: Erdős co-authors (474 nodes), 16-paper citation net, and a self-crawled Douban movie network (971 users, 259,179 weighted edges) to argue generality",
+    "Tooling: Gephi for metric computation + visualization, Floyd algorithm for distance matrices, Highcharts for figures, HTML scraping for the Douban dataset"
+  ],
+  "why_it_won": "\"From a judge's view it hits the Problem C sweet spot: it goes beyond the obvious 'just run centrality measures' answer that most teams submit. The winning move is the organizing framework — Centralizing / Connecting / Spreading — which turns a grab-bag of nine metrics into a coherent, defensible three-dimensional story with a single interpretable score (IM). On top of that it shows genuine modeling creativity (two original indices plus a Total-Loss metric), and crucially backs the most original index with real mathematics: deriving the attenuation factor to make B_s horizon-independent and proving bounds. It validates rather than just asserts — cross-ranking agreement among top authors, a radar chart proving the three axes are non-redundant, and a paper-11-vs-12 case study that demonstrates the model sees structure degree alone misses. It scales the claim across three datasets including one the team crawled themselves (initiative judges reward), with strong Gephi/Highcharts visualization. Finally the writing is honest and self-critical (static-model limitation, untrained 1/3 weights), which reads as mature. The combination of novel framework + original-but-rigorous metrics + multi-dataset validation + polish is what separates an O from a Meritorious.\"",
+  "section_highlights": "\"Abstract is a complete elevator pitch: names the gap (prior work is single-factor), the contribution (3D characteristic classification), the nine concrete sub-metrics including the two novel ones, the fusion method (PCA + weighted sum), and the validation (three datasets) — a judge knows the whole approach before page 2. Methodology (Sec 3) is the strongest section: cleanly tiered into the three characteristic types, each metric stated with its defining equation, and the invented Spreading submodel walked through step-by-step (eqs. 8→17→27) with the T-independence argument and analytic bounds. Results (Sec 4) is organized task-by-task (Task1-5) so graders can map directly to the prompt's deliverables, and each task adds a different dataset rather than repeating. The paper-11/paper-12 'superficial paradox' in Task3 is a memorable narrative beat that proves the model's value. The Strengths/Weakness section is candidly self-auditing (admits static model, small data, ad-hoc 1/3 weights). Consistent named keywords, a clear contents page, and heavy use of ranked tables + radar/bar/line/network figures make it skimmable.\"",
+  "pitfalls_or_limitations": [
+    "Weights α=β=γ=1/3 are picked arbitrarily with no calibration — the team admits this; a small-scale validation or ground-truth (e.g. known award winners, citation counts) could have trained them and made IM defensible rather than asserted",
+    "No external ground truth for 'influence' at all — validation is purely internal (rankings agree with each other), which is circular; agreement among centrality measures is expected, not evidence of correctness",
+    "The Spreading Breadth particle model double-counts: particles splitting into (m-1) copies and re-traversing means n(t) over-counts occupied vertices and revisits nodes; the 'rough' n(t+1)=(D-1)n(t) approximation using a single global average degree D ignores degree heterogeneity that is the whole point of these networks",
+    "PCA on only three variables per group yields marginal dimensionality reduction and the first component's sign/loadings are never reported — the reader can't see what 'Central' actually weights",
+    "Static model — explicitly no time dimension, so it can't capture how influence accrues or decays, a real weakness for citation/co-authorship data which are inherently temporal",
+    "Directionality is treated loosely: PageRank and citation flow are directional, but co-authorship is undirected, and the framework mixes directed and undirected metrics into one IM without addressing the inconsistency",
+    "The 16-paper citation network is tiny; rankings on 16 nodes are statistically fragile and the mermaid/extracted figure of it appears garbled/duplicated",
+    "Generalization claims (disciplines, universities, departments) are hand-waved with hypothetical data sources, not demonstrated",
+    "Some equations and figures are sloppy (eq. 1 'D=2E' conflates degree-sum with vertex count notation; OCR shows '??' placeholders) — in the original these were presumably cleaner but it signals proofreading risk"
+  ],
+  "reusable_patterns": [
+    "The 'taxonomy → PCA → weighted-sum' composite-index pipeline: bucket many candidate metrics into a few semantically-named dimensions, reduce each bucket with PCA, then linearly fuse — a reusable recipe for any MCM problem asking for a single ranking/score from many indicators",
+    "Invent at least one problem-specific metric to stand out, then earn it with math: define the quantity, derive any normalization that removes an arbitrary parameter (here the horizon T), and prove bounds — this converts 'we made something up' into 'we contributed a defensible measure'",
+    "Validate a ranking model via cross-metric agreement plus at least one counter-intuitive case study that the model gets 'right' (the paper-11-needs-paper-12 story) — far more persuasive than tables alone",
+    "Use a radar/spider chart of top entities across your sub-dimensions to visually prove the dimensions are non-redundant (high on one, low on another)",
+    "Demonstrate generality by applying the same pipeline to a self-collected dataset (here a crawled Douban network) — judges credit initiative and out-of-sample testing",
+    "Abstract-as-spec: pack the gap, the framework, the concrete components, the method, and the validation datasets into the summary so graders grasp the whole solution immediately",
+    "Task-by-task results structure that maps 1:1 onto the prompt's deliverables, with each task introducing a new dataset rather than re-displaying the same one",
+    "Write a candid, specific Weaknesses section (name the untrained weights, the static assumption, the data scale) — self-criticism reads as rigor and pre-empts judge objections"
+  ]
+}

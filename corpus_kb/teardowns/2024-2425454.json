@@ -1,0 +1,45 @@
+{
+  "paper_id": "2024-2425454",
+  "year": 2024,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "Analyze momentum in tennis using 2023 Wimbledon men's match data: build a model to capture the flow of play, test whether swings in play are random, identify indicators that signal a change in momentum, and generalize the model to other matches.",
+  "models_used": [
+    "Monte Carlo simulation",
+    "Exponential moving average",
+    "Runs test",
+    "Chi-square independence test",
+    "Grid-Search Random Forest (GSRF)",
+    "Principal component analysis / factor analysis"
+  ],
+  "key_techniques": [
+    "Counterfactual leverage quantification for each point based on winning probability changes",
+    "Exponentially weighted moving average of leverage to define momentum",
+    "Monte Carlo simulation of match/game/set outcomes to estimate real-time winning probabilities",
+    "Short-term motivation effect on serve success probability with cumulative streak scaling",
+    "Confidence boost factor blending historical and in-match serve statistics",
+    "Runs test to assess randomness of scoring sequences within games",
+    "Contingency table chi-square test to correlate points won and momentum",
+    "Peak-finding on momentum curves to label swing reversal points",
+    "Grid search hyperparameter tuning for Random Forest classifier",
+    "Feature importance ranking from Random Forest to identify top swing indicators",
+    "Factor analysis with varimax rotation to reduce indicators into four actionable factors (Expenditure, Technical, Running Distance, Game Situation)",
+    "Sensitivity analysis of short-term motivation parameters and prediction horizon 's'",
+    "Data pre-processing: nearest-neighbor imputation of missing serve/return depth values and label encoding categorical variables"
+  ],
+  "why_it_won": "The paper delivers a complete, cohesive pipeline: it mathematically defines momentum via Monte Carlo leverage and exponential smoothing, validates the concept with robust statistical tests, then builds a highly accurate (94%) GSRF predictor for swing points. The model is successfully generalized to a women's final with necessary rule adaptations, and sensitivity analyses confirm robustness. Practical implications are distilled into four coach-friendly factors via factor analysis, and a dedicated memo offers concrete advice, demonstrating both analytical depth and real-world applicability.",
+  "section_highlights": "The writing follows the task decomposition clearly, with each task addressed in its own section and linked logically. Visualizations (match flow, confusion matrices, feature importance, factor loading matrix) are well-chosen and directly support the narrative. The concluding memorandum translates complex modeling results into actionable coaching recommendations, making the paper accessible to non-technical stakeholders.",
+  "pitfalls_or_limitations": [
+    "Machine learning was not used to directly predict winning probability from match win/loss outcomes.",
+    "Generalization across different playing surfaces was not empirically tested due to data unavailability.",
+    "Sensitivity analysis was limited to a few parameters (short-term motivation m_i and score quantity s); broader parameter sensitivity could be explored."
+  ],
+  "reusable_patterns": [
+    "Define momentum as an exponentially weighted moving average of per-point 'leverage', where leverage is the counterfactual change in win probability obtained via Monte Carlo simulation.",
+    "Use runs test and chi-square test to quantitatively challenge the hypothesis that success runs are random and unrelated to momentum.",
+    "Label swing reversal points by finding peaks on opponent momentum curves and identifying the nearest point where momentum crosses zero.",
+    "Train a Grid-Search Random Forest classifier on engineered features to predict momentum transitions, and rank feature importance to identify key game indicators.",
+    "Apply factor analysis (KMO and Bartlett test, PCA, varimax rotation) to simplify a large set of important features into a few coach-interpretable dimensions.",
+    "Test model generalization by adapting match rules (e.g., best-of-three sets) and re-running the pipeline on a different competition (women's final)."
+  ]
+}

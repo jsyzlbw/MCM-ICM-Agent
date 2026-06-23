@@ -1,0 +1,56 @@
+{
+  "paper_id": "2017-70545",
+  "year": 2017,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2017 MCM Problem B (discrete): design the shape, size, and merging pattern of a highway toll plaza's post-tollbooth merging area, given L outgoing highway lanes and B tollbooths (B>L), and justify the design against existing designs on three axes — throughput (efficiency), accident risk, and cost. Team 70545 (\"Control Time Model: Wait One Second and Start Your Journey\") frames the core insight as managing the merge after the booths rather than just sizing the plaza, and proposes a release-timing control rule plus a geometric merging-pattern optimization.",
+  "models_used": [
+    "Control Time Model (CTM): the central original idea — enforce a fixed 'control time' t0 = 1s minimum gap between successive vehicle RELEASES from booths that merge into the same lane, so no two vehicles from different booths reach a merge point simultaneously",
+    "Waiting Area Model (WAM): a CTM variant adding a post-booth holding/waiting area so staff can keep serving while served cars wait (decouples service from release); evaluated and then explicitly DISCARDED",
+    "Existing Model (EM) baseline: two variants — 'no solution' (free-discretion merging) and instructed merge-at-fixed-point — modeled for comparison",
+    "Kinematic rear-end safety model: derived t0 from a braking model where a posterior vehicle brakes after reaction time t_res; solving distance d>=0 yields t0 >= t_res, picked t0=1s > t_res=0.8s (Lee et al 2002)",
+    "Two-tangent-circular-arc merging trajectory: each vehicle accelerates at a_s to v_m on a straight segment, then merges via two consecutive tangent circular arcs of radius r — gives a geometric (quadratic) relation linking plaza depth D, booth index i, lane index j, lane widths d_B/d_L",
+    "Merging-pattern optimization: defined a non-decreasing map f:{1..B}->{1..L} as the 'merging pattern', i_k = |f^-1(k)|; proved via quadratic/greatest-lower-bound argument that minimizing plaza depth D reduces to minimizing x, with the optimum reached by even/balanced allocation (e.g. {2,3,3} / {3,3,2}) for B=8,L=3",
+    "Throughput model via order statistics / recursion: service time T_h,i ~ N(15,4) i.i.d. (justified by CLT); cumulative departure t_n ~ N(15n,4n); merge delay from Post-Encroachment-Time (PET) penalties when PET < reaction time; CTM/WAM throughput computed by a max-based release recursion t_{a,n+1}=max{...,+t0,...}",
+    "Monte Carlo simulation (N=1000-4000 runs) in R/MATLAB/Mathematica to estimate throughput distributions and PET distributions",
+    "Two-sample hypothesis test (difference of means, z-style with SEM) at 5% significance to compare EM vs CTM throughput",
+    "Accident-risk model: collision probability p = e^(-PET)/100 mapping the simulated PET distribution to an accident rate per 100,000 vehicles",
+    "Cost model: fixed cost = 1/2 c_l A + (c_h p_h + c_e p_e + c_a p_a)B with closed-form plaza area A; plus annual operation cost; booth mix over human/electronic/automated (ETC) types",
+    "Sensitivity analysis using elasticity-style metric (dA/A)/(dX/X), with discrete-difference variant, applied to throughput (vs mean & sd of service time) and fixed cost (vs B, v_m, r)"
+  ],
+  "key_techniques": [
+    "Reframing the problem from 'size the plaza' to 'control the timing of releases' — turning a geometry problem into a scheduling/queueing problem, which is the move that generated an original model",
+    "Deriving the single key parameter (t0=1s) from first-principles kinematics (braking + reaction time) rather than asserting it — gives the model physical grounding",
+    "Proving the optimal merging pattern analytically (greatest-lower-bound / quadratic monotonicity argument) AND confirming by simulation — combining proof with computation",
+    "A clean mathematical abstraction: the merging pattern as a non-decreasing surjection f with i_k = |f^-1(k)|, which makes the optimization statable and provable",
+    "Using the throughput formula's structure (theta ~= B/T, no t0 term) to argue CTM costs ~nothing in efficiency while buying safety — the central 'free lunch' rhetorical pivot",
+    "Honest negative result: building WAM, testing it, and discarding it because the +1.6 veh/h gain is dwarfed by land cost — demonstrates real comparison rather than advocacy",
+    "Hypothesis testing to defend the 'no significant efficiency loss' claim with statistical rigor instead of eyeballing box plots",
+    "Mapping a surrogate safety measure (PET, Post-Encroachment Time, Gettman & Head 2003) to accident probability — borrowing a real traffic-engineering metric rather than inventing one",
+    "Elasticity-based sensitivity (dimensionless (dA/A)/(dX/X)) tied back to the closed-form theta=B/T to cross-check that the simulation and analytics agree"
+  ],
+  "why_it_won": "\"From a judge's view, three things stand out. (1) A genuinely original, memorable central idea — the 'control time' release rule — that directly attacks the simultaneous-merge danger the prompt cares about, packaged with a catchy title ('Wait One Second'). It is not another off-the-shelf cellular-automata or queueing rehash. (2) Tri-axis comparison done honestly: throughput, risk, and cost are all quantified, EM is the baseline, and the team even kills its own WAM model when the data says so — judges reward teams that test rather than advocate. (3) Strong evidence discipline: the key parameter is derived from kinematics, the optimal merging pattern is both proven and simulated, throughput claims are defended with a formal hypothesis test, and results are reproduced across R/MATLAB/Mathematica. The headline numbers are crisp and decision-ready (105.5m depth, 1920 veh/h, 13.66% fewer accidents, $739,320 fixed cost), and the executive letter to the NJ Turnpike Authority translates the math into a recommendation a non-technical reader can act on. The combination of novelty + honest multi-criteria evaluation + provable optimality + simulation backing is exactly the O-award profile.\"",
+  "section_highlights": "\"Summary sheet does the standard MCM job well: names the models (CTM, WAM), states the verdict (CTM best), and quantifies it. A separate one-page letter to the New Jersey Turnpike Authority frames everything as a concrete recommendation — efficiency cost is only ~0.6 throughput/lane/hour, risk down 13.66%, cost down via shorter merge area. Notation table and explicit assumption list up front. Model section is well-sequenced: baseline EM -> CTM (the star) -> WAM (the foil that gets discarded). The merging-pattern optimization (Section 4.2) is the analytical centerpiece, with the f-mapping abstraction and the x_min minimization. Section 5 is the comparison engine: per-model throughput derivations, a box-plot comparison, and a formal hypothesis test with a stats table. Section 5.2 ties PET distributions to an accident-rate table. Section 6 ('Possible Modification') addresses the prompt's required extensions — autonomous vehicles (route them to the leftmost straight-through lane) and changing booth-type proportions (place scarce high-capacity ETC on the left, one-booth-to-one-lane). Section 7 sensitivity cross-checks analytics vs simulation. Section 9 gives candid strengths/weaknesses. Appendix ships the actual R simulation code.\"",
+  "pitfalls_or_limitations": [
+    "Arrival process is mis-specified: the team admits arrivals 'should follow Poisson' but instead uses a U(0,15) inter-arrival assumption for lack of data — weakens realism of throughput numbers",
+    "Statistical reporting is internally inconsistent/garbled: p-value 0.0348 is compared against 0.025 (a one-vs-two-sided confusion), and the EM-vs-CTM conclusion text contradicts itself ('no significant difference' vs a later sentence claiming significance); Table 2's accident numbers (EM 53.024 vs CTM 61.416 per 100k) appear swapped relative to the claim that CTM reduces accidents by 13.66%",
+    "The merging trajectory (two tangent uniform circular arcs at constant speed) is a strong idealization that the team concedes is not the real vehicle path; vehicle length is omitted entirely",
+    "Optimal merging pattern is 'induced after trying out some pairs of small (B,L)' rather than proven for general B,L — the generality claim rests on small-case induction",
+    "Throughput simulations only model two booths merging into one lane and extrapolate; the headline theta ~= B/T is asserted from simulation 'induction', not derived in closed form for the full plaza",
+    "Cost parameters are partly garbled in the transcript (duplicated c_e values, inconsistent p_a like 1/19 vs 3/8), suggesting transcription or internal bookkeeping slips",
+    "The accident-probability law p = e^(-PET)/100 is an ad hoc functional form chosen to give p=0.01 at PET=0, not empirically fit",
+    "Light-traffic regime is hand-waved ('throughput less than 3600B/T') without a model",
+    "Appendix R code is buggy/typo-ridden (e.g. comparison operators rendered as semicolons), so it would not run as-is"
+  ],
+  "reusable_patterns": [
+    "The 'control variable' reframe: when a design problem looks geometric/static, look for a timing or scheduling lever (release control) that dismantles the worst-case event (simultaneous merge) — often yields the original model judges reward",
+    "Build a baseline, your model, AND a tempting-but-worse alternative, then discard the alternative with data — signals genuine comparison and self-criticism",
+    "Derive your one magic constant from first principles (kinematics here) instead of asserting it; cite a real source for the empirical input (reaction time)",
+    "Abstract the combinatorial choice as a clean mathematical object (here, a non-decreasing map f with i_k=|f^-1(k)|) so the optimization becomes statable and partly provable",
+    "Pair an analytical optimum with a Monte Carlo confirmation, and use a formal hypothesis test to defend 'no significant difference' claims rather than eyeballing plots",
+    "Borrow a domain-standard surrogate metric (Post-Encroachment Time) to quantify a soft objective (safety) and map it to a probability/rate",
+    "Use dimensionless elasticity (dA/A)/(dX/X) for sensitivity and cross-check it against your closed-form formula (theta=B/T) so analytics and simulation validate each other",
+    "Lead with a closed-form headline result the client can act on (105.5m depth, $739,320, 1920 veh/h) and include a separate plain-language stakeholder letter translating the math into a recommendation",
+    "Report reproducibility across multiple platforms (R/MATLAB/Mathematica) and ship the simulation code in an appendix"
+  ]
+}

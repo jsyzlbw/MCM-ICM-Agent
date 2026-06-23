@@ -1,0 +1,51 @@
+{
+  "paper_id": "2023-2311035",
+  "year": 2023,
+  "problem": "C",
+  "problem_type": "data",
+  "problem_summary": "2023 MCM Problem C (data): analyze a year of Twitter-reported Wordle results (2022). Four required tasks: (1) build a model explaining variation and give a prediction interval for the number of reported results on 2023-03-01, plus test whether word attributes affect the hard-mode percentage; (2) for a given word/date predict the percentage distribution of (1,2,3,4,5,6,X) tries and quantify uncertainty, applied to the word \"EERIE\"; (3) classify words by difficulty and apply to \"EERIE\"; (4) report other interesting dataset findings. Team #2311035 solved it with three coupled models (LSTM, seven XGBoost regressors, RBF-SVM) plus a custom difficulty metric, packaged as a letter to the NYT puzzle editor.",
+  "models_used": [
+    "Model I — LSTM (single-layer, 5 hidden units, look-back=33) for time-series forecast of daily reported-result count, implemented in PyTorch",
+    "Recursive/iterative multi-step forecasting — fundamental LSTM gives one-step output, so they recursively fed the prediction back in 60 times to reach the 2023-03-01 horizon",
+    "Monte-Carlo-style ensemble of 150 independent LSTM retrainings to build a 95% prediction interval [20745.72, 22914.74] via mean ± 1.96·sd over runs",
+    "OLS linear regression of hard-mode ratio on 4 word attributes (F-test, t-tests) to show no significant word effect on hard-mode percentage",
+    "Model II — seven separate XGBoost regressors, one per outcome class (1..6 tries and X), to predict the full percentage distribution for a given word; R²=0.68",
+    "Model III — Support Vector Machine with RBF kernel for 3-class word-difficulty classification (easy/medium/hard), accuracy 0.6556, F1 0.6634",
+    "Custom difficulty metric E_w — an unequally-weighted average of the try-distribution (weights 1,3,5,6,7,9,11 for 1..6 tries and X) used both as the label generator for Model III and as a cross-check on Model II"
+  ],
+  "key_techniques": [
+    "Two-stage normalization for skewed counts: natural-log transform first (data ~ gamma-distributed; plain Min-Max wouldn't separate values because changes were tiny as a fraction of the max), then Min-Max — explicitly justified rather than applied blindly",
+    "Cross-validation to tune the look-back window (settled on 33 days) and the number of LSTM units (5), kept tiny to avoid overfitting on only 359 days of data",
+    "Feature engineering of word attributes from external sources: daily-frequency rank (Leipzig Corpora 2022), initial-letter-is-vowel binary, consecutive-letter binary, average letter frequency (Concise Oxford Dictionary), plus decision-tree 'depth' (Poirrier/Selby optimal-strategy trees) and max repeated-letter count (charNum)",
+    "Recursive Feature Elimination (RFE) to reduce 6 hand-built features to 3 dominant ones (daily frequency, charNum, letter frequency)",
+    "RobustScaler on frequency-rank feature to blunt extreme outliers (huge rank values)",
+    "Per-class regressor decomposition: rather than one multi-output model, train 7 independent XGBoost regressors and then audit that predicted percentages sum to ~100% (showed sum in (98,102), variance 0.71) as an internal consistency / uncertainty check",
+    "Sensitivity analysis using near-twin words (Royal/Sport/Prove, attributes within ~2%) to show E_w varies <1% — a clean way to demonstrate model stability without ground truth for the unknown words",
+    "Cross-model corroboration: Model II says EERIE is hard (E_w=709.9) and Model III independently classifies EERIE as 'hard' — the two results agree, used as a confidence argument",
+    "Standard classifier evaluation suite: precision/recall/F1/accuracy, confusion matrix, and one-vs-rest ROC curves, with honest reading that the 'hard' class is the weak spot"
+  ],
+  "why_it_won": "\"It is a complete, internally consistent, and honestly-audited solution. Every required sub-task is answered with a concrete number and a named method, and the methods are chosen with justification rather than reflex — the log-then-MinMax normalization is motivated by a gamma-distribution argument, the feature set is pruned by RFE, and the small LSTM is deliberately small for the small sample. The standout judge-pleasing move is cross-validation between models: Task 2 (regression) and Task 3 (classification) independently agree that EERIE is hard, which the team explicitly uses as an evidence of confidence. Uncertainty is treated seriously and in multiple ways (150-run prediction interval, near-twin sensitivity analysis, sum-to-100% consistency check), which is exactly what Problem C judges reward in a 'data' problem. The Task-4 insight that human play does NOT track the decision-tree optimal depth (correlation 0.011 between depth and performance) is a genuine, non-obvious finding that shows the team thought about the data rather than just fitting it. Finally the letter is specific and actionable (difficulty-scored scoring + reward props to raise reporting rate), tying the modeling back to the editor's actual decisions.\"",
+  "section_highlights": "\"Strong structure: per-task chapters (Tasks 1-4) each following define-features → build-model → evaluate → apply-to-EERIE, so a reader can trace any required deliverable to one section. The Summary names all three models and their headline numbers up front (prediction interval, R²=0.68, accuracy 0.6556) — judges see the whole solution in one paragraph. Assumptions and a Notations table precede the models. Normalization, feature selection, and uncertainty each get their own labeled subsection rather than being buried. Figures carry the argument: the 150-run prediction histogram (Fig 8a), the sensitivity table of near-twin words (Table 3), the sum-to-100% line chart (Fig 11), the confusion matrix + ROC (Fig 15), and the depth/charNum/weighted correlation heatmap (Fig 16). The Strengths/Weaknesses section is candid (admits the SVM is weak on 'hard', round-off breaks the 100% sum, holidays ignored). The closing letter restates results in plain language with a concrete product recommendation.\"",
+  "pitfalls_or_limitations": [
+    "Recursive 60-step LSTM forecasting compounds error at each step, but the reported prediction interval is built only from run-to-run variance (150 retrainings), so it captures model-initialization randomness, NOT accumulated multi-step forecast error or structural/model uncertainty — the interval is likely over-confident",
+    "The number of reported results was clearly declining, yet the model/letter forecast (~21.8k) and the framing don't deeply model the downward trend or its drivers; the LSTM essentially extrapolates a noisy series",
+    "R²=0.68 for Model II and ~0.66 accuracy for Model III are mediocre; the team somewhat oversells these ('high accuracy', 'great deal of confidence') given a 3-class problem where the majority class is ~60% of data — baseline accuracy isn't reported, so 0.656 may be only modestly above majority-class guessing",
+    "Seven independent regressors don't enforce the simplex constraint (percentages summing to 100, all non-negative); they audit it post-hoc but never constrain it, so predicted distributions are only approximately valid",
+    "Difficulty labels are self-generated from the same try-distribution data (E_w thresholds 600/700), then features are used to predict those labels — the 'ground truth' is a deterministic function of the outcome being modeled, risking circularity, and the 600/700 cutoffs are eyeballed from the histogram",
+    "Word attributes were shown to have weak correlation with hard-mode ratio and with performance (depth corr 0.011), which undercuts the premise that the chosen features can strongly predict the distribution — the modest R² is consistent with this",
+    "Twitter self-reported data is biased (only players who report, no cheating assumed) and percentages are pre-rounded, both acknowledged but not corrected for",
+    "Small data (359 days / ~359 words) limits all three models and is repeatedly cited as the fallback explanation for counterintuitive results (e.g., no learning over time)"
+  ],
+  "reusable_patterns": [
+    "Multi-output distribution prediction = train one regressor per output bin, then audit the sum-to-1/100% as a free uncertainty check — reusable for any 'predict a distribution' Problem-C task",
+    "Generate a single scalar difficulty/severity score via a domain-justified unequally-weighted average of an outcome vector, then (a) threshold it into class labels for a classifier and (b) reuse it as a sanity cross-check on a separate regression model — gives you two models that can corroborate each other",
+    "Build a prediction interval for any ML point-forecast by retraining N times (here 150) and taking mean ± z·sd across runs — cheap, defensible, presentable as a histogram",
+    "Sensitivity analysis without ground truth: pick near-twin inputs whose features differ by <2% and show the output varies <1% to argue stability",
+    "Justify every preprocessing choice from the data's distribution (log-transform because gamma-like and Min-Max alone fails on near-constant-fraction changes) rather than applying transforms by default",
+    "Hand-build interpretable features from external corpora (word-frequency lists, dictionaries, prior optimal-strategy decision trees) then prune with RFE to a small dominant set",
+    "Cite literature to pre-justify model choice (LSTM beats ARIMA by 84-87% error reduction) so the judge accepts the method before seeing results",
+    "Test the obvious confounder explicitly with a quick OLS + F/t-tests (does the word affect hard-mode %?) and report the null result as a finding",
+    "Mine one counterintuitive, decision-relevant insight for the 'other findings' task (human play diverges from machine-optimal depth) instead of listing trivia",
+    "Close with a stakeholder letter that converts each model output into one concrete product recommendation (difficulty-weighted scoring + reward props to lift reporting rate)"
+  ]
+}

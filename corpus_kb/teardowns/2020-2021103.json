@@ -1,0 +1,50 @@
+{
+  "paper_id": "2020-2021103",
+  "year": 2020,
+  "problem": "E",
+  "problem_type": "sustainability",
+  "problem_summary": "2020 MCM/ICM Problem E (sustainability): quantify the environmental impact of single-use plastic, predict when damage becomes irreversible, evaluate plastic-reduction policies, and equitably divide the cost burden across countries. This paper's central move is to pick a single concrete proxy for \"marine environmental health\" — seabird (razorbill) population — and build the entire analysis around a population ODE driven by accumulated plastic. It predicts seabirds go endangered by 2056 / critically endangered by 2062 under current trends, derives a critical plastic threshold P_min below which the population recovers, recommends a constant-rate (\"linear\") drawdown to ~3,750 Mt over 130 years as the minimum-cost recovery policy, and distributes that burden across 192 countries by income class and per-capita plastic production.",
+  "models_used": [
+    "First-order linear ODE for seabird population: dS/dt = (b - d_n)S - d_p*S*P_trend(t), solved analytically to closed form S(t) = S(0)*exp((b-d_n)t - d_p*∫P(t')dt')",
+    "Quartic polynomial regression for cumulative global plastic P_trend(t) = 0.000262t^4 + 0.001772t^3 + 0.6967t^2 - 4.123t + 10.83, R^2 = 0.9999 (justified by cumulative = integral of an observed-cubic annual production curve)",
+    "Equilibrium / steady-state analysis: setting dS/dt = 0 to derive the critical plastic threshold P_min = (b - d_n)/d_p, the maximum plastic level that halts seabird decline",
+    "Piecewise policy function P_policy = P_trend for t<T_a, and P_trend - P_r(t) for t>=T_a, with linear (constant-rate) reduction policies P_aggressive and P_feasible",
+    "Custom two-term cost functional C = P_r(t_f) + λ·max{d/dt P_r}: total plastic reduced plus a penalty on the maximum year-to-year reduction rate (proxy for political/economic adoptability)",
+    "IUCN Red List thresholds used as decision boundaries (2,500 mature individuals = endangered; 250 = critically endangered)",
+    "Country burden-allocation model: stratify 192 countries into 4 World Bank income classes, scale each class mean per-capita plastic by α = Δp_policy/Δp_trend, then apply a per-country multiplicative cap β_{k,i} that loads reduction only onto above-mean producers within each class"
+  ],
+  "key_techniques": [
+    "Proxy reduction: collapsing 'marine environmental health' (intractable, multi-species) into one measurable, literature-validated bioindicator (seabird population) — the single most important modeling decision",
+    "Closed-form analytic solution of the ODE rather than pure numerical integration, giving an interpretable population formula directly in terms of the cumulative-plastic integral",
+    "Parameter estimation grounded entirely in cited literature: b, d_n from seabird demographic studies; d_p decomposed as (deaths/ingesting birds)*(ingesting birds/(Mt·population)) using Roman et al. 2019 ingestion-mortality data and Geyer et al. cumulative-plastic figures",
+    "Back-solving the initial condition: anchoring S(51)=1e6 razorbills (2001 census) and solving backward for S(0) in 1950",
+    "Equilibrium analysis to extract an actionable engineering target (P_min ≈ 3,750 Mt) instead of just simulating curves",
+    "Designing a cost functional specifically to encode policy realism — penalizing abrupt change (max derivative) so the optimization naturally selects a gentle linear drawdown",
+    "Dimensionless scaling factor α to translate a single global reduction target consistently across units (total plastic, per-capita plastic) and across income classes",
+    "Equity-aware allocation via the β indicator function: countries below their class mean are untouched (β=1), above-mean countries absorb the full burden — encoding fairness directly in the math"
+  ],
+  "why_it_won": "From a judge's view it wins on a single decisive, defensible choice plus disciplined follow-through. (1) The seabird-bioindicator proxy is bold, concrete, and immediately interpretable — judges can grasp 'seabirds endangered by 2056' instantly, and it is backed by real citations rather than asserted. (2) The model is analytically tractable: a clean ODE with a closed-form solution and a literature-sourced parameter for every term, so nothing is a fudge factor. (3) It answers all parts of the prompt coherently with ONE framework — the same S(t) and P-machinery drives the irreversibility prediction, the policy comparison, and even feeds the per-country split — giving the paper strong narrative unity. (4) The P_min = (b-d_n)/d_p equilibrium result is the kind of crisp, quotable, actionable finding (a hard numeric target of ~3,750 Mt) that judges reward. (5) The cost functional is purpose-built to capture political adoptability, so the 'minimum-cost' recommendation feels economically literate, not naive. (6) Honest, specific self-critique (no carrying capacity, constant ocean-fraction assumption, unit-less cost metric) signals modeling maturity.",
+  "section_highlights": "Sec 2.1: ODE setup + closed-form solution is the analytical spine — tight and well-motivated. Sec 2.1.1 (Parameter Estimation) is the strongest single section: every parameter (b=0.326, d_n=0.146, d_p=8.395e-6, S(51)=1e6) is derived transparently from named sources, including the multi-factor decomposition of d_p. Sec 3 (Point of Irreversible Damage): the quartic fit with R^2=0.9999 and the 'cumulative = integral of cubic annual' argument is a clever justification of model form, yielding the headline 2056/2062 IUCN-threshold result. Sec 4.3: deriving P_min by setting dS/dt=0 is the intellectual peak — turns a simulation into a clean optimization target and motivates the recommended policy. Sec 5 (Policy Division): the α/β income-class allocation is the most ambitious extension and addresses the equity ask directly. Appendix Memo: clear, non-technical, policy-audience framing ('reduce from 10,000 to 3,750 Mt over 130 years'). Strong use of paired figures (top: plastic trajectory, bottom: with-vs-without-policy population) makes each policy's effect visually obvious.",
+  "pitfalls_or_limitations": [
+    "Single-species, single-reference proxy (razorbill) stands in for the entire marine environment — a fragile foundation; the whole quantitative story rides on one bird's demographic rates and one ingestion-mortality study",
+    "No carrying capacity in the ODE, so recovery scenarios overestimate long-run population (authors acknowledge this); linear birth-minus-death term grows unboundedly",
+    "Cost metric C has no interpretable units (authors admit it) and is only meaningful comparatively — weakens the 'minimum economic cost' claim, which sounds economic but is not in dollars",
+    "Constant 'fraction of plastic reaching the ocean' assumption and treating cumulative plastic as the only mortality driver ignores degradation, microplastics, and changing waste-management",
+    "Quartic extrapolation to 2150 is heroic — a degree-4 polynomial fit to ~65 years explodes far out of sample; R^2=0.9999 reflects in-sample fit, not forecast validity",
+    "Country-split data is from a single year (2010, Jambeck et al.) and income-class relationships are frozen in time; the section contains garbled artifacts (a truncated 'We can.' weakness #4, a class-proportion column that doesn't sum to 1, and HI/UMI/LI β subscripts mislabeled in case studies)",
+    "Negative α and negative β values in the US/China/Somalia case studies signal the per-country allocation breaks down once the policy demands net cleanup (production going negative) — the framework is stretched past where it was derived",
+    "Acknowledged confounder: country physical size / population skews per-capita figures, so income-class stratification alone is insufficient"
+  ],
+  "reusable_patterns": [
+    "Proxy-metric pattern: when asked to quantify something diffuse ('environmental health', 'quality of life'), pick ONE measurable, literature-validated indicator and justify it explicitly — interpretability beats comprehensiveness for judges",
+    "Driver-coupled population ODE: model a population with birth/death plus an external-harm term proportional to a cumulative stressor; solve analytically when the driver is integrable for a clean, citable formula",
+    "Equilibrium-for-target trick: set dS/dt=0 to convert a dynamic model into a concrete actionable threshold (here P_min=(b-d_n)/d_p) — gives a quotable recommendation",
+    "Parameter decomposition + literature sourcing: break a hard-to-measure rate into a product of ratios each available from a published study, and show the arithmetic (the d_p decomposition is a textbook example)",
+    "Anchor-and-back-solve for unknown initial conditions: use a known later data point plus the model to recover S(0)",
+    "Adoptability-aware cost functional: combine a magnitude term with a max-rate-of-change penalty (weighted by λ) so the optimizer favors gradual, politically feasible policies",
+    "Equity allocation via indicator-function caps: distribute a global reduction by class means scaled by a dimensionless α, then load the burden only on above-mean actors with a per-actor β — a reusable fairness mechanism",
+    "Tiered policy-comparison structure: present a sequence of escalating policy types (do-nothing / stop-only / stop+full-cleanup / stop+partial-cleanup) and show each is necessary, building inevitability toward the recommended one",
+    "Dual-panel figures pairing the intervention (plastic trajectory) with the outcome (with-vs-without population) so each policy's effect is visually self-evident",
+    "Always include a policy-audience memo that translates the math into plain numeric targets and timelines"
+  ]
+}

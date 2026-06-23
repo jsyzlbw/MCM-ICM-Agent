@@ -1,0 +1,54 @@
+{
+  "paper_id": "2015-34985",
+  "year": 2015,
+  "problem": "D",
+  "problem_type": "unknown",
+  "problem_summary": "2015 MCM/ICM Problem D (ICM): build a model to measure a country's sustainability balancing economic development against ecosystem health, then design a 20-year sustainable-development plan for one UN-designated Least Developed Country. This team (#34985) chose Zambia, invented two custom sustainability indices, modeled how ICM monetary investment flows through a web of country-specific socioeconomic and ecological factors over 20 years, and used Particle Swarm Optimization to find the dollar-allocation that maximizes sustainability for a given environmental-priority weight, plus a cellular-automata model to decide WHERE in the country to spend.",
+  "models_used": [
+    "Two custom composite indices: Socioeconomic Development Index D_i and Ecological Impact Index E_i, both Norm-scaled to [0,1] in HDI style",
+    "Inequality-adjusted income metric: integral of I(x)(1-x) over income percentile x in (0,1) — embeds Gini-like inequality weighting directly inside a single wealth integral instead of computing GDP and inequality separately",
+    "D_i = (2/5)logNorm(integral I(x)(1-x)) + (2/5)Norm(LE) + (1/5)Norm(Education) — explicitly down-weighting education due to its collinearity with income and life expectancy",
+    "Weighted pollution index using IPCC 2013 100-year Global Warming Potentials (CO2=1, CH4=28, N2O=265, HFCs/PFCs/SF6 in thousands) as damage weights: Pollution = sum_p A_p * W_p",
+    "Scalar sustainability objective S = (D_i + alpha*E_i)/(1+alpha), where alpha is a tunable environmental-priority knob — turns a two-objective trade-off into a single optimizable scalar",
+    "Iterated Function Map: ~12 coupled best-fit relationships (Appendix A) linking program cost to factors, iterated year-by-year so factors feed back on each other; relationships derived by linearizing log/exponential World Bank + WHO trends",
+    "Preston curve LE=LE(W) for life expectancy vs GDP and a logarithmic birth-rate-vs-wealth fit feeding a discrete logistic-style HIV transmission recurrence (HIV_{n+1} with contraceptive-use suppression term)",
+    "2-D Cellular Automata for spatial targeting, adapted from Epstein & Axtell's agent-based Sugarscape; coupled wealth-diffusion and population (growth + migration) update rules with employment coefficient epsilon and migration coefficient beta",
+    "Particle Swarm Optimization (128 particles) as the production optimizer over the bounded investment-allocation search space",
+    "Genetic Algorithm, Nelder-Mead simplex, and Powell's method tried first as optimizer baselines and explicitly rejected (local-optima trapping / unbounded behavior / too slow)"
+  ],
+  "key_techniques": [
+    "Reduced a multi-objective sustainability problem to ONE scalar via the alpha-weighted blend S=(D+alpha*E)/(1+alpha), making it directly optimizable and letting them sweep alpha to produce a policy-choice curve rather than a single answer",
+    "External validation against an authority: cross-checked their D_i and E_i top-10 country rankings against the Sustainable Society Index (SSI) — 7/10 overlap on both human and environmental dimensions — to prove the home-grown index is credible",
+    "Optimizer bake-off: empirically compared 4 optimizers (GA, Nelder-Mead, Powell, PSO) and justified the PSO choice with concrete failure modes of the others (boundedness, local optima, runtime) rather than asserting it",
+    "Two-scale decomposition of the problem: WHAT to fund (iterated function map + PSO) vs WHERE to fund it geographically (cellular automata) — answering two distinct policy questions with two matched models",
+    "Linearization of nonlinear (log/exponential) empirical trends to fit clean closed-form relationships for every arrow in the factor map, all collected in an Appendix equation table",
+    "Hypothesis-driven sensitivity analysis: predicted what the optimizer SHOULD do under an injected error (raise agriculture cap -> jobs up, indices ~unchanged; remove solar from wealth -> optimizer substitutes dams), then confirmed sub-1% index deviation — testing model logic, not just numeric stability",
+    "Borrowed a canonical published model (Epstein-Axtell Sugarscape) and adapted it rather than inventing spatial dynamics from scratch, lending instant credibility",
+    "Reframed the deliverable as ICM 'bang for the buck' / ROI on aid dollars, aligning the math with the sponsor's decision problem"
+  ],
+  "why_it_won": "\"It directly answered the judge's core question — how to trade economy against environment — with a single tunable scalar (alpha) and then produced an actionable, dollar-denominated policy recommendation (e.g. follow alpha=0.5 for years 1-10 then alpha=1.5 for years 11-20 on a $1.2B budget, with a per-sector allocation table). The work is unusually deep and layered for the time budget: two original validated indices, a 12-equation coupled dynamical map, a spatial CA model, AND a justified optimizer choice. Crucially the team didn't just assert quality — they validated their indices against the UN-recognized SSI rankings, benchmarked four optimizers against each other, and ran a sensitivity analysis whose results matched pre-stated predictions. Judges reward this kind of self-skepticism and triangulation. Every modeling choice is tied back to the sponsor's real decision (maximize sustainable development per aid dollar), and the country-specific tailoring to Zambia (HIV prevalence, mining/tourism/agriculture jobs, hydropower vs solar) shows genuine domain engagement rather than a generic template.\"",
+  "section_highlights": "\"Summary sheet states the whole pipeline in one paragraph and surfaces the key formula S=(D+alpha*E)/(1+alpha) up front. 'Plan of Attack' (Sec 2) gives a clean three-step roadmap (build 2-part metric -> design Zambia plan -> evaluate with the metric) that the body then follows exactly. Assumptions (Sec 3) are each paired with an explicit justification AND the modeling simplification it enables ('this allowed us to...') — textbook MCM assumption discipline. Nearly every model section ends with its own 'Strengths and Weaknesses' subsection, showing continuous self-critique. The optimizer narrative (Sec 7.4-7.5) reads as a story of escalating attempts (Nelder-Mead -> Powell -> GA -> PSO) with reasons for each rejection. Sensitivity Analysis (7.7) is exemplary: it predicts behavior before testing. Appendix A consolidates all 12 fitted equations into one reference table, keeping the body readable while preserving full reproducibility. The cost-vs-sustainability curves swept over alpha (Fig 7) and the per-sector investment bar chart (Fig 8) translate the math into something a decision-maker can act on.\"",
+  "pitfalls_or_limitations": [
+    "Only 2 time-steps actually computed: the '20-year plan' was run as two 10-year blocks (not annual) due to compute limits, undercutting the 'iterated yearly map' premise the model is built on",
+    "Heavy reliance on the 'Zambia follows worldwide development trends' assumption — all 12 map equations are global cross-country fits applied to one country, so any Zambia-specific deviation propagates everywhere",
+    "Air-pollution-only ecology metric (justified via Kuznets curve) ignores water and ground pollution, which the team admits matters precisely for poor countries lacking clean water",
+    "Compresses economy + health + education into a single D_i, so any factor outside those three has an unmeasured effect; collapsing two well-being dimensions into one value loses information by their own admission",
+    "Deterministic-effect-of-money assumption and 'net industry change = 0 without ICM funding' are strong simplifications that make aid impact look cleaner than reality",
+    "No imports/exports in the wealth model — team notes this systematically understates wealth growth and biases D_i low",
+    "The CA spatial model and the function-map/PSO optimizer are never actually coupled — geography (where) and allocation (what) are solved separately, so spatial targeting doesn't feed back into the optimized dollar amounts",
+    "Reported gains are tiny (sustainability moves from ~0.32 to ~0.37 across a huge investment range), and the extracted figure tables show some inconsistent/garbled x-axis values, making the headline impact hard to verify",
+    "'Political stability / no corruption' assumption for Zambia is convenient and lets 100% of aid be assumed effective"
+  ],
+  "reusable_patterns": [
+    "Scalarize a trade-off with a single tunable weight: S=(A + alpha*B)/(1+alpha), then SWEEP alpha to deliver a decision curve and let the stakeholder pick their preference — converts 'which objective wins?' into a clean Pareto-style policy menu",
+    "Validate a home-grown composite index by ranking entities and checking overlap against an established authoritative index (here SSI) — cheap, persuasive credibility for any custom scoring metric",
+    "Run an explicit optimizer bake-off (GA vs Nelder-Mead vs Powell vs PSO) and justify the final pick by concrete failure modes (boundedness, local optima, runtime) instead of asserting it; PSO with a stated swarm size is a strong default for bounded, multimodal, non-differentiable allocation problems",
+    "Predict-then-test sensitivity analysis: state what the optimizer SHOULD do under an injected perturbation, run it, and show the result matches — far more convincing than reporting raw output deltas",
+    "Decompose a resource-allocation problem into 'what to fund' (optimization over a factor map) and 'where to fund it' (spatial agent-based / cellular-automata model) as two coupled sub-models",
+    "Build an 'iterated function map': encode each cause-effect arrow as a fitted closed-form equation, iterate the whole web forward in time so factors feed back, and collect all equations in an appendix table for reproducibility",
+    "Linearize log/exponential empirical trends to get clean fittable relationships for every edge in a causal diagram",
+    "Embed inequality directly into a wealth metric via an integral of I(x)(1-x) over the income percentile, instead of post-hoc combining GDP and a separate Gini number",
+    "Adapt a canonical published model (Sugarscape, Preston curve, IPCC GWP weights) rather than inventing from scratch — borrow credibility and cite it",
+    "Pair every assumption with both its real-world justification and the specific simplification it buys you; end each model subsection with its own Strengths/Weaknesses block"
+  ]
+}

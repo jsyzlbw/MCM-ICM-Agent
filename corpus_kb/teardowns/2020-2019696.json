@@ -1,0 +1,50 @@
+{
+  "paper_id": "2020-2019696",
+  "year": 2020,
+  "problem": "B",
+  "problem_type": "discrete",
+  "problem_summary": "2020 MCM Problem B (\"sandcastle\"): determine the optimal 3D geometry of a sandcastle foundation that best resists erosion from waves and tides for the longest time at fixed sand volume (Problem 1), find the optimal water-to-sand mixture ratio (Problem 2), re-determine the optimal geometry when rainfall is added (Problem 3), and give practical building advice (Problem 4). This O-award paper frames the whole thing as a one-way fluid-structure interaction (flow→solid) problem and reduces it to a constrained geometric-optimization over a frustum-of-a-cone parameterized by bottom radius R, top radius r, and height H.",
+  "models_used": [
+    "Simplified one-way fluid-structure interaction (flow-to-solid) model as the physical framing for erosion",
+    "Sandcastle-Erosion Model: an analytic geometric-shrinkage model of a frustum of a cone, where erosion eats into R, r, H via two mechanisms — wave cutting (l1) and tidal saturation absorption (l2) — to maximize remaining volume proportion alpha",
+    "Two-mechanism erosion decomposition: wave-cutting length l1 = lambda_c * (S1'/S1) (projected-area to surface-area ratio) and tidal saturation length l2 = lambda_s * t (linear in immersion time)",
+    "Piecewise tide-height model h_tide(t): linear rise then linear fall (triangular), calibrated to real 24-hr tidal data from Dandong, China (2020-03-06)",
+    "Four-step immersion bookkeeping (rise-to-top, full-immersion-rise, full-immersion-fall, fall-from-top) to integrate total saturation length L_p (water-positive), L_n (water-negative), L_t (top)",
+    "Constrained nonlinear optimization: max alpha(R,r,H) s.t. fixed volume V0 = (1/3)*pi*H*(R^2+r^2+R*r), 0<H<0.75, 0<=r<=R",
+    "Cohesion-vs-moisture sub-model for Problem 2: F = k1*beta^2 (cohesion grows with water ratio), cut thickness T = k2/F (inverse), saturation coefficient lambda_s = k3*beta^2, giving l1 and l2 as functions of beta with bounded beta in (~10%, ~30%)",
+    "Sandcastle-Rain-Erosion Model (Problem 3): superposition of vertical raindrop cutting l4i = a1*(S2i'/S2i) onto the seawater erosion result, solved in two cases (sea+rain, rain-only)"
+  ],
+  "key_techniques": [
+    "Reduced an open-ended 'what shape?' question to a 3-parameter (R, r, H) optimization by justifying the frustum-of-a-cone family from literature (smooth water-faced surface resists erosion best; cone excluded because a castle sits on top)",
+    "Hybrid solver: analytic partial-derivative stationarity (diff + solve/vpasolve in MATLAB symbolic) cross-checked against MATLAB's genetic-algorithm toolbox — claimed to cut computation time while preserving accuracy",
+    "Erosion modeled as geometric inward offset of each face by a computed length, then recomputing the post-erosion frustum (R', r', H') and its volume — turns physics into closed-form geometry",
+    "Projected-area ratio S'/S as the driver of directional cutting, capturing that the wave-facing surface is hit harder (later motivating an 'ellipsoidal cone' asymmetric refinement)",
+    "Grounding constants in cited experimental literature (lambda_c, lambda_s, k2/k1, k3, beta_min~10%, beta_max~30%) rather than inventing them",
+    "Calibration to real-world tidal data and a deliberate sandcastle placement (built at 200 cm height, <1 m tall, 4-hr erosion window 18:00-24:00) so both wave and tide effects are non-trivial",
+    "Sensitivity analysis sweeping +/-5% on lambda_c, lambda_s, V0 and reporting % change in R, r, H, alpha to argue robustness",
+    "Staged problem reuse: Problem 2 and 3 explicitly extend the Problem-1 model by swapping the independent variable (beta) or superposing a new term (rain), keeping one coherent model family"
+  ],
+  "why_it_won": "\"From a judge's perspective it wins on coherence, concreteness, and communication rather than physical depth. (1) It gives crisp, quotable numerical answers to every sub-question — R=0.64m, r=0.20m, H=0.33m, alpha=62.4%; optimal beta≈22-24% (≈1:5 water:sand); rain-case R=0.52m, r=0.16m, H=0.50m — exactly the kind of actionable results judges reward. (2) It builds ONE model and reuses it across all four problems, so the narrative is unified instead of four disconnected solutions. (3) It makes a defensible modeling decision early (frustum family, justified by a citation) that collapses a hard shape-optimization into a tractable 3-variable problem. (4) Constants are sourced from real granular-physics literature (Nature, Phys Rev Lett, Scientific Reports), giving credibility. (5) It includes the required 'Article for Fun in the Sun' newspaper piece, written accessibly with the surface-tension explanation — many teams botch this deliverable. (6) Clean structure: summary with all key numbers up front, notation table, explicit assumptions with justifications, sensitivity analysis, strengths/weaknesses, and runnable MATLAB appendix. The package reads as complete and self-aware.\"",
+  "section_highlights": "\"Summary (lines 3-19): leads with the full result set and the modeling chain in one paragraph — a judge can grasp the entire paper in 30 seconds. Assumptions (97-108): each assumption is paired with an explicit physical justification (e.g., tide crash ignored because tide rises slowly ~50, seawater volume so large per-wave loss is negligible) — this self-aware framing is a hallmark of strong MCM papers. Section 5.1 erosion bookkeeping (259-301): the four-step rise/fall decomposition deriving L_p, L_n, L_t is the analytical core and is laid out step-by-step with figures. Figures 3-4 (segmentation schematic + mermaid flowchart of the 4 tide stages): make an abstract erosion process visual. Problem 2 cohesion chain (eqs 16-22): the F=k1*beta^2 → T=k2/F → lambda_s=k3*beta^2 derivation connecting moisture to both cutting and saturation is the most original physical reasoning. Sensitivity tables 2-4 (706-716): tidy +/-5% sweeps showing sub-2-3% output changes. Appendix (769-845): three self-contained MATLAB scripts using syms/diff/solve/vpasolve make the optimization reproducible — strong credibility signal.\"",
+  "pitfalls_or_limitations": [
+    "One-way coupling only: treats flow→solid and ignores how the eroding shape feeds back on the flow field — real fluid-structure interaction is two-way",
+    "Uniform-impact assumption: assumes every point of the water-positive surface is cut equally, which the authors themselves flag as wrong (front is cut more than the sides); the 'ellipsoidal cone' refinement is asserted qualitatively, never actually solved/optimized",
+    "Heavy reliance on borrowed/assumed constants (lambda_c=9.8e-2, lambda_s=7.0e-6, k2/k1=1e-2, k3=7e-4) with loose citation mapping; some citations appear mismatched to the claimed values, and units are largely absent/garbled",
+    "Internal inconsistency in reported numbers: e.g., Problem-3 situation-1 text says alpha improves to 59.2% in the summary but the body reports alpha''_1max = 62.4% (a copy artifact), and several values in the running text are dropped/blank",
+    "Problem-3 situation-2 (rain-only) is degenerate: alpha→100% as height→infinity, so 'optimal' is unbounded because no structural-stability/height-limit constraint was modeled — a real gap",
+    "Shape family is pre-restricted to frustums of a right circular cone; genuinely better shapes (elliptic-cone frustum, eccentric frustum, walls/moats) are excluded from the optimization and only mentioned as future work/advice",
+    "Discrete problem type, but the model is essentially continuous-analytic; little discrete/combinatorial structure is exploited despite the stated problem class",
+    "Several OCR/typographic defects in the artifact (lost numbers, '????' placeholders) reflect a paper that is strong in structure but imperfect in numeric polish"
+  ],
+  "reusable_patterns": [
+    "Collapse an open 'what is the best shape/design?' question into a low-dimensional parametric family justified by one literature citation, then optimize the few parameters — converts an intractable problem into max f(R,r,H) s.t. a volume/resource constraint",
+    "Model erosion/wear as a geometric inward offset of each face by a computed length, then recompute the body and its volume — a clean way to make a physics process analytically optimizable",
+    "Decompose a forcing into named mechanisms with separate coefficients (here wave-cutting lambda_c vs saturation lambda_s) so each can be calibrated and sensitivity-tested independently",
+    "Hybrid solver pattern: derive stationarity with symbolic partial derivatives AND verify with a black-box optimizer (genetic algorithm) — present both for speed + a robustness check",
+    "Single-model-family reuse across all sub-problems: extend the base model by (a) swapping which quantity is the free variable, or (b) superposing an additive new effect — yields a coherent narrative judges like",
+    "Calibrate to a real public dataset (here CNSS tidal tables for a named site/date) and choose scenario parameters deliberately so every modeled effect is non-negligible",
+    "Always pair each assumption with a one-line physical justification, and close with a +/-X% sensitivity sweep table on the key constants plus an honest strengths/weaknesses section",
+    "Lead the summary with the full set of concrete numerical answers; write the popular-audience deliverable (newspaper article) in plain language with one intuitive physics nugget (surface tension) — both are easy points many teams leave on the table",
+    "Ship a runnable solver appendix (MATLAB syms/diff/solve) so the optimization is reproducible and credible"
+  ]
+}
