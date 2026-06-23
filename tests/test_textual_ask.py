@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.cli_commands.base import CommandContext, CommandResult
 from mcm_agent.core.workspace import create_workspace, load_workspace_state

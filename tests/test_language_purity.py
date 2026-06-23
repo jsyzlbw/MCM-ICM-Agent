@@ -7,7 +7,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 
 from mcm_agent.agents.paper_context import PaperContext
 from mcm_agent.agents.paper_sections import _render_introduction, render_claim_plan_sections

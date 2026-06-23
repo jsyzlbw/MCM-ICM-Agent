@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.cli_commands.api import ApiCommand
 from mcm_agent.cli_commands.base import CommandContext

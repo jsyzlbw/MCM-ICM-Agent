@@ -2,8 +2,20 @@ from __future__ import annotations
 
 import hashlib
 import math
+import time
 
 import httpx
+
+
+def _retry_wait(response: httpx.Response, attempt: int) -> float:
+    """Seconds to wait before retrying: honor Retry-After, else exponential backoff."""
+    retry_after = response.headers.get("retry-after")
+    if retry_after:
+        try:
+            return min(float(retry_after), 60.0)
+        except ValueError:
+            pass
+    return min(2.0 * (2**attempt), 60.0)
 
 
 class FakeEmbeddingProvider:
@@ -42,27 +54,50 @@ class VoyageEmbeddingProvider:
         model: str = "voyage-3-large",
         base_url: str = "https://api.voyageai.com/v1",
         timeout_seconds: int = 60,
-        batch_size: int = 128,
+        batch_size: int = 16,
+        max_retries: int = 6,
     ) -> None:
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
+        # Smaller batches keep each request under Voyage's per-minute token ceiling
+        # (a single large batch can exceed free-tier TPM and 429 outright).
         self.batch_size = batch_size
+        self.max_retries = max_retries
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         vectors: list[list[float]] = []
         for start in range(0, len(texts), self.batch_size):
             batch = texts[start : start + self.batch_size]
-            response = httpx.post(
-                f"{self.base_url}/embeddings",
-                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                json={"input": batch, "model": self.model},
-                timeout=self.timeout_seconds,
-            )
-            response.raise_for_status()
-            vectors.extend(item["embedding"] for item in response.json()["data"])
+            vectors.extend(item["embedding"] for item in self._post_embeddings(batch))
         return vectors
+
+    def _post_embeddings(self, batch: list[str]) -> list[dict]:
+        response = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = httpx.post(
+                    f"{self.base_url}/embeddings",
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json={"input": batch, "model": self.model},
+                    timeout=self.timeout_seconds,
+                )
+            except httpx.TransportError:
+                # Transient network failure (dropped connection, SSL EOF, timeout) — common
+                # over a long build. Back off and retry instead of crashing.
+                if attempt < self.max_retries:
+                    time.sleep(min(2.0 * (2**attempt), 60.0))
+                    continue
+                raise
+            # Back off and retry on rate limits (429) and transient server errors (5xx).
+            if response.status_code in (429, 500, 502, 503, 504) and attempt < self.max_retries:
+                time.sleep(_retry_wait(response, attempt))
+                continue
+            response.raise_for_status()
+            return response.json()["data"]
+        response.raise_for_status()  # exhausted retries: surface the last error
+        return response.json()["data"]
 
 
 class VoyageRerankProvider:
@@ -91,5 +126,5 @@ class VoyageRerankProvider:
         response.raise_for_status()
         return [
             {"index": item["index"], "score": item["relevance_score"]}
-            for item in response.json()["results"]
+            for item in response.json()["data"]
         ]

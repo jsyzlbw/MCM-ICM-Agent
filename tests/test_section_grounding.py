@@ -240,11 +240,9 @@ def test_sensitivity_facts_without_spec_degrade() -> None:
 # SC4 Tests: per-subproblem grouping in results facts
 # ---------------------------------------------------------------------------
 
-import json
-import tempfile
-from pathlib import Path
-
-
+import json  # noqa: E402
+import tempfile  # noqa: E402
+from pathlib import Path  # noqa: E402
 def _make_two_sub_spec() -> ModelSpec:
     """2-subproblem spec with ids q1 and q2."""
     return ModelSpec(

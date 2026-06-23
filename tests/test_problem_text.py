@@ -94,7 +94,6 @@ def test_extract_problem_text_pdf_caches_sidecar(tmp_path: Path) -> None:
 def test_extract_problem_text_pdf_uses_cache_on_second_call(tmp_path: Path) -> None:
     """Second call returns from sidecar without re-parsing the PDF."""
     from mcm_agent.core.problem_text import extract_problem_text
-    import pypdf
 
     d = _problem_dir(tmp_path)
     pdf_path = d / "2026_MCM_Problem_C.pdf"

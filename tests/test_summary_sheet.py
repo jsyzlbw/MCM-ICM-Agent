@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.agents.summary_sheet import SummarySheetAgent
 from mcm_agent.agents.writer import PaperWriterAgent

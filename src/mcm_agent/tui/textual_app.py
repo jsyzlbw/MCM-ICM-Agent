@@ -21,7 +21,6 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.css.query import NoMatches
 from textual.message import Message
-from textual.widget import Widget
 from textual.widgets import Label, Static, TextArea
 
 from rich.markdown import Markdown as _RichMarkdown

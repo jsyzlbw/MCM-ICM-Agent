@@ -5,7 +5,6 @@ import asyncio
 import json
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.server.event_bus import EventBus, EventWriter
 from mcm_agent.server.protocol import (

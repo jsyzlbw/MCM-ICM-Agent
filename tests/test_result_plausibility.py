@@ -8,10 +8,8 @@ All other validation checks are satisfied in both cases.
 """
 from __future__ import annotations
 
-import math
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.agents.validation import ValidationAgent
 from mcm_agent.core.model_spec import ModelSpec, SubproblemModel, write_model_spec

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from typing import Any, Literal, Union
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 
 # ---------------------------------------------------------------------------

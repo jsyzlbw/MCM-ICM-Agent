@@ -18,7 +18,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.agents.writer import PaperWriterAgent
 from mcm_agent.core.model_spec import ModelSpec, SubproblemModel, write_model_spec

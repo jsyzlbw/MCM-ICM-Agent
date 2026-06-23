@@ -152,7 +152,7 @@ class FigureQualityAgent:
             figure_id = str(record.get("figure_id", "")).strip()
             if not figure_id:
                 continue
-            if f"\\includegraphics" not in tex_content:
+            if "\\includegraphics" not in tex_content:
                 issues.append(
                     f"Figure `{figure_id}` is not embedded in the paper "
                     "(no \\includegraphics found in any written .tex file)."

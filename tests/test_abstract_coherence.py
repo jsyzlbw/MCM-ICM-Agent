@@ -104,14 +104,9 @@ def test_abstract_facts_fallback_when_no_spec() -> None:
 # Task A2: writer injects judge_feedback from repair_directive
 # ---------------------------------------------------------------------------
 
-import json as _json
-import tempfile
-from pathlib import Path as _Path
-
-from mcm_agent.agents.section_writer import PaperSectionWriter
-from mcm_agent.providers.base import ProviderResult
-
-
+import json as _json  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
+from mcm_agent.providers.base import ProviderResult  # noqa: E402
 class _RecordingLLM:
     """Fake LLM that records every prompt it receives and returns a valid section."""
 
@@ -123,7 +118,7 @@ class _RecordingLLM:
         self.prompts.append(prompt)
         # Return a valid LaTeX section so write_section doesn't fall back
         return ProviderResult(
-            content=f"\\section{{Introduction}}\nThis is a substantive introduction.\n",
+            content="\\section{Introduction}\nThis is a substantive introduction.\n",
             metadata={},
         )
 
@@ -279,7 +274,7 @@ def test_writer_section_loop_passes_exemplars_to_write_section(tmp_path: _Path) 
 
     TDD: this test is written before the implementation.
     """
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import patch
 
     # Set up a minimal workspace so _write_claim_plan_sections can run
     paper_dir = tmp_path / "paper"
@@ -301,7 +296,6 @@ def test_writer_section_loop_passes_exemplars_to_write_section(tmp_path: _Path) 
     recording_llm = _RecordingLLM()
     agent = PaperWriterAgent(llm_provider=recording_llm)
 
-    from mcm_agent.agents.paper_context import PaperContext
     context = _make_context()
 
     # Patch PaperSectionWriter to use our capturing writer

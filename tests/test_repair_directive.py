@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 
 def test_read_repair_directive_returns_dict_when_present(tmp_path: Path) -> None:

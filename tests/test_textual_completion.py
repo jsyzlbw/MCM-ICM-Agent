@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.cli_commands.base import CommandResult
 from mcm_agent.core.workspace import create_workspace
@@ -48,7 +47,6 @@ def _popup_text(pilot) -> str:
     pw = _popup(pilot)
     if pw is None:
         return ""
-    content = getattr(pw, "_content", None) or getattr(pw, "_renderable", None)
     # Fallback: use render_str if available
     return str(pw.render()) if hasattr(pw, "render") else str(pw._renderable)  # type: ignore[union-attr]
 

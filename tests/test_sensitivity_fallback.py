@@ -12,7 +12,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from mcm_agent.agents.solver import SolverCoderAgent
 from mcm_agent.core.workspace import create_workspace

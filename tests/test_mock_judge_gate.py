@@ -8,11 +8,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from mcm_agent.agents.mock_judge import DIMENSIONS
-from mcm_agent.agents.mock_judge_gate import MAX_ITERS, PASS_TOTAL, DIM_TO_STAGE, MockJudgeGateAgent
-from mcm_agent.core.gate_decision import GateDecision
+from mcm_agent.agents.mock_judge_gate import MAX_ITERS, MockJudgeGateAgent
 from mcm_agent.core.stage_executor import GATE_DECISION_FILES
 from mcm_agent.core.workflow_graph import build_default_workflow_graph
 from mcm_agent.core.workspace import create_workspace

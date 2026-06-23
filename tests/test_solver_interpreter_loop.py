@@ -1,4 +1,3 @@
-from pathlib import Path
 import pandas as pd
 from mcm_agent.agents.solver import SolverCoderAgent
 from mcm_agent.providers.base import ProviderResult

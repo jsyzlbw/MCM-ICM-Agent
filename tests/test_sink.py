@@ -322,8 +322,6 @@ class TestBusSink:
 
         # Fire two asks in background threads; deliver answers immediately.
         def _do_ask(prompt: str) -> None:
-            answer_box: list[str] = []
-
             async def _watch() -> None:
                 q = bus.subscribe()
                 ev = await asyncio.wait_for(q.get(), timeout=_TIMEOUT)
@@ -335,8 +333,10 @@ class TestBusSink:
 
         t1 = threading.Thread(target=_do_ask, args=("first",), daemon=True)
         t2 = threading.Thread(target=_do_ask, args=("second",), daemon=True)
-        t1.start(); t2.start()
-        t1.join(timeout=_TIMEOUT); t2.join(timeout=_TIMEOUT)
+        t1.start()
+        t2.start()
+        t1.join(timeout=_TIMEOUT)
+        t2.join(timeout=_TIMEOUT)
 
         # The two ask_ids seen by _gather_two should be distinct
         # (let it collect what it can; main assertion is no duplicate)

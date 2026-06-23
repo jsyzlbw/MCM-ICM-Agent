@@ -189,7 +189,7 @@ class PaperSectionWriter:
         return "\n".join(
             [
                 f"Self-critique and improve the following draft of the '{title}' section.",
-                f"Begin your improved version with this exact header line:",
+                "Begin your improved version with this exact header line:",
                 header,
                 "",
                 rubric_note,
